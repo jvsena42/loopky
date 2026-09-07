@@ -21,10 +21,22 @@ import java.util.zip.DeflaterOutputStream
  * cells are twice as tall as they are wide. A full block per module is either twice as wide as it
  * is tall — which scanners handle badly — or twice as many lines as most terminals show at once.
  *
+ * **Every module is painted as a colour, never as glyph ink.** The cell is always `▀`, with the
+ * top module as the foreground and the bottom module as the background — so a `█`/`▄`/space
+ * chosen against a fixed background is wrong, however obvious it looks. A terminal fills the whole
+ * cell with the background, leading included, but draws a block glyph at the font's own ink height:
+ * measured on Terminal.app, a 28px line box against a 22px glyph, leaving a 6px stripe of
+ * background across every text-row boundary. That severed the top-left finder's 98px bar into
+ * three 22px pieces, and finder detection is run-length ratios — so Pubky Ring could not see the
+ * code at all. Under this shape a run of dark modules is a run of dark *backgrounds* and has no
+ * seam; only a light/dark boundary within one cell still rides on the glyph, off by the 3px the
+ * ink box is short. Terminals that special-case U+2580 (iTerm2, Kitty, WezTerm) never showed this.
+ *
  * **The colours are not decoration.** A QR code has to be dark-on-light, and a terminal's own
  * theme is unknown and frequently dark, so drawing modules in the default foreground produces an
- * inverted code no scanner will read. Every line therefore sets black-on-white explicitly and
- * resets at the end.
+ * inverted code no scanner will read. The 256-colour cube rather than ANSI 0/7 for the same
+ * reason: indices 0–15 are exactly the ones themes remap, and this one rendered "white" at 78%
+ * grey. 16 and 231 are black and white in every palette that has them.
  */
 object TerminalQr {
 
@@ -35,23 +47,31 @@ object TerminalQr {
         // blank, which the quiet zone already accounts for.
         var y = 0
         while (y < matrix.height) {
-            builder.append(ANSI_BLACK_ON_WHITE)
+            // Only on a change: a re-stated colour per cell triples the line for nothing, and a
+            // long enough line is one more thing a terminal can wrap.
+            var painted: String? = null
             for (x in 0 until matrix.width) {
                 val top = matrix.get(x, y)
                 val bottom = y + 1 < matrix.height && matrix.get(x, y + 1)
-                builder.append(
-                    when {
-                        top && bottom -> '█'
-                        top -> '▀'
-                        bottom -> '▄'
-                        else -> ' '
-                    },
-                )
+                val pair = pairColours(top, bottom)
+                if (pair != painted) {
+                    builder.append(pair)
+                    painted = pair
+                }
+                builder.append(UPPER_HALF_BLOCK)
             }
             builder.append(ANSI_RESET).append('\n')
             y += 2
         }
         return builder.toString()
+    }
+
+    /** Foreground is the top module, background the bottom one — see the note on [TerminalQr]. */
+    private fun pairColours(top: Boolean, bottom: Boolean): String = when {
+        top && bottom -> DARK_ON_DARK
+        top -> DARK_ON_LIGHT
+        bottom -> LIGHT_ON_DARK
+        else -> LIGHT_ON_LIGHT
     }
 
     /**
@@ -120,7 +140,18 @@ object TerminalQr {
     /** Four modules is the QR spec's minimum quiet zone; below it scanners start missing the code. */
     private const val QUIET_ZONE_MODULES = 4
 
-    private const val ANSI_BLACK_ON_WHITE = "\u001B[30;47m"
+    /**
+     * The one glyph rendered, and it carries only the boundaries: where both modules match it is
+     * invisible under a background of its own colour, so a terminal that cannot draw it at all
+     * still puts a readable code on screen.
+     */
+    private const val UPPER_HALF_BLOCK = '\u2580'
+
+    private const val DARK_ON_DARK = "\u001B[38;5;16;48;5;16m"
+    private const val DARK_ON_LIGHT = "\u001B[38;5;16;48;5;231m"
+    private const val LIGHT_ON_DARK = "\u001B[38;5;231;48;5;16m"
+    private const val LIGHT_ON_LIGHT = "\u001B[38;5;231;48;5;231m"
+
     private const val ANSI_RESET = "\u001B[0m"
 
     private const val FILE_MODE = "rw-------"
