@@ -200,10 +200,11 @@ class SrsRepositoryImpl(
         return withCaches { loadedDecks.contains(author to deckId) }
     }
 
-    override suspend fun countsToday(): Map<String, DeckCounts> {
+    override suspend fun countsToday(decks: List<Deck>?): Map<String, DeckCounts> {
         if (restoreJournal()) flushAsync()
-        return studiableDecks().associate { deck ->
-            deck.id to queueForDeck(deck.id).let { DeckCounts(due = it.due.size, new = it.new.size) }
+        return (decks ?: studiableDecks()).associate { deck ->
+            deck.id to queueForDeck(deck.id, known = deck)
+                .let { DeckCounts(due = it.due.size, new = it.new.size) }
         }
     }
 
@@ -231,16 +232,25 @@ class SrsRepositoryImpl(
      * the user an unclimbable wall (#101 §7). Nothing is capped — the new-cards goal is a goal, and
      * withholding cards is exactly what it must not do.
      */
-    private suspend fun queueForDeck(deckId: String): DeckQueue {
+    private suspend fun queueForDeck(deckId: String, known: Deck? = null): DeckQueue {
         settingsRepository.ensureLoaded()
         // Before anything reads the cache: a journal from a previous process holds reviews newer
         // than the homeserver's, and a queue built without them would re-show graded cards.
         // Recovered reviews are sent straight away — nothing else would, short of the user starting
         // another session and grading FLUSH_EVERY more cards.
         if (restoreJournal()) flushAsync()
-        val deck = deckRepository.sync(deckId)
-            .onFailure { Log.e(TAG, "queueForDeck: sync failed for $deckId — ${it.message}", it) }
-            .getOrNull() ?: deckRepository.getLocal(deckId)
+        // A caller that just listed the library holds the manifest already, so only the *chunk*
+        // half of a sync is owed — [DeckRepository.sync] would re-GET a manifest fetched seconds
+        // ago, once per deck, behind the spinner the listing is already being waited on for.
+        val deck = if (known != null) {
+            cardRepository.fetchByDeck(known)
+                .onFailure { Log.e(TAG, "queueForDeck: chunks unreadable for $deckId — ${it.message}", it) }
+            known
+        } else {
+            deckRepository.sync(deckId)
+                .onFailure { Log.e(TAG, "queueForDeck: sync failed for $deckId — ${it.message}", it) }
+                .getOrNull() ?: deckRepository.getLocal(deckId)
+        }
         val author = deck?.authorPubky ?: session.current()?.identity?.pubky
             ?: return DeckQueue(emptyList(), emptyList())
         withCaches { deckAuthors[deckId] = author }

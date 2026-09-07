@@ -964,8 +964,14 @@ interface SrsRepository {
     /**
      * [countsForDeck] for every studiable deck, keyed by deck id — the same read [dueToday] performs
      * without materialising a queue of every card just to take its size.
+     *
+     * [decks] is the library the caller has **already** listed this pass, and passing it is what
+     * stops a screen paying for that listing twice: without it this re-lists owned and followed
+     * decks itself, and then re-syncs each of their manifests — on Home, the same two listings and
+     * the same manifest GET per deck that `load()` had just made, doubling the round trips behind
+     * the spinner. Omit it only where the caller has nothing to hand over.
      */
-    suspend fun countsToday(): Map<String, DeckCounts>
+    suspend fun countsToday(decks: List<Deck>? = null): Map<String, DeckCounts>
 
     /**
      * How far [cardIds] have been carried toward maturity, or null if the state could not be read.

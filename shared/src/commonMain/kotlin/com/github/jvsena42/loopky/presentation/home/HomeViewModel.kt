@@ -129,7 +129,9 @@ class HomeViewModel(
     private suspend fun content(identity: PubkyIdentity?, decks: List<Deck>): HomeUiState.Content {
         runSuspendCatching { srsRepository.refreshDailyProgress() }
         val progress = srsRepository.dailyProgress.value
-        val counts = runSuspendCatching { srsRepository.countsToday() }.getOrDefault(emptyMap())
+        // The decks travel with the call: without them this re-lists owned and followed decks and
+        // re-fetches every manifest [load] has just read, doubling Home's round trips.
+        val counts = runSuspendCatching { srsRepository.countsToday(decks) }.getOrDefault(emptyMap())
         val dueCount = counts.values.sumOf { it.due }
         val newCount = counts.values.sumOf { it.new }
         return HomeUiState.Content(

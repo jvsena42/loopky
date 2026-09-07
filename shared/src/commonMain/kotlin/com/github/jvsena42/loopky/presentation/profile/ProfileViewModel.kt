@@ -132,7 +132,9 @@ class ProfileViewModel(
             // Degrade to 0 rather than failing the whole profile load if the SRS read fails.
             // The due half only, consistent with Deck Detail: cards you have never met are not
             // something you are behind on (#101 §7).
-            val dueCount = runSuspendCatching { srsRepository.countsToday().values.sumOf { it.due } }
+            // The decks travel with the call: without them this re-lists owned and followed decks
+            // and re-fetches every manifest just read, which is why this screen listed twice.
+            val dueCount = runSuspendCatching { srsRepository.countsToday(decks).values.sumOf { it.due } }
                 .getOrDefault(0)
 
             // Fall back field by field rather than whole-identity: a published profile that only
