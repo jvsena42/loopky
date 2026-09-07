@@ -504,7 +504,20 @@ internal class IdentityRepositoryImpl(
      * Best-effort and idempotent — the tag id is derived from subject + label. Repeating it on each
      * login is how accounts that predate this get into the directory.
      */
-    private suspend fun selfTagAsLoopkyUser(session: Session) {
+    /**
+     * Announce this account as a Loopky user, **without anyone waiting on it**.
+     *
+     * Fire-and-forget on purpose: nothing reads the result, and awaiting it put a homeserver PUT
+     * on the splash screen's critical path — a cold start sat on the branded splash for ~5.9s,
+     * because this is the process's first network call and pays the FFI client build and the PKARR
+     * homeserver resolve on top of the write itself. Home's own listing pays those now, and pays
+     * them while there is something on screen.
+     *
+     * [selfTaggedThisProcess] is claimed before the write rather than after, so a second
+     * `loadPersistedSession` a moment later cannot start a duplicate; a failed write clears it so
+     * the next sign-in tries again.
+     */
+    private fun selfTagAsLoopkyUser(session: Session) {
         if (selfTaggedThisProcess) return
         // The subject is a *profile*, so the record goes to `/pub/pubky.app/tags/` (§7.7) — which a
         // session scoped to `/pub/loopky/:rw` was never granted. Asked rather than attempted: the
@@ -514,13 +527,16 @@ internal class IdentityRepositoryImpl(
             Log.d(TAG, "selfTag: skipped — this session has no pubky.app write capability")
             return
         }
+        selfTaggedThisProcess = true
         val profileUri = PubkyUri(PubkyPaths.profile(session.identity.pubky))
-        tagRepository.putReservedTag(profileUri, ReservedTags.USER)
-            .onSuccess {
-                selfTaggedThisProcess = true
-                Log.d(TAG, "selfTag: ${ReservedTags.USER.value} written")
-            }
-            .onFailure { Log.w(TAG, "selfTag: FAILED — ${it.message}") }
+        scope.launch {
+            tagRepository.putReservedTag(profileUri, ReservedTags.USER)
+                .onSuccess { Log.d(TAG, "selfTag: ${ReservedTags.USER.value} written") }
+                .onFailure {
+                    selfTaggedThisProcess = false
+                    Log.w(TAG, "selfTag: FAILED — ${it.message}")
+                }
+        }
     }
 
     /** Reset on sign-out so the next account announces itself too. */
