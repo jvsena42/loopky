@@ -1489,7 +1489,7 @@ Run against the **live production and staging networks** with
 | …with **no Ring return-callbacks** | ✅ no `x-success`/`x-cancel`/`x-error`/`x-source` in the URL — there is no app to return to |
 | …and the capability is loopky-only | ✅ `caps=/pub/loopky/:rw`, not `DEFAULT_CAPABILITIES` |
 | Relay poll starts and blocks | ✅ `Starting auth flow polling for relay channel https://httprelay.pubky.app/inbox/…` |
-| Terminal QR renders | ✅ half-blocks, black-on-white, scannable in a dark-themed terminal |
+| Terminal QR renders | ⚠️ SUPERSEDED — see "CLI QR unscannable on Terminal.app" below. The claim was made from a terminal that fills block glyphs to the cell; Terminal.app does not. |
 | `--qr-out` | ✅ 512×512 PNG written |
 | `--url-only` | ✅ prints the bare URL and no picture |
 | Nexus read, production | ✅ `tag trending --limit 8 --json` → `stem, gcse, language, portuguese, 🇧🇷, english, biology, geografia` |
@@ -2772,3 +2772,57 @@ It seeds a genuinely full page now (`FakePubkyClient.ignoresListCursor`).
 **All three fixes this round were confirmed by reintroducing the bug and watching the test fail.**
 That is now five of seven tests added across the two review rounds that were green against broken
 code on the first attempt — the check is worth doing every time, not when something feels off.
+
+## 2026-09-07 — CLI QR unscannable on Terminal.app (macOS)
+
+`loopky login` printed a QR that Pubky Ring's camera would not pick up at all — reported from a
+Terminal.app session on macOS 15.6, `loopky` 0.11.0 from Homebrew. Not a network or relay problem:
+the auth URL was minted correctly and the relay poll started. The picture was the failure.
+
+**Measured off the reported screenshot, not inferred.** A column through the top-left finder's left
+bar, which should be 98px of unbroken dark:
+
+```
+     ####################  ← 22px          ideal: one 98px run
+     ++++++                ← 6px background, full width of the code
+     ####################  ← 22px
+     ++++++
+     ####################  ← 22px
+```
+
+Terminal.app draws a 28px line box and inks the block glyph into only its top 22px, so 6px of
+*background* crossed every text-row boundary. Finder detection is run-length ratios, so a bar in
+three pieces is not a finder. The row above claiming this was "scannable in a dark-themed terminal"
+was recorded on a terminal that special-cases U+2580 and fills the cell — iTerm2, Kitty and WezTerm
+all do, Terminal.app does not, and nothing in a build or a test distinguishes them.
+
+The fix paints the module pair as **foreground + background of a single `▀`** rather than choosing
+a glyph against a fixed background, so a run of dark modules is a run of dark backgrounds with no
+seam. Same 53×27 footprint — the code did not have to get bigger.
+
+| Verified | Result |
+| --- | --- |
+| The reported screenshot decodes | ❌ `CIDetector` high-accuracy: no QR on a tight crop of the code |
+| Longest unbroken run, finder left bar | ❌ 22px shipped → ✅ 84px fixed (98px nominal; the ends land mid-cell) |
+| Real binary output, rasterised at the measured 14×28/22px metrics | ❌ 0.11.0 "NO QR DETECTED" → ✅ fixed decodes to the full `pubkyauth://…&secret=…` |
+| `TerminalQrRenderTest` (new, 5 cases) | ✅ PASS — and 2 of them fail against the old renderer, checked by putting it back |
+| `:cli:test`, `detektAll` | ✅ PASS |
+| Scanned with Pubky Ring on a phone | ✅ PASS — 2026-09-07, Terminal.app on macOS 15.6, the terminal that produced the unscannable code above. Ring picked it up and the login completed. |
+
+### Worth knowing
+
+**A QR that reproduces the matrix exactly can still be unscannable.** Every module in the shipped
+render was the right colour at its centre; what was wrong was the 21% of the code's height that
+belonged to no module at all. Any future assertion that the code "renders" has to be about
+contiguity, which is why the new test asserts on the *background* a cell is painted with and never
+on the glyph.
+
+**Colour indices 0–15 are the ones themes remap.** The reporting terminal painted ANSI 47 at 78%
+grey. It was not what broke the scan, but it is free to avoid: 16 and 231 are black and white in
+every palette that has a 256-colour cube.
+
+**Confirmed on the configuration that failed**, not on a terminal that was going to work anyway —
+the same Terminal.app session, scanned with the same phone. That matters more than usual here,
+because every measurement behind the fix was Apple's detector on synthetic pixels, which is more
+forgiving than a camera at an angle: the rasteriser could have been wrong about Terminal.app in a
+way that flattered the fix, and only a real scan closes that gap.

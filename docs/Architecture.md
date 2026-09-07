@@ -1741,10 +1741,24 @@ to return to and a dangling `x-success` pointing at `loopky://` bounces the user
 their phone after a desktop login. Nothing else about the flow changes: the session still arrives
 over the relay in phase 2.
 
-The URL is printed as a terminal QR (half-blocks, black-on-white **explicitly** — a terminal's own
-theme is unknown and frequently dark, and drawing modules in the default foreground produces an
-inverted code no scanner will read), with `--qr-out FILE` for a PNG and `--url-only` for a box
-whose output is going into a log.
+The URL is printed as a terminal QR — one text row per two module rows, with `--qr-out FILE` for a
+PNG and `--url-only` for a box whose output is going into a log. Two things about the rendering,
+both of which produce a code no scanner will read when they are got wrong.
+
+**Every module is a colour, not glyph ink.** The cell is always `▀`, foreground the top module and
+background the bottom one. Choosing `█`/`▀`/`▄`/space against a fixed background is the obvious
+shape and it is broken: a terminal fills a cell's background across the whole line box but draws a
+block glyph at the font's ink height, so Terminal.app's 28px line against a 22px glyph left a 6px
+stripe of background at every text-row boundary. That cut the top-left finder's 98px bar into three
+22px pieces, and finder detection is run-length ratios — Pubky Ring saw nothing at all. Painting the
+pair as foreground/background makes a run of dark modules a run of dark *backgrounds*, so only a
+light/dark boundary inside one cell still rides on the glyph. iTerm2, Kitty and WezTerm special-case
+U+2580 and fill the cell, which is why this only ever showed up on Terminal.app.
+
+**Black-on-white explicitly, from the 256-colour cube.** A terminal's own theme is unknown and
+frequently dark, so drawing in the default foreground produces an inverted code. Indices 16 and 231
+rather than ANSI 30/47 because 0–15 are exactly the range themes remap — the theme in the report
+above painted "white" at 78% grey.
 
 Two constraints worth knowing. `AUTH_FLOW` in the FFI is a **single global slot**
 (`static AUTH_FLOW: Mutex<Option<…>>`), so there is one in-flight auth per process — fine for a
