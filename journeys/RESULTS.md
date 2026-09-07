@@ -2699,17 +2699,9 @@ bug it exists to fix: a screen reporting a number it has no basis for.
 | iOS cached paint, `card_count` plural | ✅ PASS — a one-card deck now reads **"1 card"**, not "1 cards" |
 | iOS hero while counts are unknown | ✅ PASS — dash, drawn track, "Checking what's due…"; card height identical to the loaded state, so nothing moves |
 | iOS loaded state | ✅ PASS — "20 cards to review", "0 of 20 done", per-deck badges |
-| Android, signed-in path | ⚠️ **Not re-run** — see below |
+| Android cached paint (`Pixel_Tablet`, landscape) | ✅ PASS — "—" and "Checking what's due…", then "1 card to review" |
+| Android Profile | ✅ PASS — Decks 1 / Cards 2, still one `listByAuthor` per load |
 | `ciCheck`, `:shared:jvmTest` (1,391) | ✅ PASS |
-
-**`Pixel_Tablet` signed itself out mid-session, so the Android device pass is owed.** It held the
-staging account through the whole first round, then a routine relaunch logged `init: no persisted
-session` and came up in the guest shell — most likely the staging session ageing out, with
-`HomeViewModel` calling `signOut()` on `requiresReauth()`. Both Android emulators are now signed
-out and neither route back in works, so the follow-up fixes were verified on iOS plus unit tests
-rather than on Android. The Android half of the *first* round's table stands; nothing in these
-fixes is Android-specific except the pt-BR string. **Get the Android pass early — a signed-in
-emulator is not a stable resource.**
 
 ### Worth knowing
 
@@ -2730,6 +2722,15 @@ first, this one and the account-erase one.
 **An assertion that runs after sign-out asserts nothing.** `deletingTheAccountEmptiesTheSnapshot`
 checked `repo.listCached()`, which returns null with no session — which deleting the account has
 just cleared. It passed with the wipe removed. It reads the store directly now.
+
+**`emulator-5554` is a port, not a device, and reading the wrong one produced a wrong finding
+that was committed.** The `Pixel_Tablet` this session started had exited, another emulator took
+5554, and the app there came up in the guest shell — which was written up here as "the tablet
+signed itself out mid-session", with a theory about the staging session ageing out attached. It had
+not: booted on its own port it restored its session in 127 ms. Whichever emulator boots first takes
+5554, so **resolve the serial with `adb -s <serial> emu avd name` before trusting any reading**,
+boot with an explicit `-port`, and pass `-s` / `--device` on every call. A guest shell is
+indistinguishable from a real sign-out, so this failure mode looks exactly like a regression.
 
 **A degraded read must not be persisted as authoritative.** Three findings were one idea: both deck
 listings deliberately tolerate partial failures, and the snapshot is what the *next* launch paints,
