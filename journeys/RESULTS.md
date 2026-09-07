@@ -2807,7 +2807,7 @@ seam. Same 53×27 footprint — the code did not have to get bigger.
 | Real binary output, rasterised at the measured 14×28/22px metrics | ❌ 0.11.0 "NO QR DETECTED" → ✅ fixed decodes to the full `pubkyauth://…&secret=…` |
 | `TerminalQrRenderTest` (new, 5 cases) | ✅ PASS — and 2 of them fail against the old renderer, checked by putting it back |
 | `:cli:test`, `detektAll` | ✅ PASS |
-| Scanned with Pubky Ring on a phone | ⚪ NOT RUN — needs a person holding the phone |
+| Scanned with Pubky Ring on a phone | ✅ PASS — 2026-09-07, Terminal.app on macOS 15.6, the terminal that produced the unscannable code above. Ring picked it up and the login completed. |
 
 ### Worth knowing
 
@@ -2820,3 +2820,9 @@ on the glyph.
 **Colour indices 0–15 are the ones themes remap.** The reporting terminal painted ANSI 47 at 78%
 grey. It was not what broke the scan, but it is free to avoid: 16 and 231 are black and white in
 every palette that has a 256-colour cube.
+
+**Confirmed on the configuration that failed**, not on a terminal that was going to work anyway —
+the same Terminal.app session, scanned with the same phone. That matters more than usual here,
+because every measurement behind the fix was Apple's detector on synthetic pixels, which is more
+forgiving than a camera at an angle: the rasteriser could have been wrong about Terminal.app in a
+way that flattered the fix, and only a real scan closes that gap.
