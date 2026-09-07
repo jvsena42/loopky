@@ -9,7 +9,9 @@ import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.UniffiPubkyClient
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.ConfigHome
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.FileAppPreferences
+import com.github.jvsena42.loopky.data.storage.FileDeckCacheStore
 import com.github.jvsena42.loopky.data.storage.FileLocalKeyStore
 import com.github.jvsena42.loopky.data.storage.FilePendingReviewStore
 import com.github.jvsena42.loopky.data.storage.FileSignupTokenStore
@@ -105,6 +107,7 @@ fun jvmPlatformModule(
     single<AppPreferences> { FileAppPreferences(get(PREFERENCES)) }
     single<PendingReviewStore> { FilePendingReviewStore(get(PREFERENCES)) }
     single<StudyProgressStore> { FileStudyProgressStore(get(PREFERENCES)) }
+    single<DeckCacheStore> { FileDeckCacheStore(get(PREFERENCES)) }
 
     single<MediaProcessor> { mediaProcessor }
     single<BackgroundTasks> { InlineBackgroundTasks() }

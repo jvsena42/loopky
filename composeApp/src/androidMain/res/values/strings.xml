@@ -24,6 +24,8 @@
     <string name="home_deck_due">%1$d due</string>
     <string name="home_deck_new">%1$d new</string>
     <string name="home_deck_caught_up">Caught up</string>
+    <!-- The hero while the cached library is on screen and the review state has not answered. -->
+    <string name="home_checking_due">Checking what\'s due…</string>
     <string name="home_empty_title">No decks yet</string>
     <string name="home_empty_subtitle">Paste a list, import a file, or start from scratch.</string>
     <string name="home_create_first_deck">Create your first deck</string>

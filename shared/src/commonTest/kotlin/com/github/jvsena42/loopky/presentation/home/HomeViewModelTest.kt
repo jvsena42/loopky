@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.presentation.home
 
 import com.github.jvsena42.loopky.data.pubky.PubkyError
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.SrsGrade
@@ -13,6 +14,7 @@ import com.github.jvsena42.loopky.testing.fakeSession
 import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testCoverImage
 import com.github.jvsena42.loopky.testing.testDeck
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -93,6 +95,50 @@ class HomeViewModelTest {
         assertEquals(expected = 2, actual = spanish.cardCount)
         assertEquals('S', spanish.coverInitial)
         assertEquals(expected = 0, actual = state.decks.first { it.id == "deck2" }.dueCount)
+    }
+
+    @Test
+    fun theCachedLibraryPaintsBeforeAnythingHasBeenListed() = runTest {
+        deckRepo.cached = CachedDecks(
+            owned = listOf(testDeck(id = "deck1", title = "Spanish", cardCount = 2)),
+            followed = emptyList(),
+        )
+        deckRepo.listOwnedGate = CompletableDeferred()
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        // The listing has not answered, and the deck is already on screen.
+        val state = assertIs<HomeUiState.Content>(vm.state.value)
+        assertEquals(listOf("Spanish"), state.decks.map { it.title })
+    }
+
+    /**
+     * The cached paint knows the decks and not the review state, and "0 due" over a deck with two
+     * cards waiting renders as "🎉 You're all caught up" — a congratulation the app takes back a
+     * second later.
+     */
+    @Test
+    fun theCachedPaintNeverClaimsYouAreCaughtUp() = runTest {
+        deckRepo.cached = CachedDecks(
+            owned = listOf(testDeck(id = "deck1", title = "Spanish", cardCount = 2)),
+            followed = emptyList(),
+        )
+        deckRepo.listOwnedGate = CompletableDeferred()
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val cachedPaint = assertIs<HomeUiState.Content>(vm.state.value)
+        assertFalse(cachedPaint.countsKnown)
+        assertFalse(cachedPaint.isCaughtUp)
+
+        // …and once the real counts land, the state says so.
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish", cardCount = 2)
+        deckRepo.listOwnedGate?.complete(Unit)
+        advanceUntilIdle()
+
+        assertTrue(assertIs<HomeUiState.Content>(vm.state.value).countsKnown)
     }
 
     @Test

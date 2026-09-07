@@ -85,7 +85,7 @@ class HomeViewModel(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             Log.d(TAG, "load: fetching session + decks (silent=$silent)")
-            if (!silent) _state.update { HomeUiState.Loading }
+            if (!silent) paintFromCache()
             val session = runSuspendCatching { identityRepository.currentSession() }.getOrNull()
                 ?: runSuspendCatching { identityRepository.loadPersistedSession() }.getOrNull()
             // Carry who the user is, not what to call them — the platform layer owns the words.
@@ -149,6 +149,31 @@ class HomeViewModel(
                 null
             },
         )
+    }
+
+    /**
+     * Show the library this device last saw, so a cold start opens on Home rather than a spinner.
+     *
+     * The counts are not guessed — review state is not cached across processes — so the state goes
+     * out with [HomeUiState.Content.countsKnown] false and the screen shows no number until the
+     * real ones land. Everything here is replaced by the load already running behind it.
+     */
+    private suspend fun paintFromCache() {
+        val cached = runSuspendCatching { deckRepository.listCached() }.getOrNull()
+        val decks = cached?.let { (it.owned + it.followed).distinctBy { deck -> deck.id } }
+        if (decks.isNullOrEmpty()) {
+            _state.update { HomeUiState.Loading }
+            return
+        }
+        val session = runSuspendCatching { identityRepository.currentSession() }.getOrNull()
+        _state.update {
+            HomeUiState.Content(
+                identity = session?.identity,
+                dueToday = 0,
+                decks = decks.map { deck -> deck.toSummary(DeckCounts()) },
+                countsKnown = false,
+            )
+        }
     }
 
     /**
@@ -262,6 +287,16 @@ sealed interface HomeUiState {
         val newCardsGoal: Int = DEFAULT_NEW_CARDS_PER_DAY,
         val decks: List<DeckSummary>,
         /**
+         * Whether [dueToday], [newToday] and the per-deck badges are real numbers rather than
+         * placeholders.
+         *
+         * False only on the cached first paint, where the decks are known and the review state is
+         * not — SRS state is not cached across processes. Everything that reads a count has to ask
+         * this first: with it ignored, a launch opened on "🎉 You're all caught up" over a deck
+         * with two cards due, and then corrected itself a second later.
+         */
+        val countsKnown: Boolean = true,
+        /**
          * When the next card becomes reviewable, if there is nothing at all to study. Lets the UI
          * say "you're caught up, next review in 4h" instead of reusing the no-decks empty state,
          * which told users who owned decks to "create or import a deck".
@@ -274,7 +309,7 @@ sealed interface HomeUiState {
          * New cards have to count: a freshly imported deck has zero due, and treating that as
          * "all caught up" would greet a 1669-card import with a congratulation (#101 §7).
          */
-        val isCaughtUp: Boolean get() = dueToday == 0 && newToday == 0
+        val isCaughtUp: Boolean get() = countsKnown && dueToday == 0 && newToday == 0
 
         /**
          * The headline number: everything overdue, plus as many new cards as today's goal still

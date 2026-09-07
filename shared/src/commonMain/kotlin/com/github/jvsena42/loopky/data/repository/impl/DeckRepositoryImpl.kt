@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.data.pubky.putWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.requireSession
 import com.github.jvsena42.loopky.data.pubky.toDomain
 import com.github.jvsena42.loopky.data.pubky.toDto
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.CompactionOutcome
 import com.github.jvsena42.loopky.data.repository.DeckRepository
@@ -24,6 +25,7 @@ import com.github.jvsena42.loopky.data.repository.MediaRepository
 import com.github.jvsena42.loopky.data.repository.PublishProgress
 import com.github.jvsena42.loopky.data.repository.RehostOutcome
 import com.github.jvsena42.loopky.data.repository.TagRepository
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.CardSide
 import com.github.jvsena42.loopky.domain.model.Deck
@@ -64,6 +66,7 @@ class DeckRepositoryImpl(
     private val tagRepo: TagRepository,
     private val mediaRepo: MediaRepository,
     private val backgroundTasks: BackgroundTasks,
+    private val deckCache: DeckCacheStore,
     /**
      * App-scoped: re-hosting outlives whatever screen triggered it, so it cannot run on a
      * `viewModelScope` that dies in `onCleared()`. Injectable so tests can pass `backgroundScope`.
@@ -740,9 +743,39 @@ class DeckRepositoryImpl(
         }
     }
 
+    override suspend fun listCached(): CachedDecks? {
+        val author = session.current()?.identity?.pubky ?: return null
+        return runSuspendCatching { deckCache.load(author) }
+            .onFailure { Log.e(TAG, "listCached: snapshot unreadable — ${it.message}", it) }
+            .getOrNull()
+    }
+
+    /**
+     * Persist the display snapshot behind [listCached].
+     *
+     * Written from [listOwned] and [listFollowed] separately, each keeping the other half of the
+     * snapshot as it stands, because the two are listed by independent calls that fail
+     * independently — a followed deck on an unreachable homeserver must not erase the owned decks
+     * that just listed fine.
+     */
+    private suspend fun cacheSnapshot(owned: List<Deck>? = null, followed: List<Deck>? = null) {
+        val author = session.current()?.identity?.pubky ?: return
+        runSuspendCatching {
+            val existing = deckCache.load(author)
+            deckCache.save(
+                author,
+                CachedDecks(
+                    owned = owned ?: existing?.owned.orEmpty(),
+                    followed = followed ?: existing?.followed.orEmpty(),
+                ),
+            )
+        }.onFailure { Log.e(TAG, "cacheSnapshot: not written — ${it.message}", it) }
+    }
+
     override suspend fun listOwned(): List<Deck> {
         val author = session.current()?.identity?.pubky ?: return emptyList()
         val owned = listByAuthor(author)
+        cacheSnapshot(owned = owned)
 
         // The self-heal. There is no single app-start hook — session restore is spread across
         // ViewModels — but this runs whenever Home or the library loads, and the job is unique work
@@ -872,6 +905,7 @@ class DeckRepositoryImpl(
 
     override suspend fun listFollowed(): List<Deck> =
         resolveSubscriptions(loadSubscriptions().values.toList())
+            .also { cacheSnapshot(followed = it) }
 
     override suspend fun listFollowedBy(ownerPubky: String): List<Deck> {
         // The signed-in user's own answer comes from the session cache, which also holds a follow

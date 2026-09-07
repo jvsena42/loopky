@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.data.storage
 
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.DailyStudyProgress
@@ -14,7 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
 /**
- * The desktop JVM's seven stores, all over [JsonFileStore].
+ * The desktop JVM's eight stores, all over [JsonFileStore].
  *
  * Each is the same shape as its Android counterpart and shares its serialisation helpers from
  * `commonMain`, so a value written by one is readable by the other — which is what makes it
@@ -133,6 +134,17 @@ internal class FileStudyProgressStore(private val store: JsonFileStore) : StudyP
         withContext(Dispatchers.IO) {
             store.set(KEY_STUDY_PROGRESS, encodeStudyProgress(ownerPubky, progress))
         }
+    }
+}
+
+internal class FileDeckCacheStore(private val store: JsonFileStore) : DeckCacheStore {
+
+    override suspend fun load(ownerPubky: String): CachedDecks? = withContext(Dispatchers.IO) {
+        decodeDeckCache(store.string(KEY_DECK_CACHE), ownerPubky)
+    }
+
+    override suspend fun save(ownerPubky: String, decks: CachedDecks) {
+        withContext(Dispatchers.IO) { store.set(KEY_DECK_CACHE, encodeDeckCache(ownerPubky, decks)) }
     }
 }
 

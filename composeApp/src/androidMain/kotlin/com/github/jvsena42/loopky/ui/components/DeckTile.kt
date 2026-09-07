@@ -111,27 +111,32 @@ fun DeckTile(
                     fontSize = 12.sp,
                     color = colors.foregroundMuted,
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "\u00B7",
-                    fontSize = 12.sp,
-                    color = colors.foregroundMuted,
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = authorLabel,
-                    fontSize = 12.sp,
-                    color = colors.accentSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = (
-                        if (onAuthorClick != null) {
-                            Modifier.clickable(onClick = onAuthorClick)
-                        } else {
-                            Modifier
-                        }
-                        ).weight(1f, fill = false),
-                )
+                // A blank label is "nothing to say here" — Home passes one while the cached
+                // library is on screen and the due count has not answered. Without the guard the
+                // row ends on a dangling separator.
+                if (authorLabel.isNotBlank()) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "\u00B7",
+                        fontSize = 12.sp,
+                        color = colors.foregroundMuted,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = authorLabel,
+                        fontSize = 12.sp,
+                        color = colors.accentSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = (
+                            if (onAuthorClick != null) {
+                                Modifier.clickable(onClick = onAuthorClick)
+                            } else {
+                                Modifier
+                            }
+                            ).weight(1f, fill = false),
+                    )
+                }
                 if (hasUpdate) {
                     Spacer(modifier = Modifier.width(6.dp))
                     UpdateDot()

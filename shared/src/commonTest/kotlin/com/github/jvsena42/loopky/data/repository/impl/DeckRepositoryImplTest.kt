@@ -16,6 +16,7 @@ import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FailingChunkCardRepository
 import com.github.jvsena42.loopky.testing.FakeBackgroundTasks
+import com.github.jvsena42.loopky.testing.FakeDeckCacheStore
 import com.github.jvsena42.loopky.testing.FakeMediaRepository
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
@@ -466,6 +467,7 @@ class DeckRepositoryImplTest {
             tagRepo,
             FakeMediaRepository(),
             FakeBackgroundTasks(),
+            FakeDeckCacheStore(),
         ).fetchRemote(TEST_PUBKY, clone.id).getOrThrow()
 
         assertEquals(DeckSource.Kind.Clone, refetched.source?.kind)

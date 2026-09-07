@@ -94,6 +94,26 @@ class ProfileViewModel(
         _state.update { it.copy(dueCount = counts.values.sumOf { c -> c.due }) }
     }
 
+    /**
+     * Fill the deck and card counters from the library this device last saw, so the header is not
+     * blank while a profile GET and a deck listing run. The due counter stays out of it: review
+     * state is not cached across processes, and this screen's own number would be the guess.
+     */
+    private suspend fun paintFromCache() {
+        val owned = runSuspendCatching { deckRepository.listCached() }.getOrNull()?.owned
+        if (owned.isNullOrEmpty()) {
+            _state.update { it.copy(isLoading = true) }
+            return
+        }
+        _state.update {
+            it.copy(
+                isLoading = true,
+                deckCount = owned.size,
+                cardCount = owned.sumOf { deck -> deck.cardCount },
+            )
+        }
+    }
+
     fun onRefresh() = load()
 
     /** [silent] keeps the profile on screen while a background refresh runs. */
@@ -102,7 +122,7 @@ class ProfileViewModel(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             Log.d(TAG, "load: fetching profile + stats (silent=$silent)")
-            if (!silent) _state.update { it.copy(isLoading = true) }
+            if (!silent) paintFromCache()
 
             val session = runSuspendCatching { identityRepository.currentSession() }.getOrNull()
                 ?: runSuspendCatching { identityRepository.loadPersistedSession() }.getOrNull()

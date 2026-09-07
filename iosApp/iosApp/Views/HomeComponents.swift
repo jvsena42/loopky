@@ -67,9 +67,13 @@ struct DueTodayHeroCard: View {
     /// serves every due card and every unseen one regardless, so this reports, it does not cap.
     var newCardsToday: Int = 0
     var newCardsGoal: Int = 0
+    /// See `HomeContentData.countsKnown`. False draws the same card with a dash where the number
+    /// goes and an indeterminate bar, so nothing moves when the real count lands.
+    var countsKnown: Bool = true
     let onStartStudy: () -> Void
 
-    private var progress: CGFloat {
+    private var progress: CGFloat? {
+        guard countsKnown else { return nil }
         guard dueToday > 0 else { return 0 }
         return min(1, max(0, CGFloat(doneToday) / CGFloat(dueToday)))
     }
@@ -81,7 +85,7 @@ struct DueTodayHeroCard: View {
                 .kerning(1)
                 .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
             HStack(alignment: .bottom) {
-                Text("\(dueToday)")
+                Text(countsKnown ? "\(dueToday)" : "—")
                     .font(.system(size: 72, weight: .heavy))
                     .foregroundColor(.white)
                 Spacer()
@@ -96,10 +100,21 @@ struct DueTodayHeroCard: View {
                 .padding(.bottom, 12)
             }
             VStack(alignment: .leading, spacing: 6) {
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
-                    .tint(.white)
-                Text(String(format: NSLocalizedString("home_progress_done", comment: ""), doneToday, dueToday))
+                if let progress {
+                    ProgressView(value: progress)
+                        .progressViewStyle(.linear)
+                        .tint(.white)
+                } else {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .tint(.white)
+                }
+                Text(countsKnown
+                     ? String(
+                        format: NSLocalizedString("home_progress_done", comment: ""),
+                        doneToday, dueToday
+                     )
+                     : NSLocalizedString("home_checking_due", comment: ""))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
                 Text(verbatim: newCardsToday >= newCardsGoal
@@ -211,12 +226,21 @@ struct DeckRow: View {
                     Text(deck.title)
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(LoopkyColor.foregroundPrimary)
-                    Text(String(format: NSLocalizedString("home_deck_due_cards", comment: ""), deck.dueCount, deck.cardCount))
+                    // The cached first paint knows the deck and not its badge.
+                    Text(deck.countsKnown
+                         ? String(
+                            format: NSLocalizedString("home_deck_due_cards", comment: ""),
+                            deck.dueCount, deck.cardCount
+                         )
+                         : String(
+                            format: NSLocalizedString("card_count", comment: ""),
+                            deck.cardCount
+                         ))
                         .font(.system(size: 13))
                         .foregroundColor(LoopkyColor.foregroundMuted)
                 }
                 Spacer()
-                Text("\(deck.dueCount)")
+                Text(deck.countsKnown ? "\(deck.dueCount)" : "—")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)

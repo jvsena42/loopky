@@ -12,6 +12,7 @@ import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FakeBackgroundTasks
+import com.github.jvsena42.loopky.testing.FakeDeckCacheStore
 import com.github.jvsena42.loopky.testing.FakeMediaRepository
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
@@ -54,6 +55,7 @@ class DeckRepositorySweepTest {
         tagRepo = RecordingTagRepository(),
         mediaRepo = media,
         backgroundTasks = backgroundTasks,
+        deckCache = FakeDeckCacheStore(),
         scope = CoroutineScope(
             backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler),
         ),

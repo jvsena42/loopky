@@ -13,7 +13,9 @@ import com.github.jvsena42.loopky.data.pubky.RawPubkyClient
 import com.github.jvsena42.loopky.data.repository.ImportRepository
 import com.github.jvsena42.loopky.data.repository.MediaRepository
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.IosAppPreferences
+import com.github.jvsena42.loopky.data.storage.IosDeckCacheStore
 import com.github.jvsena42.loopky.data.storage.IosLocalKeyStore
 import com.github.jvsena42.loopky.data.storage.IosPendingReviewStore
 import com.github.jvsena42.loopky.data.storage.IosSecureSessionStore
@@ -132,6 +134,7 @@ private fun iosPlatformModule(
     single<AppPreferences> { IosAppPreferences() }
     single<PendingReviewStore> { IosPendingReviewStore() }
     single<StudyProgressStore> { IosStudyProgressStore() }
+    single<DeckCacheStore> { IosDeckCacheStore() }
     single<UnsplashKeyStore> { IosUnsplashKeyStore() }
     single<SignupTokenStore> { IosSignupTokenStore() }
     single<LocalKeyStore> { IosLocalKeyStore() }

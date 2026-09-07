@@ -16,6 +16,7 @@ import com.github.jvsena42.loopky.domain.model.SrsState
 import com.github.jvsena42.loopky.domain.model.StudySettings
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FakeBackgroundTasks
+import com.github.jvsena42.loopky.testing.FakeDeckCacheStore
 import com.github.jvsena42.loopky.testing.FakeMediaRepository
 import com.github.jvsena42.loopky.testing.FakePendingReviewStore
 import com.github.jvsena42.loopky.testing.FakePubkyClient
@@ -60,6 +61,7 @@ class SrsRepositoryImplTest {
         tagRepo = RecordingTagRepository(),
         mediaRepo = FakeMediaRepository(),
         backgroundTasks = FakeBackgroundTasks(),
+        deckCache = FakeDeckCacheStore(),
     )
     private val journal = FakePendingReviewStore()
     private val settings = FakeSettingsRepository()

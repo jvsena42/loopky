@@ -1650,6 +1650,23 @@
         }
       }
     },
+    "card_count": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld cards"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld cartas"
+          }
+        }
+      }
+    },
     "common_coming_soon": {
       "extractionState": "manual",
       "localizations": {
@@ -4441,6 +4458,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Você está em dia"
+          }
+        }
+      }
+    },
+    "home_checking_due": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking what's due…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando o que está a revisar…"
           }
         }
       }

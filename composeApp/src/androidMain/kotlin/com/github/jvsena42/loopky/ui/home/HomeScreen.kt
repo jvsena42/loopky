@@ -221,6 +221,7 @@ private fun WideHomeContent(
         )
         TodaysDecksGrid(
             decks = state.decks,
+            countsKnown = state.countsKnown,
             // Two across inside the right pane. The window may be wide, but this pane is only
             // part of it, so the screen-wide count would give tiles too narrow to read.
             columns = WIDE_HOME_DECK_COLUMNS,

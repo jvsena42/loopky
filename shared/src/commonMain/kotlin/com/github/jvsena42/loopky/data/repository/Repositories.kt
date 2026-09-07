@@ -301,6 +301,15 @@ interface AuthFlowHandle {
 }
 
 /**
+ * A library split the way the screens show it — see [DeckRepository.listCached].
+ *
+ * The two lists are kept apart rather than merged because the library badges a followed deck and
+ * Profile counts only what you own; a caller that wants the study queue merges them itself,
+ * `distinctBy { it.id }`, since cloning a deck you follow puts the same id in both.
+ */
+data class CachedDecks(val owned: List<Deck>, val followed: List<Deck>)
+
+/**
  * Deck persistence against the Pubky homeserver (canonical) and the local cache.
  *
  * Layout (Architecture.md §8.0):
@@ -427,6 +436,18 @@ interface DeckRepository {
     /** Answered from the manifests the listing already fetched, so asking costs no extra requests. */
     suspend fun decksPendingCompaction(): List<Deck>
     suspend fun listOwned(): List<Deck>
+
+    /**
+     * The library as this device last saw it, with no network call at all — or null before a
+     * listing has ever succeeded here.
+     *
+     * For **first paint only**. A cold start otherwise shows a spinner for as long as a directory
+     * listing plus a manifest GET per deck takes, and that is the first thing the user sees every
+     * launch. The decks that come back carry no chunk table (see
+     * [com.github.jvsena42.loopky.data.storage.DeckCacheStore]), so they may be rendered and never
+     * written: anything that acts on one re-reads it through [listOwned] or [fetchRemote] first.
+     */
+    suspend fun listCached(): CachedDecks?
 
     /** Public decks for any author (read-only). Powers friend profiles + Discover. */
     suspend fun listByAuthor(authorPubky: String): List<Deck>

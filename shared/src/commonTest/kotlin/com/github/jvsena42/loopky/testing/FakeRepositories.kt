@@ -5,6 +5,7 @@ import com.github.jvsena42.loopky.data.homegate.LnInvoice
 import com.github.jvsena42.loopky.data.homegate.MethodAvailability
 import com.github.jvsena42.loopky.data.pubky.CardChunking
 import com.github.jvsena42.loopky.data.repository.AuthFlowHandle
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.CompactionOutcome
 import com.github.jvsena42.loopky.data.repository.DeckRepository
@@ -25,12 +26,15 @@ import com.github.jvsena42.loopky.data.repository.StudySettingsSnapshot
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.PendingReview
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.PendingSignup
 import com.github.jvsena42.loopky.data.storage.SignupTokenStore
 import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
+import com.github.jvsena42.loopky.data.storage.decodeDeckCache
+import com.github.jvsena42.loopky.data.storage.encodeDeckCache
 import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.BACK_FIELD
 import com.github.jvsena42.loopky.domain.model.Card
@@ -286,6 +290,15 @@ class FakeIdentityRepository(var session: Session? = fakeSession()) : IdentityRe
 
 class FakeDeckRepository : DeckRepository {
     val decks = mutableMapOf<String, Deck>()
+
+    /** What [listCached] answers with. Null — no snapshot yet — is the default, as on a fresh install. */
+    var cached: CachedDecks? = null
+
+    /** Holds [listOwned] open, so a test can assert on what is on screen before it answers. */
+    var listOwnedGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun listCached(): CachedDecks? = cached
+
     val published = mutableListOf<Pair<Deck, List<Card>>>()
     val deleted = mutableListOf<String>()
     val rehostedBlobs = mutableListOf<Pair<String, String>>()
@@ -387,6 +400,7 @@ class FakeDeckRepository : DeckRepository {
 
     override suspend fun listOwned(): List<Deck> {
         listOwnedCount++
+        listOwnedGate?.await()
         listOwnedError?.let { throw it }
         return decks.values.toList()
     }
@@ -715,8 +729,8 @@ class FakeSrsRepository : SrsRepository {
         return countsFor(due.filter { it.deckId == deckId })
     }
 
-    override suspend fun countsToday(): Map<String, DeckCounts> {
-        knownDecks += due.map { it.deckId }
+    override suspend fun countsToday(decks: List<Deck>?): Map<String, DeckCounts> {
+        knownDecks += decks?.map { it.id } ?: due.map { it.deckId }
         return knownDecks.associateWith { deckId -> countsFor(due.filter { it.deckId == deckId }) }
     }
 
@@ -1524,6 +1538,26 @@ class FakeSettingsRepository(
 }
 
 /** In-memory [StudyProgressStore]. */
+/**
+ * In-memory [DeckCacheStore] that holds the *encoded* payload, exactly as every real
+ * implementation does.
+ *
+ * Storing the objects instead would be the shorter fake and a misleading one: the chunk table is
+ * dropped by `encodeDeckCache`, so a fake that skips the round trip hands back a snapshot carrying
+ * one — the single thing this store must never do.
+ */
+class FakeDeckCacheStore(stored: CachedDecks? = null) : DeckCacheStore {
+    private var payload: String? = stored?.let { encodeDeckCache(TEST_PUBKY, it) }
+    val saved = mutableListOf<CachedDecks>()
+
+    override suspend fun load(ownerPubky: String): CachedDecks? = decodeDeckCache(payload, ownerPubky)
+
+    override suspend fun save(ownerPubky: String, decks: CachedDecks) {
+        payload = encodeDeckCache(ownerPubky, decks)
+        saved.add(decks)
+    }
+}
+
 class FakeStudyProgressStore(private var stored: DailyStudyProgress? = null) : StudyProgressStore {
     val saved = mutableListOf<DailyStudyProgress>()
 
