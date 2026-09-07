@@ -2658,6 +2658,7 @@ up, and are now paid by Home's first listing — with the cached library already
 | Flip → Good → close | ✅ PASS — Home returns "1 card to review", "1 of 2 done", "1 of 20 new cards today" |
 | Decks tab | ✅ PASS — "Library · 1", one `listByAuthor` |
 | Discover tab | ✅ PASS — trending tags, 12 decks, tile captions still read "24 cards · jvsena42" |
+| Tablet portrait, 1600dp (medium) | ✅ PASS — the compact path is `TodaysDecksSection`/`DeckRow`, a different pair of composables from the expanded `TodaysDecksGrid`/`DeckTile`; both were changed and both were checked. Row reads "Session test / 2 cards" with a "—" pill, not "0" |
 | Profile tab | ✅ PASS — Decks 1 / Cards 2, one `listByAuthor` (was two) |
 | `ciCheck`, `:shared:jvmTest` (1,385), iOS `simulator build` | ✅ PASS |
 
