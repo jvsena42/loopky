@@ -88,6 +88,7 @@ val sharedModule = module {
             studyProgress = get(),
             preferences = get(),
             unsplashKeyStore = get(),
+            deckCache = get(),
         )
     }
 

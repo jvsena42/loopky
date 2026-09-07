@@ -105,9 +105,16 @@ struct DueTodayHeroCard: View {
                         .progressViewStyle(.linear)
                         .tint(.white)
                 } else {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .tint(.white)
+                    // A bare track, drawn rather than asked for. `ProgressView()` with no value is
+                    // *documented* as indeterminate but renders as a motionless track here
+                    // (measured: two frames 0.45s apart are byte-identical), and the style it
+                    // falls back to is the OS's choice — a spinner would change the card's height
+                    // and undo the "nothing moves" property the dash was picked for. Drawing the
+                    // track pins both the look and the height.
+                    Capsule()
+                        .fill(Color.white.opacity(0.25))
+                        .frame(height: 8)
+                        .accessibilityLabel(Text("home_checking_due"))
                 }
                 Text(countsKnown
                      ? String(
@@ -232,8 +239,11 @@ struct DeckRow: View {
                             format: NSLocalizedString("home_deck_due_cards", comment: ""),
                             deck.dueCount, deck.cardCount
                          )
-                         : String(
-                            format: NSLocalizedString("card_count", comment: ""),
+                         // localizedStringWithFormat, not String(format:): `card_count` is a
+                         // plural entry, and only this one resolves the variation — the other
+                         // renders "1 cards".
+                         : String.localizedStringWithFormat(
+                            NSLocalizedString("card_count", comment: ""),
                             deck.cardCount
                          ))
                         .font(.system(size: 13))

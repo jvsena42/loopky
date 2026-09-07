@@ -530,6 +530,15 @@ internal class IdentityRepositoryImpl(
         selfTaggedThisProcess = true
         val profileUri = PubkyUri(PubkyPaths.profile(session.identity.pubky))
         scope.launch {
+            // Re-checked here, not only at the call site: nothing cancels this, and
+            // `AccountEraser` removes exactly this record and treats failing to as fatal, because
+            // it is the only thing that takes an account out of Discover and search. A write that
+            // started before a delete and landed after it would put the deleted account back.
+            if (sessionProvider.current()?.identity?.pubky != session.identity.pubky) {
+                Log.d(TAG, "selfTag: skipped — the session moved on before the write started")
+                selfTaggedThisProcess = false
+                return@launch
+            }
             tagRepository.putReservedTag(profileUri, ReservedTags.USER)
                 .onSuccess { Log.d(TAG, "selfTag: ${ReservedTags.USER.value} written") }
                 .onFailure {

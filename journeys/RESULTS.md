@@ -2688,3 +2688,51 @@ the first run.
 **Both `dueCaption` and the tile's own meta row print the card count.** Passing "2 cards" as the
 tile's author label while counts were unknown rendered "2 cards · 2 cards". The label is blank in
 that state now, and `DeckTile` skips its separator on a blank one instead of leaving it dangling.
+
+### Review round 1 follow-ups — 2026-09-07, `iPhone 17` sim (staging)
+
+Eleven findings on #266. Two were live regressions in this PR, and both were the same shape as the
+bug it exists to fix: a screen reporting a number it has no basis for.
+
+| Step | Result |
+| --- | --- |
+| iOS cached paint, `card_count` plural | ✅ PASS — a one-card deck now reads **"1 card"**, not "1 cards" |
+| iOS hero while counts are unknown | ✅ PASS — dash, drawn track, "Checking what's due…"; card height identical to the loaded state, so nothing moves |
+| iOS loaded state | ✅ PASS — "20 cards to review", "0 of 20 done", per-deck badges |
+| Android, signed-in path | ⚠️ **Not re-run** — see below |
+| `ciCheck`, `:shared:jvmTest` (1,391) | ✅ PASS |
+
+**`Pixel_Tablet` signed itself out mid-session, so the Android device pass is owed.** It held the
+staging account through the whole first round, then a routine relaunch logged `init: no persisted
+session` and came up in the guest shell — most likely the staging session ageing out, with
+`HomeViewModel` calling `signOut()` on `requiresReauth()`. Both Android emulators are now signed
+out and neither route back in works, so the follow-up fixes were verified on iOS plus unit tests
+rather than on Android. The Android half of the *first* round's table stands; nothing in these
+fixes is Android-specific except the pt-BR string. **Get the Android pass early — a signed-in
+emulator is not a stable resource.**
+
+### Worth knowing
+
+**`ProgressView()` with no value renders as a motionless track on iOS.** Measured, not assumed:
+two screenshots 0.45 s apart during the cached paint are byte-identical over the bar's band. It is
+documented as indeterminate and Android's equivalent genuinely animates, so the two platforms were
+not doing the same thing — and the style SwiftUI falls back to is its choice, a spinner among them,
+which would change the card's height. The bar is a drawn `Capsule` now: same look, pinned.
+
+**A fake that ignores a scope parameter makes the bug it exists to catch untestable.**
+`FakeSrsRepository.countsToday(decks)` unioned `decks` into its own `knownDecks` and answered for
+all of them, so Profile passing owned-only and Profile passing owned+followed produced identical
+results. The finding-1 test passed against the *unfixed* code until the fake was made to honour
+`decks` as the scope the real implementation treats it as. **Write the test, then reintroduce the
+bug and watch it fail** — two of the four tests added this round were green against broken code
+first, this one and the account-erase one.
+
+**An assertion that runs after sign-out asserts nothing.** `deletingTheAccountEmptiesTheSnapshot`
+checked `repo.listCached()`, which returns null with no session — which deleting the account has
+just cleared. It passed with the wipe removed. It reads the store directly now.
+
+**A degraded read must not be persisted as authoritative.** Three findings were one idea: both deck
+listings deliberately tolerate partial failures, and the snapshot is what the *next* launch paints,
+so writing a partial one gives the user a quietly wrong library on every subsequent start with
+nothing left to correct it. `Listing<T>(items, complete)` now carries that distinction, and
+`loadSubscriptions` no longer memoises an incomplete read for the rest of the process.

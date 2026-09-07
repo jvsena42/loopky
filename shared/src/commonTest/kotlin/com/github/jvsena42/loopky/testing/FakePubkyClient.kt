@@ -83,6 +83,12 @@ class FakePubkyClient : PubkyClient {
     /** When set, every [get] call fails with this error (simulates an unreachable homeserver). */
     var failGetWith: Throwable? = null
 
+    /**
+     * Fail only the reads whose URL contains this — a *transient* failure, not a 404, so callers
+     * that distinguish "gone" from "could not read" can be tested on the difference.
+     */
+    var failGetWhenUrlContains: String? = null
+
     /** What [startAuthFlow] hands back, and the capabilities it was asked for. */
     var authFlowResult: Result<String> = Result.success("pubkyauth:///?caps=&secret=test")
     val authFlowCapabilities = mutableListOf<String>()
@@ -146,6 +152,11 @@ class FakePubkyClient : PubkyClient {
     override suspend fun get(url: String): Result<String> {
         gets.add(url)
         failGetWith?.let { return Result.failure(it) }
+        failGetWhenUrlContains?.let { needle ->
+            if (needle in url) {
+                return Result.failure(PubkyError("HTTP transport error: error sending request for url ($url)"))
+            }
+        }
         return store[url]?.let { Result.success(it) }
             ?: Result.failure(PubkyError("not found: $url"))
     }

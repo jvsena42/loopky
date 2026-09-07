@@ -8,9 +8,11 @@ import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
 import com.github.jvsena42.loopky.data.pubky.deleteWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.isNotFound
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
@@ -47,6 +49,7 @@ class AccountEraser(
     private val studyProgress: StudyProgressStore,
     private val preferences: AppPreferences,
     private val unsplashKeyStore: UnsplashKeyStore,
+    private val deckCache: DeckCacheStore,
 ) {
 
     /**
@@ -193,6 +196,10 @@ class AccountEraser(
             studyProgress.save(owner, DailyStudyProgress(dayIndex = 0, newCards = 0, reviews = 0))
             preferences.setCachedStudySettings("")
             unsplashKeyStore.clear()
+            // Every deck title, description and tag of the deleted account, in plaintext
+            // preferences. It is also keyed by pubky, so restoring this key from its phrase would
+            // otherwise paint a library of decks that no longer exist on the homeserver.
+            deckCache.save(owner, CachedDecks(owned = emptyList(), followed = emptyList()))
         }.onFailure { Log.e(TAG, "local wipe FAILED — ${it.message}", it) }
     }
 

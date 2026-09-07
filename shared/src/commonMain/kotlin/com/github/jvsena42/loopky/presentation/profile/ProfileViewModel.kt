@@ -149,13 +149,21 @@ class ProfileViewModel(
             val decks = decksResult.getOrElse { emptyList() }
             val deckCount = decks.size
             val cardCount = decks.sumOf { it.cardCount }
+            // Followed decks are studiable (#33) and their review state lands on your own
+            // homeserver, so they count toward what you are behind on — the counters above are
+            // owned-only because those say what you have *written*. Handing `countsToday` the
+            // owned half alone made this screen and Home report two different totals to the same
+            // user, and neither said so.
+            val followed = runSuspendCatching { deckRepository.listFollowed() }
+                .onFailure { Log.e(TAG, "load: followed decks unavailable — ${it.message}", it) }
+                .getOrDefault(emptyList())
+            val studiable = (decks + followed).distinctBy { it.id }
             // Degrade to 0 rather than failing the whole profile load if the SRS read fails.
             // The due half only, consistent with Deck Detail: cards you have never met are not
             // something you are behind on (#101 §7).
-            // The decks travel with the call: without them this re-lists owned and followed decks
-            // and re-fetches every manifest just read, which is why this screen listed twice.
-            val dueCount = runSuspendCatching { srsRepository.countsToday(decks).values.sumOf { it.due } }
-                .getOrDefault(0)
+            val dueCount = runSuspendCatching {
+                srsRepository.countsToday(studiable).values.sumOf { it.due }
+            }.getOrDefault(0)
 
             // Fall back field by field rather than whole-identity: a published profile that only
             // sets a picture must not blank the name the session already knows.

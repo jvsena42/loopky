@@ -729,9 +729,15 @@ class FakeSrsRepository : SrsRepository {
         return countsFor(due.filter { it.deckId == deckId })
     }
 
+    /**
+     * [decks] is a **scope**, not a hint: the real implementation answers for exactly the decks it
+     * is handed. Unioning them into [knownDecks] and answering for all of those instead is a fake
+     * answering politely — it made a caller that passed the wrong set indistinguishable from one
+     * that passed the right set, which is the only thing a test here can check.
+     */
     override suspend fun countsToday(decks: List<Deck>?): Map<String, DeckCounts> {
-        knownDecks += decks?.map { it.id } ?: due.map { it.deckId }
-        return knownDecks.associateWith { deckId -> countsFor(due.filter { it.deckId == deckId }) }
+        val scope = decks?.map { it.id } ?: (knownDecks + due.map { it.deckId })
+        return scope.associateWith { deckId -> countsFor(due.filter { it.deckId == deckId }) }
     }
 
     override suspend fun mastery(deckId: String, cardIds: List<String>): DeckMastery? {

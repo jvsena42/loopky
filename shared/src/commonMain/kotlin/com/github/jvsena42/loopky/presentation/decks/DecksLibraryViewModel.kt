@@ -122,7 +122,11 @@ class DecksLibraryViewModel(
                 },
             )
         }
-        loadAuthorProfiles(decks, myIdentity?.pubky)
+        // Launched, never awaited: this runs one profile GET per distinct author, and `load()`
+        // waits on this function before it asks the homeserver for anything. Awaited, the cached
+        // paint would be followed by a stall on the slowest of those — a network round trip added
+        // to the very path this cache exists to shorten.
+        viewModelScope.launch { loadAuthorProfiles(decks, myIdentity?.pubky) }
     }
 
     fun onQueryChanged(query: String) {

@@ -242,6 +242,7 @@ internal fun identityRepository(
     preferences: AppPreferences = FakeAppPreferences(),
     unsplashKeyStore: UnsplashKeyStore = FakeUnsplashKeyStore(),
     localKeyStore: LocalKeyStore = FakeLocalKeyStore(),
+    deckCache: DeckCacheStore = FakeDeckCacheStore(),
     /** Defaults to the caller's scope so `runTest` can await the fire-and-forget cleanup. */
     scope: CoroutineScope = CoroutineScope(SupervisorJob()),
 ): IdentityRepositoryImpl = IdentityRepositoryImpl(
@@ -261,6 +262,7 @@ internal fun identityRepository(
         studyProgress = studyProgress,
         preferences = preferences,
         unsplashKeyStore = unsplashKeyStore,
+        deckCache = deckCache,
     ),
 )
 

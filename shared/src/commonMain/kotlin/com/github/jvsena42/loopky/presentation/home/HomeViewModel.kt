@@ -166,10 +166,23 @@ class HomeViewModel(
             return
         }
         val session = runSuspendCatching { identityRepository.currentSession() }.getOrNull()
+        // Today's tally is the one number here that is *not* a guess: it lives in the device-local
+        // StudyProgressStore, so restoring it costs a disk read and no round trip. Left out, the
+        // goal line under the dash read "0 of 20 new cards today" to someone who had already done
+        // fifteen — the same false claim [countsKnown] exists to remove, one line lower.
+        runSuspendCatching { srsRepository.refreshDailyProgress() }
+        val progress = srsRepository.dailyProgress.value
+        // Launched, never awaited: the goal is a synced record, and `ensureLoaded` restores the
+        // device mirror and *then* reads the homeserver. Awaiting it would put a round trip back
+        // on the path this cache exists to shorten; the settings collector picks up the mirror.
+        viewModelScope.launch { runSuspendCatching { settingsRepository.ensureLoaded() } }
         _state.update {
             HomeUiState.Content(
                 identity = session?.identity,
                 dueToday = 0,
+                doneToday = progress.reviews,
+                newCardsToday = progress.newCards,
+                newCardsGoal = settingsRepository.studySettings.value.settings.newCardsPerDayGoal,
                 decks = decks.map { deck -> deck.toSummary(DeckCounts()) },
                 countsKnown = false,
             )

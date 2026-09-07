@@ -1654,15 +1654,39 @@
       "extractionState": "manual",
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld cards"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld card"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld cards"
+                }
+              }
+            }
           }
         },
         "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld cartas"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld carta"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld cartas"
+                }
+              }
+            }
           }
         }
       }
@@ -4474,7 +4498,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verificando o que está a revisar…"
+            "value": "Verificando o que há para revisar…"
           }
         }
       }

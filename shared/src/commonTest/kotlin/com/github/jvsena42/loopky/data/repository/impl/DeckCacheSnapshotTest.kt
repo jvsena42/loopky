@@ -1,5 +1,7 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.pubky.PubkyPaths
+import com.github.jvsena42.loopky.data.pubky.toDto
 import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.storage.decodeDeckCache
 import com.github.jvsena42.loopky.data.storage.encodeDeckCache
@@ -8,11 +10,13 @@ import com.github.jvsena42.loopky.testing.FakeDeckCacheStore
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.TEST_PUBKY
 import com.github.jvsena42.loopky.testing.deckRepository
+import com.github.jvsena42.loopky.testing.identityRepository
 import com.github.jvsena42.loopky.testing.signedInProvider
 import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testDeck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -83,6 +87,81 @@ class DeckCacheSnapshotTest {
         assertEquals(listOf("Theirs"), cached?.followed?.map { it.title })
     }
 
+    /**
+     * The snapshot is what the *next* launch paints, so a degraded read must never be written as
+     * though it were the whole library — the live screen recovers on the next load, the snapshot
+     * does not.
+     */
+    @Test
+    fun aPartiallyUnreadableListingDoesNotOverwriteAGoodSnapshot() = runTest {
+        repo.publish(testDeck(id = "deck1", title = "Spanish"), listOf(testCard("c1"))).getOrThrow()
+        repo.publish(testDeck(id = "deck2", title = "Biology"), listOf(testCard("c2", deckId = "deck2")))
+            .getOrThrow()
+        repo.listOwned()
+        assertEquals(2, repo.listCached()?.owned?.size)
+
+        // One manifest now fails transiently. The listing still returns the deck it could read —
+        // one unreadable deck must not hide the rest — but that half-answer is not the library.
+        pubky.failGetWhenUrlContains = "decks/deck2/manifest.json"
+        assertEquals(1, repo.listOwned().size)
+
+        assertEquals(
+            listOf("Spanish", "Biology"),
+            repo.listCached()?.owned?.map { it.title }?.sortedDescending(),
+        )
+    }
+
+    /**
+     * The subscription listing answers `[]` for "follows nothing" and for "could not read" alike,
+     * so a flaky launch used to wipe the followed half — and `loadSubscriptions` then memoised the
+     * empty read for the rest of the process, re-wiping it on every later call.
+     */
+    @Test
+    fun anUnreadableSubscriptionListingDoesNotEraseTheFollowedDecks() = runTest {
+        followATheirsDeck()
+        assertEquals(listOf("Theirs"), repo.listCached()?.followed?.map { it.title })
+
+        // A fresh repository over the same homeserver and the same snapshot: the next launch, on
+        // a flaky network. The subscriptions are re-read here rather than served from the session
+        // memo, which is what makes the failure reachable at all.
+        val nextLaunch = nextLaunchRepo()
+        pubky.failListWhenUrlContains = "subscriptions"
+        assertEquals(emptyList(), nextLaunch.listFollowed())
+
+        assertEquals(listOf("Theirs"), nextLaunch.listCached()?.followed?.map { it.title })
+    }
+
+    /** The compounding half of the same bug: an incomplete read must not be memoised either. */
+    @Test
+    fun anUnreadableSubscriptionListingIsNotMemoisedForTheSession() = runTest {
+        followATheirsDeck()
+
+        val nextLaunch = nextLaunchRepo()
+        pubky.failListWhenUrlContains = "subscriptions"
+        assertEquals(emptyList(), nextLaunch.listFollowed())
+
+        // The homeserver comes back, and so must the follows — not "follows nothing" until restart.
+        pubky.failListWhenUrlContains = null
+        assertEquals(listOf("Theirs"), nextLaunch.listFollowed().map { it.title })
+    }
+
+    private suspend fun followATheirsDeck() {
+        val theirs = testDeck(id = "orig", authorPubky = "friendpk", title = "Theirs")
+        pubky.store[PubkyPaths.manifest("friendpk", "orig")] =
+            loopkyJson.encodeToString(theirs.toDto())
+        repo.followDeck(theirs).getOrThrow()
+        repo.listFollowed()
+    }
+
+    /** A second repository over the same homeserver and snapshot — i.e. the next cold start. */
+    private fun nextLaunchRepo() = deckRepository(
+        pubky = pubky,
+        session = session,
+        cardRepo = cardRepo,
+        revalidator = revalidator,
+        deckCache = cache,
+    )
+
     /** A snapshot is a claim about a person; a new account must not inherit the last one's library. */
     @Test
     fun aSnapshotWrittenByAnotherAccountReadsAsAbsent() {
@@ -92,6 +171,31 @@ class DeckCacheSnapshotTest {
         )
 
         assertNull(decodeDeckCache(payload, TEST_PUBKY))
+    }
+
+    /**
+     * Every deck title, description and tag of a deleted account, in plaintext preferences — and
+     * keyed by pubky, so restoring that key from its phrase would paint a library of decks that no
+     * longer exist on the homeserver.
+     */
+    @Test
+    fun deletingTheAccountEmptiesTheSnapshot() = runTest {
+        repo.publish(testDeck(id = "deck1", title = "Spanish"), listOf(testCard("c1"))).getOrThrow()
+        repo.listOwned()
+        assertEquals(1, repo.listCached()?.owned?.size)
+
+        identityRepository(
+            pubky = pubky,
+            sessionProvider = session,
+            deckRepository = repo,
+            deckCache = cache,
+        ).deleteAccount().getOrThrow()
+
+        // Read the store, not `listCached()`: deleting clears the session, and `listCached()`
+        // answers null without one — which would make every assertion here pass on its own.
+        val remaining = cache.load(TEST_PUBKY)
+        assertTrue(remaining?.owned.orEmpty().isEmpty(), "owned: ${remaining?.owned}")
+        assertTrue(remaining?.followed.orEmpty().isEmpty(), "followed: ${remaining?.followed}")
     }
 
     @Test
