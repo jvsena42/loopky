@@ -2629,3 +2629,146 @@ it is only visible in a screenshot.
 **`launch-app --launch-args -AppleLanguages "(pt-BR)"` is the fast way to check an iOS
 translation** — no walk through Settings → Loopky → Language, and it lasts exactly one launch, so
 there is nothing to restore afterwards.
+
+## Main-screen loading time — 2026-09-07, `Pixel_Tablet` landscape (staging)
+
+Driven end to end for `journeys/03-study-loop.xml`'s Home entry, plus the Decks, Discover and
+Profile tabs and deck detail. The complaint was that the app spends too long loading, and most of
+it on startup — measured before touching anything, on a **one-deck** account:
+
+| Phase | Before | After |
+| --- | --- | --- |
+| `loadPersistedSession` (the branded splash) | 5,897 ms | **~75 ms** |
+| Home load (session resolved → content) | 2,319 ms | 3,380 ms |
+| Launch → something other than a spinner | 8,331 ms | **~1,200 ms** |
+| Launch → real due counts | 8,331 ms | 3,450 ms |
+| Homeserver round trips per Home load | 9 | 5 |
+| `listByAuthor` per Profile load | 2 | 1 |
+
+Home's own load got *longer* on purpose: the FFI's client build and PKARR homeserver resolve
+(~1.65 s together, once per process) used to be paid by the self-tag write while the splash was
+up, and are now paid by Home's first listing — with the cached library already on screen.
+
+| Step | Result |
+| --- | --- |
+| Cold start, cache warm | ✅ PASS — greeting, deck tile and hero render at ~1.2 s; hero shows "—" and "Checking what's due…", not a number |
+| Counts land | ✅ PASS — hero flips to "2 / 0 of 2 done", tile to "2 cards · 2 new"; nothing moves |
+| Tap a deck tile **during** the cached paint | ✅ PASS — deck detail re-fetches and shows Total 2 / Due 0 / New 2, cards listed |
+| Start studying **during** the cached paint | ✅ PASS — "1 of 2", card renders |
+| Flip → Good → close | ✅ PASS — Home returns "1 card to review", "1 of 2 done", "1 of 20 new cards today" |
+| Decks tab | ✅ PASS — "Library · 1", one `listByAuthor` |
+| Discover tab | ✅ PASS — trending tags, 12 decks, tile captions still read "24 cards · jvsena42" |
+| Tablet portrait, 1600dp (medium) | ✅ PASS — the compact path is `TodaysDecksSection`/`DeckRow`, a different pair of composables from the expanded `TodaysDecksGrid`/`DeckTile`; both were changed and both were checked. Row reads "Session test / 2 cards" with a "—" pill, not "0" |
+| Profile tab | ✅ PASS — Decks 1 / Cards 2, one `listByAuthor` (was two) |
+| `ciCheck`, `:shared:jvmTest` (1,385), iOS `simulator build` | ✅ PASS |
+
+### Worth knowing
+
+**A fire-and-forget write was the whole splash.** `loadPersistedSession` awaited
+`selfTagAsLoopkyUser`, whose result nothing reads. That write is the process's first network call,
+so it also paid for building the FFI's HTTP client (1.9 s) and resolving the homeserver over PKARR
+(2.3 s) before its own 1.5 s PUT — and the onboarding VM's KDoc says in as many words that the
+screen sits on the splash until it resolves. Nothing in a build, a lint or a test reports a `suspend`
+call that nobody needed the answer to; it is only visible in a timestamped logcat.
+
+**The cached paint's first draft congratulated you for being caught up.** With the decks cached and
+the review state not, `dueToday` and `newToday` are both 0, and `isCaughtUp` is exactly that
+predicate — so the launch opened on "🎉 You're all caught up" over a deck with two cards due, then
+corrected itself a second later. `Content.countsKnown` now separates "zero" from "not asked yet",
+and everything that reads a count checks it. **A cache that fills a field with a default inherits
+every meaning the app attaches to that default** — worth checking for anywhere else a placeholder
+gets a real value's type.
+
+**A fake that skips the encode step is a fake that tests nothing.** `DeckCacheStore` drops the
+chunk table inside `encodeDeckCache`, and the first `FakeDeckCacheStore` held the objects directly
+— so its snapshots came back carrying chunks, which is the single thing the store exists to
+prevent. It holds the encoded payload now, like every real implementation. The test caught it on
+the first run.
+
+**Both `dueCaption` and the tile's own meta row print the card count.** Passing "2 cards" as the
+tile's author label while counts were unknown rendered "2 cards · 2 cards". The label is blank in
+that state now, and `DeckTile` skips its separator on a blank one instead of leaving it dangling.
+
+### Review round 1 follow-ups — 2026-09-07, `iPhone 17` sim (staging)
+
+Eleven findings on #266. Two were live regressions in this PR, and both were the same shape as the
+bug it exists to fix: a screen reporting a number it has no basis for.
+
+| Step | Result |
+| --- | --- |
+| iOS cached paint, `card_count` plural | ✅ PASS — a one-card deck now reads **"1 card"**, not "1 cards" |
+| iOS hero while counts are unknown | ✅ PASS — dash, drawn track, "Checking what's due…"; card height identical to the loaded state, so nothing moves |
+| iOS loaded state | ✅ PASS — "20 cards to review", "0 of 20 done", per-deck badges |
+| Android cached paint (`Pixel_Tablet`, landscape) | ✅ PASS — "—" and "Checking what's due…", then "1 card to review" |
+| Android Profile | ✅ PASS — Decks 1 / Cards 2, still one `listByAuthor` per load |
+| `ciCheck`, `:shared:jvmTest` (1,391) | ✅ PASS |
+
+### Worth knowing
+
+**`ProgressView()` with no value renders as a motionless track on iOS.** Measured, not assumed:
+two screenshots 0.45 s apart during the cached paint are byte-identical over the bar's band. It is
+documented as indeterminate and Android's equivalent genuinely animates, so the two platforms were
+not doing the same thing — and the style SwiftUI falls back to is its choice, a spinner among them,
+which would change the card's height. The bar is a drawn `Capsule` now: same look, pinned.
+
+**A fake that ignores a scope parameter makes the bug it exists to catch untestable.**
+`FakeSrsRepository.countsToday(decks)` unioned `decks` into its own `knownDecks` and answered for
+all of them, so Profile passing owned-only and Profile passing owned+followed produced identical
+results. The finding-1 test passed against the *unfixed* code until the fake was made to honour
+`decks` as the scope the real implementation treats it as. **Write the test, then reintroduce the
+bug and watch it fail** — two of the four tests added this round were green against broken code
+first, this one and the account-erase one.
+
+**An assertion that runs after sign-out asserts nothing.** `deletingTheAccountEmptiesTheSnapshot`
+checked `repo.listCached()`, which returns null with no session — which deleting the account has
+just cleared. It passed with the wipe removed. It reads the store directly now.
+
+**`emulator-5554` is a port, not a device, and reading the wrong one produced a wrong finding
+that was committed.** The `Pixel_Tablet` this session started had exited, another emulator took
+5554, and the app there came up in the guest shell — which was written up here as "the tablet
+signed itself out mid-session", with a theory about the staging session ageing out attached. It had
+not: booted on its own port it restored its session in 127 ms. Whichever emulator boots first takes
+5554, so **resolve the serial with `adb -s <serial> emu avd name` before trusting any reading**,
+boot with an explicit `-port`, and pass `-s` / `--device` on every call. A guest shell is
+indistinguishable from a real sign-out, so this failure mode looks exactly like a regression.
+
+**A degraded read must not be persisted as authoritative.** Three findings were one idea: both deck
+listings deliberately tolerate partial failures, and the snapshot is what the *next* launch paints,
+so writing a partial one gives the user a quietly wrong library on every subsequent start with
+nothing left to correct it. `Listing<T>(items, complete)` now carries that distinction, and
+`loadSubscriptions` no longer memoises an incomplete read for the rest of the process.
+
+### Review round 2 follow-ups — 2026-09-07, `Pixel_Tablet` + `iPhone 17` sim (staging)
+
+The three Low items the approving review left as follow-up material, done on the same branch.
+
+| Step | Result |
+| --- | --- |
+| Android cached paint → loaded | ✅ PASS — "—" / "Checking what's due…" → "1 card to review"; goal line unchanged across the swap |
+| `PubkyPagingTest` (new, 5 cases) | ✅ PASS — the loop's three exits, and which may be believed |
+| `ciCheck`, `:shared:jvmTest` (1,398), iOS `simulator build` | ✅ PASS |
+
+**The paging loop reported two truncated listings as complete**, which is finding 3 through a
+different door: `listByAuthorListing` fed `complete` straight into the snapshot, so a homeserver
+ignoring `cursor` would have cached its first page as the whole library. `PubkyListing` now carries
+`truncated` beside `failure` — deliberately separate, because every read *succeeded*, so
+`listAllEntries` still hands back what it collected and a broken homeserver shows the user a first
+page rather than an error. Only `isComplete` (neither failed nor truncated) may be persisted.
+
+Two smaller ones: the cached paint read `newCardsPerDayGoal` off an unloaded repository and got the
+built-in 20, telling a reader whose goal is 50 "0 of 20 new cards today" — there is a
+`restoreCachedSettings()` now, the device-mirror half of `ensureLoaded` with no round trip. And
+`AccountEraser` calls `DeckCacheStore.clear()` rather than saving an empty snapshot, which did the
+visible job and still left a record naming the deleted pubky on the device.
+
+### Worth knowing
+
+**A short page is the end of a listing; a full one that adds nothing is a homeserver ignoring the
+cursor.** The old loop collapsed both into one `break` and reported each as success. Separating
+them is what makes "is this the whole listing" answerable at all — and the first repository-level
+test written for it passed vacuously, because two decks is a short page and can never be truncated.
+It seeds a genuinely full page now (`FakePubkyClient.ignoresListCursor`).
+
+**All three fixes this round were confirmed by reintroducing the bug and watching the test fail.**
+That is now five of seven tests added across the two review rounds that were green against broken
+code on the first attempt — the check is worth doing every time, not when something feels off.

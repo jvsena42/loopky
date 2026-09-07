@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeBackgroundTasks
+import com.github.jvsena42.loopky.testing.FakeDeckCacheStore
 import com.github.jvsena42.loopky.testing.FakeHttpFetcher
 import com.github.jvsena42.loopky.testing.FakeMediaRepository
 import com.github.jvsena42.loopky.testing.FakePubkyClient
@@ -51,6 +52,7 @@ class DiscoveryRepositoryImplTest {
         tagRepo = RecordingTagRepository(),
         mediaRepo = FakeMediaRepository(),
         backgroundTasks = FakeBackgroundTasks(),
+        deckCache = FakeDeckCacheStore(),
     )
     private val tagRepo = RecordingTagRepository()
     private val identityRepo = identityRepository(

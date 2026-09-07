@@ -15,23 +15,32 @@ import com.github.jvsena42.loopky.testing.TEST_PUBKY
 import com.github.jvsena42.loopky.testing.fakeSession
 import com.github.jvsena42.loopky.testing.identityRepository
 import com.github.jvsena42.loopky.testing.signedInProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class IdentityRepositoryImplTest {
 
     private val pubky = FakePubkyClient()
     private val session = signedInProvider()
     private val store = RecordingSessionStore()
     private val tags = RecordingTagRepository()
+
+    // The self-tag is fired and not awaited — it used to sit on the splash screen's critical path
+    // for ~5.9s. Unconfined so the launch still runs to completion inline here, which is what lets
+    // these tests assert on it without a delay.
     private val repo = identityRepository(
         pubky = pubky,
         sessionStore = store,
         sessionProvider = session,
         tagRepository = tags,
+        scope = CoroutineScope(UnconfinedTestDispatcher()),
     )
 
     private val profileUri = PubkyUri(PubkyPaths.profile(TEST_PUBKY))

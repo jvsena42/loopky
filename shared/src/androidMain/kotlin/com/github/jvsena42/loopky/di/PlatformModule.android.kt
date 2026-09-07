@@ -8,6 +8,7 @@ import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.UniffiPubkyClient
 import com.github.jvsena42.loopky.data.storage.AndroidAppPreferences
+import com.github.jvsena42.loopky.data.storage.AndroidDeckCacheStore
 import com.github.jvsena42.loopky.data.storage.AndroidLocalKeyStore
 import com.github.jvsena42.loopky.data.storage.AndroidPendingReviewStore
 import com.github.jvsena42.loopky.data.storage.AndroidSecureSessionStore
@@ -15,6 +16,7 @@ import com.github.jvsena42.loopky.data.storage.AndroidSignupTokenStore
 import com.github.jvsena42.loopky.data.storage.AndroidStudyProgressStore
 import com.github.jvsena42.loopky.data.storage.AndroidUnsplashKeyStore
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.LocalKeyStore
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.SecureSessionStore
@@ -56,6 +58,7 @@ fun androidPlatformModule(
     single<AppPreferences> { AndroidAppPreferences(androidContext()) }
     single<PendingReviewStore> { AndroidPendingReviewStore(androidContext()) }
     single<StudyProgressStore> { AndroidStudyProgressStore(androidContext()) }
+    single<DeckCacheStore> { AndroidDeckCacheStore(androidContext()) }
     single<UnsplashKeyStore> { AndroidUnsplashKeyStore(androidContext()) }
     single<SignupTokenStore> { AndroidSignupTokenStore(androidContext()) }
     single<LocalKeyStore> { AndroidLocalKeyStore(androidContext()) }

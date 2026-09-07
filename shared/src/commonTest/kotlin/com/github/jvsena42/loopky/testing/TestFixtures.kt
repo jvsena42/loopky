@@ -16,6 +16,7 @@ import com.github.jvsena42.loopky.data.repository.impl.AccountEraser
 import com.github.jvsena42.loopky.data.repository.impl.DeckRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.IdentityRepositoryImpl
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.LocalKeyStore
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.SecureSessionStore
@@ -207,6 +208,7 @@ fun deckRepository(
     tagRepo: TagRepository = RecordingTagRepository(),
     mediaRepo: MediaRepository = FakeMediaRepository(),
     backgroundTasks: BackgroundTasks = FakeBackgroundTasks(),
+    deckCache: DeckCacheStore = FakeDeckCacheStore(),
     scope: CoroutineScope = CoroutineScope(SupervisorJob()),
 ): DeckRepositoryImpl = DeckRepositoryImpl(
     pubky = pubky,
@@ -216,6 +218,7 @@ fun deckRepository(
     tagRepo = tagRepo,
     mediaRepo = mediaRepo,
     backgroundTasks = backgroundTasks,
+    deckCache = deckCache,
     scope = scope,
 )
 
@@ -239,6 +242,7 @@ internal fun identityRepository(
     preferences: AppPreferences = FakeAppPreferences(),
     unsplashKeyStore: UnsplashKeyStore = FakeUnsplashKeyStore(),
     localKeyStore: LocalKeyStore = FakeLocalKeyStore(),
+    deckCache: DeckCacheStore = FakeDeckCacheStore(),
     /** Defaults to the caller's scope so `runTest` can await the fire-and-forget cleanup. */
     scope: CoroutineScope = CoroutineScope(SupervisorJob()),
 ): IdentityRepositoryImpl = IdentityRepositoryImpl(
@@ -258,6 +262,7 @@ internal fun identityRepository(
         studyProgress = studyProgress,
         preferences = preferences,
         unsplashKeyStore = unsplashKeyStore,
+        deckCache = deckCache,
     ),
 )
 

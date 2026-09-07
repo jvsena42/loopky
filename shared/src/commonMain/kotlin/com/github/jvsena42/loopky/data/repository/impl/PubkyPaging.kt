@@ -50,30 +50,67 @@ internal suspend fun PubkyClient.listAllEntriesOrEmpty(
     shallow: Boolean = false,
 ): List<String> = pageThrough(prefix, shallow, LIST_PAGE_SIZE).entries
 
-/** What one paging run gathered, and what stopped it — so both entry points share one loop. */
-private class Listing(val entries: List<String>, val failure: Throwable?)
+/**
+ * [listAllEntries], reporting a partial read rather than throwing on it or swallowing it.
+ *
+ * The third option between the two above, for a caller that must make progress on what it got
+ * *and* must not treat it as the whole truth — persisting a degraded listing as authoritative is
+ * how a device ends up painting a library that is missing decks, every launch, with nothing to
+ * correct it.
+ */
+internal suspend fun PubkyClient.listAllEntriesPartial(
+    prefix: String,
+    shallow: Boolean = false,
+): PubkyListing = pageThrough(prefix, shallow, LIST_PAGE_SIZE)
+
+/** What one paging run gathered, and what stopped it — so all three entry points share one loop. */
+internal class PubkyListing(
+    val entries: List<String>,
+    val failure: Throwable?,
+    /**
+     * The loop gave up rather than reaching the end: [MAX_LIST_PAGES] hit with a full page still
+     * coming, or a homeserver repeating a page it had already sent.
+     *
+     * Separate from [failure] because the two want different answers. Every read here *succeeded* —
+     * there is nothing to retry and nothing to report as broken — so [listAllEntries] still hands
+     * back what it collected rather than throwing, and a homeserver that ignores `cursor` shows the
+     * user their first page instead of an error. But it is not the whole listing, so nothing may
+     * persist it as one.
+     */
+    val truncated: Boolean = false,
+) {
+    /** Everything under the prefix, and known to be. The only state a cache may be written from. */
+    val isComplete: Boolean get() = failure == null && !truncated
+}
 
 private suspend fun PubkyClient.pageThrough(
     prefix: String,
     shallow: Boolean,
     pageSize: UShort,
-): Listing {
+): PubkyListing {
     val seen = linkedSetOf<String>()
     var cursor: String? = null
     var pages = 0
-    while (pages < MAX_LIST_PAGES) {
+    while (true) {
+        // The ceiling is reached with a full page still to come, so what we have is a prefix of the
+        // listing, not the listing. Checked here rather than in the `while` condition, which
+        // could not tell that from a run that happened to end on its last allowed page.
+        if (pages == MAX_LIST_PAGES) return PubkyListing(seen.toList(), null, truncated = true)
         pages++
         val payload = list(prefix, cursor = cursor, limit = pageSize, shallow = shallow.takeIf { it })
-            .getOrElse { return Listing(seen.toList(), it) }
+            .getOrElse { return PubkyListing(seen.toList(), it) }
         val page = parsePubkyUrlsFromList(payload)
-        // `seen.addAll` returning false means the page added nothing new: the server is
-        // repeating itself, so stop rather than loop forever against a homeserver that
-        // ignores the cursor. A short page means we reached the end.
-        val addedSomething = page.isNotEmpty() && seen.addAll(page)
-        if (!addedSomething || page.size < pageSize.toInt()) break
+        // A short or empty page is the end of the listing — the ordinary exit.
+        if (page.size < pageSize.toInt()) {
+            seen.addAll(page)
+            break
+        }
+        // A full page that adds nothing new is a homeserver repeating itself, i.e. ignoring the
+        // cursor. Stop rather than loop forever — but say so, because the rest is unread.
+        if (!seen.addAll(page)) return PubkyListing(seen.toList(), null, truncated = true)
         cursor = page.lastOrNull()
     }
-    return Listing(seen.toList(), null)
+    return PubkyListing(seen.toList(), null)
 }
 
 /** The FFI `list` payload is a JSON array of `pubky://…` URL strings, deep or shallow alike. */

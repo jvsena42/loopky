@@ -11,6 +11,7 @@ import com.github.jvsena42.loopky.data.pubky.mapConcurrently
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
@@ -47,6 +48,7 @@ class AccountEraser(
     private val studyProgress: StudyProgressStore,
     private val preferences: AppPreferences,
     private val unsplashKeyStore: UnsplashKeyStore,
+    private val deckCache: DeckCacheStore,
 ) {
 
     /**
@@ -193,6 +195,11 @@ class AccountEraser(
             studyProgress.save(owner, DailyStudyProgress(dayIndex = 0, newCards = 0, reviews = 0))
             preferences.setCachedStudySettings("")
             unsplashKeyStore.clear()
+            // Cleared, not emptied: every deck title, description and tag of the deleted account
+            // is in plaintext preferences, and writing an empty snapshot would still leave a record
+            // naming the pubky behind. It is keyed by pubky besides, so restoring this key from its
+            // phrase would otherwise paint a library of decks that no longer exist.
+            deckCache.clear()
         }.onFailure { Log.e(TAG, "local wipe FAILED — ${it.message}", it) }
     }
 

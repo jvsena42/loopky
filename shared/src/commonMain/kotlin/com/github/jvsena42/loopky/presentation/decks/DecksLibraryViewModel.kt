@@ -58,7 +58,7 @@ class DecksLibraryViewModel(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             Log.d(TAG, "load: fetching decks (silent=$silent)")
-            if (!silent) _state.update { DecksLibraryUiState.Loading }
+            if (!silent) paintFromCache()
             val session = runSuspendCatching { identityRepository.currentSession() }.getOrNull()
                 ?: runSuspendCatching { identityRepository.loadPersistedSession() }.getOrNull()
             val myIdentity = session?.identity
@@ -94,6 +94,39 @@ class DecksLibraryViewModel(
                     _state.update { DecksLibraryUiState.Error(reason = err.toErrorReason()) }
                 }
         }
+    }
+
+    /**
+     * Show the library this device last saw, so opening this tab is not a spinner over content that
+     * has not changed since the last launch. Replaced by the load already running behind it.
+     *
+     * The "updated" dots start off: whether a followed author has published since is a comparison
+     * against a subscription record this has not read, and a dot that appears on every deck and
+     * then vanishes is worse than one that arrives a moment late.
+     */
+    private suspend fun paintFromCache() {
+        val cached = runSuspendCatching { deckRepository.listCached() }.getOrNull()
+        val decks = cached?.let { (it.owned + it.followed).distinctBy { deck -> deck.id } }
+        if (decks.isNullOrEmpty()) {
+            _state.update { DecksLibraryUiState.Loading }
+            return
+        }
+        val myIdentity = runSuspendCatching { identityRepository.currentSession() }
+            .getOrNull()?.identity
+        val followedIds = cached.followed.mapTo(mutableSetOf()) { it.id }
+        _state.update {
+            DecksLibraryUiState.Content(
+                deckCount = decks.size,
+                decks = decks.map {
+                    it.toTileModel(myIdentity, it.id in followedIds, hasUpdate = false)
+                },
+            )
+        }
+        // Launched, never awaited: this runs one profile GET per distinct author, and `load()`
+        // waits on this function before it asks the homeserver for anything. Awaited, the cached
+        // paint would be followed by a stall on the slowest of those — a network round trip added
+        // to the very path this cache exists to shorten.
+        viewModelScope.launch { loadAuthorProfiles(decks, myIdentity?.pubky) }
     }
 
     fun onQueryChanged(query: String) {

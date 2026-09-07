@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.data.pubky.putWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.requireSession
 import com.github.jvsena42.loopky.data.pubky.toDomain
 import com.github.jvsena42.loopky.data.pubky.toDto
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.CompactionOutcome
 import com.github.jvsena42.loopky.data.repository.DeckRepository
@@ -24,6 +25,7 @@ import com.github.jvsena42.loopky.data.repository.MediaRepository
 import com.github.jvsena42.loopky.data.repository.PublishProgress
 import com.github.jvsena42.loopky.data.repository.RehostOutcome
 import com.github.jvsena42.loopky.data.repository.TagRepository
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.CardSide
 import com.github.jvsena42.loopky.domain.model.Deck
@@ -64,6 +66,7 @@ class DeckRepositoryImpl(
     private val tagRepo: TagRepository,
     private val mediaRepo: MediaRepository,
     private val backgroundTasks: BackgroundTasks,
+    private val deckCache: DeckCacheStore,
     /**
      * App-scoped: re-hosting outlives whatever screen triggered it, so it cannot run on a
      * `viewModelScope` that dies in `onCleared()`. Injectable so tests can pass `backgroundScope`.
@@ -740,9 +743,65 @@ class DeckRepositoryImpl(
         }
     }
 
+    override suspend fun listCached(): CachedDecks? {
+        val author = session.current()?.identity?.pubky ?: return null
+        return runSuspendCatching { deckCache.load(author) }
+            .onFailure { Log.e(TAG, "listCached: snapshot unreadable — ${it.message}", it) }
+            .getOrNull()
+    }
+
+    /**
+     * A listing, and whether it is the whole of it.
+     *
+     * Only a **complete** read may reach [cacheSnapshot]. Both listing paths here deliberately
+     * tolerate individual failures — one unreadable deck must not hide the rest — but the snapshot
+     * is what the next launch *paints*, so persisting a degraded read as though it were
+     * authoritative gives the user a library that is quietly missing decks on every subsequent
+     * start, with nothing left to correct it. The live screen recovers on the next load; the
+     * snapshot does not.
+     */
+    private data class Listing<T>(val items: List<T>, val complete: Boolean)
+
+    /**
+     * Serializes the snapshot's read-modify-write.
+     *
+     * [cacheSnapshot] loads the other half before saving, and `listOwned`/`listFollowed` are
+     * reachable concurrently from Home, the library, Profile and `SrsRepositoryImpl`. Interleaved
+     * without this, A reads, B saves its half, A saves over it — and B's half is gone.
+     */
+    private val cacheStoreLock = Mutex()
+
+    /**
+     * Persist the display snapshot behind [listCached].
+     *
+     * Written from [listOwned] and [listFollowed] separately, each keeping the other half of the
+     * snapshot as it stands, because the two are listed by independent calls that fail
+     * independently — a followed deck on an unreachable homeserver must not erase the owned decks
+     * that just listed fine.
+     */
+    private suspend fun cacheSnapshot(owned: List<Deck>? = null, followed: List<Deck>? = null) {
+        val author = session.current()?.identity?.pubky ?: return
+        runSuspendCatching {
+            cacheStoreLock.withLock {
+                val existing = deckCache.load(author)
+                deckCache.save(
+                    author,
+                    CachedDecks(
+                        owned = owned ?: existing?.owned.orEmpty(),
+                        followed = followed ?: existing?.followed.orEmpty(),
+                    ),
+                )
+            }
+        }.onFailure { Log.e(TAG, "cacheSnapshot: not written — ${it.message}", it) }
+    }
+
     override suspend fun listOwned(): List<Deck> {
         val author = session.current()?.identity?.pubky ?: return emptyList()
-        val owned = listByAuthor(author)
+        val listing = listByAuthorListing(author)
+        val owned = listing.items
+        // Only a clean listing: three of five manifests failing would otherwise overwrite a good
+        // five-deck snapshot with two, and that two is what every later launch paints.
+        if (listing.complete) cacheSnapshot(owned = owned)
 
         // The self-heal. There is no single app-start hook — session restore is spread across
         // ViewModels — but this runs whenever Home or the library loads, and the job is unique work
@@ -763,12 +822,21 @@ class DeckRepositoryImpl(
      * an offline device indistinguishable from an account with no decks, which reads to the user as
      * "my decks are gone". A genuinely absent path is still an empty list.
      */
-    override suspend fun listByAuthor(authorPubky: String): List<Deck> {
+    override suspend fun listByAuthor(authorPubky: String): List<Deck> =
+        listByAuthorListing(authorPubky).items
+
+    /** [listByAuthor], also saying whether every manifest in the listing actually read. */
+    private suspend fun listByAuthorListing(authorPubky: String): Listing<Deck> {
         // `shallow` asks for one entry per deck directory rather than every record beneath it. Paged
         // regardless: the homeserver's default page is 100 records, which a single 3,700-card deck
         // overruns on its own. If the flag is ignored, the loop still collects the deep listing.
-        val entries = pubky.listAllEntries(PubkyPaths.decksList(authorPubky), shallow = true)
-            .getOrElse { if (it.isNotFound()) return emptyList() else throw it }
+        // The partial variant, so a *truncated* listing is visible here: the throwing one reports
+        // one as an ordinary success, and the whole point of [Listing.complete] is not to cache it.
+        val listed = pubky.listAllEntriesPartial(PubkyPaths.decksList(authorPubky), shallow = true)
+        listed.failure?.let {
+            if (it.isNotFound()) return Listing(emptyList(), complete = true) else throw it
+        }
+        val entries = listed.entries
         val deckIds = parseDeckIdsFrom(entries)
         Log.d(TAG, "listByAuthor: $authorPubky entries=${entries.size} decks=${deckIds.size}")
         // Concurrent: this was one manifest GET per deck, serially, so a library of ten decks paid
@@ -789,7 +857,7 @@ class DeckRepositoryImpl(
         // One unreadable deck shouldn't hide the rest, but a listing with decks in it and none
         // readable is a connectivity failure, not an empty library.
         if (decks.isEmpty() && firstFailure != null) throw requireNotNull(firstFailure)
-        return decks
+        return Listing(decks, complete = listed.isComplete && firstFailure == null)
     }
 
     override suspend fun sync(deckId: String): Result<Deck> = runSuspendCatching {
@@ -870,14 +938,22 @@ class DeckRepositoryImpl(
     override suspend fun isFollowingDeck(deckId: String): Boolean =
         loadSubscriptions().containsKey(deckId)
 
-    override suspend fun listFollowed(): List<Deck> =
-        resolveSubscriptions(loadSubscriptions().values.toList())
+    override suspend fun listFollowed(): List<Deck> {
+        val subs = loadSubscriptionsListing()
+        val resolved = resolveSubscriptionsListing(subs.items)
+        // Both halves have to be clean. An empty result is not an error on this path — the
+        // subscription listing answers `[]` for "follows nothing" and for "could not read" alike —
+        // so without this a flaky launch writes `followed = []` over a real snapshot, and every
+        // later launch paints a library with the followed decks missing.
+        if (subs.complete && resolved.complete) cacheSnapshot(followed = resolved.items)
+        return resolved.items
+    }
 
     override suspend fun listFollowedBy(ownerPubky: String): List<Deck> {
         // The signed-in user's own answer comes from the session cache, which also holds a follow
         // made a moment ago — reading their homeserver here would sometimes be a step behind.
         if (ownerPubky == session.current()?.identity?.pubky) return listFollowed()
-        return resolveSubscriptions(readSubscriptions(ownerPubky))
+        return resolveSubscriptionsListing(readSubscriptionsListing(ownerPubky).items).items
     }
 
     /**
@@ -887,8 +963,8 @@ class DeckRepositoryImpl(
      * unreachable deck must not hide the rest — while a set where nothing at all read still throws,
      * the same rule [listByAuthor] follows.
      */
-    private suspend fun resolveSubscriptions(subs: List<SubscriptionDto>): List<Deck> {
-        if (subs.isEmpty()) return emptyList()
+    private suspend fun resolveSubscriptionsListing(subs: List<SubscriptionDto>): Listing<Deck> {
+        if (subs.isEmpty()) return Listing(emptyList(), complete = true)
 
         val results = subs.mapConcurrently { sub ->
             sub to fetchRemote(sub.author_pubky, sub.deck_id)
@@ -904,7 +980,8 @@ class DeckRepositoryImpl(
                 }
         }
         if (decks.isEmpty() && firstFailure != null) throw requireNotNull(firstFailure)
-        return decks
+        // A deck its author deleted is gone, not a gap — the listing is still the whole truth.
+        return Listing(decks, complete = firstFailure == null)
     }
 
     override suspend fun hasUpdate(deckId: String): Boolean {
@@ -1004,22 +1081,36 @@ class DeckRepositoryImpl(
         audioRef = audioRef?.absolutizedTo(source.authorPubky, source.id),
     )
 
-    private suspend fun loadSubscriptions(): Map<String, SubscriptionDto> {
+    private suspend fun loadSubscriptions(): Map<String, SubscriptionDto> =
+        loadSubscriptionsListing().items.associateBy { it.deck_id }
+
+    /**
+     * [loadSubscriptions], also saying whether the read behind it was clean.
+     *
+     * **An incomplete read is not memoised.** It used to be: a flaky launch cached an empty map
+     * under [subscriptionLock] for the rest of the process, so every later `listFollowed()` in that
+     * session re-reported "follows nothing" without asking again — and, once the snapshot existed,
+     * re-wrote that over it.
+     */
+    private suspend fun loadSubscriptionsListing(): Listing<SubscriptionDto> {
         // The account check comes *before* the cache is served, not after. The other way round —
         // which is what this was — hands a freshly created pubky the previous user's subscriptions,
         // and Home shows it decks it never followed.
         subscriptionLock.withLock {
             if (subscriptionAccount.changed()) subscriptions = null
             subscriptions
-        }?.let { return it.toMap() }
-        val owner = session.current()?.identity?.pubky ?: return emptyMap()
+        }?.let { return Listing(it.values.toList(), complete = true) }
+        val owner = session.current()?.identity?.pubky
+            ?: return Listing(emptyList(), complete = false)
 
-        val loaded = readSubscriptions(owner).associateByTo(mutableMapOf()) { it.deck_id }
+        val listing = readSubscriptionsListing(owner)
+        if (!listing.complete) return listing
+        val loaded = listing.items.associateByTo(mutableMapOf()) { it.deck_id }
         subscriptionLock.withLock {
             subscriptions = loaded
             subscriptionAccount.mark()
         }
-        return loaded.toMap()
+        return Listing(loaded.values.toList(), complete = true)
     }
 
     /**
@@ -1028,20 +1119,30 @@ class DeckRepositoryImpl(
      * record that will not read or parse is skipped — one corrupt entry is not a reason to report
      * that somebody follows nothing.
      */
-    private suspend fun readSubscriptions(owner: String): List<SubscriptionDto> {
+    private suspend fun readSubscriptionsListing(owner: String): Listing<SubscriptionDto> {
         val loaded = mutableListOf<SubscriptionDto>()
         // Deep, and it must stay deep: subscriptions nest as `subscriptions/{author}/{deckId}.json`,
         // so a shallow listing would return author directories rather than records.
-        for (path in pubky.listAllEntriesOrEmpty(PubkyPaths.subscriptionsRoot(owner))) {
+        val listing = pubky.listAllEntriesPartial(PubkyPaths.subscriptionsRoot(owner))
+        // A missing root is the answer "follows nothing", and a complete one — every other failure
+        // leaves the caller unable to tell that from "could not read", which is the whole point of
+        // asking. A truncated listing is a gap too, and so is a record that will not read or parse.
+        var complete =
+            if (listing.failure?.isNotFound() == true) true else listing.isComplete
+        for (path in listing.entries) {
             val json = pubky.get(path).getOrElse {
                 Log.e(TAG, "readSubscriptions: $path unreadable — ${it.message}", it)
+                complete = false
                 continue
             }
             runCatching { loopkyJson.decodeFromString<SubscriptionDto>(json) }
                 .onSuccess { loaded.add(it) }
-                .onFailure { Log.e(TAG, "readSubscriptions: $path is not a subscription", it) }
+                .onFailure {
+                    Log.e(TAG, "readSubscriptions: $path is not a subscription", it)
+                    complete = false
+                }
         }
-        return loaded
+        return Listing(loaded, complete)
     }
 
     /**

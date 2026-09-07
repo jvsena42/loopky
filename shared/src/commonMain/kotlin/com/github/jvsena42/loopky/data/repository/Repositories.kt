@@ -301,6 +301,15 @@ interface AuthFlowHandle {
 }
 
 /**
+ * A library split the way the screens show it — see [DeckRepository.listCached].
+ *
+ * The two lists are kept apart rather than merged because the library badges a followed deck and
+ * Profile counts only what you own; a caller that wants the study queue merges them itself,
+ * `distinctBy { it.id }`, since cloning a deck you follow puts the same id in both.
+ */
+data class CachedDecks(val owned: List<Deck>, val followed: List<Deck>)
+
+/**
  * Deck persistence against the Pubky homeserver (canonical) and the local cache.
  *
  * Layout (Architecture.md §8.0):
@@ -427,6 +436,18 @@ interface DeckRepository {
     /** Answered from the manifests the listing already fetched, so asking costs no extra requests. */
     suspend fun decksPendingCompaction(): List<Deck>
     suspend fun listOwned(): List<Deck>
+
+    /**
+     * The library as this device last saw it, with no network call at all — or null before a
+     * listing has ever succeeded here.
+     *
+     * For **first paint only**. A cold start otherwise shows a spinner for as long as a directory
+     * listing plus a manifest GET per deck takes, and that is the first thing the user sees every
+     * launch. The decks that come back carry no chunk table (see
+     * [com.github.jvsena42.loopky.data.storage.DeckCacheStore]), so they may be rendered and never
+     * written: anything that acts on one re-reads it through [listOwned] or [fetchRemote] first.
+     */
+    suspend fun listCached(): CachedDecks?
 
     /** Public decks for any author (read-only). Powers friend profiles + Discover. */
     suspend fun listByAuthor(authorPubky: String): List<Deck>
@@ -964,8 +985,14 @@ interface SrsRepository {
     /**
      * [countsForDeck] for every studiable deck, keyed by deck id — the same read [dueToday] performs
      * without materialising a queue of every card just to take its size.
+     *
+     * [decks] is the library the caller has **already** listed this pass, and passing it is what
+     * stops a screen paying for that listing twice: without it this re-lists owned and followed
+     * decks itself, and then re-syncs each of their manifests — on Home, the same two listings and
+     * the same manifest GET per deck that `load()` had just made, doubling the round trips behind
+     * the spinner. Omit it only where the caller has nothing to hand over.
      */
-    suspend fun countsToday(): Map<String, DeckCounts>
+    suspend fun countsToday(decks: List<Deck>? = null): Map<String, DeckCounts>
 
     /**
      * How far [cardIds] have been carried toward maturity, or null if the state could not be read.
@@ -1179,6 +1206,18 @@ interface SettingsRepository {
      * cold-start study path, and a settings read must not take a study session down with it.
      */
     suspend fun ensureLoaded()
+
+    /**
+     * Bring the device's mirror of the settings into [studySettings], without touching the network.
+     *
+     * The half of [ensureLoaded] a first paint can afford to wait for. It exists because the
+     * alternative on that path is the built-in defaults, and a screen that says "0 of 20 new cards
+     * today" to someone whose goal is 50 is stating a number nobody chose.
+     *
+     * Never overwrites a record that has actually been read — the mirror stands in for the record,
+     * it does not compete with it — and so cannot move the [update] gate.
+     */
+    suspend fun restoreCachedSettings()
 
     /**
      * Write new settings, to the homeserver and the offline mirror.

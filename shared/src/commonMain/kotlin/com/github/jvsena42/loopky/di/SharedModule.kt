@@ -88,6 +88,7 @@ val sharedModule = module {
             studyProgress = get(),
             preferences = get(),
             unsplashKeyStore = get(),
+            deckCache = get(),
         )
     }
 
@@ -107,7 +108,7 @@ val sharedModule = module {
     single<SessionRevalidator> { SessionRevalidatorImpl(get(), get(), get()) }
 
     single<CardRepository> { CardRepositoryImpl(get(), get(), get()) }
-    single<DeckRepository> { DeckRepositoryImpl(get(), get(), get(), get(), get(), get(), get()) }
+    single<DeckRepository> { DeckRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get()) }
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ImportRepository> { ImportRepositoryImpl() }
     single<SignupRepository> {

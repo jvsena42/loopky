@@ -67,11 +67,13 @@ struct HomeScreen: View {
                         title: deck.title,
                         cardCount: Int(deck.cardCount),
                         dueCount: Int(deck.dueCount),
+                        countsKnown: content.countsKnown,
                         coverInitial: KotlinInterop.charToString(deck.coverInitial),
                         coverImage: deck.coverImage,
                         authorPubky: deck.authorPubky
                     )
-                }
+                },
+                countsKnown: content.countsKnown
             ))
         case let error as HomeUiStateError:
             return .error(ErrorCopy.message(for: error.reason))

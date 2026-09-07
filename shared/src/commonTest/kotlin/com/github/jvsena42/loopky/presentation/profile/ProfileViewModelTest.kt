@@ -66,6 +66,27 @@ class ProfileViewModelTest {
 
     private val friend = PubkyIdentity("friendpk", "Grace Hopper", null, null)
 
+    /**
+     * Followed decks are studiable (#33) and land review state on your own homeserver. Handing
+     * `countsToday` the owned half alone made this screen and Home report two different "due"
+     * totals to the same user, with nothing saying so.
+     */
+    @Test
+    fun theDueCountCoversFollowedDecksAsWellAsOwnedOnes() = runTest {
+        decks.decks["mine"] = testDeck(id = "mine", cardCount = 1)
+        decks.followedDecks["theirs"] = testDeck(id = "theirs", authorPubky = "friendpk", cardCount = 1)
+        srs.due = listOf(testCard("c1", deckId = "mine"), testCard("c2", deckId = "theirs"))
+        srs.seedDue("mine", "c1")
+        srs.seedDue("theirs", "c2")
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        assertEquals(expected = 2, actual = vm.state.value.dueCount)
+        // The deck and card counters stay owned-only: those say what you have written.
+        assertEquals(expected = 1, actual = vm.state.value.deckCount)
+    }
+
     @Test
     fun sharingHandsOutAnAddressRatherThanABareKey() = runTest {
         identity.profiles[TEST_PUBKY] = PubkyIdentity(TEST_PUBKY, "Ada", null, null)

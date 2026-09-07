@@ -24,6 +24,7 @@
     <string name="home_deck_due">%1$d para revisar</string>
     <string name="home_deck_new">%1$d novas</string>
     <string name="home_deck_caught_up">Tudo em dia</string>
+    <string name="home_checking_due">Verificando o que há para revisar…</string>
     <string name="home_empty_title">Nenhum baralho ainda</string>
     <string name="home_empty_subtitle">Cole uma lista, importe um arquivo ou comece do zero.</string>
     <string name="home_create_first_deck">Crie seu primeiro baralho</string>

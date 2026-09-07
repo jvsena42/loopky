@@ -94,6 +94,26 @@ class ProfileViewModel(
         _state.update { it.copy(dueCount = counts.values.sumOf { c -> c.due }) }
     }
 
+    /**
+     * Fill the deck and card counters from the library this device last saw, so the header is not
+     * blank while a profile GET and a deck listing run. The due counter stays out of it: review
+     * state is not cached across processes, and this screen's own number would be the guess.
+     */
+    private suspend fun paintFromCache() {
+        val owned = runSuspendCatching { deckRepository.listCached() }.getOrNull()?.owned
+        if (owned.isNullOrEmpty()) {
+            _state.update { it.copy(isLoading = true) }
+            return
+        }
+        _state.update {
+            it.copy(
+                isLoading = true,
+                deckCount = owned.size,
+                cardCount = owned.sumOf { deck -> deck.cardCount },
+            )
+        }
+    }
+
     fun onRefresh() = load()
 
     /** [silent] keeps the profile on screen while a background refresh runs. */
@@ -102,7 +122,7 @@ class ProfileViewModel(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             Log.d(TAG, "load: fetching profile + stats (silent=$silent)")
-            if (!silent) _state.update { it.copy(isLoading = true) }
+            if (!silent) paintFromCache()
 
             val session = runSuspendCatching { identityRepository.currentSession() }.getOrNull()
                 ?: runSuspendCatching { identityRepository.loadPersistedSession() }.getOrNull()
@@ -129,11 +149,21 @@ class ProfileViewModel(
             val decks = decksResult.getOrElse { emptyList() }
             val deckCount = decks.size
             val cardCount = decks.sumOf { it.cardCount }
+            // Followed decks are studiable (#33) and their review state lands on your own
+            // homeserver, so they count toward what you are behind on — the counters above are
+            // owned-only because those say what you have *written*. Handing `countsToday` the
+            // owned half alone made this screen and Home report two different totals to the same
+            // user, and neither said so.
+            val followed = runSuspendCatching { deckRepository.listFollowed() }
+                .onFailure { Log.e(TAG, "load: followed decks unavailable — ${it.message}", it) }
+                .getOrDefault(emptyList())
+            val studiable = (decks + followed).distinctBy { it.id }
             // Degrade to 0 rather than failing the whole profile load if the SRS read fails.
             // The due half only, consistent with Deck Detail: cards you have never met are not
             // something you are behind on (#101 §7).
-            val dueCount = runSuspendCatching { srsRepository.countsToday().values.sumOf { it.due } }
-                .getOrDefault(0)
+            val dueCount = runSuspendCatching {
+                srsRepository.countsToday(studiable).values.sumOf { it.due }
+            }.getOrDefault(0)
 
             // Fall back field by field rather than whole-identity: a published profile that only
             // sets a picture must not blank the name the session already knows.

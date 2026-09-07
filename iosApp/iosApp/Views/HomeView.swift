@@ -91,7 +91,7 @@ struct HomeView: View {
     /// whose only outcome is "All done!" is a dead end dressed as an action.
     @ViewBuilder
     private func hero(_ content: HomeContentData) -> some View {
-        if content.dueToday == 0 && content.newToday == 0 {
+        if content.countsKnown && content.dueToday == 0 && content.newToday == 0 {
             CaughtUpCard(nextDueAtMillis: content.nextDueAtMillis)
         } else {
             DueTodayHeroCard(
@@ -99,6 +99,7 @@ struct HomeView: View {
                 doneToday: content.doneToday,
                 newCardsToday: content.newCardsToday,
                 newCardsGoal: content.newCardsGoal,
+                countsKnown: content.countsKnown,
                 onStartStudy: onStartStudy
             )
         }
@@ -133,6 +134,10 @@ struct HomeContentData: Equatable {
     var newCardsGoal: Int = 0
     var nextDueAtMillis: Int64?
     var decks: [HomeDeckSummary] = []
+    /// Whether the counts above are real numbers rather than placeholders. False only on the
+    /// cached first paint, where the decks are known and the review state is not — with it
+    /// ignored, a launch opened on "You're all caught up" over a deck with cards due.
+    var countsKnown: Bool = true
 }
 
 struct HomeDeckSummary: Equatable, Identifiable {
@@ -140,6 +145,8 @@ struct HomeDeckSummary: Equatable, Identifiable {
     let title: String
     let cardCount: Int
     let dueCount: Int
+    /// See `HomeContentData.countsKnown`: false means [dueCount] is a placeholder, not a claim.
+    var countsKnown: Bool = true
     let coverInitial: String
     var coverImage: MediaRef.Image?
     var authorPubky: String = ""

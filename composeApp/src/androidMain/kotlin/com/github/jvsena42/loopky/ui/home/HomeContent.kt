@@ -58,6 +58,7 @@ fun HomeContent(
     HomeHero(state = state, onStartStudyClick = onStartStudyClick)
     TodaysDecksSection(
         decks = state.decks,
+        countsKnown = state.countsKnown,
         onSeeAllClick = onSeeAllDecksClick,
         onDeckClick = onDeckClick,
     )
@@ -85,6 +86,7 @@ fun HomeHero(
                 doneToday = state.doneToday,
                 newCardsToday = state.newCardsToday,
                 newCardsGoal = state.newCardsGoal,
+                countsKnown = state.countsKnown,
                 onStartStudyClick = onStartStudyClick,
             )
         }
@@ -103,6 +105,7 @@ fun HomeHero(
 fun TodaysDecksGrid(
     decks: List<DeckSummary>,
     columns: Int,
+    countsKnown: Boolean,
     onSeeAllClick: () -> Unit,
     onDeckClick: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -142,7 +145,7 @@ fun TodaysDecksGrid(
                         cardCount = deck.cardCount,
                         coverEmoji = deck.coverInitial.toString(),
                         coverImage = deck.coverImage,
-                        authorLabel = dueCaption(deck),
+                        authorLabel = dueCaption(deck, countsKnown),
                         onClick = { onDeckClick(deck.id) },
                         modifier = Modifier
                             .weight(1f)
@@ -160,9 +163,13 @@ fun TodaysDecksGrid(
  *
  * The tile's own caption slot is normally the author's name, which on this screen is always you or
  * someone you already chose to follow — so it is spent on the number that decides whether to tap.
+ *
+ * [countsKnown] false is the cached first paint: the deck is real, its badge is not yet.
  */
 @Composable
-private fun dueCaption(deck: DeckSummary): String = when {
+private fun dueCaption(deck: DeckSummary, countsKnown: Boolean): String = when {
+    // Blank rather than the card count, which the tile is already showing on its own.
+    !countsKnown -> ""
     deck.dueCount > 0 -> stringResource(R.string.home_deck_due, deck.dueCount)
     deck.newCount > 0 -> stringResource(R.string.home_deck_new, deck.newCount)
     else -> stringResource(R.string.home_deck_caught_up)
@@ -215,6 +222,7 @@ private fun DueTodayHeroCard(
     doneToday: Int,
     newCardsToday: Int,
     newCardsGoal: Int,
+    countsKnown: Boolean,
     onStartStudyClick: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
@@ -249,7 +257,9 @@ private fun DueTodayHeroCard(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = studyTarget.toString(),
+                // A dash, not a zero, until the counts land: this is the same card either way, so
+                // nothing moves when the real number arrives — but "0" would read as a claim.
+                text = if (countsKnown) studyTarget.toString() else "—",
                 color = colors.foregroundOnAccent,
                 fontSize = 72.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -273,9 +283,13 @@ private fun DueTodayHeroCard(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            ProgressBar(progress = progress)
+            ProgressBar(progress = if (countsKnown) progress else null)
             Text(
-                text = stringResource(R.string.home_progress_done, doneToday, plannedTotal),
+                text = if (countsKnown) {
+                    stringResource(R.string.home_progress_done, doneToday, plannedTotal)
+                } else {
+                    stringResource(R.string.home_checking_due)
+                },
                 color = colors.foregroundOnAccentMuted,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -322,9 +336,22 @@ private fun DueTodayHeroCard(
     }
 }
 
+/** A null [progress] is "not known yet", which the indeterminate bar says without a number. */
 @Composable
-private fun ProgressBar(progress: Float) {
+private fun ProgressBar(progress: Float?) {
     val colors = LoopkyTheme.colors
+    if (progress == null) {
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(50)),
+            color = colors.foregroundOnAccent,
+            trackColor = Color(0x40FFFFFF),
+            gapSize = 0.dp,
+        )
+        return
+    }
     LinearProgressIndicator(
         progress = { progress },
         modifier = Modifier
@@ -341,6 +368,7 @@ private fun ProgressBar(progress: Float) {
 @Composable
 fun TodaysDecksSection(
     decks: List<DeckSummary>,
+    countsKnown: Boolean,
     onSeeAllClick: () -> Unit,
     onDeckClick: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -371,13 +399,17 @@ fun TodaysDecksSection(
             )
         }
         decks.forEach { deck ->
-            DeckRow(deck = deck, onClick = { onDeckClick(deck.id) })
+            DeckRow(
+                deck = deck,
+                countsKnown = countsKnown,
+                onClick = { onDeckClick(deck.id) },
+            )
         }
     }
 }
 
 @Composable
-private fun DeckRow(deck: DeckSummary, onClick: () -> Unit) {
+private fun DeckRow(deck: DeckSummary, countsKnown: Boolean, onClick: () -> Unit) {
     val colors = LoopkyTheme.colors
     Row(
         modifier = Modifier
@@ -421,7 +453,10 @@ private fun DeckRow(deck: DeckSummary, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = if (deck.dueCount == 0 && deck.newCount > 0) {
+                text = if (!countsKnown) {
+                    // The cached first paint knows the deck and not its badge.
+                    pluralStringResource(R.plurals.card_count, deck.cardCount, deck.cardCount)
+                } else if (deck.dueCount == 0 && deck.newCount > 0) {
                     // A freshly imported deck has nothing due and everything unseen. Saying
                     // "0 due" there described it as finished.
                     pluralStringResource(
@@ -449,7 +484,11 @@ private fun DeckRow(deck: DeckSummary, onClick: () -> Unit) {
                 .padding(horizontal = 12.dp, vertical = 6.dp),
         ) {
             Text(
-                text = (if (deck.dueCount == 0) deck.newCount else deck.dueCount).toString(),
+                text = if (!countsKnown) {
+                    "—"
+                } else {
+                    (if (deck.dueCount == 0) deck.newCount else deck.dueCount).toString()
+                },
                 color = colors.foregroundOnAccent,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
