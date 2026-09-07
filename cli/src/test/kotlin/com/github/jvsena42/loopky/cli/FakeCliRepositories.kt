@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.cli
 
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.CompactionOutcome
 import com.github.jvsena42.loopky.data.repository.DeckRepository
@@ -110,6 +111,12 @@ class FakeDeckRepository(
     }
 
     override suspend fun listOwned(): List<Deck> = owned
+
+    /**
+     * Nothing. The cached snapshot is a first-paint device cache for the app's screens; the CLI
+     * never reads it, and answering with [owned] here would hide a command that started to.
+     */
+    override suspend fun listCached(): CachedDecks? = null
 
     override suspend fun upsertCard(deckId: String, card: Card): Result<Deck> {
         upsertAttempts += card

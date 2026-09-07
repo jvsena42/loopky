@@ -16,6 +16,7 @@ import com.github.jvsena42.loopky.testing.fakeSession
 import com.github.jvsena42.loopky.testing.identityRepository
 import com.github.jvsena42.loopky.testing.signedInProvider
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -23,6 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class IdentityRepositoryImplTest {
 
     private val pubky = FakePubkyClient()
