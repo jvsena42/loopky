@@ -172,10 +172,11 @@ class HomeViewModel(
         // fifteen — the same false claim [countsKnown] exists to remove, one line lower.
         runSuspendCatching { srsRepository.refreshDailyProgress() }
         val progress = srsRepository.dailyProgress.value
-        // Launched, never awaited: the goal is a synced record, and `ensureLoaded` restores the
-        // device mirror and *then* reads the homeserver. Awaiting it would put a round trip back
-        // on the path this cache exists to shorten; the settings collector picks up the mirror.
-        viewModelScope.launch { runSuspendCatching { settingsRepository.ensureLoaded() } }
+        // The mirror, not `ensureLoaded`: the goal is a synced record, and `ensureLoaded` reads the
+        // homeserver after restoring the mirror — a round trip back on the path this cache exists
+        // to shorten. This half is a disk read, so the goal shown is the user's own rather than the
+        // built-in default. The real record still arrives with the load running behind this.
+        runSuspendCatching { settingsRepository.restoreCachedSettings() }
         _state.update {
             HomeUiState.Content(
                 identity = session?.identity,

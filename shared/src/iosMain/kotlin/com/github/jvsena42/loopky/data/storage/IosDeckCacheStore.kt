@@ -13,4 +13,8 @@ class IosDeckCacheStore : DeckCacheStore {
     override suspend fun save(ownerPubky: String, decks: CachedDecks) {
         defaults.setObject(encodeDeckCache(ownerPubky, decks), KEY_DECK_CACHE)
     }
+
+    override suspend fun clear() {
+        defaults.removeObjectForKey(KEY_DECK_CACHE)
+    }
 }

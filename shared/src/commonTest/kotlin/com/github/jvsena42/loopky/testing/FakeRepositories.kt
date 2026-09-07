@@ -1529,6 +1529,22 @@ class FakeSettingsRepository(
         _studySettings.update { it.copy(origin = SettingsOrigin.Remote) }
     }
 
+    /**
+     * The device mirror, as [SettingsRepository.restoreCachedSettings] serves it. Null means this
+     * device has none, which is what a first-ever launch has.
+     */
+    var mirrored: StudySettings? = null
+
+    var mirrorRestores = 0
+        private set
+
+    override suspend fun restoreCachedSettings() {
+        mirrorRestores++
+        val cached = mirrored ?: return
+        if (_studySettings.value.origin != SettingsOrigin.Defaults) return
+        _studySettings.update { StudySettingsSnapshot(cached.sanitized(), SettingsOrigin.Cached) }
+    }
+
     /** Set the settings directly, as a homeserver record already holding them would. */
     fun setStudySettings(settings: StudySettings) {
         _studySettings.update { it.copy(settings = settings.sanitized()) }
@@ -1562,6 +1578,15 @@ class FakeDeckCacheStore(stored: CachedDecks? = null) : DeckCacheStore {
         payload = encodeDeckCache(ownerPubky, decks)
         saved.add(decks)
     }
+
+    override suspend fun clear() {
+        payload = null
+        cleared = true
+    }
+
+    /** So a test can tell "cleared" from "saved empty" — the distinction the eraser now draws. */
+    var cleared = false
+        private set
 }
 
 class FakeStudyProgressStore(private var stored: DailyStudyProgress? = null) : StudyProgressStore {

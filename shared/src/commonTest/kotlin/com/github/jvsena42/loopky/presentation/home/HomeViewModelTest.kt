@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.presentation.home
 
 import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.data.repository.CachedDecks
+import com.github.jvsena42.loopky.data.repository.SettingsOrigin
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.SrsGrade
@@ -53,7 +54,7 @@ class HomeViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private val settingsRepo = FakeSettingsRepository()
+    private var settingsRepo = FakeSettingsRepository()
 
     private fun viewModel() = HomeViewModel(
         identityRepository = identityRepo,
@@ -139,6 +140,30 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertTrue(assertIs<HomeUiState.Content>(vm.state.value).countsKnown)
+    }
+
+    /**
+     * The goal is the one number on the cached paint that comes from a *setting* rather than a
+     * count, and reading it off an unloaded repository yields the built-in 20 — so the hero told a
+     * reader whose goal is 50 "0 of 20 new cards today", which is a number nobody chose.
+     */
+    @Test
+    fun theCachedPaintShowsTheUsersOwnGoalNotTheBuiltInDefault() = runTest {
+        settingsRepo = FakeSettingsRepository(origin = SettingsOrigin.Defaults).apply {
+            mirrored = StudySettings.Default.copy(newCardsPerDayGoal = 50)
+        }
+        deckRepo.cached = CachedDecks(
+            owned = listOf(testDeck(id = "deck1", title = "Spanish", cardCount = 2)),
+            followed = emptyList(),
+        )
+        deckRepo.listOwnedGate = CompletableDeferred()
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val state = assertIs<HomeUiState.Content>(vm.state.value)
+        assertFalse(state.countsKnown)
+        assertEquals(expected = 50, actual = state.newCardsGoal)
     }
 
     @Test

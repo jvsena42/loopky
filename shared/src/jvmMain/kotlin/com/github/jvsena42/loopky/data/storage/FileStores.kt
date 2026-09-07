@@ -146,6 +146,8 @@ internal class FileDeckCacheStore(private val store: JsonFileStore) : DeckCacheS
     override suspend fun save(ownerPubky: String, decks: CachedDecks) {
         withContext(Dispatchers.IO) { store.set(KEY_DECK_CACHE, encodeDeckCache(ownerPubky, decks)) }
     }
+
+    override suspend fun clear() = withContext(Dispatchers.IO) { store.remove(KEY_DECK_CACHE) }
 }
 
 internal class FileLocalKeyStore(private val store: JsonFileStore) : LocalKeyStore {

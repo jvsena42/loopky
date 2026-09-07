@@ -830,8 +830,13 @@ class DeckRepositoryImpl(
         // `shallow` asks for one entry per deck directory rather than every record beneath it. Paged
         // regardless: the homeserver's default page is 100 records, which a single 3,700-card deck
         // overruns on its own. If the flag is ignored, the loop still collects the deep listing.
-        val entries = pubky.listAllEntries(PubkyPaths.decksList(authorPubky), shallow = true)
-            .getOrElse { if (it.isNotFound()) return Listing(emptyList(), complete = true) else throw it }
+        // The partial variant, so a *truncated* listing is visible here: the throwing one reports
+        // one as an ordinary success, and the whole point of [Listing.complete] is not to cache it.
+        val listed = pubky.listAllEntriesPartial(PubkyPaths.decksList(authorPubky), shallow = true)
+        listed.failure?.let {
+            if (it.isNotFound()) return Listing(emptyList(), complete = true) else throw it
+        }
+        val entries = listed.entries
         val deckIds = parseDeckIdsFrom(entries)
         Log.d(TAG, "listByAuthor: $authorPubky entries=${entries.size} decks=${deckIds.size}")
         // Concurrent: this was one manifest GET per deck, serially, so a library of ten decks paid
@@ -852,7 +857,7 @@ class DeckRepositoryImpl(
         // One unreadable deck shouldn't hide the rest, but a listing with decks in it and none
         // readable is a connectivity failure, not an empty library.
         if (decks.isEmpty() && firstFailure != null) throw requireNotNull(firstFailure)
-        return Listing(decks, complete = firstFailure == null)
+        return Listing(decks, complete = listed.isComplete && firstFailure == null)
     }
 
     override suspend fun sync(deckId: String): Result<Deck> = runSuspendCatching {
@@ -1121,8 +1126,9 @@ class DeckRepositoryImpl(
         val listing = pubky.listAllEntriesPartial(PubkyPaths.subscriptionsRoot(owner))
         // A missing root is the answer "follows nothing", and a complete one — every other failure
         // leaves the caller unable to tell that from "could not read", which is the whole point of
-        // asking. A record that will not read or parse is skipped, and counts as a gap too.
-        var complete = listing.failure == null || listing.failure.isNotFound()
+        // asking. A truncated listing is a gap too, and so is a record that will not read or parse.
+        var complete =
+            if (listing.failure?.isNotFound() == true) true else listing.isComplete
         for (path in listing.entries) {
             val json = pubky.get(path).getOrElse {
                 Log.e(TAG, "readSubscriptions: $path unreadable — ${it.message}", it)

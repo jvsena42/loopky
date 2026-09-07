@@ -74,6 +74,12 @@ class FakePubkyClient : PubkyClient {
      */
     var honoursShallow: Boolean = true
 
+    /**
+     * Ignore `cursor`, as a homeserver that does not implement it would — every page is page one.
+     * The paging loop has to notice and stop, and has to report what it has as incomplete.
+     */
+    var ignoresListCursor: Boolean = false
+
     /** When set, [list] succeeds this many times and fails afterwards, as a mid-listing drop would. */
     var failListAfterPages: Int? = null
 
@@ -183,7 +189,7 @@ class FakePubkyClient : PubkyClient {
         var matches = store.keys.filter { it.startsWith(url) }
         matches = if (shallow == true && honoursShallow) collapseToChildren(url, matches) else matches
         matches = matches.distinct().sorted()
-        if (cursor != null) matches = matches.filter { it > cursor }
+        if (cursor != null && !ignoresListCursor) matches = matches.filter { it > cursor }
         // `limit.unwrap_or(DEFAULT_LIST_LIMIT).min(DEFAULT_MAX_LIST_LIMIT)`, as the server does.
         val cap = listPageSize ?: (limit?.toInt() ?: defaultListLimit).coerceAtMost(maxListLimit)
         matches = matches.take(cap)

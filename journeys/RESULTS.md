@@ -2737,3 +2737,38 @@ listings deliberately tolerate partial failures, and the snapshot is what the *n
 so writing a partial one gives the user a quietly wrong library on every subsequent start with
 nothing left to correct it. `Listing<T>(items, complete)` now carries that distinction, and
 `loadSubscriptions` no longer memoises an incomplete read for the rest of the process.
+
+### Review round 2 follow-ups — 2026-09-07, `Pixel_Tablet` + `iPhone 17` sim (staging)
+
+The three Low items the approving review left as follow-up material, done on the same branch.
+
+| Step | Result |
+| --- | --- |
+| Android cached paint → loaded | ✅ PASS — "—" / "Checking what's due…" → "1 card to review"; goal line unchanged across the swap |
+| `PubkyPagingTest` (new, 5 cases) | ✅ PASS — the loop's three exits, and which may be believed |
+| `ciCheck`, `:shared:jvmTest` (1,398), iOS `simulator build` | ✅ PASS |
+
+**The paging loop reported two truncated listings as complete**, which is finding 3 through a
+different door: `listByAuthorListing` fed `complete` straight into the snapshot, so a homeserver
+ignoring `cursor` would have cached its first page as the whole library. `PubkyListing` now carries
+`truncated` beside `failure` — deliberately separate, because every read *succeeded*, so
+`listAllEntries` still hands back what it collected and a broken homeserver shows the user a first
+page rather than an error. Only `isComplete` (neither failed nor truncated) may be persisted.
+
+Two smaller ones: the cached paint read `newCardsPerDayGoal` off an unloaded repository and got the
+built-in 20, telling a reader whose goal is 50 "0 of 20 new cards today" — there is a
+`restoreCachedSettings()` now, the device-mirror half of `ensureLoaded` with no round trip. And
+`AccountEraser` calls `DeckCacheStore.clear()` rather than saving an empty snapshot, which did the
+visible job and still left a record naming the deleted pubky on the device.
+
+### Worth knowing
+
+**A short page is the end of a listing; a full one that adds nothing is a homeserver ignoring the
+cursor.** The old loop collapsed both into one `break` and reported each as success. Separating
+them is what makes "is this the whole listing" answerable at all — and the first repository-level
+test written for it passed vacuously, because two decks is a short page and can never be truncated.
+It seeds a genuinely full page now (`FakePubkyClient.ignoresListCursor`).
+
+**All three fixes this round were confirmed by reintroducing the bug and watching the test fail.**
+That is now five of seven tests added across the two review rounds that were green against broken
+code on the first attempt — the check is worth doing every time, not when something feels off.

@@ -22,4 +22,8 @@ class AndroidDeckCacheStore(context: Context) : DeckCacheStore {
             prefs.edit().putString(KEY_DECK_CACHE, encodeDeckCache(ownerPubky, decks)).apply()
         }
     }
+
+    override suspend fun clear() {
+        withContext(Dispatchers.IO) { prefs.edit().remove(KEY_DECK_CACHE).apply() }
+    }
 }

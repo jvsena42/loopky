@@ -162,6 +162,31 @@ class DeckCacheSnapshotTest {
         deckCache = cache,
     )
 
+    /**
+     * A homeserver that ignores `cursor` repeats a page, and the paging loop stops rather than
+     * spinning — but what it has is the first page, not the library. Reported as an ordinary
+     * success it would be cached as one, which is finding 3 again through a different door.
+     */
+    @Test
+    fun aTruncatedListingIsNotCached() = runTest {
+        repo.publish(testDeck(id = "deck1", title = "Spanish"), listOf(testCard("c1"))).getOrThrow()
+        repo.listOwned()
+        assertEquals(listOf("Spanish"), repo.listCached()?.owned?.map { it.title })
+
+        // A genuinely full page — a short one is the ordinary end of a listing and stays complete —
+        // handed back unchanged however the cursor advances, i.e. a homeserver ignoring it.
+        repeat(LIST_PAGE_SIZE.toInt()) { n ->
+            val id = "bulk${n.toString().padStart(4, '0')}"
+            pubky.store[PubkyPaths.manifest(TEST_PUBKY, id)] =
+                loopkyJson.encodeToString(testDeck(id = id, title = "Bulk $n").toDto())
+        }
+        pubky.ignoresListCursor = true
+        assertEquals(LIST_PAGE_SIZE.toInt(), repo.listOwned().size)
+
+        // Still the one-deck snapshot: the screen got the page, the cache did not get a lie.
+        assertEquals(listOf("Spanish"), repo.listCached()?.owned?.map { it.title })
+    }
+
     /** A snapshot is a claim about a person; a new account must not inherit the last one's library. */
     @Test
     fun aSnapshotWrittenByAnotherAccountReadsAsAbsent() {
@@ -193,9 +218,9 @@ class DeckCacheSnapshotTest {
 
         // Read the store, not `listCached()`: deleting clears the session, and `listCached()`
         // answers null without one — which would make every assertion here pass on its own.
-        val remaining = cache.load(TEST_PUBKY)
-        assertTrue(remaining?.owned.orEmpty().isEmpty(), "owned: ${remaining?.owned}")
-        assertTrue(remaining?.followed.orEmpty().isEmpty(), "followed: ${remaining?.followed}")
+        // Cleared, not emptied: an empty snapshot would still leave a record naming the pubky.
+        assertTrue(cache.cleared, "the snapshot was not cleared")
+        assertNull(cache.load(TEST_PUBKY))
     }
 
     @Test

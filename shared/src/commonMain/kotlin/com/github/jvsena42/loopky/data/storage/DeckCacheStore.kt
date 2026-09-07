@@ -28,6 +28,16 @@ interface DeckCacheStore {
     suspend fun load(ownerPubky: String): CachedDecks?
 
     suspend fun save(ownerPubky: String, decks: CachedDecks)
+
+    /**
+     * Remove the snapshot entirely.
+     *
+     * For account deletion, where saving an empty one would do the visible job and still leave a
+     * record naming the deleted pubky on the device. Not account-scoped, deliberately: there is one
+     * key, the caller is erasing the only account that could own it, and a `clear` that first had
+     * to agree about whose it was could leave a stranger's behind.
+     */
+    suspend fun clear()
 }
 
 internal const val KEY_DECK_CACHE = "deck_cache"

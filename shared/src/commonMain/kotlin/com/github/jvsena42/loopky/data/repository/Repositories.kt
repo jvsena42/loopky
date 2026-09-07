@@ -1208,6 +1208,18 @@ interface SettingsRepository {
     suspend fun ensureLoaded()
 
     /**
+     * Bring the device's mirror of the settings into [studySettings], without touching the network.
+     *
+     * The half of [ensureLoaded] a first paint can afford to wait for. It exists because the
+     * alternative on that path is the built-in defaults, and a screen that says "0 of 20 new cards
+     * today" to someone whose goal is 50 is stating a number nobody chose.
+     *
+     * Never overwrites a record that has actually been read — the mirror stands in for the record,
+     * it does not compete with it — and so cannot move the [update] gate.
+     */
+    suspend fun restoreCachedSettings()
+
+    /**
      * Write new settings, to the homeserver and the offline mirror.
      *
      * **Refuses unless the record has actually been read this session.** Without that gate one
