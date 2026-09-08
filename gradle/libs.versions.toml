@@ -21,7 +21,7 @@ junit = "4.13.2"
 kotlin = "2.4.20"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
-jna = "5.14.0"
+jna = "5.19.1"
 # The JVM component of the `rustls-platform-verifier` Rust crate. Must match the crate version
 # pubky-core-ffi-fork depends on (Cargo.toml: rustls-platform-verifier = "0.7.0"), which vendors
 # `rustls-platform-verifier-android` 0.1.1.
@@ -37,7 +37,7 @@ kvault = "1.12.0"
 # JDBC SQLite for reading an Anki `.apkg` collection on the desktop JVM target, where SQLite is
 # not in the platform the way it is on Android. Ships native libraries for linux-x86-64 and
 # macos-aarch64 inside the jar, so the CLI needs nothing installed (#54).
-sqliteJdbc = "3.50.3.0"
+sqliteJdbc = "3.53.4.0"
 playServicesCodeScanner = "16.1.0"
 coil = "3.6.2"
 # QR encoding for the tablet Pubky Ring sign-in panel. Core only — the `android` artifact
