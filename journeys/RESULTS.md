@@ -2900,22 +2900,35 @@ no macOS on this machine, so the Swift half has not been compiled. It owes a run
 
 ---
 
-## The announce post names the deck and credits its author by pubky — 2026-09-08, `Medium_Phone` (staging)
+## The announce post names the deck and mentions its author — 2026-09-08, `Medium_Phone` (staging)
 
 The follow announcement read `📚 Now following the Loopky deck O deck definitivo… by jvsena42` —
 the title ran into the sentence with nothing marking where it began, and the credit was a display
-name. A name is self-declared, changeable and absent on most accounts, so two authors can credit as
-the same person and one can rename out of a credit already posted. The title is now quoted after a
-colon and the credit is the author's pubky.
+name that told the author nothing. The title is now quoted after a colon, and the author is
+credited as a **mention**: `by pubky{key}`.
+
+**How a mention works, from both sides of pubky.app.** Nexus scans post content for `pubky` (or the
+deprecated `pk:`) followed by exactly 52 characters, writes a `MENTIONED` edge and sends that
+account a Mention notification (`nexus-watcher/src/events/handlers/post.rs`, `find_mentioned_ids`).
+The web client's `remarkMentions` matches `(^|\s)((?:pk:|pubky)[a-z0-9]{52})` and renders the pair
+as a link to `/profile/{key}`, labelled `@Name` when the profile has one — so the display name is
+the *label*, while the link and the notification are anchored to the key. Two constraints the text
+has to respect, both met: the mention must be **preceded by whitespace or start the text** (ours
+follows `by `), and `pubky://…` is not a second mention because the 52 characters after the prefix
+start `://` and fail the character class.
 
 Driven on the debug APK, signed in as `kfezy1`, following `jvsena42`'s public deck from Discover.
 
 | Step | Result |
 | --- | --- |
 | Discover → "Biomas e Sub-ecossistemas Brasileiros" (author `3jubjy…3f4rjo`) → Follow deck | ✅ PASS — pill flips to Following |
-| The announce prompt's `share_prompt_preview` | ✅ PASS — `Now following the Loopky deck: "Biomas e Sub-ecossistemas Brasileiros" by 3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo`, then the manifest URI |
+| The announce prompt's `share_prompt_preview` | ✅ PASS — `Now following the Loopky deck: "Biomas e Sub-ecossistemas Brasileiros" by pubky3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo`, then the manifest URI |
 | "Not now" → nothing posted; unfollow to restore the account | ✅ PASS — unfollowing is never announced |
 | `:shared:jvmTest`, `detektAll`, `:composeApp:assembleDebug` | ✅ PASS |
+
+**The post was not actually published**, so the mention has been verified against both parsers'
+source and against the exact string Loopky writes, but not yet seen rendered in a feed. That is the
+one step still owed.
 
 **Created and Cloned were not driven** — same `content` getter, different `when` branch, covered by
 `DeckAnnouncementTest`. Creating one needs an empty library (journey 24) and publishing a throwaway

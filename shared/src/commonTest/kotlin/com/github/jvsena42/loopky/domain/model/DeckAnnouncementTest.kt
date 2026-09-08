@@ -21,16 +21,33 @@ class DeckAnnouncementTest {
     }
 
     @Test
-    fun `follow and clone credit the original author by pubky, never by display name`() {
+    fun `follow and clone mention the original author`() {
         val deck = testDeck(title = "Kanji N5")
         val followed = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, AUTHOR).content
         val cloned = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Cloned, AUTHOR).content
 
-        assertTrue(followed.contains("Now following the Loopky deck: \"Kanji N5\" by $AUTHOR"), followed)
+        // "pubky" + the whole key is what Nexus indexes as a mention and pubky.app renders as a
+        // link to the profile — so the author hears about it, not just the announcer's followers.
         assertTrue(
-            cloned.contains("Cloned the Loopky deck: \"Kanji N5\" by $AUTHOR into my library"),
+            followed.contains("Now following the Loopky deck: \"Kanji N5\" by pubky$AUTHOR"),
+            followed,
+        )
+        assertTrue(
+            cloned.contains("Cloned the Loopky deck: \"Kanji N5\" by pubky$AUTHOR into my library"),
             cloned,
         )
+    }
+
+    @Test
+    fun `the deck URI is not read as a second mention of its author`() {
+        val deck = testDeck(id = "d1", authorPubky = AUTHOR, title = "Kanji N5")
+
+        val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, AUTHOR).content
+
+        // `pubky://` carries the mention prefix too, so the post is scanned the way Nexus scans
+        // it: every occurrence of the prefix, keyed on whether a whole key follows. One credit in,
+        // one mention out — a second would notify the author twice for one follow.
+        assertEquals(listOf(AUTHOR), mentionsIn(content), content)
     }
 
     @Test
@@ -43,11 +60,16 @@ class DeckAnnouncementTest {
     }
 
     @Test
-    fun `something too long to be a pubky is dropped rather than half-credited`() {
+    fun `anything that is not a whole key is dropped rather than half-mentioned`() {
         val deck = testDeck(title = "Kanji N5")
-        val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, "z".repeat(200)).content
+        // A prefix, an over-long string, and 52 characters outside z-base-32: "pubky" in front of
+        // any of them mentions nobody while looking like it should.
+        val notKeys = listOf(AUTHOR.take(20), "z".repeat(200), "L".repeat(Pubky.LENGTH))
 
-        assertTrue(!content.contains(" by "), content)
+        notKeys.forEach { candidate ->
+            val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, candidate).content
+            assertTrue(!content.contains(" by "), content)
+        }
     }
 
     @Test
@@ -151,9 +173,23 @@ class DeckAnnouncementTest {
         assertTrue(content.length < SHORT_CONTENT_LIMIT, "was ${content.length}")
     }
 
+    /**
+     * Nexus's `find_mentioned_ids`: every occurrence of the prefix whose next 52 characters are a
+     * whole key. Mirrored rather than approximated, since that scan is what decides whether the
+     * post mentions anyone at all.
+     */
+    private fun mentionsIn(content: String): List<String> =
+        content.windowedSequence(MENTION_PREFIX.length + Pubky.LENGTH)
+            .filter { it.startsWith(MENTION_PREFIX) }
+            .map { it.drop(MENTION_PREFIX.length) }
+            .filter(Pubky::isKey)
+            .toList()
+
     private companion object {
-        /** Another account's key, so a credit is visibly not the announcing user's own. */
-        const val AUTHOR = "otherpk"
+        const val MENTION_PREFIX = "pubky"
+
+        /** A real 52-character z-base-32 key: a mention only renders for an exact one. */
+        const val AUTHOR = "3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo"
 
         /** `post_short_content_max_length` in pubky-app-specs. */
         const val SHORT_CONTENT_LIMIT = 2_000
