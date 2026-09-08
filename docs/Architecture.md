@@ -1200,10 +1200,11 @@ emulator, and SRS flush failures that only appear when the network goes away mid
   runtime, foundation, ui, material3, material3-adaptive and the icon pack to a set released
   together, so those artifacts carry no version of their own. Material 3 Expressive is **stable**
   on this line — `ShortNavigationBar` and `WideNavigationRail` need no opt-in, and
-  `ExperimentalMaterial3ExpressiveApi` is internal. `androidx.lifecycle` is Google's own
-  multiplatform build, iOS variants included, and **not** the JetBrains fork: having both on one
-  classpath is what broke `:cli:installDist` when lifecycle moved to 2.11.0.
-- **Notable runtime dependencies** beyond the ones §3 lists: Coil 3 (`coil-compose`, `coil-network-okhttp`) for images, `androidx.navigation:navigation-compose`, `androidx-core-splashscreen`, `play-services-code-scanner` for the Ring QR scan, `androidx.work:work-runtime-ktx` (§9.6), `com.google.zxing:core` (the tablet sign-in panel and the CLI's terminal QR), `org.xerial:sqlite-jdbc` (the desktop `.apkg` reader only — Android uses platform SQLite), and JNA for the UniFFI bindings. **SKIE is not in the build and is not planned** — the Swift↔Flow bridge is hand-rolled (§9.2).
+  `ExperimentalMaterial3ExpressiveApi` is internal. **Compose is the only family that moved**:
+  `androidx.lifecycle` and `androidx.navigation` here are still the *JetBrains* multiplatform
+  builds (`org.jetbrains.androidx.*`), because `:shared` re-exports the `ViewModel` for iOS. "We
+  left the JetBrains channel" is true of Compose and of nothing else.
+- **Notable runtime dependencies** beyond the ones §3 lists: Coil 3 (`coil-compose`, `coil-network-okhttp`) for images, `androidx-navigation-compose`, `androidx-core-splashscreen`, `play-services-code-scanner` for the Ring QR scan, `androidx.work:work-runtime-ktx` (§9.6), `com.google.zxing:core` (the tablet sign-in panel and the CLI's terminal QR), `org.xerial:sqlite-jdbc` (the desktop `.apkg` reader only — Android uses platform SQLite), and JNA for the UniFFI bindings. **SKIE is not in the build and is not planned** — the Swift↔Flow bridge is hand-rolled (§9.2).
 - **`:cli` packaging:** `./gradlew :cli:installDist` produces `cli/build/install/loopky/bin/loopky`; `:cli:distTar` produces a tarball. Both need a JRE 17 on the target machine, which is short of the goal — see §13.11.
 - **Lint:** detekt with `detekt-formatting` + `detekt-compose-rules` (`config/detekt/detekt.yml`) via `./gradlew detektAll`; SwiftLint via `./gradlew lintSwift` (`iosApp/.swiftlint.yml`, generated `pubkycore.swift` excluded).
 - **`./gradlew ciCheck`** runs what CI runs, in one command — `detektAll`, the Android and JVM
