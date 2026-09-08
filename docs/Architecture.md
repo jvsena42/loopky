@@ -282,8 +282,11 @@ export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.1.12297006   # or whichever NDK you
 ./build_android.sh
 ./build_ios.sh
 # then, from loopky/
+# jvmSharedMain, not androidMain: one copy, shared by the Android and desktop targets. A second
+# copy under jvmMain would have to stay byte-identical forever with nothing reporting it when it
+# stopped.
 cp  ../pubky-core-ffi-fork/bindings/android/pubkycore.kt \
-    shared/src/androidMain/kotlin/uniffi/pubkycore/pubkycore.kt
+    shared/src/jvmSharedMain/kotlin/uniffi/pubkycore/pubkycore.kt
 cp -R ../pubky-core-ffi-fork/bindings/android/jniLibs/. \
       shared/src/androidMain/jniLibs/
 cp -R ../pubky-core-ffi-fork/bindings/ios/PubkyCore.xcframework \
@@ -1195,7 +1198,8 @@ emulator, and SRS flush failures that only appear when the network goes away mid
 - **`:cli` packaging:** `./gradlew :cli:installDist` produces `cli/build/install/loopky/bin/loopky`; `:cli:distTar` produces a tarball. Both need a JRE 17 on the target machine, which is short of the goal — see §13.11.
 - **Lint:** detekt with `detekt-formatting` + `detekt-compose-rules` (`config/detekt/detekt.yml`) via `./gradlew detektAll`; SwiftLint via `./gradlew lintSwift` (`iosApp/.swiftlint.yml`, generated `pubkycore.swift` excluded).
 - **`./gradlew ciCheck`** runs what CI runs, in one command — `detektAll`, the Android and JVM
-  test suites, `:cli:test`, `:androidApp:assembleDebug`, `:cli:installDist` — plus, **on a Mac
+  test suites, `:cli:test`, `:androidApp:assembleDebug`, `:cli:installDist`,
+  `:shared:checkJniLibsArePackaged` — plus, **on a Mac
   only**, `:shared:compileKotlinIosSimulatorArm64` and `lintSwift`. That host-conditional half is
   the point: a Mac checkout is strictly stronger than CI rather than differently weak, and the two
   checks it adds are exactly the ones a Linux runner cannot perform. `:cli:nativeCompile` is
