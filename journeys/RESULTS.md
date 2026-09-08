@@ -2826,3 +2826,47 @@ the same Terminal.app session, scanned with the same phone. That matters more th
 because every measurement behind the fix was Apple's detector on synthetic pixels, which is more
 forgiving than a camera at an angle: the rasteriser could have been wrong about Terminal.app in a
 way that flattered the fix, and only a real scan closes that gap.
+
+## Success and failure felt the same — the study haptics, remade as waveforms — 2026-09-08, `Medium_Phone` (staging)
+
+Journeys 03 and 09 again, for the reason the 2026-09-04 run could not have caught: an emulator's
+`dumpsys vibrator_manager` reported `CONFIRM` and `REJECT` as two *different* prebaked effects,
+and on the hardware someone actually holds they came out as the same generic buzz. Prebaked is a
+*name* handed to the vibrator HAL — an actuator with no distinct rendering for one of a pair falls
+back for both, and "right" stops being distinguishable from "wrong" with nothing anywhere
+reporting it.
+
+What survives any actuator is rhythm, so the verdicts are `createWaveform` patterns now
+(`StudyHapticPlayer`) and only `Tick` still goes through `performHapticFeedback`. Read back the
+same way, from `Recent vibrations`:
+
+| Step | `played:` |
+| --- | --- |
+| Flip a card | ✅ `Prebaked=TICK`, `constant=6` — unchanged, still the framework's |
+| Grade | ✅ same tick, one per grade |
+| Speak on a deck with no recogniser (emulator) → "Didn't catch that" | ✅ **Failure**, 261 ms: `55ms@1.00, 45 off, 55ms@0.75, 45 off, 60ms@0.49` |
+| Type a wrong answer, Check | ✅ **Warning**, 96 ms: one `95ms@0.65` pulse |
+| Grade the last card of a 3-card session | ✅ **Success**, 160 ms: `28ms@0.35, 72 off, 58ms@1.00` |
+| Set the goal to 1, grade a new card | ✅ **Celebration**, 392 ms: `35ms@0.33, 35ms@0.55, 35ms@0.76, 140ms@1.00` |
+
+Every one carried `usage: TOUCH`, which is what makes the system mute them for a reader who has
+turned haptics off.
+
+### Worth knowing
+
+**The goal's own grade tick is `cancelled_superseded`, and that is the right outcome.** The
+celebration lands ~6 ms behind the grade's tick and cuts it off after 6 ms of it, so the thumb
+feels the flourish and nothing else. It is not suppressed up front the way the *last* card's tick
+is (`tapHaptic`), because whether a grade reaches the goal is not known until the review has been
+recorded — predicting it would put the goal predicate in a second place to drift from the first.
+Both orderings are fine: a slow write lets the tick finish and the celebration follows it, a fast
+one supersedes it.
+
+**A celebration and a completion can never collide.** `celebrateGoalIfOwed` returns early when
+there is no card behind the celebration to keep studying, so a goal met on the final grade goes to
+"All done!" and its `Success` — never both.
+
+**iOS is written but unrun, again.** `Haptics.swift` gains `Celebration` as three rising
+`UIImpactFeedbackGenerator`s placed in time ahead of `.success` — UIKit has no waveform to hand a
+pattern to, and a generator is one style for life, so each beat needs its own generator. There is
+no macOS on this machine, so the Swift half has not been compiled. It owes a run.
