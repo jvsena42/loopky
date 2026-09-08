@@ -15,7 +15,12 @@ pluginManagement {
     }
 }
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
+    // 1.0.0 is the first release that runs on Gradle 9: 0.10.0 reads `JvmVendorSpec.IBM_SEMERU`,
+    // which Gradle 9 removed. It only bites where a toolchain has to be *provisioned* — the CLI's
+    // container has GraalVM 25 as its JAVA_HOME and `:cli` pins `jvmToolchain(17)`, so the
+    // resolver runs there and `NoSuchFieldError` fails the build at configuration. A developer
+    // machine with a local JDK 17 never calls it, which is why this passes locally either way.
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
 dependencyResolutionManagement {
