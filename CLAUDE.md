@@ -583,6 +583,15 @@ written down).
   `feat/…` / `fix/…` branch first, even for a one-line change.
 - **Finish the work by opening a PR.** Push the branch and `gh pr create` against `main`; the
   change isn't delivered while it only exists locally.
+- **A change that spans several dependent steps ships as a stack, via `gh stack`** (the
+  `github/gh-stack` extension, already installed). One PR per step, each based on the one below it,
+  so a reviewer sees one variable per PR instead of a single unreviewable diff — and so an early
+  step can merge while the rest is still in review. `gh stack init <branch>` adopts the branch you
+  are already on, `gh stack add <branch>` puts the next step on top, `gh stack submit` pushes the
+  whole chain and creates or re-bases every PR. Two things a fresh session will not guess: new PRs
+  are **drafts** unless you pass `--open`, and after amending or rebasing anything mid-stack you
+  must `gh stack submit` again — the child PRs' bases do not update themselves. `gh stack view`
+  shows where you are.
 - **Always use atomic commits.** Each commit should capture one logical, self-contained change.
   Don't bundle unrelated changes (e.g. a feature plus a refactor plus a formatting sweep) into a
   single commit — split them so each commit can be reviewed and reverted independently.
