@@ -1183,7 +1183,12 @@ emulator, and SRS flush failures that only appear when the network goes away mid
 
 ## 11. Build & tooling
 
-- **Gradle** with version catalog (`gradle/libs.versions.toml`).
+- **Gradle** with version catalog (`gradle/libs.versions.toml`). The wrapper is pinned at both
+  ends and the two halves cover different things: `gradle/actions/wrapper-validation` (CI) checks
+  the committed `gradle-wrapper.jar` against Gradle's published checksums, and
+  `distributionSha256Sum` in `gradle-wrapper.properties` checks the bytes of the distribution that
+  jar then downloads — `validateDistributionUrl` only ever checked the URL was well-formed. Move
+  `distributionSha256Sum` with `distributionUrl`, from `https://services.gradle.org/distributions/<dist>.sha256`.
 - **Plugins (actual):** `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.jvm` (`:cli` only), `com.android.library`/`com.android.application`, `org.jetbrains.kotlin.plugin.serialization`, the Compose Multiplatform + Compose-compiler plugins (Android-only Compose), `application` (`:cli`), and `io.gitlab.arturbosch.detekt`. Koin is a runtime dependency (no plugin). **No `app.cash.sqldelight` plugin** — SQLDelight is not adopted (§8.1).
 - **iOS framework packaging:** `shared` is consumed as a static framework (`baseName = "Shared"`, `isStatic = true`) per `shared/build.gradle.kts`; an XCFramework / SPM packaging step can come later.
 - **Notable runtime dependencies** beyond the ones §3 lists: Coil 3 (`coil-compose`, `coil-network-okhttp`) for images, `androidx-navigation-compose`, `androidx-core-splashscreen`, `play-services-code-scanner` for the Ring QR scan, `androidx.work:work-runtime-ktx` (§9.6), `com.google.zxing:core` (the tablet sign-in panel and the CLI's terminal QR), `org.xerial:sqlite-jdbc` (the desktop `.apkg` reader only — Android uses platform SQLite), and JNA for the UniFFI bindings. **SKIE is not in the build and is not planned** — the Swift↔Flow bridge is hand-rolled (§9.2).
@@ -1197,9 +1202,15 @@ emulator, and SRS flush failures that only appear when the network goes away mid
   deliberately *not* in it — it needs a GraalVM 25 in `GRAALVM_HOME`, which a checkout does not
   come with, and the one command every contributor is told to run must not fail on a machine where
   nothing is wrong.
-- **CI** (`.github/workflows/ci.yml`), on PR and push to `main`. Four jobs always, two more when
-  the paths that can break them changed (#239):
-  - *Kotlin lint* — `detektAll`.
+- **CI** (`.github/workflows/ci.yml`), on **every** pull request and on push to `main`. The
+  `pull_request` trigger deliberately carries no `branches:` filter: a stacked PR targets the
+  branch below it, and a `branches: [main]` filter would give every PR in a stack but the bottom
+  one zero checks — which GitHub renders as "no checks reported" beside a mergeable PR, an
+  absence that reads like a pass. Per-job path filtering is what keeps the 10x-billed macOS rows
+  off work that cannot affect them. Four jobs always, two more when the paths that can break them
+  changed (#239):
+  - *Kotlin lint* — `detektAll`, preceded by `gradle/actions/wrapper-validation`. This job has no
+    path gate, so the wrapper check runs on everything.
   - *Unit tests + Android build* — `:shared:testDebugUnitTest :composeApp:testDebugUnitTest`, then
     `:composeApp:assembleDebug`.
   - *CLI on Linux x86_64* — `:shared:jvmTest :cli:test`, then `installDist` and a smoke test of
