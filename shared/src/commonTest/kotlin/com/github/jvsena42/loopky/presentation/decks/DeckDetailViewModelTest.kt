@@ -545,7 +545,9 @@ class DeckDetailViewModelTest {
 
         val prompt = assertNotNull(assertIs<DeckDetailUiState.Content>(vm.state.value).sharePrompt)
         assertEquals(DeckAnnouncement.Kind.Followed, prompt.kind)
-        assertTrue(prompt.preview.contains("Kanji N5 by Ada"), prompt.preview)
+        // The author's key, not the "Ada" the profile fetch resolved: a display name is
+        // self-declared and can be renamed out from under a credit already posted.
+        assertTrue(prompt.preview.contains("\"Kanji N5\" by friendpk"), prompt.preview)
         // Nothing written until the user says so.
         assertTrue(discoveryRepo.announcements.isEmpty())
     }

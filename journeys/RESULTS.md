@@ -2897,3 +2897,30 @@ there is no card behind the celebration to keep studying, so a goal met on the f
 `UIImpactFeedbackGenerator`s placed in time ahead of `.success` — UIKit has no waveform to hand a
 pattern to, and a generator is one style for life, so each beat needs its own generator. There is
 no macOS on this machine, so the Swift half has not been compiled. It owes a run.
+
+---
+
+## The announce post names the deck and credits its author by pubky — 2026-09-08, `Medium_Phone` (staging)
+
+The follow announcement read `📚 Now following the Loopky deck O deck definitivo… by jvsena42` —
+the title ran into the sentence with nothing marking where it began, and the credit was a display
+name. A name is self-declared, changeable and absent on most accounts, so two authors can credit as
+the same person and one can rename out of a credit already posted. The title is now quoted after a
+colon and the credit is the author's pubky.
+
+Driven on the debug APK, signed in as `kfezy1`, following `jvsena42`'s public deck from Discover.
+
+| Step | Result |
+| --- | --- |
+| Discover → "Biomas e Sub-ecossistemas Brasileiros" (author `3jubjy…3f4rjo`) → Follow deck | ✅ PASS — pill flips to Following |
+| The announce prompt's `share_prompt_preview` | ✅ PASS — `Now following the Loopky deck: "Biomas e Sub-ecossistemas Brasileiros" by 3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo`, then the manifest URI |
+| "Not now" → nothing posted; unfollow to restore the account | ✅ PASS — unfollowing is never announced |
+| `:shared:jvmTest`, `detektAll`, `:composeApp:assembleDebug` | ✅ PASS |
+
+**Created and Cloned were not driven** — same `content` getter, different `when` branch, covered by
+`DeckAnnouncementTest`. Creating one needs an empty library (journey 24) and publishing a throwaway
+deck to a real homeserver, which this run did not do.
+
+Filed while driving this: the preview opened with a bare `B` rather than the deck's 🇧🇷 cover
+emoji, so a flag's second regional indicator is being dropped somewhere between the manifest and
+`coverEmoji`. Pre-existing and unrelated to the text.

@@ -16,11 +16,15 @@ data class DeckAnnouncement(
     val deckTitle: String,
     val deckUri: PubkyUri,
     /**
-     * The original author's display name, for [Kind.Followed] and [Kind.Cloned] — a clone credits
-     * whoever it forked. Omitted from the text when unresolved: a bare 52-character pubky in a
-     * post body is noise, and the URI already names the account.
+     * The original author's pubky, for [Kind.Followed] and [Kind.Cloned] — a clone credits
+     * whoever it forked.
+     *
+     * The key, not the display name: a name is self-declared, changeable and absent on most
+     * accounts, so two authors can credit as the same person and one can rename out of a credit
+     * already posted. The pubky is the account, and it is what a reader can paste back into
+     * Loopky to reach it.
      */
-    val authorName: String? = null,
+    val authorPubky: String? = null,
     /** The deck's cover emoji, which opens the post in place of the generic fallback. */
     val coverEmoji: String? = null,
     /**
@@ -59,23 +63,23 @@ data class DeckAnnouncement(
      * OpenGraph probe and renders an image content-type inline. Same reason the URI above is safe
      * to leave first: nothing linkifies `pubky://`, so the cover is the first link found.
      *
-     * The title and author name are truncated because they are not always the user's own:
-     * announcing a follow or a clone quotes another account's manifest, and pubky-app-specs
-     * rejects a post over `post_short_content_max_length` (2,000 characters). A post that fails
-     * validation is written and then never indexed, which is the one failure mode with no visible
-     * symptom.
+     * The title is truncated because it is not always the user's own: announcing a follow or a
+     * clone quotes another account's manifest, and pubky-app-specs rejects a post over
+     * `post_short_content_max_length` (2,000 characters). A post that fails validation is written
+     * and then never indexed, which is the one failure mode with no visible symptom.
      */
     val content: String
         get() {
-            val by = authorName?.trim()?.takeIf { it.isNotEmpty() }
-                ?.let { " by ${it.ellipsized(MAX_AUTHOR_LENGTH)}" }
+            val by = authorPubky?.trim()
+                ?.takeIf { it.isNotEmpty() && it.length <= MAX_AUTHOR_LENGTH }
+                ?.let { " by $it" }
                 .orEmpty()
-            val title = deckTitle.trim().ellipsized(MAX_TITLE_LENGTH)
+            val title = "\"" + deckTitle.trim().ellipsized(MAX_TITLE_LENGTH) + "\""
             val icon = coverEmoji?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_ICON
             val headline = when (kind) {
                 Kind.Created -> "$icon I published a new deck on Loopky: $title"
-                Kind.Followed -> "$icon Now following the Loopky deck $title$by"
-                Kind.Cloned -> "$icon Cloned the Loopky deck $title$by into my library"
+                Kind.Followed -> "$icon Now following the Loopky deck: $title$by"
+                Kind.Cloned -> "$icon Cloned the Loopky deck: $title$by into my library"
             }
             val cover = coverImageUrl?.let { "\n\n$it" }.orEmpty()
             return "$headline\n\n${deckUri.value}$cover"
@@ -83,12 +87,12 @@ data class DeckAnnouncement(
 
     companion object {
         /** Everything an announcement says about a deck comes off the deck itself. */
-        fun of(deck: Deck, kind: Kind, authorName: String? = null): DeckAnnouncement =
+        fun of(deck: Deck, kind: Kind, authorPubky: String? = null): DeckAnnouncement =
             DeckAnnouncement(
                 kind = kind,
                 deckTitle = deck.title,
                 deckUri = deck.pubkyUri,
-                authorName = authorName,
+                authorPubky = authorPubky,
                 coverEmoji = deck.coverEmoji,
                 coverImageUrl = deck.previewableCoverUrl(),
                 tags = deck.announceableTags(),
@@ -96,7 +100,13 @@ data class DeckAnnouncement(
 
         private const val DEFAULT_ICON = "📚"
         private const val MAX_TITLE_LENGTH = 120
-        private const val MAX_AUTHOR_LENGTH = 40
+
+        /**
+         * A pubky is 52 characters of z-base-32. Anything longer is not one and is dropped rather
+         * than ellipsized: half a key credits nobody, and the cap is what keeps the post inside
+         * `post_short_content_max_length` — a post that busts it is written and never indexed.
+         */
+        private const val MAX_AUTHOR_LENGTH = 52
     }
 }
 

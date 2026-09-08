@@ -16,26 +16,37 @@ class DeckAnnouncementTest {
         val deck = testDeck(id = "d1", title = "Kanji N5")
         val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Created).content
 
-        assertTrue(content.startsWith("📚 I published a new deck on Loopky: Kanji N5"), content)
+        assertTrue(content.startsWith("📚 I published a new deck on Loopky: \"Kanji N5\""), content)
         assertTrue(content.contains("pubky://$TEST_PUBKY/pub/loopky/decks/d1/manifest.json"), content)
     }
 
     @Test
-    fun `follow and clone credit the original author`() {
+    fun `follow and clone credit the original author by pubky, never by display name`() {
         val deck = testDeck(title = "Kanji N5")
-        val followed = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, "Ada").content
-        val cloned = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Cloned, "Ada").content
+        val followed = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, AUTHOR).content
+        val cloned = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Cloned, AUTHOR).content
 
-        assertTrue(followed.contains("Now following the Loopky deck Kanji N5 by Ada"), followed)
-        assertTrue(cloned.contains("Cloned the Loopky deck Kanji N5 by Ada into my library"), cloned)
+        assertTrue(followed.contains("Now following the Loopky deck: \"Kanji N5\" by $AUTHOR"), followed)
+        assertTrue(
+            cloned.contains("Cloned the Loopky deck: \"Kanji N5\" by $AUTHOR into my library"),
+            cloned,
+        )
     }
 
     @Test
-    fun `an unresolved author is omitted rather than printed as a raw key`() {
+    fun `an unknown author is omitted rather than leaving a dangling by`() {
         val deck = testDeck(title = "Kanji N5")
-        val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, authorName = "  ").content
+        val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, authorPubky = "  ").content
 
-        assertTrue(content.contains("deck Kanji N5\n"), content)
+        assertTrue(content.contains("deck: \"Kanji N5\"\n"), content)
+        assertTrue(!content.contains(" by "), content)
+    }
+
+    @Test
+    fun `something too long to be a pubky is dropped rather than half-credited`() {
+        val deck = testDeck(title = "Kanji N5")
+        val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, "z".repeat(200)).content
+
         assertTrue(!content.contains(" by "), content)
     }
 
@@ -134,13 +145,16 @@ class DeckAnnouncementTest {
     @Test
     fun `a foreign title is truncated to stay inside the content limit`() {
         val deck = testDeck(title = "x".repeat(500))
-        val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, "y".repeat(200)).content
+        val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, TEST_PUBKY).content
 
         assertTrue(content.contains("…"), content)
         assertTrue(content.length < SHORT_CONTENT_LIMIT, "was ${content.length}")
     }
 
     private companion object {
+        /** Another account's key, so a credit is visibly not the announcing user's own. */
+        const val AUTHOR = "otherpk"
+
         /** `post_short_content_max_length` in pubky-app-specs. */
         const val SHORT_CONTENT_LIMIT = 2_000
     }
