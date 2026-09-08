@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.presentation.study
 
 import com.github.jvsena42.loopky.domain.model.SrsGrade
+import com.github.jvsena42.loopky.domain.model.StudySettings
 import com.github.jvsena42.loopky.platform.SpeechError
 import com.github.jvsena42.loopky.testing.FakeCardRepository
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
@@ -101,6 +102,26 @@ class StudySessionHapticsTest {
         vm.onGrade(SrsGrade.Good)
         advanceUntilIdle()
         assertEquals(listOf(StudyHaptic.Tick, StudyHaptic.Success), effects.haptics())
+        job.cancel()
+    }
+
+    @Test
+    fun theDailyGoalGetsItsOwnPatternAndNotTheOneAnyCorrectAnswerGets() = runTest(mainDispatcher) {
+        settingsRepo.setStudySettings(StudySettings(newCardsPerDayGoal = 1))
+        // More cards than the goal, so the celebration has a card to render over.
+        seedDeck(cards = 3)
+        val vm = viewModel()
+        advanceUntilIdle()
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+        // The collector has to actually be subscribed: a haptic is `tryEmit`ed and, with nobody
+        // listening, dropped rather than buffered.
+        runCurrent()
+
+        vm.onGrade(SrsGrade.Good)
+        advanceUntilIdle()
+
+        assertEquals(listOf(StudyHaptic.Tick, StudyHaptic.Celebration), effects.haptics())
         job.cancel()
     }
 

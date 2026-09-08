@@ -142,6 +142,7 @@ fun StudySessionRoute(
 
     val currentClose by rememberUpdatedState(onClose)
     val context = LocalContext.current
+    val hapticPlayer = remember(context, haptics) { StudyHapticPlayer(context, haptics) }
     val scope = rememberCoroutineScope()
     val recognitionJob = remember { mutableStateOf<Job?>(null) }
 
@@ -183,8 +184,7 @@ fun StudySessionRoute(
                         }
                     }
                 }
-                is StudySessionEffect.Haptic ->
-                    haptics.performHapticFeedback(effect.pattern.feedbackType())
+                is StudySessionEffect.Haptic -> hapticPlayer.play(effect.pattern)
 
                 StudySessionEffect.Close -> currentClose()
             }
