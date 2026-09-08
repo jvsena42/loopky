@@ -9,6 +9,12 @@
          Gallery image picking uses the system photo picker, which needs no storage permission. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- The study loop's verdict haptics are waveforms rather than framework constants, because a
+         prebaked CONFIRM and REJECT render as the same generic buzz on an actuator that has no
+         distinct effect for one of them. Driving the vibrator directly needs this; the tick still
+         goes through performHapticFeedback and would not. See StudyHapticPlayer.kt. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- Android 11+ package visibility: without this, resolveActivity() returns null
          for the `pubkyauth://` deeplink even when Pubky Ring is installed. -->
     <queries>

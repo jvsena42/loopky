@@ -404,14 +404,19 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   of it — seven other explanations were measured and all seven were wrong.
 - **The study loop's haptics are decided in the ViewModel, never fired on tap by a screen.**
   `StudySessionEffect.Haptic(StudyHaptic)` rides the ordinary effect flow, and the platforms only
-  map it — `HapticFeedbackType` on Android, `UIImpactFeedbackGenerator`/
+  map it — `StudyHapticPlayer` on Android, `UIImpactFeedbackGenerator`/
   `UINotificationFeedbackGenerator` on iOS. The reason is that whether a tap *did* anything is known
   in the VM and nowhere else: a grade arriving while the previous one is still writing, a Check on
   an untypable card and a second reveal are all ignored, and buzzing for one of those tells the
-  reader something happened when nothing did. Three things not to undo. The vocabulary is four
-  patterns because that is what both platforms can distinguish — `Warning` (a missed check, a
-  mispronounced word) and `Failure` (a listen that produced no answer) are `.warning` and `.error`
-  on iOS and both land on Android's one `Reject`. The **last card's grade does not tick**: it and
+  reader something happened when nothing did. Four things not to undo. **The three verdicts are
+  waveforms on Android, not `HapticFeedbackConstants`** — `CONFIRM` and `REJECT` are *prebaked*, so
+  an actuator with no distinct rendering for one of them plays the same generic buzz for both and
+  right feels exactly like wrong. Rhythm is the channel that survives any actuator, so `Success`
+  rises over two pulses, `Warning` is one blunt pulse and `Failure` stutters three times and fades;
+  only `Tick` still goes through `performHapticFeedback`, being an acknowledgement rather than a
+  verdict. That path drives the vibrator directly, which is why the manifest needs `VIBRATE` and why
+  `StudyHapticPlayer` checks `HAPTIC_FEEDBACK_ENABLED` itself rather than trusting every OEM to mute
+  a `USAGE_TOUCH` vibration. The **last card's grade does not tick**: it and
   the completion's `Success` would land a few milliseconds apart and read as one smeared buzz
   rather than two events. And haptics are `tryEmit`ed, not emitted from a launched coroutine — one
   that has to queue for buffer space is better dropped than fired late against the next card, which

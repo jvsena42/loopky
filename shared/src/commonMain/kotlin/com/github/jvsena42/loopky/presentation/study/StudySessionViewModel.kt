@@ -897,7 +897,8 @@ sealed interface StudySessionEffect {
 }
 
 /**
- * The study loop's haptic vocabulary, sized to what both platforms can actually distinguish.
+ * The study loop's haptic vocabulary. Four patterns, kept few because telling them apart is the
+ * whole point — and for the same reason neither platform may collapse two of them.
  *
  * PascalCase like every enum that crosses to Swift here: Kotlin exports entries lowercased with the
  * separators dropped, so a SCREAMING_SNAKE entry crosses under a name nothing can predict.
@@ -914,8 +915,8 @@ enum class StudyHaptic {
 
     /**
      * The app could not do the thing at all — a listen that produced no answer. Distinct from
-     * [Warning] because on iOS it is: `.error` against `.warning`. Android has one "that did not
-     * work" pattern and both land on it.
+     * [Warning] on both platforms: `.error` against `.warning` on iOS, a fading three-pulse
+     * stutter against one blunt pulse on Android.
      */
     Failure,
 }
