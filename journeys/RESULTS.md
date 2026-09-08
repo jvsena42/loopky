@@ -2937,3 +2937,41 @@ deck to a real homeserver, which this run did not do.
 Filed while driving this: the preview opened with a bare `B` rather than the deck's 🇧🇷 cover
 emoji, so a flag's second regional indicator is being dropped somewhere between the manifest and
 `coverEmoji`. Pre-existing and unrelated to the text.
+
+## #273 — the toolchain stack, on a device — 2026-09-08, `Pixel_9` + `Pixel_Tablet` (production)
+
+Seven stacked PRs that move Gradle 8.14.3 → 9.6.1, AGP 8.11.2 → 9.3.1, Kotlin 2.3.20 → 2.4.20,
+`:composeApp` → `:androidApp` (plain `com.android.application`), `:shared` onto
+`com.android.kotlin.multiplatform.library`, and Compose Multiplatform → AndroidX Compose. No
+feature change is intended anywhere in it, so this is a regression pass, not a journey run.
+
+**What was checked, and against what.** The risk is concentrated in two places — the Android
+target's plugin swap (does the app still get its FFI?) and the material3 line change (do the two
+Expressive components still render?) — so both were checked on a device rather than inferred from
+a green build.
+
+| Check | Result |
+| --- | --- |
+| App launches, Discover renders against a real homeserver | PASSED — deck tiles with cover images, topic chips, people row, guest banner |
+| Discover screen vs. a `main` build, same emulator | PASSED — **pixel-identical**; no visual regression from the Compose swap |
+| Deck detail opens | PASSED — title, clone count, description, tags, card count, `deck_follow` / `deck_share` / `deck_study` |
+| `libpubkycore.so` in the APK | PASSED — all four ABIs (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`) |
+| `ShortNavigationBar` at 800dp (medium) | PASSED — four items, `tab_study` / `tab_decks` / `tab_discover` / `tab_profile` |
+| `WideNavigationRail` at 1280dp (expanded) | PASSED — same four test tags, stacked at the leading edge, two-pane home beside it |
+
+The tab-bar/rail check is the one that mattered most: `material3` left an alpha pin
+(`1.10.0-alpha05`) for AndroidX **1.4.0 stable**, where Material 3 Expressive is stable enough that
+`ExperimentalMaterial3ExpressiveApi` is now *internal*. Both components survived with the same
+`tab_*` tags in both width classes, so every journey that drives navigation still resolves.
+
+**Not done, and why.** No journey was re-run end to end. Nothing in the stack touches app
+behaviour — the diff is build files, module paths and dependency coordinates — and the two
+behavioural surfaces it could plausibly disturb (FFI loading, navigation chrome) are covered above.
+A signed-in write path was not exercised on this pass.
+
+**Blocker worth recording:** `Pixel_Tablet` refused to boot for most of this work —
+`FATAL | Your device does not have enough disk space to run avd` at 675 MB free. The expanded-width
+half of the table above was only possible after clearing build outputs and the Gradle build cache.
+Rotation is also unreliable on that AVD: `settings put system user_rotation 1` never took
+(`dumpsys display` stayed at `rotation=0`), and its natural orientation is portrait at 800dp, so
+the expanded case was reached with `wm size 2560x1600` instead, then `wm size reset`.
