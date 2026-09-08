@@ -61,7 +61,7 @@ import com.github.jvsena42.loopky.presentation.decks.DecksLibraryUiState
 import com.github.jvsena42.loopky.presentation.decks.DecksLibraryViewModel
 import com.github.jvsena42.loopky.ui.components.DeckTile
 import com.github.jvsena42.loopky.ui.components.LoopkyErrorBlock
-import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
+import com.github.jvsena42.loopky.ui.components.LoopkyLoadingBlock
 import com.github.jvsena42.loopky.ui.components.LoopkyPrimaryButton
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
@@ -129,25 +129,24 @@ fun DecksScreen(
             .background(colors.surfacePrimary)
             .windowInsetsPadding(WindowInsets.statusBars),
     ) {
-        if (state is DecksLibraryUiState.Loading) {
-            LoopkyLoadingScreen(message = stringResource(R.string.decks_loading))
-        } else {
-            PullToRefreshBox(
-                isRefreshing = false,
-                onRefresh = onRetry,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                DecksScreenContent(
-                    state = state,
-                    onDeckClick = onDeckClick,
-                    onImportClick = onImportClick,
-                    onImportFileClick = onImportFileClick,
-                    onCreateDeckClick = onCreateDeckClick,
-                    onRetry = onRetry,
-                    onQueryChanged = onQueryChanged,
-                    onSortChanged = onSortChanged,
-                )
-            }
+        // The loader sits where the grid will be, never over the whole screen: importing a deck
+        // is the one thing you can do here that needs nothing loaded, and a first launch on a slow
+        // homeserver hid its CTA behind a spinner for as long as the fetch took.
+        PullToRefreshBox(
+            isRefreshing = false,
+            onRefresh = onRetry,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            DecksScreenContent(
+                state = state,
+                onDeckClick = onDeckClick,
+                onImportClick = onImportClick,
+                onImportFileClick = onImportFileClick,
+                onCreateDeckClick = onCreateDeckClick,
+                onRetry = onRetry,
+                onQueryChanged = onQueryChanged,
+                onSortChanged = onSortChanged,
+            )
         }
     }
 }
@@ -213,7 +212,9 @@ private fun DecksScreenContent(
         }
 
         when (state) {
-            DecksLibraryUiState.Loading -> Unit
+            DecksLibraryUiState.Loading -> LoopkyLoadingBlock(
+                message = stringResource(R.string.decks_loading),
+            )
             DecksLibraryUiState.Empty -> EmptyBlock(onCreateDeckClick = onCreateDeckClick)
             is DecksLibraryUiState.Content -> {
                 SectionHeader(
