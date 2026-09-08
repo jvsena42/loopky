@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Base64
 import java.util.Properties
 
@@ -79,16 +78,8 @@ fun localConfig(name: String): String? =
 
 plugins {
     alias(libs.plugins.androidApplication)
-    // Temporary, until AGP 9's built-in Kotlin takes over (#273).
-    alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
-    }
 }
 
 android {
