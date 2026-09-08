@@ -13,11 +13,11 @@ import com.github.jvsena42.loopky.data.repository.SignupRepository
 import com.github.jvsena42.loopky.data.repository.SrsRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.platform.PassThroughMediaProcessor
+import org.koin.core.context.stopKoin
+import org.koin.mp.KoinPlatform
 import kotlin.io.path.createTempDirectory
 import kotlin.test.AfterTest
 import kotlin.test.Test
-import org.koin.core.context.stopKoin
-import org.koin.mp.KoinPlatform
 
 /**
  * The DI graph resolves.
