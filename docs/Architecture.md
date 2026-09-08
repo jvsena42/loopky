@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-Loopky is a **Kotlin Multiplatform** flashcards app targeting iOS and Android. Business logic — domain models, repositories, and ViewModels — lives in a single `shared` module (`commonMain`). Repositories own the business logic; there is no separate use-case layer. Each platform renders its own native UI: **Jetpack Compose** on Android (`androidApp/androidMain`) and **SwiftUI** on iOS (`iosApp/`). Identity, social graph, tags, and published decks are backed by **Pubky**, accessed through the UniFFI bindings that `pubky-core-ffi-fork` generates (§7).
+Loopky is a **Kotlin Multiplatform** flashcards app targeting iOS and Android. Business logic — domain models, repositories, and ViewModels — lives in a single `shared` module (`commonMain`). Repositories own the business logic; there is no separate use-case layer. Each platform renders its own native UI: **Jetpack Compose** on Android (`androidApp/src/main`) and **SwiftUI** on iOS (`iosApp/`). Identity, social graph, tags, and published decks are backed by **Pubky**, accessed through the UniFFI bindings that `pubky-core-ffi-fork` generates (§7).
 
 **Android is feature-built end to end; iOS is wired but unproven.** Every surface described here runs on Android. The iOS app has its SwiftUI screens, a live Koin bootstrap and the Flow bridge, but has never been driven against a real homeserver — treat its behaviour as unverified rather than blocked.
 
@@ -40,7 +40,7 @@ loopky/
 │       └── iosMain/               ← Pubky FFI adapter, TTS, speech, BGTaskScheduler, Koin
 │
 ├── androidApp/                    ← Android app
-│   └── src/androidMain/kotlin/.../
+│   └── src/main/kotlin/.../
 │       ├── ui/                    ← Compose screens + navigation
 │       ├── LoopkyApp.kt           ← Application; starts Koin
 │       └── MainActivity.kt        ← single activity, deeplink entry
@@ -89,7 +89,7 @@ Platform UI modules depend on `shared`. `shared` depends only on Kotlin stdlib, 
 
 > **Note (v1 reality vs. earlier design).** This doc originally sketched a SQLDelight cache, multiplatform-settings, and SKIE. None were ever added: repositories are Pubky-only with an in-memory per-session cache, secrets persist via `SecureSessionStore` (KVault), and the Swift↔Flow bridge is hand-rolled (§9.2). Sections below are annotated where they describe a *possible future* rather than the current build.
 
-> **UI strategy — settled.** Fully native UI per platform: Compose on Android, SwiftUI on iOS. Compose Multiplatform UI is **not** used for screens, and `androidApp` is Android-only despite the name.
+> **UI strategy — settled.** Fully native UI per platform: Compose on Android, SwiftUI on iOS. Compose Multiplatform UI is **not** used for screens, and `androidApp` is Android-only — a plain `com.android.application` module, with no `commonMain` to put a shared screen in.
 
 ---
 
@@ -174,7 +174,7 @@ The shipped set, one package per surface under `presentation/`:
 
 Both platforms consume the same VMs. Only rendering, navigation, and platform glue differ.
 
-### 5.1 Android (`androidApp/androidMain`)
+### 5.1 Android (`androidApp/src/main`)
 
 - **UI:** Jetpack Compose, Material 3 components styled by Loopky design tokens.
 - **State:** `val ui by vm.state.collectAsStateWithLifecycle()` in each screen composable.

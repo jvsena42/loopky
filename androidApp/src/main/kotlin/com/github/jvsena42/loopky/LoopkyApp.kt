@@ -44,7 +44,7 @@ class LoopkyApp : Application() {
             unsplashFallbackKey = deobfuscateUnsplashKey(BuildConfig.UNSPLASH_ACCESS_KEY_OBF),
             // Which network this build talks to, whole: the Homegate that mints signup tokens,
             // the homeserver they are valid on, the web client, and the Nexus indexer. Staging on
-            // debug, production on release — see composeApp/build.gradle.kts. A debug build can
+            // debug, production on release — see androidApp/build.gradle.kts. A debug build can
             // override it from Settings; a release cannot (#42).
             pubkyEnvironment = resolveStartupEnvironment(
                 context = this,

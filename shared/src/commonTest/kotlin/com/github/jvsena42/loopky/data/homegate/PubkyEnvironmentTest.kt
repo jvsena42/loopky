@@ -93,7 +93,7 @@ class PubkyEnvironmentTest {
 
     @Test
     fun theIndexerIsTheOneMatchingTheBuildsNetwork() {
-        // The literals `composeApp/build.gradle.kts` and `iOSApp.swift` used to carry on a second
+        // The literals `androidApp/build.gradle.kts` and `iOSApp.swift` used to carry on a second
         // wire, now reached through the environment name alone.
         assertEquals(
             "https://nexus.staging.pubky.app",
@@ -131,7 +131,7 @@ class PubkyEnvironmentTest {
 
     @Test
     fun theBuildConfigNameDecidesWhichPubkyAppTheUserOpens() {
-        // Closes the loop from the build type to the browser: `composeApp/build.gradle.kts` writes
+        // Closes the loop from the build type to the browser: `androidApp/build.gradle.kts` writes
         // these two literals into `BuildConfig.PUBKY_ENV` (debug -> Staging, release ->
         // Production), `LoopkyApp` resolves them through `fromNameOrProduction`, and this is the
         // URL the profile screens then hand to the browser. If the gradle literals move, this is
