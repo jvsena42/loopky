@@ -330,7 +330,7 @@ class StudySessionViewModel(
         // shown here would spend the day's one celebration on a screen that never appeared.
         if (queue.getOrNull(index) == null) return
         goalReached = true
-        haptic(StudyHaptic.Success)
+        haptic(StudyHaptic.Celebration)
         goalCelebration = GoalCelebration(
             newCardsToday = srsRepository.dailyProgress.value.newCards,
             goal = goal,
@@ -897,7 +897,7 @@ sealed interface StudySessionEffect {
 }
 
 /**
- * The study loop's haptic vocabulary. Four patterns, kept few because telling them apart is the
+ * The study loop's haptic vocabulary. Five patterns, kept few because telling them apart is the
  * whole point — and for the same reason neither platform may collapse two of them.
  *
  * PascalCase like every enum that crosses to Swift here: Kotlin exports entries lowercased with the
@@ -907,8 +907,15 @@ enum class StudyHaptic {
     /** The card moved: flipped, graded, given up on, or the microphone opened. */
     Tick,
 
-    /** Right — a correct check, a correct utterance, the goal met, the session finished. */
+    /** Right — a correct check, a correct utterance, the session finished. */
     Success,
+
+    /**
+     * The day's goal, and nothing smaller. Longer and louder than [Success] on purpose: it fires
+     * once a day against a card that was going to buzz anyway, and a celebration that feels like
+     * an ordinary correct answer is not a celebration.
+     */
+    Celebration,
 
     /** Wrong, but the reader's turn continues: a missed check, a mispronounced word. */
     Warning,

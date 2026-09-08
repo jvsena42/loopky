@@ -76,6 +76,15 @@ private class Waveform(val timings: LongArray, val amplitudes: IntArray) {
 /** Light, then strong: two rising pulses. */
 private val SUCCESS = Waveform(longArrayOf(0, 28, 72, 58), intArrayOf(0, 90, 0, 255))
 
+/**
+ * The day's goal. [SUCCESS]'s rise, drawn out over four pulses and landing on a long one — the
+ * only pattern here allowed past a quarter of a second, because it fires once a day.
+ */
+private val CELEBRATION = Waveform(
+    longArrayOf(0, 35, 45, 35, 45, 35, 55, 140),
+    intArrayOf(0, 85, 0, 140, 0, 195, 0, 255),
+)
+
 /** One blunt pulse — no rise, no stutter. Long enough not to be read as a tick. */
 private val WARNING = Waveform(longArrayOf(0, 95), intArrayOf(0, 165))
 
@@ -85,6 +94,7 @@ private val FAILURE = Waveform(longArrayOf(0, 55, 45, 55, 45, 60), intArrayOf(0,
 private fun StudyHaptic.waveform(): Waveform? = when (this) {
     StudyHaptic.Tick -> null
     StudyHaptic.Success -> SUCCESS
+    StudyHaptic.Celebration -> CELEBRATION
     StudyHaptic.Warning -> WARNING
     StudyHaptic.Failure -> FAILURE
 }
@@ -110,6 +120,6 @@ private val TOUCH_AUDIO_ATTRIBUTES: AudioAttributes = AudioAttributes.Builder()
  */
 internal fun StudyHaptic.feedbackType(): HapticFeedbackType = when (this) {
     StudyHaptic.Tick -> HapticFeedbackType.ContextClick
-    StudyHaptic.Success -> HapticFeedbackType.Confirm
+    StudyHaptic.Success, StudyHaptic.Celebration -> HapticFeedbackType.Confirm
     StudyHaptic.Warning, StudyHaptic.Failure -> HapticFeedbackType.Reject
 }
