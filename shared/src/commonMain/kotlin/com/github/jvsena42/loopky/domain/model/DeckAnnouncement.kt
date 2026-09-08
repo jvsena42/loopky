@@ -16,11 +16,11 @@ data class DeckAnnouncement(
     val deckTitle: String,
     val deckUri: PubkyUri,
     /**
-     * The original author's display name, for [Kind.Followed] and [Kind.Cloned] — a clone credits
-     * whoever it forked. Omitted from the text when unresolved: a bare 52-character pubky in a
-     * post body is noise, and the URI already names the account.
+     * The original author's pubky, for [Kind.Followed] and [Kind.Cloned] — a clone credits
+     * whoever it forked. Written into [content] as a **mention**, so the credit reaches the person
+     * being credited rather than only the announcer's own followers.
      */
-    val authorName: String? = null,
+    val authorPubky: String? = null,
     /** The deck's cover emoji, which opens the post in place of the generic fallback. */
     val coverEmoji: String? = null,
     /**
@@ -59,23 +59,34 @@ data class DeckAnnouncement(
      * OpenGraph probe and renders an image content-type inline. Same reason the URI above is safe
      * to leave first: nothing linkifies `pubky://`, so the cover is the first link found.
      *
-     * The title and author name are truncated because they are not always the user's own:
-     * announcing a follow or a clone quotes another account's manifest, and pubky-app-specs
-     * rejects a post over `post_short_content_max_length` (2,000 characters). A post that fails
-     * validation is written and then never indexed, which is the one failure mode with no visible
-     * symptom.
+     * **The author is credited as a mention, which is why the key is written out in full.** Nexus
+     * scans post content for [MENTION_PREFIX] followed by exactly 52 characters of z-base-32,
+     * writes a MENTIONED edge and notifies that account, and pubky.app renders the pair as a link
+     * to their profile — so a follow or a clone tells the author it happened instead of only the
+     * announcer's own followers. A display name could not do that, and it is the wrong identifier
+     * for a credit that outlives the post besides: self-declared, so two authors can credit as the
+     * same person, and changeable, so one can rename out of a credit already posted.
+     *
+     * The `pubky://` URI below is not a second mention: [MENTION_PREFIX] matches there too, but
+     * the 52 characters after it start `://` and fail the key check.
+     *
+     * The title is truncated because it is not always the user's own: announcing a follow or a
+     * clone quotes another account's manifest, and pubky-app-specs rejects a post over
+     * `post_short_content_max_length` (2,000 characters). A post that fails validation is written
+     * and then never indexed, which is the one failure mode with no visible symptom.
      */
     val content: String
         get() {
-            val by = authorName?.trim()?.takeIf { it.isNotEmpty() }
-                ?.let { " by ${it.ellipsized(MAX_AUTHOR_LENGTH)}" }
+            val by = authorPubky?.trim()
+                ?.takeIf { Pubky.isKey(it) }
+                ?.let { " by $MENTION_PREFIX$it" }
                 .orEmpty()
-            val title = deckTitle.trim().ellipsized(MAX_TITLE_LENGTH)
+            val title = "\"" + deckTitle.trim().ellipsized(MAX_TITLE_LENGTH) + "\""
             val icon = coverEmoji?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_ICON
             val headline = when (kind) {
                 Kind.Created -> "$icon I published a new deck on Loopky: $title"
-                Kind.Followed -> "$icon Now following the Loopky deck $title$by"
-                Kind.Cloned -> "$icon Cloned the Loopky deck $title$by into my library"
+                Kind.Followed -> "$icon Now following the Loopky deck: $title$by"
+                Kind.Cloned -> "$icon Cloned the Loopky deck: $title$by into my library"
             }
             val cover = coverImageUrl?.let { "\n\n$it" }.orEmpty()
             return "$headline\n\n${deckUri.value}$cover"
@@ -83,12 +94,12 @@ data class DeckAnnouncement(
 
     companion object {
         /** Everything an announcement says about a deck comes off the deck itself. */
-        fun of(deck: Deck, kind: Kind, authorName: String? = null): DeckAnnouncement =
+        fun of(deck: Deck, kind: Kind, authorPubky: String? = null): DeckAnnouncement =
             DeckAnnouncement(
                 kind = kind,
                 deckTitle = deck.title,
                 deckUri = deck.pubkyUri,
-                authorName = authorName,
+                authorPubky = authorPubky,
                 coverEmoji = deck.coverEmoji,
                 coverImageUrl = deck.previewableCoverUrl(),
                 tags = deck.announceableTags(),
@@ -96,7 +107,15 @@ data class DeckAnnouncement(
 
         private const val DEFAULT_ICON = "📚"
         private const val MAX_TITLE_LENGTH = 120
-        private const val MAX_AUTHOR_LENGTH = 40
+
+        /**
+         * What turns a key in a post body into a mention. `pk:` does the same and is deprecated
+         * upstream, so new posts use this one. Anything that is not an exact key is left out
+         * entirely rather than written as plain text: the prefix only reads as a mention when a
+         * whole key follows it, and `pubky` in front of a near-miss mentions nobody while looking
+         * like it should.
+         */
+        private const val MENTION_PREFIX = "pubky"
     }
 }
 

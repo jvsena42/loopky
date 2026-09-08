@@ -1,5 +1,7 @@
 package com.github.jvsena42.loopky.data.pubky
 
+import com.github.jvsena42.loopky.domain.model.Pubky
+
 /**
  * Something a `pubky://` address can open to inside Loopky.
  *
@@ -36,12 +38,6 @@ object PubkyLinks {
     private const val PK_PREFIX = "pk:"
 
     private const val DECKS_PREFIX = "pub/loopky/decks/"
-
-    /** z-base-32, the alphabet a pubky is encoded in. */
-    private const val Z_BASE_32 = "ybndrfg8ejkmcpqxot1uwisza345h769"
-
-    /** A 32-byte key in z-base-32. Exact, because a bare token has no scheme vouching for it. */
-    private const val PUBKY_LENGTH = 52
 
     /** Punctuation a link keeps when it ends a sentence, which would otherwise join the deck id. */
     private const val TRAILING_PUNCTUATION = ".,;:!?)]}"
@@ -97,19 +93,11 @@ object PubkyLinks {
         .firstNotNullOfOrNull(::parseExact)
 
     /** True when [candidate] is shaped like a bare pubky. */
-    fun isPubky(candidate: String): Boolean =
-        candidate.length == PUBKY_LENGTH && candidate.all { it in Z_BASE_32 }
+    fun isPubky(candidate: String): Boolean = Pubky.isKey(candidate)
 
-    /**
-     * True when [candidate] could be the *beginning* of a pubky — what search has to work with
-     * when someone was handed part of a key rather than the whole thing.
-     *
-     * Deliberately loose where [isPubky] is exact: it only rules out text that could not be a key
-     * at all, so a name in the search box does not cost a pubky-prefix lookup. [minLength] is the
-     * caller's floor — the indexer has one of its own.
-     */
+    /** True when [candidate] could be the *beginning* of a pubky. See [Pubky.isKeyPrefix]. */
     fun isPubkyPrefix(candidate: String, minLength: Int): Boolean =
-        candidate.length in minLength..PUBKY_LENGTH && candidate.all { it in Z_BASE_32 }
+        Pubky.isKeyPrefix(candidate, minLength)
 
     /** The canonical shareable address of someone's profile. */
     fun profileUri(pubky: String): String = "$SCHEME$pubky"

@@ -530,14 +530,16 @@ class DeckDetailViewModelTest {
 
     @Test
     fun `following a deck offers to announce it and credit the author`() = runTest(mainDispatcher) {
-        deckRepo.decks["deck1"] = testDeck(authorPubky = "friendpk", title = "Kanji N5")
-        identityRepo.profiles["friendpk"] = PubkyIdentity(
-            pubky = "friendpk",
+        // A real 52-character key here, unlike the "friendpk" stand-in the other cases use: the
+        // credit is a mention, and a mention only renders for a whole key.
+        deckRepo.decks["deck1"] = testDeck(authorPubky = FRIEND_PUBKY, title = "Kanji N5")
+        identityRepo.profiles[FRIEND_PUBKY] = PubkyIdentity(
+            pubky = FRIEND_PUBKY,
             displayName = "Ada",
             avatarUrl = null,
             bio = null,
         )
-        val vm = viewModel(authorPubky = "friendpk")
+        val vm = viewModel(authorPubky = FRIEND_PUBKY)
         advanceUntilIdle()
 
         vm.onToggleFollow()
@@ -545,7 +547,9 @@ class DeckDetailViewModelTest {
 
         val prompt = assertNotNull(assertIs<DeckDetailUiState.Content>(vm.state.value).sharePrompt)
         assertEquals(DeckAnnouncement.Kind.Followed, prompt.kind)
-        assertTrue(prompt.preview.contains("Kanji N5 by Ada"), prompt.preview)
+        // A mention of the author's key, not the "Ada" the profile fetch resolved: this is what
+        // tells the author their deck was followed.
+        assertTrue(prompt.preview.contains("\"Kanji N5\" by pubky$FRIEND_PUBKY"), prompt.preview)
         // Nothing written until the user says so.
         assertTrue(discoveryRepo.announcements.isEmpty())
     }
@@ -663,6 +667,9 @@ class DeckDetailViewModelTest {
         assertTrue(discoveryRepo.announcements.isEmpty())
     }
 }
+
+/** An author whose key is a real one, for the announcement's mention. */
+private const val FRIEND_PUBKY = "3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo"
 
 /** Previously graded and back up for review — "due" in the sense the counters now mean. */
 private fun dueState(cardId: String) = SrsState(

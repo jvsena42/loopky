@@ -279,7 +279,7 @@ class DeckDetailViewModel(
                     // Only a follow is worth announcing. Unfollowing is not news, and posting it
                     // would tell someone's followers what they stopped reading.
                     if (!wasFollowing) {
-                        offerShare(deck, DeckAnnouncement.Kind.Followed, current.author.displayName)
+                        offerShare(deck, DeckAnnouncement.Kind.Followed, current.author.pubky)
                     }
                 }
                 .onFailure { err ->
@@ -342,7 +342,7 @@ class DeckDetailViewModel(
                     val offered = offerShare(
                         clone,
                         DeckAnnouncement.Kind.Cloned,
-                        current.author.displayName,
+                        current.author.pubky,
                     )
                     // Navigate to the copy: it is what the user now owns, and the source screen
                     // would otherwise sit there looking unchanged. Held back while the prompt is
@@ -370,10 +370,10 @@ class DeckDetailViewModel(
     private suspend fun offerShare(
         deck: Deck,
         kind: DeckAnnouncement.Kind,
-        authorName: String?,
+        sourceAuthorPubky: String?,
     ): Boolean {
         if (!appPreferences.shareOnPubky.first()) return false
-        val announcement = DeckAnnouncement.of(deck, kind, authorName)
+        val announcement = DeckAnnouncement.of(deck, kind, sourceAuthorPubky)
         _state.update { s ->
             (s as? DeckDetailUiState.Content)?.copy(sharePrompt = DeckSharePrompt(announcement)) ?: s
         }
