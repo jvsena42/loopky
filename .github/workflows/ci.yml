@@ -84,6 +84,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The wrapper jar is the one supply-chain input nothing else asserts on: it is a binary in
+      # the repo that every other job executes before any of them can check anything. This
+      # compares it against Gradle's published checksums. Its companion is `distributionSha256Sum`
+      # in gradle-wrapper.properties — that pins the distribution the jar downloads, this pins the
+      # jar itself, and neither covers the other.
+      - name: The wrapper jar is the one Gradle published
+        uses: gradle/actions/wrapper-validation@v5
+
       - name: Set up JDK 17
         uses: actions/setup-java@v6
         with:
