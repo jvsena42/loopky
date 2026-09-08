@@ -78,7 +78,6 @@ fun localConfig(name: String): String? =
 
 plugins {
     alias(libs.plugins.androidApplication)
-    alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
@@ -167,13 +166,13 @@ android {
 dependencies {
     implementation(projects.shared)
 
+    implementation(platform(libs.compose.bom))
     implementation(libs.compose.runtime)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
     implementation(libs.compose.material3.adaptive)
-    implementation(compose.materialIconsExtended)
+    implementation(libs.compose.materialIconsExtended)
     implementation(libs.compose.ui)
-    implementation(libs.compose.components.resources)
     implementation(libs.compose.uiToolingPreview)
     implementation(libs.androidx.lifecycle.viewmodelCompose)
     implementation(libs.androidx.lifecycle.runtimeCompose)
