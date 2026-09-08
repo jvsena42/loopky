@@ -1092,9 +1092,11 @@ to, and `FlowObserver` / `FlowEffectSink` (`iosApp/DI/`) wrap it as an `Observab
 erase across the ObjC bridge, so values arrive as `Any` and are cast to the concrete `UiState` /
 `Effect` type the framework exports.
 
-**Not SKIE**, and not pending it: Kotlin 2.3.x predates SKIE support, so the bridge was hand-rolled
-instead. Worth revisiting only if SKIE catches up *and* the erased-generics casting becomes a
-burden.
+**Not SKIE**, and not pending it: the bridge was hand-rolled because SKIE did not support the
+Kotlin version this project was on when it was written, and nothing since has made it worth
+revisiting. That would take SKIE catching up *and* the erased-generics casting becoming a burden —
+and the more likely successor is Swift export (Alpha), which removes the ObjC bridge these
+workarounds exist for rather than papering over it.
 
 ### 9.3 Error handling
 
