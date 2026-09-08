@@ -62,6 +62,13 @@ xcodebuildmcp <workflow> --help                      # discover everything else;
 Xcode still works for hands-on debugging (open `iosApp/`), but prefer the CLI so a session can see the
 result. The `shared` module is consumed as a static framework (`baseName = "Shared"`, `isStatic = true`) — see `shared/build.gradle.kts`. **iOS runs against a real homeserver, and the core loop is verified** — see the iOS section of `journeys/RESULTS.md`. `iOSApp.swift` starts Koin via `doInitKoin(rawPubkyClient:)`, handing in the Swift `IosPubkyClient` — a dumb `[status, payload]` pass-through, since `kotlin.Result` and suspend functions cannot be implemented from Swift — which `IosPubkyClientAdapter` wraps into the shared `PubkyClient` contract on the Kotlin side. Sign in, paste import, publish, card editing, the study loop (including Type the answer and Listen), profiles, follows and settings all work.
 
+**Incremental klib compilation is on** (`kotlin.incremental.native=true`, #273), because the iOS
+edit-build-drive loop is where Kotlin/Native spends its time. It is **Beta and off by default
+upstream**, and no CI job can catch it misbehaving — every runner is fresh, so klib incrementality
+is a no-op there. Its failure mode is a stale klib outliving a source change, i.e. an iOS build
+that disagrees with the code in front of you. If one looks stale for no reason, turn it off in
+`gradle.properties` before suspecting anything else.
+
 **A simulator signs in by QR, not by deeplink.** Pubky Ring cannot be installed on one, so `pubkyauth://` is a dead end there; the QR sheet is raised automatically because `ringInstalledHere` is false, and you scan it from a real phone. The relay poll underneath is the same either way.
 
 **iOS is at feature parity as of #113.** Guest browsing, signup, restore, backup, tag browse,
