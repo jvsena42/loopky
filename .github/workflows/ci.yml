@@ -1,8 +1,12 @@
 name: CI
 
 on:
+  # No `branches:` filter on pull_request, deliberately. A stacked PR targets the branch below it
+  # rather than `main`, and a `branches: [main]` filter gives every PR in a stack but the bottom one
+  # zero checks — the reviewer sees a green tick that was never earned. The per-job path filtering
+  # below is what keeps the macOS rows off work that cannot affect them; the trigger is not the
+  # place to economise.
   pull_request:
-    branches: [main]
   push:
     branches: [main]
 
