@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -67,6 +69,36 @@ fun LoopkyLoadingScreen(
                     fontWeight = FontWeight.W600,
                 )
             }
+        }
+    }
+}
+
+/**
+ * The same loader sized to a section rather than the viewport, for a screen that keeps its own
+ * chrome on while it loads — [LoopkyLoadingScreen] fills the window, so inside a `verticalScroll`
+ * column it collapses.
+ */
+@Composable
+fun LoopkyLoadingBlock(
+    modifier: Modifier = Modifier,
+    message: String? = null,
+) {
+    val colors = LoopkyTheme.colors
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        LoopkyBouncingDots()
+        if (!message.isNullOrBlank()) {
+            Text(
+                text = message,
+                color = colors.foregroundMuted,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.W600,
+            )
         }
     }
 }
