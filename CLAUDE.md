@@ -128,7 +128,14 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   in the fork and checked in here, and a duplicate would have to stay byte-identical forever with
   nothing reporting it when it stopped. The group is declared *through*
   `applyDefaultHierarchyTemplate`; bare `dependsOn` edges silently switch the template off and
-  `iosMain` stops belonging to any compilation.
+  `iosMain` stops belonging to any compilation. Its membership predicate is
+  `withCompilations { it is KotlinMultiplatformAndroidCompilation }` and **not** `withAndroidTarget()`,
+  which matches only the old `com.android.library` target type: under
+  `com.android.kotlin.multiplatform.library` the group is built *without* the Android target in it,
+  `androidMain` falls back to `commonMain`, and the generated `uniffi.pubkycore` bindings vanish
+  from the Android compile (KT-80409, still open). Both failure modes are quiet, so
+  `shared/build.gradle.kts` asserts them in an `afterEvaluate` block — reproduce either by swapping
+  the predicate back and watching the check fire.
 - `shared/src/jvmMain/` — the desktop half: 0600 JSON file stores under `$XDG_CONFIG_HOME/loopky`,
   a `javax.imageio` `MediaProcessor` that degrades rather than throws, no-op `Speaker`/
   `SpeechRecognizer`/`BackgroundTasks`, and `libpubkycore` under JNA's resource layout

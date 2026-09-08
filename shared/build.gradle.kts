@@ -1,15 +1,29 @@
+import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
+import java.util.zip.ZipFile
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
-    androidTarget {
+    android {
+        namespace = "com.github.jvsena42.loopky.shared"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
+        }
+        // Host tests are opt-in under this plugin, and forgetting the opt-in is silent: AGP only
+        // warns when a `src/androidHostTest` directory exists, and there isn't one — `commonTest`
+        // is what runs here. Without this the ~1,373-test Android run simply disappears.
+        //
+        // `isReturnDefaultValues` because commonTest exercises shared classes that log through
+        // android.util.Log, which throws "not mocked" on a host JVM otherwise.
+        withHostTest {
+            isReturnDefaultValues = true
         }
     }
 
@@ -58,7 +72,7 @@ kotlin {
     applyDefaultHierarchyTemplate {
         common {
             group("jvmShared") {
-                withAndroidTarget()
+                withCompilations { it is KotlinMultiplatformAndroidCompilation }
                 withJvm()
             }
         }
@@ -107,7 +121,7 @@ kotlin {
             // else** — no `jvm`, no `watchos` — so a `commonMain` declaration fails to resolve for
             // the desktop target for a one-line reason that has nothing to do with the code.
             implementation(libs.kvault)
-            // The media re-host job (#53). Lives here rather than in :composeApp because
+            // The media re-host job (#53). Lives here rather than in :androidApp because
             // PlatformModule.android.kt binds it and :shared cannot depend on the app module.
             implementation(libs.androidx.work.runtime)
             // JNA is required by the UniFFI-generated Kotlin bindings (uniffi.pubkycore).
@@ -130,19 +144,58 @@ kotlin {
     }
 }
 
-android {
-    namespace = "com.github.jvsena42.loopky.shared"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+
+/**
+ * Two invariants this module's build silently loses if the Android target's type changes under it.
+ *
+ * `jvmShared` is a *custom* hierarchy group, and its membership predicate has to name a type. When
+ * the group stops matching the Android target, Gradle does not complain — it builds the group
+ * without it, `androidMain` falls back to depending on `commonMain`, and the first sign is the
+ * generated `uniffi.pubkycore` bindings vanishing from the Android compile (KT-80409). The iOS
+ * check is the older trap the source-set comment above describes, asserted rather than trusted.
+ */
+afterEvaluate {
+    val androidMain = kotlin.sourceSets.getByName("androidMain")
+    check(androidMain.dependsOn.any { it.name == "jvmSharedMain" }) {
+        "androidMain no longer depends on jvmSharedMain — the `jvmShared` group stopped matching " +
+            "the Android target (KT-80409), and uniffi.pubkycore is about to vanish from the " +
+            "Android compile."
     }
-    defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
+    check(kotlin.sourceSets.findByName("iosMain") != null) {
+        "iosMain is gone — the default hierarchy template is switched off."
     }
-    testOptions {
-        // commonTest code exercises shared classes that log via android.util.Log;
-        // return defaults instead of throwing "not mocked" in local unit tests.
-        unitTests.isReturnDefaultValues = true
+}
+
+/**
+ * The four `libpubkycore.so` are what every Pubky call runs on, and an AAR built without them is
+ * still a perfectly valid AAR: nothing fails until the first FFI call on a device, long past CI.
+ * `src/androidMain/jniLibs` is picked up by convention rather than by anything written down here,
+ * so this asserts the convention still holds — the same reason `:cli` has
+ * `checkNativeImageIsOneFile`.
+ */
+val checkJniLibsArePackaged = tasks.register("checkJniLibsArePackaged") {
+    group = "verification"
+    description = "Fails if the AAR is missing libpubkycore.so for any shipped ABI."
+    val abis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+    // Locals, not the task's project: reading either inside `doLast` captures the script object,
+    // which the configuration cache refuses to serialize. Same reason `:cli` does this.
+    val aarDir = layout.buildDirectory.dir("outputs/aar").get().asFile
+    dependsOn("bundleAndroidMainAar")
+    doLast {
+        val aar = aarDir.listFiles().orEmpty().firstOrNull { it.extension == "aar" }
+        checkNotNull(aar) { "no AAR in $aarDir to check" }
+        val present = ZipFile(aar).use { zip ->
+            zip.entries().asSequence()
+                .filter { it.name.endsWith("/libpubkycore.so") }
+                .map { it.name.substringAfterLast('/', "").let { _ -> it.name.split('/').dropLast(1).last() } }
+                .toSet()
+        }
+        val missing = abis - present
+        check(missing.isEmpty()) {
+            "${aar.name} is missing libpubkycore.so for ${missing.joinToString()}. Every Pubky " +
+                "call goes through it, and an app shipped without one fails at the first FFI " +
+                "call rather than at build time. Check that src/androidMain/jniLibs is still " +
+                "being packaged by the Android target."
+        }
     }
 }

@@ -132,7 +132,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Run unit tests
-        run: ./gradlew :shared:testDebugUnitTest :androidApp:testDebugUnitTest
+        run: ./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest
 
       - name: Assemble Android debug
         run: ./gradlew :androidApp:assembleDebug
@@ -509,7 +509,7 @@ jobs:
 
   ios:
     # **Nothing in this workflow touched iOS (#239).** `:shared:allTests` is never run — only
-    # `:shared:testDebugUnitTest` and `:shared:jvmTest` — so `:shared:compileKotlinIosSimulatorArm64`
+    # `:shared:testAndroidHostTest` and `:shared:jvmTest` — so `:shared:compileKotlinIosSimulatorArm64`
     # was never checked and `lintSwift` existed as a Gradle task CI never called.
     #
     # Business logic is shared, so a `commonMain` change breaks iOS as easily as Android. #237

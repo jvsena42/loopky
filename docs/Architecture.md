@@ -255,7 +255,7 @@ Bulk file import (`BulkImportViewModel`) rejoins this flow at the publish step, 
 ### 7.2 Android wiring
 
 - UniFFI-generated `pubkycore.kt` is checked in at `shared/src/jvmSharedMain/kotlin/uniffi/pubkycore/pubkycore.kt` (package `uniffi.pubkycore`) — one copy, shared by `androidMain` and `jvmMain`.
-- Native libraries live at `shared/src/androidMain/jniLibs/{arm64-v8a,armeabi-v7a,x86,x86_64}/libpubkycore.so`. AGP picks them up automatically and merges them into the APK.
+- Native libraries live at `shared/src/androidMain/jniLibs/{arm64-v8a,armeabi-v7a,x86,x86_64}/libpubkycore.so`. The Android target picks them up by convention and merges them into the AAR under `jni/<abi>/`, and from there into the APK. The convention is the *default source set's* directory, so a `.so` placed in `commonMain` or `jvmSharedMain` is silently ignored — these stay in `androidMain`. Nothing in the build declares this, so `:shared:checkJniLibsArePackaged` asserts it: an AAR built without them is a valid AAR, and the first sign of a missing one is an FFI call failing on a device long after CI went green.
 - JNA is required by the generated bindings and declared as an `@aar` dependency on `androidMain` (see `libs.versions.toml` → `jna`).
 - `UniffiPubkyClient` (`shared/src/jvmSharedMain/kotlin/com/github/jvsena42/loopky/data/pubky/UniffiPubkyClient.kt`) is the `PubkyClient` implementation, shared with the desktop/`:cli` target and Koin-bound in `PlatformModule.android.kt`. Blocking FFI calls are dispatched off the caller's thread.
 
@@ -1189,7 +1189,7 @@ emulator, and SRS flush failures that only appear when the network goes away mid
   `distributionSha256Sum` in `gradle-wrapper.properties` checks the bytes of the distribution that
   jar then downloads — `validateDistributionUrl` only ever checked the URL was well-formed. Move
   `distributionSha256Sum` with `distributionUrl`, from `https://services.gradle.org/distributions/<dist>.sha256`.
-- **Plugins (actual):** `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.jvm` (`:cli` only), `com.android.library`/`com.android.application`, `org.jetbrains.kotlin.plugin.serialization`, the Compose Multiplatform + Compose-compiler plugins (Android-only Compose), `application` (`:cli`), and `io.gitlab.arturbosch.detekt`. Koin is a runtime dependency (no plugin). **No `app.cash.sqldelight` plugin** — SQLDelight is not adopted (§8.1).
+- **Plugins (actual):** `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.jvm` (`:cli` only), `com.android.kotlin.multiplatform.library` (`:shared`)/`com.android.application` (`:androidApp`), `org.jetbrains.kotlin.plugin.serialization`, the Compose Multiplatform + Compose-compiler plugins (Android-only Compose), `application` (`:cli`), and `io.gitlab.arturbosch.detekt`. Koin is a runtime dependency (no plugin). **No `app.cash.sqldelight` plugin** — SQLDelight is not adopted (§8.1).
 - **iOS framework packaging:** `shared` is consumed as a static framework (`baseName = "Shared"`, `isStatic = true`) per `shared/build.gradle.kts`; an XCFramework / SPM packaging step can come later.
 - **Notable runtime dependencies** beyond the ones §3 lists: Coil 3 (`coil-compose`, `coil-network-okhttp`) for images, `androidx-navigation-compose`, `androidx-core-splashscreen`, `play-services-code-scanner` for the Ring QR scan, `androidx.work:work-runtime-ktx` (§9.6), `com.google.zxing:core` (the tablet sign-in panel and the CLI's terminal QR), `org.xerial:sqlite-jdbc` (the desktop `.apkg` reader only — Android uses platform SQLite), and JNA for the UniFFI bindings. **SKIE is not in the build and is not planned** — the Swift↔Flow bridge is hand-rolled (§9.2).
 - **`:cli` packaging:** `./gradlew :cli:installDist` produces `cli/build/install/loopky/bin/loopky`; `:cli:distTar` produces a tarball. Both need a JRE 17 on the target machine, which is short of the goal — see §13.11.
@@ -1211,7 +1211,7 @@ emulator, and SRS flush failures that only appear when the network goes away mid
   changed (#239):
   - *Kotlin lint* — `detektAll`, preceded by `gradle/actions/wrapper-validation`. This job has no
     path gate, so the wrapper check runs on everything.
-  - *Unit tests + Android build* — `:shared:testDebugUnitTest :androidApp:testDebugUnitTest`, then
+  - *Unit tests + Android build* — `:shared:testAndroidHostTest :androidApp:testDebugUnitTest`, then
     `:androidApp:assembleDebug`.
   - *CLI on Linux x86_64* — `:shared:jvmTest :cli:test`, then `installDist` and a smoke test of
     the jar's exit codes, envelope and completion scripts.

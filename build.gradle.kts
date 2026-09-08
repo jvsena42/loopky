@@ -5,7 +5,7 @@ plugins {
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader
     alias(libs.plugins.androidApplication) apply false
-    alias(libs.plugins.androidLibrary) apply false
+    alias(libs.plugins.androidKmpLibrary) apply false
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
@@ -40,7 +40,7 @@ subprojects {
                 "src/jvmMain/kotlin",
                 "src/commonTest/kotlin",
                 "src/jvmTest/kotlin",
-                "src/androidUnitTest/kotlin",
+                "src/androidHostTest/kotlin",
                 // :cli is a plain JVM module, so its sources are where a JVM module puts them
                 // rather than in a KMP source set.
                 "src/main/kotlin",
@@ -111,7 +111,8 @@ tasks.register("ciCheck") {
     description = "What CI runs, in one command (plus the iOS checks, on a Mac)."
     dependsOn(
         "detektAll",
-        ":shared:testDebugUnitTest",
+        ":shared:testAndroidHostTest",
+        ":shared:checkJniLibsArePackaged",
         ":androidApp:testDebugUnitTest",
         ":shared:jvmTest",
         ":cli:test",
