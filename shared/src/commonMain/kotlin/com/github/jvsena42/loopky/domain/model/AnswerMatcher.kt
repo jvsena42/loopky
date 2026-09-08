@@ -45,11 +45,38 @@ object AnswerMatcher {
      *
      * See [stripParentheticals] for why the aside never counts — it is the same argument in both
      * modes, so the drop lives here rather than in each caller.
+     *
+     * A hyphen or slash makes the word boundary the writer's choice, so when one is present the
+     * two sides are compared space-blind as well — see [joinsWords].
      */
     fun matches(given: String, expected: String, strictness: AnswerStrictness): Boolean {
         val target = normalize(stripParentheticals(expected), strictness)
-        return target.isNotEmpty() && normalize(stripParentheticals(given), strictness) == target
+        if (target.isEmpty()) return false
+        val answer = normalize(stripParentheticals(given), strictness)
+        if (answer == target) return true
+        return joinsWords(expected, given) && answer.despace() == target.despace()
     }
+
+    /**
+     * Whether either text compounds two words with a joiner, leaving the space up to the writer.
+     *
+     * "self-presentation", "self presentation" and "selfpresentation" are one answer: dropping the
+     * joiner as punctuation only settles the third, since it turns the first into "selfpresentation"
+     * and leaves the second two words long. A recognizer picks a side on its own and a typist has
+     * no way to know which the author wrote, so neither choice is theirs to fail on.
+     *
+     * The comparison stays gated on a joiner actually appearing: space-blind by default would let
+     * "not able" answer "notable".
+     */
+    private fun joinsWords(vararg texts: String): Boolean =
+        texts.any { text -> text.any { it in WORD_JOINERS } }
+
+    /** Characters that join two words with no space around them. */
+    private val WORD_JOINERS = charArrayOf(
+        '-', '\u2010', '\u2011', '\u2012', '\u2013', '\u2014', '\u2212', '/',
+    )
+
+    private fun String.despace(): String = replace(" ", "")
 
     /**
      * Grade a typed answer, reserving [TypedAnswerOutcome.NearMiss] for the accent-only slip.
