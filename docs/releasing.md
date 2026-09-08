@@ -77,7 +77,7 @@ nowhere. The run summary says so on every release where the token is missing.
 
 1. Bump the four numbers on a `chore/version-<x.y.z>` branch and merge the PR. `main` is protected;
    nothing is committed to it directly.
-   - `composeApp/build.gradle.kts` — `versionName`, and `versionCode` + 1
+   - `androidApp/build.gradle.kts` — `versionName`, and `versionCode` + 1
    - `iosApp/Configuration/Config.xcconfig` — `MARKETING_VERSION`, and `CURRENT_PROJECT_VERSION` to
      the **same number as the new `versionCode`**
    - `gradle.properties` — `loopkyCliVersion`

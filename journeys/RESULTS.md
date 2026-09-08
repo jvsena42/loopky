@@ -1146,7 +1146,7 @@ overlay cannot.
 
 All three fixed. Driven on the simulator, signed in as `ma8tms…`; every probe deck deleted
 afterwards. SwiftLint clean, `detektAll` clean, `:shared:allTests` green (1258 tests), and
-`:composeApp:assembleDebug` still builds against the shared change.
+`:androidApp:assembleDebug` still builds against the shared change.
 
 **Home's "See all" was a label, not a control.** `TodaysDecksSection` rendered `home_see_all` as a
 styled `Text`: it looked exactly like Android's button, announced nothing to VoiceOver, and did
@@ -1529,7 +1529,7 @@ Run against the **live production and staging networks** with
 | `--version` | ✅ `loopky 0.1.0 (schema 1)` |
 | Unit tests | ✅ 41 (`:cli:test`) — arg parsing, the card-file formats incl. accented round-trip, the JSON envelope, the exit-code mapping, the environment-mismatch guard |
 | `detektAll` | ✅ green |
-| Android and iOS unaffected by the source-set move | ✅ `:composeApp:assembleDebug` and `:shared:compileKotlinIosArm64` both build |
+| Android and iOS unaffected by the source-set move | ✅ `:androidApp:assembleDebug` and `:shared:compileKotlinIosArm64` both build |
 
 **Two bugs the hand-run caught that a green build did not.** `--version` printed the usage block,
 because the "you gave me nothing" branch fires on a command line with no positional words. And
@@ -1835,7 +1835,7 @@ write side. The refs are correct; they are unfetchable.
 
 ### 1. Coil's user-agent is refused — Android only
 
-`CardMediaImage` hands a remote ref straight to `AsyncImage`, and nothing in `composeApp` installed
+`CardMediaImage` hands a remote ref straight to `AsyncImage`, and nothing in `androidApp` installed
 an `ImageLoader`, so requests went out as `okhttp/4.12.0`. Wikimedia refuses that outright:
 
 ```
@@ -2504,7 +2504,7 @@ source's.
 | iOS: copy in the library under its new name, beside the original | ✅ PASS |
 | Android: guest view of a stranger's deck — `deck_follow` only, full width, no `deck_clone`/`deck_edit` | ✅ PASS (`emulator-5554`) |
 | Android: follow → Edit → copy | ⚪ **NOT RUN** — the emulator is still signed out (see the note above); needs an account |
-| `:shared:jvmTest`, `detektAll`, `lintSwift`, `:composeApp:assembleDebug`, iOS `simulator build` | ✅ PASS |
+| `:shared:jvmTest`, `detektAll`, `lintSwift`, `:androidApp:assembleDebug`, iOS `simulator build` | ✅ PASS |
 
 **Two bugs that only a device found, both older than this change and both fatal once the copy
 became the only route.**
@@ -2558,7 +2558,7 @@ emulator `emulator-5554` is signed out).
 | Android (`Pixel_Tablet`, medium 800dp and expanded 1280dp): named → no card; nameless → card under the hero in both | ✅ PASS — the card lives in `ProfileIdentityPane`, so the two-pane layout gets it in the left column without a second call site |
 | Android: `profile_name_nudge_action` opens the sheet with an empty name field; `profile_name_nudge_dismiss` removes the card; force-stop + relaunch → still gone | ✅ PASS |
 | Android: restore the name → hero back to `Name test`, no card | ✅ PASS |
-| `:shared:jvmTest`, `ciCheck` (detekt + `lintSwift` + iOS klib), `:composeApp:assembleDebug`, iOS `simulator build-and-run` | ✅ PASS |
+| `:shared:jvmTest`, `ciCheck` (detekt + `lintSwift` + iOS klib), `:androidApp:assembleDebug`, iOS `simulator build-and-run` | ✅ PASS |
 
 ### Worth knowing
 
@@ -2604,7 +2604,7 @@ restored to check the precedence rule.
 | Relaunch → card stays gone, badge stays | ✅ PASS on both platforms (SharedPreferences / `NSUserDefaults`) |
 | Android `Pixel_Tablet` at medium 800dp and expanded 1280dp | ✅ PASS — badge and card both live in `ProfileIdentityPane`, so the two-pane layout gets them in the left column |
 | iOS compact (`iPhone 17 Pro`) and regular (`iPad Air 13"`) | ✅ PASS — same `identityPane` on both |
-| `:shared:jvmTest`, `ciCheck` (detekt + `lintSwift` + iOS klib), `:composeApp:assembleDebug`, iOS `simulator build-and-run` | ✅ PASS |
+| `:shared:jvmTest`, `ciCheck` (detekt + `lintSwift` + iOS klib), `:androidApp:assembleDebug`, iOS `simulator build-and-run` | ✅ PASS |
 
 ### Worth knowing
 
@@ -2642,7 +2642,7 @@ AnkiWeb row that sat there is gone.
 | Portuguese (`pt-BR`) | ✅ PASS on both — Android via Settings → App language, iOS via `launch-app --launch-args -AppleLanguages "(pt-BR)"` |
 | Dark mode | ✅ PASS on both — `surfaceCard` over the ground, soft accent button legible |
 | Tablet portrait (1600dp) and landscape (2560dp) | ✅ PASS — card is inside `contentPane(Reading)`, so it caps with the rest |
-| `:composeApp:assembleDebug`, `detektAll`, `lintSwift`, iOS `simulator build-and-run` | ✅ PASS |
+| `:androidApp:assembleDebug`, `detektAll`, `lintSwift`, iOS `simulator build-and-run` | ✅ PASS |
 
 ### Worth knowing
 
@@ -2924,7 +2924,7 @@ Driven on the debug APK, signed in as `kfezy1`, following `jvsena42`'s public de
 | Discover → "Biomas e Sub-ecossistemas Brasileiros" (author `3jubjy…3f4rjo`) → Follow deck | ✅ PASS — pill flips to Following |
 | The announce prompt's `share_prompt_preview` | ✅ PASS — `Now following the Loopky deck: "Biomas e Sub-ecossistemas Brasileiros" by pubky3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo`, then the manifest URI |
 | "Not now" → nothing posted; unfollow to restore the account | ✅ PASS — unfollowing is never announced |
-| `:shared:jvmTest`, `detektAll`, `:composeApp:assembleDebug` | ✅ PASS |
+| `:shared:jvmTest`, `detektAll`, `:androidApp:assembleDebug` | ✅ PASS |
 
 **The post was not actually published**, so the mention has been verified against both parsers'
 source and against the exact string Loopky writes, but not yet seen rendered in a feed. That is the

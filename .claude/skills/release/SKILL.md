@@ -38,7 +38,7 @@ merge commit.
 3. **Create the release branch**: `git switch -c chore/version-<numeric_version>` off `main`.
 
 4. **Bump the four numbers (one commit)**:
-   - `composeApp/build.gradle.kts` — `versionName` to the numeric version, `versionCode` + 1.
+   - `androidApp/build.gradle.kts` — `versionName` to the numeric version, `versionCode` + 1.
    - `iosApp/Configuration/Config.xcconfig` — `MARKETING_VERSION` to the numeric version and
      `CURRENT_PROJECT_VERSION` to the **same number as the new Android `versionCode`**, keeping the
      two build numbers in lockstep. This xcconfig is the base configuration for the project's build

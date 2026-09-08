@@ -50,7 +50,7 @@ dependencyResolutionManagement {
     }
 }
 
-include(":composeApp")
+include(":androidApp")
 include(":shared")
 // The headless client (#54). A plain JVM module on :shared's jvm() target — no Android, no
 // Compose, no presentation layer; it consumes the repositories directly.

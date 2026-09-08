@@ -148,7 +148,7 @@ universal APK with no R8.
 - `shared/` — KMP module holding domain models, repositories (which own the business logic — there
   is no use-case layer), and the ViewModels both platforms consume. Platform glue (Pubky FFI, TTS,
   speech recognition, background work) is either `expect`/`actual` or a Koin-bound interface.
-- `composeApp/` — the Android app. Jetpack Compose screens, Navigation Compose, Koin. Android-only
+- `androidApp/` — the Android app. Jetpack Compose screens, Navigation Compose, Koin. Android-only
   despite the name; Compose Multiplatform UI is not used for iOS.
 - `iosApp/` — the iOS app. SwiftUI screens, `NavigationStack`, Koin bootstrap.
 
@@ -172,7 +172,7 @@ loopky/
 │       ├── androidMain/       # Pubky FFI, TTS, speech, WorkManager, Koin
 │       └── iosMain/           # Pubky adapter, TTS, speech, BGTaskScheduler, Koin
 │
-├── composeApp/src/androidMain/kotlin/com/github/jvsena42/loopky/
+├── androidApp/src/main/kotlin/com/github/jvsena42/loopky/
 │   ├── ui/                    # Compose screens + navigation
 │   ├── LoopkyApp.kt           # Application; starts Koin
 │   └── MainActivity.kt
@@ -214,7 +214,7 @@ Android `minSdk` 29, `targetSdk` 36.
 ### Android
 
 ```shell
-./gradlew :composeApp:assembleDebug
+./gradlew :androidApp:assembleDebug
 ```
 
 Or use the run configuration from your IDE's toolbar.

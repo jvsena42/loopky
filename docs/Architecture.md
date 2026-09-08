@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-Loopky is a **Kotlin Multiplatform** flashcards app targeting iOS and Android. Business logic — domain models, repositories, and ViewModels — lives in a single `shared` module (`commonMain`). Repositories own the business logic; there is no separate use-case layer. Each platform renders its own native UI: **Jetpack Compose** on Android (`composeApp/androidMain`) and **SwiftUI** on iOS (`iosApp/`). Identity, social graph, tags, and published decks are backed by **Pubky**, accessed through the UniFFI bindings that `pubky-core-ffi-fork` generates (§7).
+Loopky is a **Kotlin Multiplatform** flashcards app targeting iOS and Android. Business logic — domain models, repositories, and ViewModels — lives in a single `shared` module (`commonMain`). Repositories own the business logic; there is no separate use-case layer. Each platform renders its own native UI: **Jetpack Compose** on Android (`androidApp/androidMain`) and **SwiftUI** on iOS (`iosApp/`). Identity, social graph, tags, and published decks are backed by **Pubky**, accessed through the UniFFI bindings that `pubky-core-ffi-fork` generates (§7).
 
 **Android is feature-built end to end; iOS is wired but unproven.** Every surface described here runs on Android. The iOS app has its SwiftUI screens, a live Koin bootstrap and the Flow bridge, but has never been driven against a real homeserver — treat its behaviour as unverified rather than blocked.
 
@@ -39,7 +39,7 @@ loopky/
 │       ├── jvmMain/               ← desktop: file stores, ImageIO, no-op platform, libpubkycore
 │       └── iosMain/               ← Pubky FFI adapter, TTS, speech, BGTaskScheduler, Koin
 │
-├── composeApp/                    ← Android app
+├── androidApp/                    ← Android app
 │   └── src/androidMain/kotlin/.../
 │       ├── ui/                    ← Compose screens + navigation
 │       ├── LoopkyApp.kt           ← Application; starts Koin
@@ -62,7 +62,7 @@ loopky/
 
 ```
      ┌──────────────────┐  ┌────────────────┐  ┌──────────────┐
-     │ composeApp       │  │ iosApp         │  │ cli          │
+     │ androidApp       │  │ iosApp         │  │ cli          │
      │ (Compose + Nav)  │  │ (SwiftUI + NS) │  │ (no UI, §13) │
      └────────┬─────────┘  └────────┬───────┘  └──────┬───────┘
               │                     │                 │
@@ -89,7 +89,7 @@ Platform UI modules depend on `shared`. `shared` depends only on Kotlin stdlib, 
 
 > **Note (v1 reality vs. earlier design).** This doc originally sketched a SQLDelight cache, multiplatform-settings, and SKIE. None were ever added: repositories are Pubky-only with an in-memory per-session cache, secrets persist via `SecureSessionStore` (KVault), and the Swift↔Flow bridge is hand-rolled (§9.2). Sections below are annotated where they describe a *possible future* rather than the current build.
 
-> **UI strategy — settled.** Fully native UI per platform: Compose on Android, SwiftUI on iOS. Compose Multiplatform UI is **not** used for screens, and `composeApp` is Android-only despite the name.
+> **UI strategy — settled.** Fully native UI per platform: Compose on Android, SwiftUI on iOS. Compose Multiplatform UI is **not** used for screens, and `androidApp` is Android-only despite the name.
 
 ---
 
@@ -174,7 +174,7 @@ The shipped set, one package per surface under `presentation/`:
 
 Both platforms consume the same VMs. Only rendering, navigation, and platform glue differ.
 
-### 5.1 Android (`composeApp/androidMain`)
+### 5.1 Android (`androidApp/androidMain`)
 
 - **UI:** Jetpack Compose, Material 3 components styled by Loopky design tokens.
 - **State:** `val ui by vm.state.collectAsStateWithLifecycle()` in each screen composable.
@@ -194,7 +194,7 @@ Both platforms consume the same VMs. Only rendering, navigation, and platform gl
 
 Brand tokens are **hand-maintained in two places** and mirror each other — there is no token file
 and no codegen:
-- Android: `composeApp/.../ui/theme/LoopkyColors.kt`, applied through `LoopkyTheme`.
+- Android: `androidApp/.../ui/theme/LoopkyColors.kt`, applied through `LoopkyTheme`.
 - iOS: `iosApp/iosApp/Views/LoopkyColor.swift`.
 - The shared module does **not** hold a Compose theme.
 
@@ -1195,7 +1195,7 @@ emulator, and SRS flush failures that only appear when the network goes away mid
 - **`:cli` packaging:** `./gradlew :cli:installDist` produces `cli/build/install/loopky/bin/loopky`; `:cli:distTar` produces a tarball. Both need a JRE 17 on the target machine, which is short of the goal — see §13.11.
 - **Lint:** detekt with `detekt-formatting` + `detekt-compose-rules` (`config/detekt/detekt.yml`) via `./gradlew detektAll`; SwiftLint via `./gradlew lintSwift` (`iosApp/.swiftlint.yml`, generated `pubkycore.swift` excluded).
 - **`./gradlew ciCheck`** runs what CI runs, in one command — `detektAll`, the Android and JVM
-  test suites, `:cli:test`, `:composeApp:assembleDebug`, `:cli:installDist` — plus, **on a Mac
+  test suites, `:cli:test`, `:androidApp:assembleDebug`, `:cli:installDist` — plus, **on a Mac
   only**, `:shared:compileKotlinIosSimulatorArm64` and `lintSwift`. That host-conditional half is
   the point: a Mac checkout is strictly stronger than CI rather than differently weak, and the two
   checks it adds are exactly the ones a Linux runner cannot perform. `:cli:nativeCompile` is
@@ -1211,8 +1211,8 @@ emulator, and SRS flush failures that only appear when the network goes away mid
   changed (#239):
   - *Kotlin lint* — `detektAll`, preceded by `gradle/actions/wrapper-validation`. This job has no
     path gate, so the wrapper check runs on everything.
-  - *Unit tests + Android build* — `:shared:testDebugUnitTest :composeApp:testDebugUnitTest`, then
-    `:composeApp:assembleDebug`.
+  - *Unit tests + Android build* — `:shared:testDebugUnitTest :androidApp:testDebugUnitTest`, then
+    `:androidApp:assembleDebug`.
   - *CLI on Linux x86_64* — `:shared:jvmTest :cli:test`, then `installDist` and a smoke test of
     the jar's exit codes, envelope and completion scripts.
   - *CLI as a native binary* — `cli/Dockerfile` through buildx, then the one-file and FFI

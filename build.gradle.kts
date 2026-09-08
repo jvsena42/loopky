@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
+    // Temporary: :androidApp is a plain Android module until AGP 9 brings built-in Kotlin (#273).
+    alias(libs.plugins.kotlinAndroid) apply false
     // :cli is a plain JVM module. Declared here so the version resolves once, like every other
     // plugin in this build.
     alias(libs.plugins.kotlinJvm) apply false
@@ -110,10 +112,10 @@ tasks.register("ciCheck") {
     dependsOn(
         "detektAll",
         ":shared:testDebugUnitTest",
-        ":composeApp:testDebugUnitTest",
+        ":androidApp:testDebugUnitTest",
         ":shared:jvmTest",
         ":cli:test",
-        ":composeApp:assembleDebug",
+        ":androidApp:assembleDebug",
         ":cli:installDist",
     )
     if (OperatingSystem.current().isMacOsX) {
