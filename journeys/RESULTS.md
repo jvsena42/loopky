@@ -2964,6 +2964,24 @@ The tab-bar/rail check is the one that mattered most: `material3` left an alpha 
 `ExperimentalMaterial3ExpressiveApi` is now *internal*. Both components survived with the same
 `tab_*` tags in both width classes, so every journey that drives navigation still resolves.
 
+| Splash window on a dark launch | PASSED — see below |
+| DI graph resolves under Koin 4.2.2 | PASSED — new `KoinGraphTest` in `:shared:jvmTest` |
+
+**The splash was caught on video, not by racing a screenshot.** It is the one surface Compose
+cannot reach — drawn from `Theme.Loopky.Starting` before `MainActivity` exists — and
+`core-splashscreen` moved 1.0.1 → 1.2.0 with no source change beside it, so it needed looking at.
+`adb screenrecord` over a cold launch in dark mode, sampled at 6 fps: mean frame luminance goes
+18 (launcher) → 5 (app) with **no spike**, i.e. no white flash at the splash→Compose handoff, and
+the splash frame itself shows the fox on the dark ground rather than the cream one — so
+`values-night/` still resolves and `UiModeManager.setApplicationNightMode` is still feeding it the
+resolved theme.
+
+**Koin 4.0.2 → 4.2.2 had no automated coverage at all**, on the container that builds every
+repository and ViewModel: nothing outside a running app constructed the graph, so a binding the new
+version resolved differently would first appear at launch. `KoinGraphTest` now starts the real
+`sharedModule` + `jvmPlatformModule` on the desktop target and resolves all eleven repositories.
+Verified non-vacuous by asking it for an unbound type and watching `NoDefinitionFoundException`.
+
 **Not done, and why.** No journey was re-run end to end. Nothing in the stack touches app
 behaviour — the diff is build files, module paths and dependency coordinates — and the two
 behavioural surfaces it could plausibly disturb (FFI loading, navigation chrome) are covered above.

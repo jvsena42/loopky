@@ -107,6 +107,9 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }
+        jvmTest.dependencies {
+            implementation(libs.koin.test)
+        }
         jvmMain.dependencies {
             implementation(libs.jna)
             // The `.apkg` collection reader. Android has SQLite in the platform; a desktop JVM
