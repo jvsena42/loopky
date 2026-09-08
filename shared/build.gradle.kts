@@ -177,17 +177,19 @@ val checkJniLibsArePackaged = tasks.register("checkJniLibsArePackaged") {
     group = "verification"
     description = "Fails if the AAR is missing libpubkycore.so for any shipped ABI."
     val abis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
-    // Locals, not the task's project: reading either inside `doLast` captures the script object,
-    // which the configuration cache refuses to serialize. Same reason `:cli` does this.
+    // A local, not the project: reading `layout` inside `doLast` captures the script object, which
+    // the configuration cache refuses to serialize. Same reason `:cli` does this.
     val aarDir = layout.buildDirectory.dir("outputs/aar").get().asFile
-    dependsOn("bundleAndroidMainAar")
     doLast {
         val aar = aarDir.listFiles().orEmpty().firstOrNull { it.extension == "aar" }
-        checkNotNull(aar) { "no AAR in $aarDir to check" }
+        checkNotNull(aar) {
+            "no AAR in $aarDir — this task finalizes the bundle task rather than building one. " +
+                "Run `:shared:assembleAndroidMain`."
+        }
         val present = ZipFile(aar).use { zip ->
             zip.entries().asSequence()
                 .filter { it.name.endsWith("/libpubkycore.so") }
-                .map { it.name.substringAfterLast('/', "").let { _ -> it.name.split('/').dropLast(1).last() } }
+                .map { it.name.substringBeforeLast('/').substringAfterLast('/') }
                 .toSet()
         }
         val missing = abis - present
@@ -198,4 +200,17 @@ val checkJniLibsArePackaged = tasks.register("checkJniLibsArePackaged") {
                 "being packaged by the Android target."
         }
     }
+}
+
+/**
+ * Finalizes the bundle task rather than being depended on, so the assertion rides along with any
+ * build that produces an AAR instead of only with the workflows that remember to ask for it — the
+ * same wiring as `:cli:nativeCompile` and `checkNativeImageIsOneFile`.
+ *
+ * Note that `:androidApp:assembleDebug` does **not** reach here: AGP consumes this module's
+ * intermediate artifacts, not the packaged AAR. `:shared:assembleAndroidMain` is what produces one,
+ * and that is what `ciCheck` and CI ask for.
+ */
+tasks.matching { it.name == "bundleAndroidMainAar" }.configureEach {
+    finalizedBy(checkJniLibsArePackaged)
 }

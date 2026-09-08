@@ -134,6 +134,13 @@ jobs:
       - name: Run unit tests
         run: ./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest
 
+      # Builds the AAR, which finalizes `checkJniLibsArePackaged`. `assembleDebug` below does not
+      # reach it — AGP consumes `:shared`'s intermediate artifacts rather than the packaged AAR —
+      # so without this step the one assertion that the FFI libraries ship would run nowhere CI
+      # can see, which is the shape of #239 all over again.
+      - name: The AAR carries libpubkycore.so for every ABI
+        run: ./gradlew :shared:assembleAndroidMain
+
       - name: Assemble Android debug
         run: ./gradlew :androidApp:assembleDebug
 

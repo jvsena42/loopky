@@ -1199,7 +1199,7 @@ emulator, and SRS flush failures that only appear when the network goes away mid
 - **Lint:** detekt with `detekt-formatting` + `detekt-compose-rules` (`config/detekt/detekt.yml`) via `./gradlew detektAll`; SwiftLint via `./gradlew lintSwift` (`iosApp/.swiftlint.yml`, generated `pubkycore.swift` excluded).
 - **`./gradlew ciCheck`** runs what CI runs, in one command — `detektAll`, the Android and JVM
   test suites, `:cli:test`, `:androidApp:assembleDebug`, `:cli:installDist`,
-  `:shared:checkJniLibsArePackaged` — plus, **on a Mac
+  `:shared:assembleAndroidMain` (which finalizes `checkJniLibsArePackaged`) — plus, **on a Mac
   only**, `:shared:compileKotlinIosSimulatorArm64` and `lintSwift`. That host-conditional half is
   the point: a Mac checkout is strictly stronger than CI rather than differently weak, and the two
   checks it adds are exactly the ones a Linux runner cannot perform. `:cli:nativeCompile` is

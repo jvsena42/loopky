@@ -112,7 +112,7 @@ tasks.register("ciCheck") {
     dependsOn(
         "detektAll",
         ":shared:testAndroidHostTest",
-        ":shared:checkJniLibsArePackaged",
+        ":shared:assembleAndroidMain",
         ":androidApp:testDebugUnitTest",
         ":shared:jvmTest",
         ":cli:test",
