@@ -131,6 +131,47 @@ class AnswerMatcherTest {
     }
 
     @Test
+    fun aHyphenatedCompoundMatchesEverySpacingOfIt() {
+        val spellings = listOf("self-presentation", "self presentation", "selfpresentation")
+        for (strictness in AnswerStrictness.entries) {
+            for (other in spellings) {
+                // The hyphenated spelling is the one that says the boundary is optional, so it
+                // anchors each pair — see `spacingOnlyStopsCountingWhereAJoinerSaysSo`.
+                assertTrue(
+                    AnswerMatcher.matches(other, "self-presentation", strictness),
+                    "\"$other\" should answer \"self-presentation\" at $strictness",
+                )
+                assertTrue(
+                    AnswerMatcher.matches("self-presentation", other, strictness),
+                    "\"self-presentation\" should answer \"$other\" at $strictness",
+                )
+            }
+        }
+    }
+
+    @Test
+    fun theOtherJoinersCompoundTheSameWay() {
+        assertTrue(AnswerMatcher.matches("well known", "well\u2011known", Strict))
+        assertTrue(AnswerMatcher.matches("well known", "well\u2013known", Strict))
+        assertTrue(AnswerMatcher.matches("and or", "and/or", Strict))
+    }
+
+    @Test
+    fun spacingOnlyStopsCountingWhereAJoinerSaysSo() {
+        // Without one, the space is the author's and a different word is a different answer.
+        for (strictness in AnswerStrictness.entries) {
+            assertFalse(AnswerMatcher.matches("not able", "notable", strictness))
+        }
+    }
+
+    @Test
+    fun aCompoundStillHoldsTheRestOfThePhrase() {
+        assertFalse(AnswerMatcher.matches("self presentation", "self-preservation", Strict))
+        // The joiner relaxes the spacing, never the accents.
+        assertEquals(NearMiss, AnswerMatcher.judge("auto estima", "auto-estíma"))
+    }
+
+    @Test
     fun normalizeCollapsesRunsOfWhitespace() {
         assertEquals("el zorro corre", AnswerMatcher.normalize("  el\t zorro\n\ncorre ", Strict))
     }
