@@ -43,6 +43,33 @@ Re-verified on `emulator-5554` 2026-06-17 after adding the triage step + card op
 | Publish deck | PASSED — "Deck published! … Undo (7s)" + Done; `listen_enabled`/`speak_enabled` serialized into the manifest |
 | Done → deck detail | PASSED — deck "Sky", Total 2 / Due 2, In Your Library |
 
+Re-run on `emulator-5554` 2026-09-08 for the library loading-state fix, end to end: paste three
+comma lines → "Detected: comma" and a 3-card preview → triage keeps → publish "Animals PT" →
+"Deck published! … Undo (5s)" → Done → share prompt dismissed → deck detail (Total 3 / New 3) →
+back to the grid, which listed "Animals PT" without a restart.
+
+**One step of the script is stale, and it is not this change.** It asserts Listen and Speak are
+both ON by default on the publish screen; both are OFF, which is what the language-pair rule
+requires — turning one on obliges the author to declare `frontLang`/`backLang`, so the opt-ins
+cannot default on. The XML still says otherwise.
+
+### The library no longer hides its import controls while it loads
+
+`DecksScreen` used to swap its whole body for the full-screen loader, so a first launch — the only
+time there is no cached library to paint — put the paste CTA and the file import behind a spinner.
+Caught by wiping `shared_prefs/loopky.preferences.xml` (`run-as … rm`, which drops `deck_cache`)
+and bursting `screencap` over the cold load; the window is ~1.5 s, too short for `android layout`
+to poll.
+
+| Width | Result |
+| --- | --- |
+| Portrait (compact) | ✅ header, "Paste to import" and "Import from Anki or a file" all rendered, dots + "Shuffling your decks…" where the grid goes |
+| Landscape (expanded, nav rail) | ✅ same, inside the `PaneWidth.Wide` cap |
+| Tapping the paste CTA mid-load | ✅ opened "Paste cards" — visible *and* usable, not just painted |
+
+The `Pixel_Tablet` AVD could not cover this: it has no session and signing one in needs Pubky
+Ring, so the expanded-width check was made by rotating `Medium_Phone` (914dp landscape).
+
 ## 03–06 — runnable
 
 The study loop, discover, deck manage/delete, and profile/settings/sign-out journeys remain
