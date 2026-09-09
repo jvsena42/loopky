@@ -89,6 +89,50 @@ class PubkyErrorsTest {
     }
 
     @Test
+    fun aHomeserverFiveHundredOnTheSessionPreambleIsNotAnExpiry() {
+        // The failure this classifier exists to keep out. The fork wraps every `restore_session`
+        // failure in one prefix, so a homeserver 500 — or a 502 from whatever proxies it — arrives
+        // carrying both "session" and "import" and used to read as an expiry. That is not a
+        // mislabelling: `signOut` revokes the session on the homeserver and clears the local key,
+        // so a five-hundred that would have gone away on its own destroyed working credentials.
+        val serverError = PubkyError(
+            "Failed to import session: Request failed: Server responded with an error: " +
+                "500 Internal Server Error",
+        )
+
+        assertFalse(serverError.isSessionExpired())
+        assertFalse(serverError.requiresReauth())
+        assertEquals(ErrorReason.SessionUnreachable, serverError.toErrorReason())
+        // Offered, never taken: the user may sign in again, the app may not do it for them.
+        assertTrue(serverError.toErrorReason().offersSignIn)
+    }
+
+    @Test
+    fun aGatewayErrorInFrontOfTheHomeserverIsNotAnExpiryEither() {
+        val badGateway = PubkyError(
+            "Failed to import session: Request failed: Server responded with an error: 502 Bad Gateway",
+        )
+
+        assertFalse(badGateway.requiresReauth())
+        assertEquals(ErrorReason.SessionUnreachable, badGateway.toErrorReason())
+    }
+
+    @Test
+    fun aRefusedSessionIsAnExpiryEvenWhenTheMessageNamesNoSession() {
+        // 401 and 403 are the two statuses the fork itself treats as a rejected session. The write
+        // that reports one need not mention the session at all: `with_session` re-imports and
+        // re-sends, and the second rejection comes back under the *operation's* wording.
+        val refused = PubkyError(
+            "Failed to put pubky://rc3omrqq/pub/loopky/decks/d1/manifest.json: Request failed: " +
+                "Server responded with an error: 401 Unauthorized",
+        )
+
+        assertTrue(refused.isSessionExpired())
+        assertEquals(ErrorReason.SessionExpired, refused.toErrorReason())
+        assertFalse(refused.isSessionUnreachable())
+    }
+
+    @Test
     fun aRateLimitedSessionImportIsServerBusyNotAnExpiry() {
         // Seen on device deleting a deck: it fires one session-authenticated delete per record,
         // the homeserver 429s the session import, and the FFI wraps it in wording carrying both

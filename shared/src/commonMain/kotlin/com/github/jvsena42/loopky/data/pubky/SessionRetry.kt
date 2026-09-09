@@ -13,19 +13,30 @@ import kotlin.random.Random
  * session; treating it as an expiry told an offline user to sign in again, and `requiresReauth` would
  * have signed them out over a dropped connection. Checked first, because the wording overlaps.
  *
- * **A homeserver that answered with a status is never an expiry either.** The FFI wraps *whatever*
+ * **When the homeserver named a status, the status is the whole answer.** The FFI wraps *whatever*
  * went wrong while importing the session as `"Failed to import session: …"`, so a 429 read as an
  * expiry — and [withWriteRetry] routes an expiry into [SessionRevalidator.revalidate], itself a
  * homeserver call, which hit the same rate limit and returned terminally without ever reaching the
- * backoff branch that exists for a 429.
+ * backoff branch that exists for a 429. Only `401`/`403` mean the session was refused; every other
+ * status is trouble at the far end, and reading a `500` or a proxy's `502` as an expiry is not a
+ * mislabelling but a loss — `signOut` revokes the session on the homeserver and clears the local key
+ * with it, so a transient five-hundred permanently destroys credentials that were working.
  */
 internal fun Throwable.isSessionExpired(): Boolean {
     if (this !is PubkyError) return false
     val msg = message?.lowercase() ?: return false
     if (isNetworkFailure() || isRateLimited() || isQuotaExceeded()) return false
+    // The status decides it whenever the homeserver named one, in both directions. 401 and 403 are
+    // the two the fork itself treats as a rejected session (`is_session_rejected`), and they are an
+    // expiry even when the wording below is absent — a write that 401s after the cached session was
+    // already re-imported comes back as "Failed to put …", naming no session at all.
+    status?.let { return it == HTTP_UNAUTHORIZED || it == HTTP_FORBIDDEN }
     return "session" in msg &&
         ("import" in msg || "expired" in msg || "invalid" in msg)
 }
+
+private const val HTTP_UNAUTHORIZED = 401
+private const val HTTP_FORBIDDEN = 403
 
 /**
  * For ViewModels: true when the stored session could not be refreshed and the user has to sign in
