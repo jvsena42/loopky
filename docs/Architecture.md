@@ -1096,7 +1096,9 @@ erase across the ObjC bridge, so values arrive as `Any` and are cast to the conc
 Kotlin version this project was on when it was written, and nothing since has made it worth
 revisiting. That would take SKIE catching up *and* the erased-generics casting becoming a burden —
 and the more likely successor is Swift export (Alpha), which removes the ObjC bridge these
-workarounds exist for rather than papering over it.
+workarounds exist for rather than papering over it. **It was tried, on Kotlin 2.4.20** — it would
+indeed delete both files, and it does not build; §9.7 has the measurement and the one line to
+re-check when it does.
 
 ### 9.3 Error handling
 
@@ -1155,6 +1157,62 @@ Two things that are easy to get wrong:
 
 The iOS implementation is **written but unverified** — the iOS app has never been driven against a
 real homeserver.
+
+### 9.7 Swift export, measured (#273 §4)
+
+**Answer: not yet, and the thing that blocks it is `Result<T>`.** Kotlin 2.4.20 turns Swift export
+on by default — no `kotlin.experimental.swift-export.enabled`, which is now deprecated — so the
+spike was two lines of `shared/build.gradle.kts` and a run of `embedSwiftExportForXcode`. It is
+kept on the throwaway branch `spike/swift-export`, with the exact command in its commit message.
+This section is the acceptance list for the next time somebody looks, so it records what the
+generator *did*, not what the docs promise.
+
+**`:shared` does not export at all today.** `iosSimulatorArm64DebugSwiftExport` succeeds and writes
+a 38k-line `Shared.swift` and a 38k-line `Shared.kt` bridge — and then the bridge does not compile,
+in five errors from two shapes of our own code:
+
+- `fun interface SessionRevalidator { suspend fun revalidate(): Result<Session> }`. The generated
+  SAM constructor erases the return type and then hands a `suspend () -> Result<*>` to something
+  expecting `suspend () -> Result<Session>`.
+- `SectionState<T>` in `DiscoverUiState`. The generated initializer casts each field to
+  `SectionState<Any?>` and passes it where `SectionState<Tag>` is declared.
+
+Both are the documented "generic type parameters erase to their upper bounds" limitation, reaching
+the *generated code* rather than merely degrading an API. Neither has a workaround short of
+changing the Kotlin: making `SectionState` `internal` starts a cascade through `SearchViewModel`,
+`TagBrowseViewModel` and `PlatformModule.ios.kt` that ends at the whole discover package. Five
+errors is the complete list, though — one compilation unit, so nothing is hiding behind them.
+
+Against that, everything the issue's trap table predicted is real, and visible in the generated
+Swift:
+
+| CLAUDE.md trap | What the generator actually emits |
+|---|---|
+| `ErrorReason.sessionexpired`, `auto_`, `description_` | `public enum ErrorReason: CaseIterable, RawRepresentable` with `case SessionExpired` — names preserved, and a real `description`. 31 enums. |
+| a sealed interface crosses as an ObjC protocol, so an erased cast yields `nil` | a `…_SealedType` Swift enum per sealed type, `switch`-able with a `.value` accessor. 250 of them. |
+| `IosFlowWatcher` + `FlowObserver` | `any KotlinTypedStateFlow<T>` with a typed `.value` and `.asAsyncSequence()` → `KotlinFlowSequence<T>: AsyncSequence`, shipped as a generated `KotlinCoroutineSupport` module. 44 properties. Both files delete. |
+| `suspend` cannot cross | every `suspend fun` is `async throws`. |
+| the `value class` parameter-position segfault | **the shape is gone.** `Tag` exports as a boxed `final class` at *every* position, and the Kotlin bridge for `onTagSelected` does `dereferenceExternalRCRef(tag) as Tag` — an object dereference, not a pointer reinterpretation. The asymmetry that caused the crash (boxed in a `List`, erased to `NSString` at a parameter) does not exist here. Read off both sides of the generated bridge, not reproduced on a device — the module does not link. |
+
+**And the reason it is still not worth doing.** `kotlin.Result` is itself a value class, and it
+exports as an opaque, **untyped** `final class Result` whose `getOrNull()` returns
+`any _KotlinBridgeable`. **100 exported declarations return it** — the entire repository layer, all
+11 interfaces. So every call from Swift would need an `as!` per result, which is the erased-generics
+casting §9.2 already does, moved from one place (`FlowObserver`) to a hundred.
+
+That settles §4's question (a) directly. The cross-language inheritance in 2.4.20 is real — a Swift
+class inherits an exported Kotlin `open class` and implements a Kotlin interface, which is what the
+generated protocols' `KotlinRuntime.KotlinBase` constraint is for — so `IosPubkyClient` *could*
+conform to `PubkyClient` and delete `RawPubkyClient` + `IosPubkyClientAdapter`. But `PubkyClient` is
+`Result`-returning throughout, so the Swift implementation would have to build untyped
+`Result.Companion.shared.success(value:)` boxes for Kotlin to cast back. The adapter exists to keep
+`Result` on the Kotlin side; conforming directly would give that up to remove a layer. The
+`[status, payload]` protocol stays until `Result<T>` carries its type across.
+
+**Revisit when** the roadmap's *Swift Export: Alpha → Beta* (KT-86791) lands, and re-run the
+branch. The acceptance list is one line: the generated `Shared.kt` compiles without touching
+`SessionRevalidator` or `SectionState`, and `-> ExportedKotlinPackages.kotlin.Result` has a type
+argument. Nothing else in the table needs re-checking — it already passes.
 
 ---
 
@@ -1269,6 +1327,7 @@ passed roughly ninety Compose screens ago.
 6. **Local-key custody handover.** Exporting a key to Pubky Ring (§7.5) currently *copies* it — Loopky keeps its own copy and its session, and the UI says so. Whether "exported to Ring" should eventually mean dropping the local key and reverting to Ring-authorised sessions is deliberately unanswered: it is the strongest end state, but Ring gives no confirmation that the import succeeded, so a device that dropped its key on a failed export would be locked out. `LocalKeyStore` is shaped so this becomes a flag transition rather than a rewrite.
 7. **Cookie vs grant for local auth.** `signIn`/`signUp` bind to the FFI's cookie variants because the grant flow fails against Synonym's staging homeserver — `export_grant_session_secret` writes outside `/pub/`, which it refuses with a 403 (§7.8). Upstream marks the cookie flow deprecated, so this is a hold, not a destination; it needs a homeserver that accepts the grant flow before it can move. Tracked with #130.
 8. **Password-manager backup** needs a domain serving `assetlinks.json` and `apple-app-site-association` before either platform can start — #150. **iOS parity** for the whole local-key surface is #149; iOS has no signup screens at all today, so that is a build-out rather than an addition.
+9. **When the ObjC bridge goes.** Swift export is the successor to the `RawPubkyClient` pass-through and the `IosFlowWatcher` layer, and on Kotlin 2.4.20 it does not build here — §9.7 has the two shapes that stop it, the one line to re-check, and why `Result<T>` makes it worth waiting for rather than working around.
 
 ---
 
