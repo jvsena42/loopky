@@ -869,11 +869,16 @@ private fun SettingsSwitchRow(
         // The whole row toggles, not just the switch at the end of it — which is where a thumb
         // lands anyway, and what every other settings list on the device does. The switch takes a
         // null handler so it reports the state and leaves the click to the row.
-        modifier = Modifier.toggleable(
-            value = checked,
-            role = Role.Switch,
-            onValueChange = onCheckedChange,
-        ),
+        //
+        // The test tag rides the row for the same reason: `toggleable` merges the descendants'
+        // semantics, so a tag left on the switch disappears from `android layout` entirely.
+        modifier = Modifier
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = onCheckedChange,
+            )
+            .testTag(testTag),
         supportingContent = {
             Text(
                 text = description,
@@ -886,7 +891,6 @@ private fun SettingsSwitchRow(
             Switch(
                 checked = checked,
                 onCheckedChange = null,
-                modifier = Modifier.testTag(testTag),
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = colors.surfacePrimary,
                     checkedTrackColor = colors.accentPrimary,

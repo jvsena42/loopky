@@ -3108,3 +3108,61 @@ vaults from Koin field initialisers.
 vault-open path, neither of which appears in a scripted journey, and the vault path is exercised on
 every launch and was driven directly above instead. iOS was not built — `Vaults.kt` is `androidMain`
 and the classifier change is shared logic with test coverage.
+
+## Material 3 Expressive components, where 1.4.0 actually has them — 2026-09-09, `Medium_Phone` + `Pixel_Tablet` (staging)
+
+`androidx.compose.material3` resolves to **1.4.0** under BOM `2026.08.00`, and the first thing to
+record is what that version does *not* contain. The aar ships `ButtonGroupSmallTokens`,
+`SplitButton*Tokens`, `LoadingIndicatorTokens`, `FloatingToolbarTokens`, `DockedToolbarTokens`,
+`FabMenuBaselineTokens` and `AppBar{Medium,Large}FlexibleTokens` — and **no** `ButtonGroupKt`,
+`SplitButtonKt`, `ToggleButtonKt`, `LoadingIndicatorKt`, `FloatingToolbarKt`,
+`FloatingActionButtonMenuKt`, `WavyProgressIndicatorKt` or `MaterialShapesKt`. All of those exist in
+the cached `1.5.0-alpha17`. `MotionScheme.standard()`/`expressive()` are `internal` and `Shapes` has
+no `largeIncreased`, so the expressive motion and shape scales are alpha-only too.
+
+`ExperimentalMaterial3ExpressiveApi` being `internal` (already in CLAUDE.md) has a consequence worth
+stating: there is nothing gated behind an opt-in. What is not public is simply not in the artifact,
+and the components everyone reaches for first need the alpha channel #273 deliberately left.
+
+| Step | Result |
+| --- | --- |
+| Phone — tab bar unchanged (EqualWeight, icon over label) | ✅ PASS — `Medium_Phone`, Compact width |
+| Tablet portrait (800dp, **Medium**) — tab bar centred, icon beside label | ✅ PASS — the four items gather mid-bar instead of stretching across 800dp |
+| Tablet landscape (1280dp, **Expanded**) — rail, unchanged | ✅ PASS — `tab_*` tags at x=96, stacked |
+| `tab_study` / `tab_decks` / `tab_discover` / `tab_profile` present in all three | ✅ PASS |
+| Deck detail header via `AppBarRow` | ✅ PASS — `deck_edit`, `deck_delete`, `deck_share` all still in `android layout`; no overflow at phone width, which is correct for three 40dp buttons |
+| Settings rows as `ListItem` | ✅ PASS — identity, sharing, appearance, studying, about all render; the section's rounded background still shows through |
+| Settings switch toggles from its **label** | ✅ PASS — tapping "Ask before posting" flipped `['checked']` → unchecked and back |
+| Tablet landscape — deck-detail split dragged wider | ✅ PASS — handle moved, metadata column widened, card list narrowed |
+| Tablet landscape — split dragged to the floor | ✅ PASS — stops at 260dp with title, tags and stats all still readable |
+
+**A tag on a `toggleable` row's child disappears.** `settings_share_on_pubky` sat on the `Switch`;
+once the `ListItem` above it took `Modifier.toggleable`, the merged semantics swallowed it and
+`android layout` stopped listing it entirely — a green build, a working screen, and a test tag that
+no longer exists. It rides the row now. Anything else that gains a `toggleable`/`clickable` wrapper
+has to move its tag up with it.
+
+**`AppBarRow`'s content block is not a composition.** It runs inside a `derivedStateOf` to collect
+the items, so `stringResource` cannot be called in it — the labels are resolved above the call. The
+failure is a runtime one, not a compile error.
+
+**`VerticalDragHandle` carries no semantics, and its test tag does not survive either.** The tag was
+dropped rather than left as a hook nothing can find; a drag is not operable with TalkBack anyway,
+and both panes stay usable at the default width.
+
+**Rotation, again.** `settings put system user_rotation 1` needed a second attempt on
+`Pixel_Tablet`, and `dumpsys display` kept reporting `rotation=0` even after the window had turned
+— `dumpsys window displays | grep cur=` was the reading that matched the screenshot.
+
+**Considered and not adopted, with the reason each time.** `HorizontalMultiBrowseCarousel` — the
+keyline masking is built for imagery and Loopky's horizontal strips are fixed-width text tiles, so
+the squeeze clips words, which is the exact thing `scrollEdgeFade` exists to stop reading as a bug.
+`TopSearchBar`/`ExpandedFullScreenSearchBar` — designed for search *over* content, while Loopky's
+search is its own route; adopting it is a navigation change, not a component swap.
+`SingleChoiceSegmentedButtonRow` for the theme picker — "System default" / "Padrão do sistema" has
+no chance in a quarter of a phone's width, and the dropdown is deliberately the twin of the language
+picker beside it. `ModalWideNavigationRail` — `LoopkyNavRail` pins `railExpanded = false` on
+purpose and four one-word labels do not need a 220dp drawer. `Card` for `DeckTile` — the tile's
+shadow is tinted from `shadowElevationXHigh`, and `Card`'s elevation API has no ambient/spot colour.
+`BadgedBox` on a tab — the due count lives in `HomeViewModel` and the shell has no VM, so it is
+plumbing plus a product decision rather than a component swap.

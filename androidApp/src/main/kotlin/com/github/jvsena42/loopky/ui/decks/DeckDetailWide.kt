@@ -245,7 +245,6 @@ internal fun WideDeckDetail(
                 VerticalDragHandle(
                     modifier = Modifier
                         .align(Alignment.CenterVertically)
-                        .testTag("deck_detail_pane_handle")
                         .draggable(
                             orientation = Orientation.Horizontal,
                             interactionSource = handleInteractionSource,
