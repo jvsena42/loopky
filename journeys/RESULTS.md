@@ -3275,3 +3275,29 @@ kept reporting `rotation=0` after the window had turned; `dumpsys window display
 the reading that matched the screenshot. The emulator also lost its network twice and reported
 "You're offline" until the app was force-stopped and relaunched — not a Loopky fault, but it costs a
 few minutes each time.
+
+## Foreign profile — the pubky.app button's lime halo — ✅ PASS (2026-09-09)
+
+The one control on the foreign profile that leads off Loopky now sits in pubky.app's own
+`#C8FF00`, so its origin is visible without the mark itself having to carry a colour that cannot
+be read on either ground. Driven on `emulator-5554` (Pixel_9, signed in as Cosmic-Crystal-Panda)
+and on the iPhone 17 simulator, on Silver-Otter-Sparrow's and `xm31yq…`'s profiles.
+
+| Step | Result |
+| --- | --- |
+| Android, light | ✅ PASS — a clean lime halo around the white circle, no wash into the Follow pill beside it |
+| Android, dark | ✅ PASS — lime, not olive: the alpha lifts to 0.95 on the dark ground (see below) |
+| iOS, light | ✅ PASS — same halo from two SwiftUI shadows |
+| Self-profile CTA card | ➖ not glowed — tried, and dropped at the user's request: the card is large enough that the halo reads as a highlighted row rather than a brand mark |
+
+**An elevation shadow cannot make a glow, and the first attempt proved it.** `Modifier.shadow`'s
+colour is cast by a light *above the screen*: it lands offset to the lower right and survives only
+as a tint, so lime came out as an olive smudge under one edge — invisible enough that the first
+build read as "no change at all". `Modifier.dropShadow` (Compose UI 1.9+, in this BOM) draws the
+colour as given and centred, which is what a halo is.
+
+**A shadow composites, so one alpha cannot serve both palettes.** `#C8FF00` at 0.6 over the dark
+ground lands on `#7D9D07` — an olive that is no longer pubky's colour — while the same 0.6 on
+cream already reads as lime. Both platforms carry two alphas. The ground is read off the palette
+(`surfacePrimary.luminance()`, and iOS's trait collection) rather than from `isSystemInDarkTheme()`,
+which answers about the *device* and so is wrong for anyone who has picked a theme in Settings.

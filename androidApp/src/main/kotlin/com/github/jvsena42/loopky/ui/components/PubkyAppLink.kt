@@ -20,6 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -49,12 +53,14 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 
 /**
  * The button that leaves for pubky.app: the mark alone, in the same outlined 48dp circle Copy and
- * Share wear, so it carries no more weight in the row than they do.
+ * Share wear, so it carries no more weight in the row than they do — lit by [PubkyLime].
  *
- * Monochrome, in Share's grey. pubky.app sets the mark in lime on black, but that disc was the
- * highest-contrast thing on a cream screen and pulled the eye before the primary action beside it
- * — and the lime without it is the faintest thing on the screen. The shape alone says whose logo
- * this is, so it wears the same grey as the icons it sits with.
+ * The mark stays monochrome, in Share's grey. pubky.app sets it in lime on black, but that disc
+ * was the highest-contrast thing on a cream screen and pulled the eye before the primary action
+ * beside it — and the lime *as ink* is the faintest thing on the screen, 1.3:1 on cream. The
+ * brand colour is carried by the glow underneath instead, where being pale costs it nothing: a
+ * shadow is spread light, not a legibility surface. That is also why the alpha is this high next
+ * to the accent's `0x33` — lime has nowhere near orange's density against cream.
  */
 @Composable
 fun PubkyAppIconButton(
@@ -67,6 +73,11 @@ fun PubkyAppIconButton(
     Box(
         modifier = modifier
             .size(48.dp)
+            // `dropShadow`, not the elevation `shadow` the accent hero uses: an elevation shadow
+            // is cast by a light above the screen, so it lands offset to one side and its colour
+            // survives only as a tint — lime came out as an olive smudge under the lower-right
+            // edge. This one draws the colour as given, centred, so the circle sits in a halo.
+            .dropShadow(CircleShape, pubkyGlow())
             .clip(CircleShape)
             .background(colors.surfaceCard)
             .border(1.dp, colors.borderSubtle, CircleShape)
@@ -136,6 +147,36 @@ fun PubkyAppProfileCta(
             modifier = Modifier.size(18.dp),
         )
     }
+}
+
+/**
+ * pubky.app's lime, `#C8FF00` — the `--brand` of pubky-app's own stylesheet.
+ *
+ * Deliberately *not* a `LoopkyColors` token: it is another product's identity, and the palette is
+ * Loopky's. It lives beside the mark it belongs to, and `PubkyAppLink.swift` holds the same value
+ * for the same reason.
+ */
+private val PubkyLime = Color(0xFFC8FF00)
+
+/**
+ * The halo under the button: one lime for both palettes, no offset — nothing here is lit from
+ * above — and two alphas.
+ *
+ * The alpha has to move because a shadow *composites* rather than adds: `#C8FF00` at 0.6 over the
+ * dark ground lands on `#7D9D07`, an olive that is no longer the brand colour, while the same 0.6
+ * on cream is already a strong lime. The ground is read off the palette rather than from
+ * `isSystemInDarkTheme()`, which answers about the device and so is wrong for anyone who has
+ * chosen a theme in Settings.
+ */
+@Composable
+private fun pubkyGlow(): Shadow {
+    val onDark = LoopkyTheme.colors.surfacePrimary.luminance() < 0.5f
+    return Shadow(
+        radius = 12.dp,
+        color = PubkyLime,
+        spread = 1.dp,
+        alpha = if (onDark) 0.95f else 0.6f,
+    )
 }
 
 /**

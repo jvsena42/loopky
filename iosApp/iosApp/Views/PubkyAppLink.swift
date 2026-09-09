@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The two ways Loopky points at pubky.app.
 ///
@@ -30,8 +31,44 @@ struct PubkyMark: View {
     }
 }
 
+/// pubky.app's lime, and the halo the icon button below wears.
+///
+/// Deliberately *not* a `LoopkyColor` entry: it is another product's identity, and that palette is
+/// Loopky's. It lives beside the mark it belongs to, and `PubkyAppLink.kt` holds the same values
+/// for the same reason.
+private enum PubkyBrand {
+    /// `#C8FF00`, the `--brand` of pubky-app's own stylesheet.
+    static let lime = UIColor(red: 200 / 255, green: 1, blue: 0, alpha: 1)
+
+    /// One lime for both schemes — a glow is light, and light does not invert with the ground —
+    /// but two alphas, because a shadow *composites* rather than adds: the lime at the light
+    /// value over the dark ground lands on an olive that is no longer the brand colour, while the
+    /// same value on cream already reads as lime.
+    static let glowNear = glow(light: 0.70, dark: 0.85)
+    static let glowFar = glow(light: 0.50, dark: 0.65)
+
+    private static func glow(light: CGFloat, dark: CGFloat) -> Color {
+        Color(UIColor { lime.withAlphaComponent($0.userInterfaceStyle == .dark ? dark : light) })
+    }
+}
+
+private extension View {
+    /// Two shadows rather than one, because SwiftUI's is a literal blur with no elevation model to
+    /// lean on: the near one reads as the edge of the light, the far one is the halo. A single
+    /// radius gives either a hard ring or a formless smudge. Neither is offset — nothing here is
+    /// lit from above.
+    func pubkyGlow() -> some View {
+        shadow(color: PubkyBrand.glowNear, radius: 6)
+            .shadow(color: PubkyBrand.glowFar, radius: 16)
+    }
+}
+
 /// The button that leaves for pubky.app, in the same circle Share wears beside it — so it carries
-/// no more weight in the row than that does.
+/// no more weight in the row than that does — lit by ``PubkyBrand``'s halo.
+///
+/// The mark itself stays grey: the lime *as ink* is the faintest thing on a cream screen, 1.3:1,
+/// and the dark plate that would fix that made this secondary control louder than the primary
+/// action beside it. The brand colour rides underneath instead, where being pale costs it nothing.
 struct PubkyAppIconButton: View {
     var action: () -> Void
 
@@ -39,7 +76,7 @@ struct PubkyAppIconButton: View {
         Button(action: action) {
             PubkyMark(size: 22)
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(LoopkyColor.surfaceCard))
+                .background(Circle().fill(LoopkyColor.surfaceCard).pubkyGlow())
                 .overlay(Circle().stroke(LoopkyColor.borderSubtle, lineWidth: 1))
         }
         .buttonStyle(.plain)
