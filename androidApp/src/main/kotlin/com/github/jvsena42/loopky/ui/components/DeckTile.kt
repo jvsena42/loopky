@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -59,17 +61,21 @@ fun DeckTile(
     val colors = LoopkyTheme.colors
     val shape = RoundedCornerShape(20.dp)
 
-    Column(
-        modifier = modifier
-            .shadow(
-                elevation = 24.dp,
-                shape = shape,
-                ambientColor = colors.shadowElevationXHigh,
-                spotColor = colors.shadowElevationXHigh,
-            )
-            .clip(shape)
-            .background(colors.surfaceCard)
-            .clickable(onClick = onClick),
+    // A native [Card] for the container, ripple and click handling — but the shadow stays a
+    // `Modifier.shadow`, because `CardDefaults.cardElevation` has no ambient or spot colour and
+    // Loopky tints both from `shadowElevationXHigh`. The card's own elevation is therefore zero:
+    // two shadows under one tile is one shadow too many.
+    Card(
+        onClick = onClick,
+        modifier = modifier.shadow(
+            elevation = 24.dp,
+            shape = shape,
+            ambientColor = colors.shadowElevationXHigh,
+            spotColor = colors.shadowElevationXHigh,
+        ),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = colors.surfaceCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         // Cover area
         DeckCover(
