@@ -3339,3 +3339,36 @@ of the check now scans the Swift for it.
   is invisible to `snapshot-ui` and needs a person to tap. Converted and lint-clean, not driven.
 - `publish_progress_count` at n=1: the progress line is transient, and the substitution shape it
   uses is the one the home row verified at n=1 in both languages.
+
+## Discover tiles — a cover that fitted instead of filling, and a last row under the tab bar (#255) — ✅ PASS (2026-09-09)
+
+Driven on the **iPhone 17 simulator**, signed in as `aefhom…` on staging, Discover tab, against
+the same grid that filed the issue.
+
+| Step | Result |
+| --- | --- |
+| Landscape cover ("Biomas e Sub-ec…", "GCSE Biology") | ✅ PASS — full width, as before |
+| Square / portrait cover ("Periodic Table", "Terms Fantasy b…", "Gross Anatomy", "Regiões Brasileir…") | ✅ PASS — now corner to corner; every tile in the grid follows one rule |
+| Emoji-only tile ("yyyyyZ", "Math Symbols") | ✅ PASS — fallback unchanged, cover colour still fills the area |
+| End of the browse grid | ✅ PASS — the last row's title and "50 cards · jvsena42" clear the tab bar; before, "GCSE Biology: In…" ended the scroll behind it |
+| Library grid and Home rows | ✅ PASS — unchanged. Both are `.fill` call sites, but every deck this account owns is on its emoji fallback, so what was actually seen there is the fallback path |
+| Deck editor's 64pt cover thumbnail, portrait source (pasted link, discarded) | ✅ PASS — filled and cropped square, no spill over the title beside it (#166 stays fixed) |
+| `./gradlew lintSwift`, iOS `simulator build` | ✅ PASS |
+
+**The image was sizing its own box.** `aspectRatio(contentMode: .fill)` reports the *enlarged*
+size to the parent rather than filling what it is handed, so a cover drawn on its own in the
+tile's `ZStack` decided how wide the cover area was — and a square or portrait source made it
+narrower than the card while a landscape neighbour happened to fill it. `CardMediaImage` now draws
+a `.fill` picture as `Color.clear.overlay { … }.clipped()`, which is Android's
+`ContentScale.Crop` + `fillMaxSize` and cannot be influenced by the source's aspect ratio. `.fit`
+is untouched — card media is fitted on purpose.
+
+**Painting the cover background red is what settled it.** The strip beside an inset cover is
+`accentPrimarySoft`, a pale cream a hair off `surfaceCard`, so at a glance it reads as the card's
+own surface and the defect looks like the *image* being narrow rather than the box being wrong. A
+throwaway red fill answered it in one screenshot: red down the side before, none after.
+
+**The bottom padding is conditional, and that is not a role check in disguise.** Discover carries
+the same 100pt Home and the library reserve for the floating tab bar — but the guest shell is
+Discover *alone, with no tab bar* (`MainView`), so a guest gets the plain end-of-scroll padding
+and not 100pt of empty space.
