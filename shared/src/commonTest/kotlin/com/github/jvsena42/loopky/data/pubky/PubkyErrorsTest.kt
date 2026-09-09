@@ -89,6 +89,37 @@ class PubkyErrorsTest {
     }
 
     @Test
+    fun theForksMarkerIsBelievedAheadOfEveryHeuristicHere() {
+        // The fork classifies from the typed `pubky::Error` and says so. Both of these carry no
+        // status to read — an `Error::Authentication`, and a rejection reported under the write's
+        // own verb — so the marker is the only thing naming them (pubky/pubky-core-ffi#31).
+        val authRefused = PubkyError(
+            "Session rejected: the homeserver refused this session as invalid: " +
+                "Failed to delete: request expired (authentication)",
+        )
+        val underTheWritesVerb = PubkyError(
+            "Session rejected: the homeserver refused this session as invalid: Failed to put: " +
+                "Request failed: Server responded with an error: 401 Unauthorized",
+        )
+
+        assertTrue(authRefused.requiresReauth())
+        assertEquals(ErrorReason.SessionExpired, authRefused.toErrorReason())
+        assertTrue(underTheWritesVerb.requiresReauth())
+        assertEquals(ErrorReason.SessionExpired, underTheWritesVerb.toErrorReason())
+    }
+
+    @Test
+    fun theForksMarkerSentenceStillReadsAsAnExpiryWithoutTheMarkerCheck() {
+        // The migration guarantee, asserted from this side too: the marker's sentence keeps the
+        // words "session" and "invalid", so a build that has the new binary and an older classifier
+        // still recognises the one failure it most needs to.
+        val marked = "Session rejected: the homeserver refused this session as invalid: x".lowercase()
+
+        assertTrue("session" in marked)
+        assertTrue("invalid" in marked)
+    }
+
+    @Test
     fun aHomeserverFiveHundredOnTheSessionPreambleIsNotAnExpiry() {
         // The failure this classifier exists to keep out. The fork wraps every `restore_session`
         // failure in one prefix, so a homeserver 500 — or a 502 from whatever proxies it — arrives

@@ -4,8 +4,13 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 /**
- * Whether this failure looks like a session-expired error from the homeserver. Matched defensively on
- * substrings, because the FFI's error text is not a stable API contract.
+ * Whether the homeserver refused this session, so that only a new sign-in will fix it.
+ *
+ * **The fork answers this directly now.** It classifies from the typed `pubky::Error` — a `401`, a
+ * `403`, an `Error::Authentication` — and prefixes exactly those with `"Session rejected"`; every
+ * other session failure keeps its old wording, and *not* carrying the marker is what says "retry"
+ * (pubky/pubky-core-ffi#31). Everything below that check is the fallback for a binary that predates
+ * it, matched defensively on substrings because the FFI's error text is not a stable API contract.
  *
  * **A transport failure is never an expiry, however it is worded.** Offline, the FFI reports
  * `"Failed to import session: Request failed: HTTP transport error…"` — which contains both "session"
@@ -25,6 +30,18 @@ import kotlin.random.Random
 internal fun Throwable.isSessionExpired(): Boolean {
     if (this !is PubkyError) return false
     val msg = message?.lowercase() ?: return false
+    // The marker first, because it is the one answer here that was not inferred: the fork decided
+    // it from the typed `pubky::Error`. It names the two rejections nothing else can see — an
+    // `Error::Authentication`, which carries no status, and a rejection reported under a write's
+    // own verb (jvsena42/pubky-core-ffi-fork#5, pubky/pubky-core-ffi#31).
+    return SESSION_REJECTED in msg || looksRefused(msg)
+}
+
+/**
+ * The pre-marker fallback, kept separate so the guessing is not mistaken for the knowing above.
+ * Reached for a binary that predates the marker, which any given device may still be carrying.
+ */
+private fun PubkyError.looksRefused(msg: String): Boolean {
     if (isNetworkFailure() || isRateLimited() || isQuotaExceeded()) return false
     // The status decides it whenever the homeserver named one, in both directions. 401 and 403 are
     // the two the fork itself treats as a rejected session (`is_session_rejected`), and they are an
@@ -34,6 +51,15 @@ internal fun Throwable.isSessionExpired(): Boolean {
     return "session" in msg &&
         ("import" in msg || "expired" in msg || "invalid" in msg)
 }
+
+/**
+ * The fork's marker for the one failure a new sign-in fixes, lowercased for the comparison above.
+ *
+ * Matched as a substring rather than a prefix because it is carried into an operation's own message
+ * too — a rejection that survives the FFI's retry is reported as "Session rejected: Failed to put:
+ * …", the write's wording intact behind it.
+ */
+private const val SESSION_REJECTED = "session rejected"
 
 private const val HTTP_UNAUTHORIZED = 401
 private const val HTTP_FORBIDDEN = 403
