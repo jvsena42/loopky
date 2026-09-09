@@ -39,6 +39,7 @@ A fresh session has none of this in context, so establish it before the first ed
                                         #     --output type=local,dest=cli/build/native/linux-x86-64 .
 ./gradlew detektAll                     # lint Kotlin on all subprojects (detekt + compose rules)
 ./gradlew lintSwift                     # lint iOS Swift (SwiftLint; needs `brew install swiftlint`)
+./gradlew checkStringPlurals            # count strings are plurals on both platforms (#267)
 ./gradlew ciCheck                       # everything CI runs, in one command — and on a Mac also
                                         # :shared:compileKotlinIosSimulatorArm64 + lintSwift, the two
                                         # checks a Linux runner cannot do. Not :cli:nativeCompile.
@@ -535,6 +536,17 @@ Two things that go with it. Never hardcode a user-facing string in a Composable 
 view; and a string ported between platforms needs its format specifiers converted (`%1$s` →
 `%1$@`, `%1$d` → `%1$lld` — see Build & run above, where all three ways that segfaults are
 written down).
+
+**A string carrying a count is a plural on both platforms, and `./gradlew checkStringPlurals`
+compares the two lists.** A plain catalog string where Android has a `<plurals>` renders the
+"other" form at every count — correct everywhere but 1, which is why the iOS home row read "0 due ·
+1 cards" for weeks (#267). Three things a fresh session will get wrong. `variations.plural` in the
+catalog always binds to **argument 1**: a plural agreeing with a later argument (the card total in
+`%1$lld due · %2$lld cards`) needs a named **`substitutions`** entry declaring its own `argNum`.
+Only `String.localizedStringWithFormat` resolves either one — `String(format:)` compiles, runs and
+silently renders the "other" form, so it is never right for a key with variations. And a plural is
+per language: pt-BR inflects adjectives English leaves alone, so one key's two localizations can
+legitimately be different shapes.
 
 ### Shared (Kotlin · `shared/commonMain`)
 
