@@ -233,24 +233,12 @@ struct DeckRow: View {
                     Text(deck.title)
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(LoopkyColor.foregroundPrimary)
-                    // The cached first paint knows the deck and not its badge.
-                    Text(deck.countsKnown
-                         ? String(
-                            format: NSLocalizedString("home_deck_due_cards", comment: ""),
-                            deck.dueCount, deck.cardCount
-                         )
-                         // localizedStringWithFormat, not String(format:): `card_count` is a
-                         // plural entry, and only this one resolves the variation — the other
-                         // renders "1 cards".
-                         : String.localizedStringWithFormat(
-                            NSLocalizedString("card_count", comment: ""),
-                            deck.cardCount
-                         ))
+                    Text(countsCaption)
                         .font(.system(size: 13))
                         .foregroundColor(LoopkyColor.foregroundMuted)
                 }
                 Spacer()
-                Text(deck.countsKnown ? "\(deck.dueCount)" : "—")
+                Text(deck.countsKnown ? "\(deck.dueCount == 0 ? deck.newCount : deck.dueCount)" : "—")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
@@ -262,6 +250,32 @@ struct DeckRow: View {
             .shadow(color: LoopkyColor.shadowElevationMedium, radius: 18, x: 0, y: 6)
         }
         .buttonStyle(.plain)
+    }
+
+    /// localizedStringWithFormat throughout, never String(format:): all three keys are plural
+    /// entries, and only this formatter resolves the variation — the other renders "1 cards".
+    /// The two-argument ones agree with the *card* count, which the catalog binds to argument 2
+    /// through a named substitution (#267).
+    private var countsCaption: String {
+        // The cached first paint knows the deck and not its badge.
+        guard deck.countsKnown else {
+            return String.localizedStringWithFormat(
+                NSLocalizedString("card_count", comment: ""),
+                deck.cardCount
+            )
+        }
+        // A freshly imported deck has nothing due and everything unseen. Saying "0 due" there
+        // described it as finished.
+        if deck.dueCount == 0 && deck.newCount > 0 {
+            return String.localizedStringWithFormat(
+                NSLocalizedString("home_deck_new_cards", comment: ""),
+                deck.newCount, deck.cardCount
+            )
+        }
+        return String.localizedStringWithFormat(
+            NSLocalizedString("home_deck_due_cards", comment: ""),
+            deck.dueCount, deck.cardCount
+        )
     }
 }
 

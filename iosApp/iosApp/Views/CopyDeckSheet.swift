@@ -47,8 +47,10 @@ struct CopyDeckSheet: View {
                 .font(.system(size: 20, weight: .heavy))
                 .foregroundColor(LoopkyColor.foregroundPrimary)
 
-            Text(verbatim: String(
-                format: NSLocalizedString("deck_detail_clone_dialog_message", comment: ""),
+            // localizedStringWithFormat, not String(format:): the message is a plural entry,
+            // and only this one resolves the variation (#267).
+            Text(verbatim: String.localizedStringWithFormat(
+                NSLocalizedString("deck_detail_clone_dialog_message", comment: ""),
                 cardCount
             ))
             .font(.system(size: 14))

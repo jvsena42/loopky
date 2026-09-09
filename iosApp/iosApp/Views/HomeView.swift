@@ -145,6 +145,9 @@ struct HomeDeckSummary: Equatable, Identifiable {
     let title: String
     let cardCount: Int
     let dueCount: Int
+    /// Cards never studied. Nothing about an unseen card is late, so the row says "N new" rather
+    /// than "0 due" when a deck has only these.
+    var newCount: Int = 0
     /// See `HomeContentData.countsKnown`: false means [dueCount] is a placeholder, not a claim.
     var countsKnown: Bool = true
     let coverInitial: String
@@ -155,7 +158,8 @@ struct HomeDeckSummary: Equatable, Identifiable {
     // here — enough for SwiftUI to notice a deck's cover arriving.
     static func == (lhs: HomeDeckSummary, rhs: HomeDeckSummary) -> Bool {
         lhs.id == rhs.id && lhs.title == rhs.title && lhs.cardCount == rhs.cardCount
-            && lhs.dueCount == rhs.dueCount && lhs.coverInitial == rhs.coverInitial
+            && lhs.dueCount == rhs.dueCount && lhs.newCount == rhs.newCount
+            && lhs.coverInitial == rhs.coverInitial
             && lhs.coverImage === rhs.coverImage && lhs.authorPubky == rhs.authorPubky
     }
 }

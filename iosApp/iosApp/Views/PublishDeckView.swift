@@ -192,8 +192,10 @@ struct PublishDeckView: View {
         VStack(alignment: .leading, spacing: 8) {
             if let progress = state.publishProgress {
                 ProgressView(value: progress).tint(LoopkyColor.accentPrimary)
-                Text(String(
-                    format: NSLocalizedString("publish_progress_count", comment: ""),
+                // The plural agrees with the *total*, so the catalog binds it to argument 2
+                // through a named substitution — which only this formatter resolves (#267).
+                Text(String.localizedStringWithFormat(
+                    NSLocalizedString("publish_progress_count", comment: ""),
                     state.publishedCardCount, state.cardCount
                 ))
                 .font(.system(size: 12))

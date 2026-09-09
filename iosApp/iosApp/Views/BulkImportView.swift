@@ -35,7 +35,10 @@ struct BulkImportView: View {
     }
 
     private var importLabel: String {
-        String(format: NSLocalizedString("bulk_import_cards", comment: ""), state.cardCount)
+        String.localizedStringWithFormat(
+            NSLocalizedString("bulk_import_cards", comment: ""),
+            state.cardCount
+        )
     }
 
     private var header: some View {
@@ -212,7 +215,10 @@ struct BulkImportView: View {
                 .foregroundStyle(LoopkyColor.foregroundPrimary)
 
             HStack(spacing: 8) {
-                chip(String(format: NSLocalizedString("bulk_cards_parsed", comment: ""), state.cardCount))
+                chip(String.localizedStringWithFormat(
+                    NSLocalizedString("bulk_cards_parsed", comment: ""),
+                    state.cardCount
+                ))
                 if !state.separatorLabel.isEmpty {
                     chip(String(
                         format: NSLocalizedString("bulk_detected_separator", comment: ""),
@@ -252,7 +258,9 @@ struct BulkImportView: View {
     @ViewBuilder
     private func note(_ count: Int, _ key: String) -> some View {
         if count > 0 {
-            Text(String(format: NSLocalizedString(key, comment: ""), count))
+            // localizedStringWithFormat, not String(format:): every key this is called with
+            // is a plural entry, and only this one resolves the variation (#267).
+            Text(String.localizedStringWithFormat(NSLocalizedString(key, comment: ""), count))
                 .font(.system(size: 12))
                 .foregroundStyle(LoopkyColor.foregroundMuted)
         }

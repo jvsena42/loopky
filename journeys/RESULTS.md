@@ -3301,3 +3301,41 @@ ground lands on `#7D9D07` — an olive that is no longer pubky's colour — whil
 cream already reads as lime. Both platforms carry two alphas. The ground is read off the palette
 (`surfacePrimary.luminance()`, and iOS's trait collection) rather than from `isSystemInDarkTheme()`,
 which answers about the *device* and so is wrong for anyone who has picked a theme in Settings.
+
+## Count strings — "1 cards" on iOS (#267) — ✅ PASS (2026-09-09)
+
+Driven on the **iPhone 17 simulator**, signed in as `aefhom…` on staging, in English and again
+with the app launched under `-AppleLanguages (pt-BR)`.
+
+| Step | Result |
+| --- | --- |
+| Home row, one-card deck ("Spray test") | ✅ PASS — **"1 new · 1 card"**, was "0 due · 1 cards" |
+| Home row, three-card decks | ✅ PASS — "3 new · 3 cards" |
+| Home row badge on a deck with nothing due | ✅ PASS — shows the new count (1), not 0, as on Android |
+| Same rows in pt-BR | ✅ PASS — "1 nova · 1 carta" / "3 novas · 3 cartas" |
+| Copy-deck sheet, followed 3-card deck | ✅ PASS — "an editable copy of all 3 cards", resolved rather than left as the "other" form by luck |
+| `./gradlew checkStringPlurals` | ✅ PASS, and fails as intended when either half of the defect is reintroduced |
+
+**The plural agreeing with argument 2 is a `substitutions` entry, not `variations.plural`.** A
+catalog plural block always binds to argument 1, so `home_deck_due_cards`, `home_deck_new_cards`
+and `publish_progress_count` — whose count is the *card total*, the second argument — carry a named
+substitution declaring its own `argNum`. There is no way to express this with a whole-string
+variation, which is why these three were not a straight conversion.
+
+**pt-BR needed a second substitution the English string does not have.** "N new" does not inflect
+in English; "N nova/novas" does. Two substitutions in one value (`%#@new@ · %#@cards@`, bound to
+arguments 1 and 2) is what the catalog is for, and it renders correctly — but it means the two
+localizations of one key are legitimately different shapes, so a reviewer diffing them will see an
+asymmetry that is not a mistake.
+
+**A correct catalog entry read with `String(format:)` renders the "other" form at every count.**
+Only `String.localizedStringWithFormat` resolves a variation. `deck_detail_clone_dialog_message`
+was a real plural read with the wrong formatter, which no build, lint or test can see — that half
+of the check now scans the Swift for it.
+
+### Not exercised
+
+- `bulk_*` counts at n=1: the file-import flow starts at the out-of-process document picker, which
+  is invisible to `snapshot-ui` and needs a person to tap. Converted and lint-clean, not driven.
+- `publish_progress_count` at n=1: the progress line is transient, and the substitution shape it
+  uses is the one the home row verified at n=1 in both languages.

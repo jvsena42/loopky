@@ -108,6 +108,12 @@ jobs:
       - name: Run detekt
         run: ./gradlew detektAll
 
+      # Reads two files and compares them, so it belongs on the always-run ubuntu job rather than
+      # the path-filtered macOS one — the defect it catches lives half in `iosApp` and half in
+      # `androidApp`, and either half alone can introduce it.
+      - name: Count strings are plurals on both platforms
+        run: ./gradlew checkStringPlurals
+
       - name: Upload detekt reports
         if: failure()
         uses: actions/upload-artifact@v7
