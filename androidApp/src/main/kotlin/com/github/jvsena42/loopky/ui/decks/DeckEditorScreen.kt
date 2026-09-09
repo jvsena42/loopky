@@ -27,7 +27,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -50,6 +49,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.VerticalDragHandle
+import androidx.compose.material3.VerticalDragHandleDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -938,21 +939,24 @@ private fun CardRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Long-press-and-drag handle. No content description:
-        // dragging is not operable with TalkBack, and announcing it would just be another
-        // dead control — the move buttons next to it are the accessible path to the same move.
+        // Long-press-and-drag handle — Material's own capsule, which grows under the finger as
+        // it is pressed and dragged, and brings the 48dp touch target the 24dp glyph never had.
+        // No content description: dragging is not operable with TalkBack, and announcing it
+        // would just be another dead control — the move buttons next to it are the accessible
+        // path to the same move. [isDragging] is the list's state, not the handle's, so the
+        // dragged colour is wired through both the pressed and dragged slots instead.
         //
         // Dropped entirely once the deck is bigger than a page: dragging one row across thousands
         // is not a usable gesture, and most of the rows it would cross are not even loaded (#52).
         // The position badge below is the affordance at that size.
         if (canDrag) {
-            Icon(
-                imageVector = Icons.Default.DragIndicator,
-                contentDescription = null,
-                tint = if (isDragging) colors.accentPrimary else colors.foregroundMuted,
-                modifier = dragHandleModifier
-                    .size(24.dp)
-                    .testTag("card_drag_handle"),
+            VerticalDragHandle(
+                modifier = dragHandleModifier.testTag("card_drag_handle"),
+                colors = VerticalDragHandleDefaults.colors(
+                    color = colors.foregroundMuted,
+                    pressedColor = colors.accentPrimary,
+                    draggedColor = colors.accentPrimary,
+                ),
             )
         }
 
