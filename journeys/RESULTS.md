@@ -512,6 +512,67 @@ what was lost is already said, and "sign in again" is the button directly undern
 
 ---
 
+## Profile paints from cache — 06 and 10 re-run (2026-09-09, `Medium_Phone` + `Pixel_Tablet`, staging)
+
+`ProfileScreen` returned early on `state.isLoading`, so every visit to the tab put a full-screen
+"Loading your profile" spinner over a name, an avatar and a deck count that had not changed since
+the last launch — 6–7 s against a real homeserver, on the tab the reader opens most. The header and
+the library counters now come off the persisted session and the deck snapshot, and only an account
+this device has never signed into still gets the spinner.
+
+| Step | Result |
+| --- | --- |
+| Cold start → Profile: hero + counts on the first frame | ✅ PASS — `kfezy1`, avatar initial, pubky chip, 7 Decks / 225 Cards, no spinner |
+| "Due" is an em dash until the SRS read answers | ✅ PASS — `—`, then `15` at +6.4 s |
+| Offline (`svc wifi disable && svc data disable`), cold start → Profile | ✅ PASS — same 7 / 225 / `—`; **not** 0 / 0 / 0 |
+| Back online, refresh | ✅ PASS — 7 / 225 / 15 |
+| Tablet portrait (medium, native density) | ✅ PASS — single column, bottom bar |
+| Tablet expanded (landscape, maximised) | ✅ PASS — two-pane, nav rail, both panes real |
+
+**A failed listing is not an empty library, and this change is what made that visible.** `load()`
+folded `listOwned()`'s failure into `emptyList()`, which was survivable while the screen was a
+spinner and became a regression the moment it painted first: the cached 7 / 225 turned into 0 / 0 a
+few seconds after the reader saw them. A failure now leaves every counter where it was — dashes
+included — and only a listing that actually answered may lower one.
+
+**Parallelising the three reads bought ~0.3 s, and the measurement is why that is stated rather than
+claimed.** The profile GET, `listOwned()` and `listFollowed()` are independent paths and now run
+together; end to end, four runs of the sequential version averaged 6.60 s against 6.35 s for the
+concurrent one. The win is real but small, because **`SrsRepositoryImpl.countsToday` is the actual
+cost** — it walks the deck list serially, one `queueForDeck` (a chunk fetch plus the SRS chunk
+records) per deck, so seven decks are seven round trips end to end. Making *that* concurrent would
+help Home as much as Profile, and it is deliberately not done here: `queueForDeck` already fans out
+internally at `MAX_IN_FLIGHT = 4`, and nesting a second `mapConcurrently` over it puts up to 16
+requests in flight against a homeserver measured to answer 429 at 8. It needs a shared budget, not a
+second semaphore, and that is its own change.
+
+`loadFollowCounts` also moved ahead of the deck listings, since it depends on none of them: the
+people counts now land at ~+1.7 s instead of after the whole load.
+
+**The nav rail's expand toggle is gone (user request).** `LoopkyNavRail` was a
+`ModalWideNavigationRail` whose header opened a 220dp drawer over the content; each item already
+carries its own one-word label under its icon, so the drawer showed the same four words a second
+time. Now a plain `WideNavigationRail` with `railExpanded = false`, no header, and
+`nav_rail_expand`/`nav_rail_collapse` dropped from both string catalogs. The `tab_*` tags and
+`nav_rail` are unchanged, so no journey script moves.
+
+**The rail is width-only, and that is not a portrait/landscape rule.** A portrait `Pixel_Tablet` at
+its native 320 dpi is 800 dp — medium — and gets the bottom bar, which is what a run at native
+density shows. The rail appeared in portrait only under a `wm density 280` override used to reach
+the expanded class after the emulator refused to rotate; at 914 dp it is doing exactly what
+`WindowWidthClass` asks. Nothing to fix, but worth knowing before reading a portrait screenshot with
+a rail in it.
+
+**Rotation, again, and worse than last time.** `settings put system user_rotation 1`,
+`adb emu rotate` and `wm size 2560x1600` all reported success and left `cur=1600x2560`; the display
+only turned after an unrelated `wm size reset`, and then put the app in a freeform desktop window
+that had to be maximised by tapping its title bar. `wm density 280` is the reliable way to reach the
+expanded width class on this AVD.
+
+**Not exercised: the sign-out half of 06.** It ends the session the rest of this pass needed, and
+nothing in this change touches it.
+
+
 # iOS
 
 First iOS runs ever recorded. Driven on the **iPhone 17 simulator (iOS 26.5)** via

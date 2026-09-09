@@ -7,6 +7,8 @@
     <action>Launch the Loopky app and verify the Home screen is shown</action>
     <action>Tap the element with resource-id "tab_profile" in the bottom tab bar</action>
     <action>Verify the profile screen shows the user's identity (name or truncated pubky)</action>
+    <action>Force-stop and relaunch the app, then tap "tab_profile" again and verify the hero (avatar, name, pubky chip) and the Decks/Cards counts are on screen immediately, with no full-screen "Loading your profile" spinner covering them — the persisted session and the deck snapshot are painted first and refreshed underneath</action>
+    <action>On that first paint verify the "Due" stat reads an em dash rather than "0", and that it becomes a real number once the load finishes; review state is not cached across launches, so a zero there would be a guess</action>
     <action>If the account has no display name (the hero falls back to the pubky), verify the "What should we call you?" card is shown under the hero with "Add name" (resource-id: profile_name_nudge_action) and "Not now" (resource-id: profile_name_nudge_dismiss); on a named account verify no such card appears</action>
     <action>If the card is shown, tap "Add name" and verify the Edit Profile sheet opens with an empty name field, then dismiss it</action>
     <action>If the card is shown, tap "Not now" and verify the card disappears; relaunch the app, return to the profile tab and verify it stays gone</action>
