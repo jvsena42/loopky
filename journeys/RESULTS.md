@@ -3067,10 +3067,34 @@ made it land right. Now it is named rather than inferred.
 | `pubkycore.kt` / `pubkycore.swift` after the rebuild | ✅ byte-identical — compared, not assumed; the marker is a Rust `const` and `SessionOpError` was never exported |
 | APK size | 145,308,622 (old libs) → 145,309,166 (new) — **+544 bytes**. Checked because the number looked like it had jumped 14 MB against an earlier build in the same session; it had not, that build predated an unrelated task |
 
-**The Linux desktop row is not rebuilt.** `bindings/desktop/linux-x86-64/libpubkycore.so` cross-builds
-in a container and Docker would not start here, so the `loopky` CLI keeps the old error surface on the
-platform it actually runs on until `./build_desktop.sh linux` is run. It matters least there — the CLI
-reports and exits rather than signing anyone out — but it is a real gap.
+### The Linux row, and the two silent failures it could have had — 2026-09-09
+
+`linux-x86-64/libpubkycore.so` cross-builds in a container, and Docker would not start on the first
+pass, so it briefly shipped with the old error surface on the platform the CLI actually runs on.
+Rebuilt with `./build_desktop.sh linux`, unchanged, once the engine came up.
+
+Two things checked rather than assumed, because neither shows up in a build log.
+
+**The glibc floor is still `GLIBC_2.34`.** `cli/Dockerfile` builds the native image inside
+`ubuntu:22.04` *because* this library needs 2.34 — a native image links against its builder's glibc,
+so building on anything newer produces a binary that refuses to start on hosts the library itself
+supports. The container that produces the `.so` runs `rust:1-bookworm`, a **moving tag** on glibc
+2.36, so the floor could have drifted upward on any rebuild and nothing would have said so until a
+downloaded binary died. Highest versioned symbol referenced is unchanged.
+
+**The marker is in the shipped bytes** — both strings, the import path's and `revalidate_session`'s
+`Ok(None)`. A green build says nothing about which source went into a 13 MB artifact.
+
+| Step | Result |
+| --- | --- |
+| `dlopen` under `ubuntu:22.04` (glibc 2.35, the CLI's own base) | ✅ PASS — loads, exports `ffi_pubkycore_uniffi_contract_version` |
+| The real CLI on Linux x86_64 (`eclipse-temurin:17-jdk-jammy`) | ✅ PASS — JNA finds the `.so` in the jar, `loopky 0.11.1 (schema 1)` |
+| Refused session from the **Linux** binary against staging | ✅ PASS — marker out, `"code":"session_expired"`, `"exit":4` |
+| All four rows vs the fork | ✅ byte-identical |
+
+`:shared:jvmTest` does **not** cover this: on a Mac it loads the darwin dylib, so 1,414 green tests
+would pass with the Linux row missing entirely — which is the same hole `ci.yml`'s `cli-linux` job
+exists for.
 
 **One momentary Keystore failure was permanent.** `openVaultOrNull` deleted the whole
 `EncryptedSharedPreferences` file on the *first* throw from `KVault`'s constructor. For a restored
