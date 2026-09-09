@@ -8,24 +8,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.jvsena42.loopky.R
@@ -35,14 +30,17 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import java.util.Calendar
 
 /**
- * The theme row — an `ExposedDropdownMenuBox` for the same reason [LanguageSection] is one, and so
- * that the two settings that both offer "System default" look like the same kind of choice.
+ * The theme row — four segments, the same shape iOS has had since the setting existed.
+ *
+ * It used to be an `ExposedDropdownMenuBox`, matching [LanguageSection] beside it. The two are not
+ * the same kind of choice: a language list is open-ended and a theme is four options that fit on
+ * one row, and putting four behind a menu cost two taps and hid what the alternatives even were.
+ * The language picker stays a dropdown for the reason it always was.
  *
  * Nothing recreates the activity here, unlike the language picker below API 33: the palette is a
  * `CompositionLocal` fed from a `StateFlow`, so the tap repaints the screen the user is standing
- * on — including this menu.
+ * on — including this row.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AppearanceSection(
     selected: AppTheme,
@@ -51,7 +49,6 @@ internal fun AppearanceSection(
 ) {
     val colors = LoopkyTheme.colors
     val context = LocalContext.current
-    var expanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -77,33 +74,39 @@ internal fun AppearanceSection(
             lineHeight = 16.sp,
             color = colors.foregroundMuted,
         )
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-            modifier = Modifier.fillMaxWidth(),
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("settings_theme"),
         ) {
-            OutlinedTextField(
-                value = stringResource(selected.labelRes()),
-                onValueChange = {},
-                readOnly = true,
-                singleLine = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    .fillMaxWidth()
-                    .testTag("settings_theme"),
-            )
-            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                AppTheme.entries.forEach { theme ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(theme.labelRes())) },
-                        onClick = {
-                            expanded = false
-                            if (theme != selected) onThemeChange(theme)
-                        },
-                        modifier = Modifier.testTag("settings_theme_option_${theme.name.lowercase()}"),
-                    )
-                }
+            AppTheme.entries.forEachIndexed { index, theme ->
+                SegmentedButton(
+                    selected = theme == selected,
+                    onClick = { if (theme != selected) onThemeChange(theme) },
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = AppTheme.entries.size,
+                    ),
+                    modifier = Modifier.testTag("settings_theme_option_${theme.name.lowercase()}"),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = colors.accentPrimarySoft,
+                        activeContentColor = colors.accentPrimary,
+                        activeBorderColor = colors.accentPrimary,
+                        inactiveContainerColor = Color.Transparent,
+                        inactiveContentColor = colors.foregroundSecondary,
+                        inactiveBorderColor = colors.borderSubtle,
+                    ),
+                    label = {
+                        // One line, ellipsised: four segments across a 360dp phone leave about
+                        // 80dp each, and "Automático" is longer than that at any readable size.
+                        Text(
+                            text = stringResource(theme.labelRes()),
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                )
             }
         }
     }

@@ -507,6 +507,8 @@
     <string name="component_tag_chip_remove">Remove tag</string>
 
     <!-- Navigation / tabs -->
+    <string name="nav_rail_expand">Show labels</string>
+    <string name="nav_rail_collapse">Hide labels</string>
     <string name="nav_tab_study">Today</string>
     <string name="nav_tab_decks">Decks</string>
     <string name="nav_tab_discover">Discover</string>
@@ -916,7 +918,7 @@
     <string name="settings_section_appearance">APPEARANCE</string>
     <string name="settings_theme_label">Theme</string>
     <string name="settings_theme_description">Applies to Loopky on this device only. Auto turns dark from %1$s to %2$s.</string>
-    <string name="settings_theme_system">System default</string>
+    <string name="settings_theme_system">System</string>
     <string name="settings_theme_auto">Auto</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
