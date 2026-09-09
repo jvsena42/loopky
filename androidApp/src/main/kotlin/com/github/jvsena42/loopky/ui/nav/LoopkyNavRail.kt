@@ -2,7 +2,6 @@ package com.github.jvsena42.loopky.ui.nav
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.WideNavigationRail
@@ -28,7 +27,6 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
  * Collapsed (icon over label) rather than expanded: four destinations with one-word labels do not
  * need a 220dp drawer, and the room saved goes to the content, which is the point of the rail.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoopkyNavRail(
     selectedTab: LoopkyTab,

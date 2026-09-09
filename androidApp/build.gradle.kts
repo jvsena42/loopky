@@ -1,5 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Base64
 import java.util.Properties
 
@@ -79,52 +77,8 @@ fun localConfig(name: String): String? =
         ?.ifEmpty { null }
 
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
-    alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-}
-
-kotlin {
-    androidTarget {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
-    }
-    
-    sourceSets {
-        androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.androidx.core.splashscreen)
-            implementation(libs.androidx.credentials)
-            implementation(libs.androidx.credentials.play.services.auth)
-            implementation(libs.koin.android)
-            implementation(libs.play.services.code.scanner)
-            implementation(libs.coil.compose)
-            implementation(libs.coil.network.okhttp)
-            implementation(libs.zxing.core)
-        }
-        commonMain.dependencies {
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.material3.adaptive)
-            implementation(compose.materialIconsExtended)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.androidx.navigation.compose)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            implementation(projects.shared)
-        }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
-        }
-    }
 }
 
 android {
@@ -210,6 +164,34 @@ android {
 }
 
 dependencies {
+    implementation(projects.shared)
+
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.runtime)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material3.adaptive)
+    implementation(libs.compose.materialIconsExtended)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.uiToolingPreview)
+    implementation(libs.androidx.lifecycle.viewmodelCompose)
+    implementation(libs.androidx.lifecycle.runtimeCompose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.koin.compose)
+    implementation(libs.koin.compose.viewmodel)
+
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.koin.android)
+    implementation(libs.play.services.code.scanner)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+    implementation(libs.zxing.core)
+
     debugImplementation(libs.compose.uiTooling)
+
+    testImplementation(libs.kotlin.test)
 }
 

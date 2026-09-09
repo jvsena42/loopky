@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-Loopky is a **Kotlin Multiplatform** flashcards app targeting iOS and Android. Business logic — domain models, repositories, and ViewModels — lives in a single `shared` module (`commonMain`). Repositories own the business logic; there is no separate use-case layer. Each platform renders its own native UI: **Jetpack Compose** on Android (`composeApp/androidMain`) and **SwiftUI** on iOS (`iosApp/`). Identity, social graph, tags, and published decks are backed by **Pubky**, accessed through the UniFFI bindings that `pubky-core-ffi-fork` generates (§7).
+Loopky is a **Kotlin Multiplatform** flashcards app targeting iOS and Android. Business logic — domain models, repositories, and ViewModels — lives in a single `shared` module (`commonMain`). Repositories own the business logic; there is no separate use-case layer. Each platform renders its own native UI: **Jetpack Compose** on Android (`androidApp/src/main`) and **SwiftUI** on iOS (`iosApp/`). Identity, social graph, tags, and published decks are backed by **Pubky**, accessed through the UniFFI bindings that `pubky-core-ffi-fork` generates (§7).
 
 **Android is feature-built end to end; iOS is wired but unproven.** Every surface described here runs on Android. The iOS app has its SwiftUI screens, a live Koin bootstrap and the Flow bridge, but has never been driven against a real homeserver — treat its behaviour as unverified rather than blocked.
 
@@ -39,8 +39,8 @@ loopky/
 │       ├── jvmMain/               ← desktop: file stores, ImageIO, no-op platform, libpubkycore
 │       └── iosMain/               ← Pubky FFI adapter, TTS, speech, BGTaskScheduler, Koin
 │
-├── composeApp/                    ← Android app
-│   └── src/androidMain/kotlin/.../
+├── androidApp/                    ← Android app
+│   └── src/main/kotlin/.../
 │       ├── ui/                    ← Compose screens + navigation
 │       ├── LoopkyApp.kt           ← Application; starts Koin
 │       └── MainActivity.kt        ← single activity, deeplink entry
@@ -62,7 +62,7 @@ loopky/
 
 ```
      ┌──────────────────┐  ┌────────────────┐  ┌──────────────┐
-     │ composeApp       │  │ iosApp         │  │ cli          │
+     │ androidApp       │  │ iosApp         │  │ cli          │
      │ (Compose + Nav)  │  │ (SwiftUI + NS) │  │ (no UI, §13) │
      └────────┬─────────┘  └────────┬───────┘  └──────┬───────┘
               │                     │                 │
@@ -89,7 +89,7 @@ Platform UI modules depend on `shared`. `shared` depends only on Kotlin stdlib, 
 
 > **Note (v1 reality vs. earlier design).** This doc originally sketched a SQLDelight cache, multiplatform-settings, and SKIE. None were ever added: repositories are Pubky-only with an in-memory per-session cache, secrets persist via `SecureSessionStore` (KVault), and the Swift↔Flow bridge is hand-rolled (§9.2). Sections below are annotated where they describe a *possible future* rather than the current build.
 
-> **UI strategy — settled.** Fully native UI per platform: Compose on Android, SwiftUI on iOS. Compose Multiplatform UI is **not** used for screens, and `composeApp` is Android-only despite the name.
+> **UI strategy — settled.** Fully native UI per platform: Compose on Android, SwiftUI on iOS. Compose Multiplatform UI is **not** used for screens, and since #273 the Compose Multiplatform *artifacts* are gone too — `:androidApp` is a plain `com.android.application` module with no `commonMain` to put a shared screen in, building against AndroidX Compose (`androidx.compose:compose-bom`), which is what it was importing all along.
 
 ---
 
@@ -174,7 +174,7 @@ The shipped set, one package per surface under `presentation/`:
 
 Both platforms consume the same VMs. Only rendering, navigation, and platform glue differ.
 
-### 5.1 Android (`composeApp/androidMain`)
+### 5.1 Android (`androidApp/src/main`)
 
 - **UI:** Jetpack Compose, Material 3 components styled by Loopky design tokens.
 - **State:** `val ui by vm.state.collectAsStateWithLifecycle()` in each screen composable.
@@ -194,7 +194,7 @@ Both platforms consume the same VMs. Only rendering, navigation, and platform gl
 
 Brand tokens are **hand-maintained in two places** and mirror each other — there is no token file
 and no codegen:
-- Android: `composeApp/.../ui/theme/LoopkyColors.kt`, applied through `LoopkyTheme`.
+- Android: `androidApp/.../ui/theme/LoopkyColors.kt`, applied through `LoopkyTheme`.
 - iOS: `iosApp/iosApp/Views/LoopkyColor.swift`.
 - The shared module does **not** hold a Compose theme.
 
@@ -255,7 +255,7 @@ Bulk file import (`BulkImportViewModel`) rejoins this flow at the publish step, 
 ### 7.2 Android wiring
 
 - UniFFI-generated `pubkycore.kt` is checked in at `shared/src/jvmSharedMain/kotlin/uniffi/pubkycore/pubkycore.kt` (package `uniffi.pubkycore`) — one copy, shared by `androidMain` and `jvmMain`.
-- Native libraries live at `shared/src/androidMain/jniLibs/{arm64-v8a,armeabi-v7a,x86,x86_64}/libpubkycore.so`. AGP picks them up automatically and merges them into the APK.
+- Native libraries live at `shared/src/androidMain/jniLibs/{arm64-v8a,armeabi-v7a,x86,x86_64}/libpubkycore.so`. The Android target picks them up by convention and merges them into the AAR under `jni/<abi>/`, and from there into the APK. The convention is the *default source set's* directory, so a `.so` placed in `commonMain` or `jvmSharedMain` is silently ignored — these stay in `androidMain`. Nothing in the build declares this, so `:shared:checkJniLibsArePackaged` asserts it: an AAR built without them is a valid AAR, and the first sign of a missing one is an FFI call failing on a device long after CI went green.
 - JNA is required by the generated bindings and declared as an `@aar` dependency on `androidMain` (see `libs.versions.toml` → `jna`).
 - `UniffiPubkyClient` (`shared/src/jvmSharedMain/kotlin/com/github/jvsena42/loopky/data/pubky/UniffiPubkyClient.kt`) is the `PubkyClient` implementation, shared with the desktop/`:cli` target and Koin-bound in `PlatformModule.android.kt`. Blocking FFI calls are dispatched off the caller's thread.
 
@@ -282,8 +282,11 @@ export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.1.12297006   # or whichever NDK you
 ./build_android.sh
 ./build_ios.sh
 # then, from loopky/
+# jvmSharedMain, not androidMain: one copy, shared by the Android and desktop targets. A second
+# copy under jvmMain would have to stay byte-identical forever with nothing reporting it when it
+# stopped.
 cp  ../pubky-core-ffi-fork/bindings/android/pubkycore.kt \
-    shared/src/androidMain/kotlin/uniffi/pubkycore/pubkycore.kt
+    shared/src/jvmSharedMain/kotlin/uniffi/pubkycore/pubkycore.kt
 cp -R ../pubky-core-ffi-fork/bindings/android/jniLibs/. \
       shared/src/androidMain/jniLibs/
 cp -R ../pubky-core-ffi-fork/bindings/ios/PubkyCore.xcframework \
@@ -1089,9 +1092,11 @@ to, and `FlowObserver` / `FlowEffectSink` (`iosApp/DI/`) wrap it as an `Observab
 erase across the ObjC bridge, so values arrive as `Any` and are cast to the concrete `UiState` /
 `Effect` type the framework exports.
 
-**Not SKIE**, and not pending it: Kotlin 2.3.x predates SKIE support, so the bridge was hand-rolled
-instead. Worth revisiting only if SKIE catches up *and* the erased-generics casting becomes a
-burden.
+**Not SKIE**, and not pending it: the bridge was hand-rolled because SKIE did not support the
+Kotlin version this project was on when it was written, and nothing since has made it worth
+revisiting. That would take SKIE catching up *and* the erased-generics casting becoming a burden —
+and the more likely successor is Swift export (Alpha), which removes the ObjC bridge these
+workarounds exist for rather than papering over it.
 
 ### 9.3 Error handling
 
@@ -1183,25 +1188,47 @@ emulator, and SRS flush failures that only appear when the network goes away mid
 
 ## 11. Build & tooling
 
-- **Gradle** with version catalog (`gradle/libs.versions.toml`).
-- **Plugins (actual):** `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.jvm` (`:cli` only), `com.android.library`/`com.android.application`, `org.jetbrains.kotlin.plugin.serialization`, the Compose Multiplatform + Compose-compiler plugins (Android-only Compose), `application` (`:cli`), and `io.gitlab.arturbosch.detekt`. Koin is a runtime dependency (no plugin). **No `app.cash.sqldelight` plugin** — SQLDelight is not adopted (§8.1).
+- **Gradle** with version catalog (`gradle/libs.versions.toml`). The wrapper is pinned at both
+  ends and the two halves cover different things: `gradle/actions/wrapper-validation` (CI) checks
+  the committed `gradle-wrapper.jar` against Gradle's published checksums, and
+  `distributionSha256Sum` in `gradle-wrapper.properties` checks the bytes of the distribution that
+  jar then downloads — `validateDistributionUrl` only ever checked the URL was well-formed. Move
+  `distributionSha256Sum` with `distributionUrl`, from `https://services.gradle.org/distributions/<dist>.sha256`.
+- **Plugins (actual):** `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.jvm` (`:cli` only), `com.android.kotlin.multiplatform.library` (`:shared`)/`com.android.application` (`:androidApp`), `org.jetbrains.kotlin.plugin.serialization`, the Compose-compiler plugin (`org.jetbrains.kotlin.plugin.compose`), `application` (`:cli`), and `io.gitlab.arturbosch.detekt`. Koin is a runtime dependency (no plugin). **No `app.cash.sqldelight` plugin** — SQLDelight is not adopted (§8.1).
 - **iOS framework packaging:** `shared` is consumed as a static framework (`baseName = "Shared"`, `isStatic = true`) per `shared/build.gradle.kts`; an XCFramework / SPM packaging step can come later.
-- **Notable runtime dependencies** beyond the ones §3 lists: Coil 3 (`coil-compose`, `coil-network-okhttp`) for images, `androidx-navigation-compose`, `androidx-core-splashscreen`, `play-services-code-scanner` for the Ring QR scan, `androidx.work:work-runtime-ktx` (§9.6), `com.google.zxing:core` (the tablet sign-in panel and the CLI's terminal QR), `org.xerial:sqlite-jdbc` (the desktop `.apkg` reader only — Android uses platform SQLite), and JNA for the UniFFI bindings. **SKIE is not in the build and is not planned** — the Swift↔Flow bridge is hand-rolled (§9.2).
+- **Compose:** AndroidX, not Compose Multiplatform (#273). One `androidx.compose:compose-bom` pins
+  runtime, foundation, ui, material3, material3-adaptive and the icon pack to a set released
+  together, so those artifacts carry no version of their own. Material 3 Expressive is **stable**
+  on this line — `ShortNavigationBar` and `WideNavigationRail` need no opt-in, and
+  `ExperimentalMaterial3ExpressiveApi` is internal.
+- **Lifecycle and navigation are Google's `androidx.*`**, not the JetBrains `org.jetbrains.androidx.*`
+  fork. Google publishes lifecycle as a multiplatform library itself now — iosArm64 and
+  iosSimulatorArm64 variants included — so the fork `:shared` used for its `commonMain` `ViewModel`
+  has nothing left to add. **Do not have both**: that is what broke `:cli:installDist` when
+  lifecycle moved to 2.11.0, two builds of the same classes arriving under one jar name.
+- **Notable runtime dependencies** beyond the ones §3 lists: Coil 3 (`coil-compose`, `coil-network-okhttp`) for images, `androidx.navigation:navigation-compose`, `androidx-core-splashscreen`, `play-services-code-scanner` for the Ring QR scan, `androidx.work:work-runtime-ktx` (§9.6), `com.google.zxing:core` (the tablet sign-in panel and the CLI's terminal QR), `org.xerial:sqlite-jdbc` (the desktop `.apkg` reader only — Android uses platform SQLite), and JNA for the UniFFI bindings. **SKIE is not in the build and is not planned** — the Swift↔Flow bridge is hand-rolled (§9.2).
 - **`:cli` packaging:** `./gradlew :cli:installDist` produces `cli/build/install/loopky/bin/loopky`; `:cli:distTar` produces a tarball. Both need a JRE 17 on the target machine, which is short of the goal — see §13.11.
 - **Lint:** detekt with `detekt-formatting` + `detekt-compose-rules` (`config/detekt/detekt.yml`) via `./gradlew detektAll`; SwiftLint via `./gradlew lintSwift` (`iosApp/.swiftlint.yml`, generated `pubkycore.swift` excluded).
 - **`./gradlew ciCheck`** runs what CI runs, in one command — `detektAll`, the Android and JVM
-  test suites, `:cli:test`, `:composeApp:assembleDebug`, `:cli:installDist` — plus, **on a Mac
+  test suites, `:cli:test`, `:androidApp:assembleDebug`, `:cli:installDist`,
+  `:shared:assembleAndroidMain` (which finalizes `checkJniLibsArePackaged`) — plus, **on a Mac
   only**, `:shared:compileKotlinIosSimulatorArm64` and `lintSwift`. That host-conditional half is
   the point: a Mac checkout is strictly stronger than CI rather than differently weak, and the two
   checks it adds are exactly the ones a Linux runner cannot perform. `:cli:nativeCompile` is
   deliberately *not* in it — it needs a GraalVM 25 in `GRAALVM_HOME`, which a checkout does not
   come with, and the one command every contributor is told to run must not fail on a machine where
   nothing is wrong.
-- **CI** (`.github/workflows/ci.yml`), on PR and push to `main`. Four jobs always, two more when
-  the paths that can break them changed (#239):
-  - *Kotlin lint* — `detektAll`.
-  - *Unit tests + Android build* — `:shared:testDebugUnitTest :composeApp:testDebugUnitTest`, then
-    `:composeApp:assembleDebug`.
+- **CI** (`.github/workflows/ci.yml`), on **every** pull request and on push to `main`. The
+  `pull_request` trigger deliberately carries no `branches:` filter: a stacked PR targets the
+  branch below it, and a `branches: [main]` filter would give every PR in a stack but the bottom
+  one zero checks — which GitHub renders as "no checks reported" beside a mergeable PR, an
+  absence that reads like a pass. Per-job path filtering is what keeps the 10x-billed macOS rows
+  off work that cannot affect them. Four jobs always, two more when the paths that can break them
+  changed (#239):
+  - *Kotlin lint* — `detektAll`, preceded by `gradle/actions/wrapper-validation`. This job has no
+    path gate, so the wrapper check runs on everything.
+  - *Unit tests + Android build* — `:shared:testAndroidHostTest :androidApp:testDebugUnitTest`, then
+    `:androidApp:assembleDebug`.
   - *CLI on Linux x86_64* — `:shared:jvmTest :cli:test`, then `installDist` and a smoke test of
     the jar's exit codes, envelope and completion scripts.
   - *CLI as a native binary* — `cli/Dockerfile` through buildx, then the one-file and FFI

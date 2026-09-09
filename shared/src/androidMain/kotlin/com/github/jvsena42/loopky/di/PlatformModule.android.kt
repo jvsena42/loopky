@@ -100,7 +100,7 @@ fun androidPlatformModule(
  *
  * [localNexusBaseUrl] is the **one** sanctioned way to point the indexer somewhere the environment
  * did not choose: a Nexus running on your own machine (#58). It is blank on a release build, which
- * `composeApp/build.gradle.kts` pins and `LoopkyApp` guards again — a shipped build reads the
+ * `androidApp/build.gradle.kts` pins and `LoopkyApp` guards again — a shipped build reads the
  * network its users publish to (#42). Anything else that wants a different indexer wants a
  * different [pubkyEnvironment].
  */

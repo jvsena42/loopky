@@ -35,7 +35,7 @@ complexity:
     ignoreAnnotated: ['Composable', 'Preview']
     excludes:
       - '**/commonTest/**'
-      - '**/androidUnitTest/**'
+      - '**/androidHostTest/**'
       - '**/jvmTest/**'
       - '**/src/test/kotlin/**'
       - '**/testing/**'
@@ -58,7 +58,7 @@ complexity:
       # A test class's function count is how much behaviour it pins down, not a cohesion problem.
       # Splitting one to satisfy a threshold makes the suite harder to read for nothing.
       - '**/commonTest/**'
-      - '**/androidUnitTest/**'
+      - '**/androidHostTest/**'
       - '**/jvmTest/**'
       - '**/src/test/kotlin/**'
       - '**/data/pubky/PubkyClient.kt'
@@ -77,7 +77,7 @@ complexity:
       # repository interfaces; the rule counts per declaration, so they are unaffected.
       - '**/data/repository/Repositories.kt'
       - '**/commonTest/**'
-      - '**/androidUnitTest/**'
+      - '**/androidHostTest/**'
       - '**/testing/**'
 
 exceptions:
@@ -149,7 +149,7 @@ style:
       - '**/data/pubky/Hashing.jvm.kt'
       - '**/data/pubky/Hashing.ios.kt'
       - '**/commonTest/**'
-      - '**/androidUnitTest/**'
+      - '**/androidHostTest/**'
       - '**/jvmTest/**'
       - '**/src/test/kotlin/**'
       - '**/testing/**'

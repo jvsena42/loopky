@@ -26,7 +26,7 @@ A fresh session has none of this in context, so establish it before the first ed
 ## Build & run
 
 ```shell
-./gradlew :composeApp:assembleDebug     # Android debug build
+./gradlew :androidApp:assembleDebug     # Android debug build
 ./gradlew :shared:allTests              # shared KMP tests
 ./gradlew :shared:jvmTest               # the same suite on the desktop target — fastest full run,
                                         # and the only one that loads the real libpubkycore
@@ -61,6 +61,13 @@ xcodebuildmcp <workflow> --help                      # discover everything else;
 
 Xcode still works for hands-on debugging (open `iosApp/`), but prefer the CLI so a session can see the
 result. The `shared` module is consumed as a static framework (`baseName = "Shared"`, `isStatic = true`) — see `shared/build.gradle.kts`. **iOS runs against a real homeserver, and the core loop is verified** — see the iOS section of `journeys/RESULTS.md`. `iOSApp.swift` starts Koin via `doInitKoin(rawPubkyClient:)`, handing in the Swift `IosPubkyClient` — a dumb `[status, payload]` pass-through, since `kotlin.Result` and suspend functions cannot be implemented from Swift — which `IosPubkyClientAdapter` wraps into the shared `PubkyClient` contract on the Kotlin side. Sign in, paste import, publish, card editing, the study loop (including Type the answer and Listen), profiles, follows and settings all work.
+
+**Incremental klib compilation is on** (`kotlin.incremental.native=true`, #273), because the iOS
+edit-build-drive loop is where Kotlin/Native spends its time. It is **Beta and off by default
+upstream**, and no CI job can catch it misbehaving — every runner is fresh, so klib incrementality
+is a no-op there. Its failure mode is a stale klib outliving a source change, i.e. an iOS build
+that disagrees with the code in front of you. If one looks stale for no reason, turn it off in
+`gradle.properties` before suspecting anything else.
 
 **A simulator signs in by QR, not by deeplink.** Pubky Ring cannot be installed on one, so `pubkyauth://` is a dead end there; the QR sheet is raised automatically because `ringInstalledHere` is false, and you scan it from a real phone. The relay poll underneath is the same either way.
 
@@ -128,13 +135,20 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   in the fork and checked in here, and a duplicate would have to stay byte-identical forever with
   nothing reporting it when it stopped. The group is declared *through*
   `applyDefaultHierarchyTemplate`; bare `dependsOn` edges silently switch the template off and
-  `iosMain` stops belonging to any compilation.
+  `iosMain` stops belonging to any compilation. Its membership predicate is
+  `withCompilations { it is KotlinMultiplatformAndroidCompilation }` and **not** `withAndroidTarget()`,
+  which matches only the old `com.android.library` target type: under
+  `com.android.kotlin.multiplatform.library` the group is built *without* the Android target in it,
+  `androidMain` falls back to `commonMain`, and the generated `uniffi.pubkycore` bindings vanish
+  from the Android compile (KT-80409, still open). Both failure modes are quiet, so
+  `shared/build.gradle.kts` asserts them in an `afterEvaluate` block — reproduce either by swapping
+  the predicate back and watching the check fire.
 - `shared/src/jvmMain/` — the desktop half: 0600 JSON file stores under `$XDG_CONFIG_HOME/loopky`,
   a `javax.imageio` `MediaProcessor` that degrades rather than throws, no-op `Speaker`/
   `SpeechRecognizer`/`BackgroundTasks`, and `libpubkycore` under JNA's resource layout
   (`resources/linux-x86-64/`, `resources/darwin-aarch64/`).
 - `shared/src/{android,ios}Main/` — platform glue only (Pubky FFI, TTS, speech recognition, haptics, file I/O). Nothing else lives here. Some is `expect`/`actual`; some is a plain interface bound per-platform in Koin (`Speaker`, `SpeechRecognizer`, `BackgroundTasks`, `PubkyRingPresence`), which is the right form when the implementation needs platform context or lifecycle.
-- `composeApp/src/androidMain/` — Android app. Compose screens in `ui/`, Koin in `di/`, `MainActivity` as entry point. Uses Jetpack Navigation Compose.
+- `androidApp/src/main/` — Android app. Compose screens in `ui/`, Koin in `di/`, `MainActivity` as entry point. Uses Jetpack Navigation Compose.
 - `cli/` — `loopky`, the headless client. A plain JVM module on `:shared`'s `jvm()` target; it
   resolves repositories from Koin and never touches `presentation/`. See `cli/README.md` for the
   surface and Architecture.md §13 for the decisions.
@@ -235,10 +249,10 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   agents, and a command added without a table entry is invisible to both. `loopky batch` runs a
   file of operations through the same `dispatch`, so it can never accept something the CLI does
   not; measured at 2.7× on a six-operation sequence (Architecture.md §13.14).
-- **Do not add Compose Multiplatform UI code for iOS screens.** The working assumption (see `docs/Architecture.md §12` open question #1) is native SwiftUI on iOS. `composeApp` is Android-only despite the name.
+- **Do not add Compose Multiplatform UI code for iOS screens.** The working assumption (see `docs/Architecture.md §12` open question #1) is native SwiftUI on iOS. `androidApp` is Android-only, and since #273 it is a plain `com.android.application` module rather than a KMP one — there is no `commonMain` in it to put a shared screen in, and **Compose Multiplatform is no longer a dependency at all**: the app builds against AndroidX Compose via `androidx.compose:compose-bom`, which is what every one of its `androidx.compose.*` imports always resolved to. Reaching for `org.jetbrains.compose.*` again would re-import an alpha channel to get components AndroidX now ships stable.
 - **ViewModels live in `shared/commonMain`, not in platform modules.** Both Compose and SwiftUI screens consume the same VMs. No `@Composable` or `ObservableObject` in shared code.
 - **Always import symbols; never reference them fully-qualified inline.** Add an `import` at the top of the file (e.g. `import androidx.compose.ui.graphics.Color`) and use the short name, rather than writing `androidx.compose.ui.graphics.Color` inline in a type or call. Applies to both Kotlin and Swift.
-- **Native-first UI.** Prefer native platform components — **Material 3 Expressive** (`ShortNavigationBar`, `Scaffold`, `TopAppBar`, etc.; opt in with `@OptIn(ExperimentalMaterial3ExpressiveApi::class)`) on Android, and native SwiftUI / Liquid Glass on iOS — over bespoke custom Composables/Views, so the app feels platform-native. Apply Loopky brand tokens (accent, type, radii) *to* native components rather than rebuilding chrome from primitives; build fully custom only where Loopky's identity needs it and no native equivalent exists (e.g. the study card flip). The custom `LoopkyTabBar` pill has been replaced by a Material 3 Expressive `ShortNavigationBar` (Android) and a native `TabView`/`UITabBar` (iOS).
+- **Native-first UI.** Prefer native platform components — **Material 3 Expressive** (`ShortNavigationBar`, `WideNavigationRail`, `Scaffold`, `TopAppBar`, etc.) on Android — stable since AndroidX material3 1.4.0, so no opt-in annotation, and `ExperimentalMaterial3ExpressiveApi` is now internal, and native SwiftUI / Liquid Glass on iOS — over bespoke custom Composables/Views, so the app feels platform-native. Apply Loopky brand tokens (accent, type, radii) *to* native components rather than rebuilding chrome from primitives; build fully custom only where Loopky's identity needs it and no native equivalent exists (e.g. the study card flip). The custom `LoopkyTabBar` pill has been replaced by a Material 3 Expressive `ShortNavigationBar` (Android) and a native `TabView`/`UITabBar` (iOS).
 - **There are two palettes now, and a token that works in one can be wrong in the other.**
   `LoopkyColors.kt` (Android) and `LoopkyColor.swift` (iOS) each carry a light and a dark set;
   `AppTheme` in `AppPreferences` picks between them — System, Auto, Light, Dark — and it is a
@@ -271,7 +285,7 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
 - **Every screen is width-adaptive, and a new one has to be too — a phone layout on a tablet is
   the default failure, not an edge case.** Loopky runs on tablets, and nothing about a stretched
   layout raises an error: it compiles, runs, and looks broken. The pieces live in
-  `composeApp/.../ui/layout/`:
+  `androidApp/.../ui/layout/`:
   - `WindowWidthClass` (compact <600dp / medium <840dp / expanded) comes from
     `currentWindowAdaptiveInfo()` and is published at the `MainActivity` root by
     `ProvideWindowSize`, so `windowWidthClass()` is readable from any composable, including ones
@@ -318,7 +332,7 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
 - **A clone's media un-pins itself opportunistically.** Cloning pins card media to the source author's blobs (`absolutizedTo`) rather than re-uploading hundreds of MB. `MediaRepository.get` emits `pinnedFetches` after serving a still-pinned ref, and `DeckRepository.rehostBlob` copies the blob under the clone and rewrites every ref carrying that sha. Both ends are **ownership-guarded** — a *followed* deck's blobs must never be copied under your pubky at a `deckId` you cannot edit. The write-back is the feature: without it the ref keeps its `uri` and every session re-copies the same blob. Re-host writes pass `touchDeck = false` (no `updated_at` bump, no `changes` emission) because nothing user-visible changed. A dangling origin is left dangling, never written into the card. The blobs nobody opens are swept by `rehostPendingMedia`, resumable via a `media_rehost_cursor` on the manifest — **not** derivable from the refs, since a chunk with nothing pinned is never rewritten. See Architecture.md §8.0.
 - **507 Insufficient Storage is terminal, and every caller has to treat it that way.** The homeserver enforces a per-user quota (1GB free tier) and refuses writes over it. `isQuotaExceeded`/`ErrorReason.StorageFull` classify it *ahead* of the transient classifiers, `withWriteRetry` never retries it, and the background workers return `Result.failure()` rather than `Result.retry()` — a WorkManager backoff chain against a full disk never converges. Two traps: re-hosting and compaction both *consume* quota, so they cannot dig you out of one; and there is no client-readable usage endpoint, so nothing can warn before the wall. Read Architecture.md §8.5 before touching write error handling.
 
-- **Background work goes through `platform/BackgroundTasks`.** A plain Koin-bound interface, not `expect`/`actual` — WorkManager on Android (`shared/androidMain`, because `PlatformModule.android.kt` binds it and `:shared` cannot see `:composeApp`), `BGTaskScheduler` on iOS. Two traps: a WorkManager-started process has Koin but **no session** (`loadPersistedSession()` is only called from ViewModels, so a worker must call it first or every write fails on "Not signed in"), and don't add a `Configuration.Provider` without removing `WorkManagerInitializer` from the merged manifest. The iOS side is written but unverified. See Architecture.md §9.6.
+- **Background work goes through `platform/BackgroundTasks`.** A plain Koin-bound interface, not `expect`/`actual` — WorkManager on Android (`shared/androidMain`, because `PlatformModule.android.kt` binds it and `:shared` cannot see `:androidApp`), `BGTaskScheduler` on iOS. Two traps: a WorkManager-started process has Koin but **no session** (`loadPersistedSession()` is only called from ViewModels, so a worker must call it first or every write fails on "Not signed in"), and don't add a `Configuration.Provider` without removing `WorkManagerInitializer` from the merged manifest. The iOS side is written but unverified. See Architecture.md §9.6.
 - **A never-seen card is not "due", and the daily goal never withholds one.** `isDue` requires a
   review state; `isNew()` is the separate question, and counts come back as `DeckCounts(due, new)`.
   The queue serves due reviews before never-seen cards and is **uncapped** — nothing in the
@@ -465,7 +479,7 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
 - **No use-case layer.** Don't introduce `*UseCase` interfaces or a `domain/usecase/` package. If a piece of logic doesn't fit any existing repo, extend the most relevant repo or add a new one — keep the surface area flat.
 - **Pubky bindings are UniFFI-generated and checked in.** JVM family: `shared/src/jvmSharedMain/kotlin/uniffi/pubkycore/pubkycore.kt` (one copy, shared by Android and desktop) + `shared/src/androidMain/jniLibs/` for the Android `.so`s. iOS: `iosApp/iosApp/Frameworks/PubkyCore.xcframework` + `iosApp/iosApp/Pubky/pubkycore.swift`. Regeneration steps live in `docs/Architecture.md §7.4`; do not edit the generated files.
 - **Session storage is resolved** via `SecureSessionStore` (Liftric KVault → Android Keystore / iOS Keychain). Persist the signed-in `Session` only through this interface — do not wire multiplatform-settings or ad-hoc storage for secrets.
-- **The Android app is real and feature-built; iOS is wired but unproven.** Onboarding → home → decks → paste-import → publish → profile all work on Android (Compose screens in `composeApp/src/androidMain/.../ui/`, nav in `ui/nav/`, DI in `di/`). The leftover `Greeting`/`Platform` template stubs still exist in `shared` but are no longer the running UI. iOS has its SwiftUI screens (`iosApp/iosApp/Views/`), a live Koin bootstrap, and the `IosFlowWatcher`/`FlowObserver` state bridge — but nobody has driven it against a real homeserver, so nothing there is verified (see Build & run).
+- **The Android app is real and feature-built; iOS is wired but unproven.** Onboarding → home → decks → paste-import → publish → profile all work on Android (Compose screens in `androidApp/src/main/.../ui/`, nav in `ui/nav/`, DI in `di/`). The leftover `Greeting`/`Platform` template stubs still exist in `shared` but are no longer the running UI. iOS has its SwiftUI screens (`iosApp/iosApp/Views/`), a live Koin bootstrap, and the `IosFlowWatcher`/`FlowObserver` state bridge — but nobody has driven it against a real homeserver, so nothing there is verified (see Build & run).
 
 ### Package
 
@@ -511,7 +525,7 @@ The same rules apply to Swift.
 
 **Loopky ships in English and Brazilian Portuguese, and a new string is not done until both
 catalogs have it.** There are four files and every one of them has to be touched together:
-`composeApp/src/androidMain/res/values/strings.xml` and `values-pt-rBR/strings.xml` on Android,
+`androidApp/src/main/res/values/strings.xml` and `values-pt-rBR/strings.xml` on Android,
 and the `en` **and** `pt-BR` localizations of `iosApp/iosApp/Localizable.xcstrings` on iOS. A
 missing `pt-BR` entry does not fail any build, any lint or any test — it falls back to English at
 render time, so a half-translated screen looks perfectly healthy from a green CI run and only a
@@ -551,7 +565,7 @@ written down).
   `SharedModule.kt`; repositories stay `single { }`.
 - **Imports:** always import; never inline fully-qualified names (Kotlin and Swift).
 
-### Android (Compose · `composeApp`)
+### Android (Compose · `androidApp`)
 
 - **Stateful/stateless split:** a `…Route` composable resolves the VM via `koinViewModel()` (NOT
   `koinInject`), collects state with `collectAsStateWithLifecycle()`, and consumes effects in a
@@ -583,6 +597,15 @@ written down).
   `feat/…` / `fix/…` branch first, even for a one-line change.
 - **Finish the work by opening a PR.** Push the branch and `gh pr create` against `main`; the
   change isn't delivered while it only exists locally.
+- **A change that spans several dependent steps ships as a stack, via `gh stack`** (the
+  `github/gh-stack` extension, already installed). One PR per step, each based on the one below it,
+  so a reviewer sees one variable per PR instead of a single unreviewable diff — and so an early
+  step can merge while the rest is still in review. `gh stack init <branch>` adopts the branch you
+  are already on, `gh stack add <branch>` puts the next step on top, `gh stack submit` pushes the
+  whole chain and creates or re-bases every PR. Two things a fresh session will not guess: new PRs
+  are **drafts** unless you pass `--open`, and after amending or rebasing anything mid-stack you
+  must `gh stack submit` again — the child PRs' bases do not update themselves. `gh stack view`
+  shows where you are.
 - **Always use atomic commits.** Each commit should capture one logical, self-contained change.
   Don't bundle unrelated changes (e.g. a feature plus a refactor plus a formatting sweep) into a
   single commit — split them so each commit can be reviewed and reverted independently.
@@ -590,7 +613,7 @@ written down).
   `assembleDebug`, etc.) are slow — run them at the end of a plan or at strategic checkpoints, not
   continuously. Verify at those points, then commit.
 - **Verify UI changes on a device with `android-cli`, not just by building.** `android run --apks
-  composeApp/build/outputs/apk/debug/composeApp-debug.apk`, drive the screen with `adb shell input
+  androidApp/build/outputs/apk/debug/androidApp-debug.apk`, drive the screen with `adb shell input
   tap`, read the result with `android layout` (flat JSON list, fastest way to assert on text) and
   `android screen capture -o <file>` for the look of it. A green `assembleDebug` says nothing about
   what the screen renders.

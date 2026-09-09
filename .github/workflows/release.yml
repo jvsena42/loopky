@@ -72,8 +72,8 @@ jobs:
           # would name two strings that look identical.
           trim() { tr -d '[:space:]'; }
           CLI=$(sed -n 's/^loopkyCliVersion=//p' gradle.properties | trim)
-          NAME=$(sed -n 's/^ *versionName *= *"\(.*\)" *$/\1/p' composeApp/build.gradle.kts | trim)
-          CODE=$(sed -n 's/^ *versionCode *= *\([0-9][0-9]*\) *$/\1/p' composeApp/build.gradle.kts | trim)
+          NAME=$(sed -n 's/^ *versionName *= *"\(.*\)" *$/\1/p' androidApp/build.gradle.kts | trim)
+          CODE=$(sed -n 's/^ *versionCode *= *\([0-9][0-9]*\) *$/\1/p' androidApp/build.gradle.kts | trim)
           MARKETING=$(sed -n 's/^MARKETING_VERSION=//p' iosApp/Configuration/Config.xcconfig | trim)
           PROJECT=$(sed -n 's/^CURRENT_PROJECT_VERSION=//p' iosApp/Configuration/Config.xcconfig | trim)
 
@@ -88,14 +88,14 @@ jobs:
             fi
           }
           expect "loopkyCliVersion (gradle.properties)" "$CLI" "$NUM"
-          expect "versionName (composeApp/build.gradle.kts)" "$NAME" "$NUM"
+          expect "versionName (androidApp/build.gradle.kts)" "$NAME" "$NUM"
           expect "MARKETING_VERSION (iosApp/Configuration/Config.xcconfig)" "$MARKETING" "$NUM"
           # Checked on its own first: it is the *expected* side of the comparison below, and
           # `expect` only reports emptiness of the side it was handed. Unreadable, it would produce
           # "CURRENT_PROJECT_VERSION vs Android versionCode is 21, but the tag says" — naming the
           # xcconfig and pointing at a blank, when the number that could not be read is Android's.
           test -n "$CODE" || {
-            echo "::error::could not read versionCode out of composeApp/build.gradle.kts" >&2
+            echo "::error::could not read versionCode out of androidApp/build.gradle.kts" >&2
             FAILED=1
           }
           # Not the tag — the two build numbers only have to match each other, and they are the one
@@ -156,7 +156,7 @@ jobs:
 
       # Into RUNNER_TEMP, never the workspace: nothing under the checkout can then sweep it into an
       # artifact by glob. The four constants stay in the environment for exactly the one Gradle
-      # invocation that needs them (see `localConfig` in composeApp/build.gradle.kts).
+      # invocation that needs them (see `localConfig` in androidApp/build.gradle.kts).
       - name: Decode the keystore
         if: steps.keystore.outputs.present == 'true'
         env:
@@ -186,14 +186,14 @@ jobs:
         # is written at all. It costs one configuration phase, once per tag.
         run: >
           ./gradlew --no-configuration-cache clean
-          :composeApp:assembleRelease :composeApp:bundleRelease
+          :androidApp:assembleRelease :androidApp:bundleRelease
 
       - name: It is signed, and with a key Play will take
         if: steps.keystore.outputs.present == 'true'
         run: |
           set -euo pipefail
-          APK=composeApp/build/outputs/apk/release/composeApp-release.apk
-          AAB=composeApp/build/outputs/bundle/release/composeApp-release.aab
+          APK=androidApp/build/outputs/apk/release/androidApp-release.apk
+          AAB=androidApp/build/outputs/bundle/release/androidApp-release.aab
           test -f "$APK" && test -f "$AAB"
 
           # The release build type falls back to an unsigned build when the signing config is
@@ -237,14 +237,14 @@ jobs:
             exit 1; }
           echo "ok: ${BITS}-bit RSA, valid until $UNTIL"
 
-      # Named for what they are and what version they are, rather than `composeApp-release.*`.
+      # Named for what they are and what version they are, rather than `androidApp-release.*`.
       - name: Name them
         if: steps.keystore.outputs.present == 'true'
         run: |
           set -euo pipefail
           mkdir -p dist bundle
-          cp composeApp/build/outputs/apk/release/composeApp-release.apk "dist/Loopky-${VERSION#v}.apk"
-          cp composeApp/build/outputs/bundle/release/composeApp-release.aab "bundle/Loopky-${VERSION#v}.aab"
+          cp androidApp/build/outputs/apk/release/androidApp-release.apk "dist/Loopky-${VERSION#v}.apk"
+          cp androidApp/build/outputs/bundle/release/androidApp-release.aab "bundle/Loopky-${VERSION#v}.aab"
 
       - uses: actions/upload-artifact@v7
         if: steps.keystore.outputs.present == 'true'

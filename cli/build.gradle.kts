@@ -366,7 +366,21 @@ nativeRows.forEach { row ->
         dependsOn(configurations.runtimeClasspath)
         archiveFileName.set(jarName)
         destinationDirectory.set(layout.buildDirectory.dir("nativeRows/${row.jnaPrefix}"))
-        from(zipTree(configurations.runtimeClasspath.map { cp -> cp.first { it.name == jarName } }))
+        from(
+            zipTree(
+                configurations.runtimeClasspath.map { cp ->
+                    // By exact filename, so say so when it stops being that name. `:shared`'s
+                    // Android plugin swap (#273) left the jvm() artifact alone, but a silent
+                    // `first {}` failure here would look like a native-row bug rather than a
+                    // renamed jar.
+                    cp.firstOrNull { it.name == jarName }
+                        ?: error(
+                            "$jarName is not on :cli's runtime classpath — :shared's jvm() " +
+                                "artifact was renamed. Found: ${cp.joinToString { it.name }}",
+                        )
+                },
+            ),
+        )
         exclude(foreignRows)
     }
 
