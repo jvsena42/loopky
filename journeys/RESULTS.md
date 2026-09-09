@@ -2993,3 +2993,60 @@ half of the table above was only possible after clearing build outputs and the G
 Rotation is also unreliable on that AVD: `settings put system user_rotation 1` never took
 (`dumpsys display` stayed at `rotation=0`), and its natural orientation is portrait at 800dp, so
 the expanded case was reached with `wm size 2560x1600` instead, then `wm size reset`.
+
+---
+
+## Sign-outs the app inflicted on itself — 2026-09-09, `Pixel_Tablet` (staging)
+
+Chasing "I have to log in more frequently", which was suspected of #266. It is not #266 — that PR
+touches no session code — but tracing it turned up two ways the app can throw a working credential
+away, and neither is visible from a green build.
+
+**Server-side expiry is not a thing.** `pubky-core`'s `SessionRepository` has no TTL column and no
+sweep, `create_session_and_cookie` sets a 365-day cookie, and signing in elsewhere invalidates
+nothing. A session secret lives until something deletes it — so every "log in again" is the client's
+doing.
+
+**The two automatic sign-out branches are dead code.** `HomeViewModel` and `ProfileViewModel` sign
+out when `deckRepository.listOwned()` fails `requiresReauth()`, but `listOwned` only reaches
+`pubky.list`/`pubky.get`, and both land on the fork's `client.public_storage()` — unauthenticated.
+Neither branch can fire. Worth knowing before anyone debugs a sign-out by reading them.
+
+| Step | Result |
+| --- | --- |
+| Cold start, healthy vault | ✅ PASS — persisted session found in **74 ms**, no `Loopky/Vaults` line, Home `owned=1` |
+| Self-tag still lands | ✅ PASS — `selfTag: loopky-user written` 2.2 s in, on its own coroutine (#266's fire-and-forget intact) |
+| Corrupt `loopky.secrets` keyset, cold start | ✅ PASS — **two** `would not open` attempts, then `unreadable twice, resetting it`; app starts |
+| The session vault during that reset | ✅ PASS — untouched; `found persisted session pubky=ma8tmsmd…`, Home `owned=1` |
+| Restore the backed-up vault, cold start | ✅ PASS — clean, no vault lines |
+
+The corruption was done by hand: `run-as`, `sed` the first bytes of
+`__androidx_security_crypto_encrypted_prefs_key_keyset__` to `deadbeef`, force-stop, relaunch. The
+secrets vault rather than the session one on purpose — it holds an Unsplash key and a signup token,
+and the point was to exercise the destructive branch without spending a Ring sign-in. Backed up
+first with `cp`, restored after.
+
+**A 5xx on the session preamble was read as an expiry.** The fork wraps every `restore_session`
+failure as `"Failed to import session: …"`, so a homeserver 500 and a proxy's 502 arrived worded
+exactly like a real expiry. Transport, 429 and 507 were already carved out; nothing else was. That
+is not a mislabelling — `signOut` revokes the session on the homeserver *and* clears the local key,
+so a five-hundred that would have cleared on its own destroyed working credentials. The status now
+decides it, and only 401/403 mean refused. Not reproduced on device: a staging homeserver will not
+5xx on demand, so this is covered by `PubkyErrorsTest` and by reading the fork's `is_session_rejected`.
+
+Same change *fixes* a miss in the other direction: `with_session` re-imports and re-sends on a
+rejection, so a second 401 comes back under the operation's own wording ("Failed to put …") naming
+no session at all, and used to classify as `Unknown`.
+
+**One momentary Keystore failure was permanent.** `openVaultOrNull` deleted the whole
+`EncryptedSharedPreferences` file on the *first* throw from `KVault`'s constructor. For a restored
+file whose hardware key does not decrypt it that is the only way forward; for a Keystore that was
+busy it is pure loss. The two are indistinguishable at the exception, so the discriminator is
+persistence: ask twice. A lock around construction goes with it, `androidx.security.crypto`
+generating the master key on first use not being safe to do concurrently — and Loopky builds four
+vaults from Koin field initialisers.
+
+**Not done, and why.** No `journeys/*.xml` was re-run: the diff is error classification and the
+vault-open path, neither of which appears in a scripted journey, and the vault path is exercised on
+every launch and was driven directly above instead. iOS was not built — `Vaults.kt` is `androidMain`
+and the classifier change is shared logic with test coverage.
