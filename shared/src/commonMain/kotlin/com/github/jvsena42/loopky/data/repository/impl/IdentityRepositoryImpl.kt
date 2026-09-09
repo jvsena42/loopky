@@ -495,7 +495,7 @@ internal class IdentityRepositoryImpl(
 
     /**
      * Announce this account as a Loopky user by tagging its own `profile.json` with
-     * [ReservedTags.USER].
+     * [ReservedTags.USER], **without anyone waiting on it**.
      *
      * The whole reason a stranger can find a brand-new account: with no backend the tag index is the
      * only global directory, and a user who tags nothing is invisible to it however many decks they
@@ -503,15 +503,12 @@ internal class IdentityRepositoryImpl(
      *
      * Best-effort and idempotent — the tag id is derived from subject + label. Repeating it on each
      * login is how accounts that predate this get into the directory.
-     */
-    /**
-     * Announce this account as a Loopky user, **without anyone waiting on it**.
      *
-     * Fire-and-forget on purpose: nothing reads the result, and awaiting it put a homeserver PUT
-     * on the splash screen's critical path — a cold start sat on the branded splash for ~5.9s,
-     * because this is the process's first network call and pays the FFI client build and the PKARR
-     * homeserver resolve on top of the write itself. Home's own listing pays those now, and pays
-     * them while there is something on screen.
+     * Fire-and-forget on purpose: nothing reads the result, and awaiting it put a homeserver PUT on
+     * the splash screen's critical path — a cold start sat on the branded splash for ~5.9s, because
+     * this is the process's first network call and pays the FFI client build and the PKARR
+     * homeserver resolve on top of the write itself (#266). Home's own listing pays those now, and
+     * pays them while there is something on screen.
      *
      * [selfTaggedThisProcess] is claimed before the write rather than after, so a second
      * `loadPersistedSession` a moment later cannot start a duplicate; a failed write clears it so
