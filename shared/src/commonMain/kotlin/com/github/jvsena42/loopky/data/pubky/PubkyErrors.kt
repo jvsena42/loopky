@@ -77,20 +77,26 @@ internal fun Throwable.isSessionImportFailure(): Boolean =
     message?.lowercase()?.contains("failed to import session") == true
 
 /**
- * The session round trip that opens every authenticated write could not be made: an import failure
- * whose cause was transport, not an answer from the homeserver.
+ * The session round trip that opens every authenticated write could not be made, for a reason that
+ * is not the homeserver *refusing* the session.
  *
  * A *narrower* statement than [isNetworkFailure], and the narrowing is the point. Measured on device
  * over three separate hours-long sessions (#165): pkarr resolved, `homeserver.pubky.app` answered
  * 200, TCP to its advertised port connected, and only the session preamble failed. Reporting that as
  * [ErrorReason.Offline] sent the user to check a connection that was fine.
  *
- * Not an expiry, however much the wording overlaps — see [isSessionExpired]. The request never
- * arrived, so the session may still be good; the caller retries through a fresh import rather than
- * signing anyone out.
+ * Everything the preamble can fail with that is *not* a refusal lands here, not only a dead
+ * connection: a `500` from the homeserver and a `502` from whatever sits in front of it fail the
+ * write without saying anything about the session. This is the residual by construction — an import
+ * failure is either an expiry, one of the two failures with a remedy of their own (a 429 to back off
+ * from, a 507 to stop at), or this — so a wording the fork changes tomorrow degrades to "try again"
+ * rather than to [ErrorReason.Unknown], and never to signing the user out.
  */
 internal fun Throwable.isSessionUnreachable(): Boolean =
-    isSessionImportFailure() && isNetworkFailure()
+    isSessionImportFailure() &&
+        !isSessionExpired() &&
+        !isRateLimited() &&
+        !isQuotaExceeded()
 
 /**
  * The homeserver answered 429. Measured, not assumed — publishing a 1,200-card deck with 8

@@ -2993,3 +2993,118 @@ half of the table above was only possible after clearing build outputs and the G
 Rotation is also unreliable on that AVD: `settings put system user_rotation 1` never took
 (`dumpsys display` stayed at `rotation=0`), and its natural orientation is portrait at 800dp, so
 the expanded case was reached with `wm size 2560x1600` instead, then `wm size reset`.
+
+---
+
+## Sign-outs the app inflicted on itself — 2026-09-09, `Pixel_Tablet` (staging)
+
+Chasing "I have to log in more frequently", which was suspected of #266. It is not #266 — that PR
+touches no session code — but tracing it turned up two ways the app can throw a working credential
+away, and neither is visible from a green build.
+
+**Server-side expiry is not a thing.** `pubky-core`'s `SessionRepository` has no TTL column and no
+sweep, `create_session_and_cookie` sets a 365-day cookie, and signing in elsewhere invalidates
+nothing. A session secret lives until something deletes it — so every "log in again" is the client's
+doing.
+
+**The two automatic sign-out branches are dead code.** `HomeViewModel` and `ProfileViewModel` sign
+out when `deckRepository.listOwned()` fails `requiresReauth()`, but `listOwned` only reaches
+`pubky.list`/`pubky.get`, and both land on the fork's `client.public_storage()` — unauthenticated.
+Neither branch can fire. Worth knowing before anyone debugs a sign-out by reading them.
+
+| Step | Result |
+| --- | --- |
+| Cold start, healthy vault | ✅ PASS — persisted session found in **74 ms**, no `Loopky/Vaults` line, Home `owned=1` |
+| Self-tag still lands | ✅ PASS — `selfTag: loopky-user written` 2.2 s in, on its own coroutine (#266's fire-and-forget intact) |
+| Corrupt `loopky.secrets` keyset, cold start | ✅ PASS — **two** `would not open` attempts, then `unreadable twice, resetting it`; app starts |
+| The session vault during that reset | ✅ PASS — untouched; `found persisted session pubky=ma8tmsmd…`, Home `owned=1` |
+| Restore the backed-up vault, cold start | ✅ PASS — clean, no vault lines |
+
+The corruption was done by hand: `run-as`, `sed` the first bytes of
+`__androidx_security_crypto_encrypted_prefs_key_keyset__` to `deadbeef`, force-stop, relaunch. The
+secrets vault rather than the session one on purpose — it holds an Unsplash key and a signup token,
+and the point was to exercise the destructive branch without spending a Ring sign-in. Backed up
+first with `cp`, restored after.
+
+**A 5xx on the session preamble was read as an expiry.** The fork wraps every `restore_session`
+failure as `"Failed to import session: …"`, so a homeserver 500 and a proxy's 502 arrived worded
+exactly like a real expiry. Transport, 429 and 507 were already carved out; nothing else was. That
+is not a mislabelling — `signOut` revokes the session on the homeserver *and* clears the local key,
+so a five-hundred that would have cleared on its own destroyed working credentials. The status now
+decides it, and only 401/403 mean refused. The 5xx half is not reproduced on device — a staging
+homeserver will not 500 on demand — so it rests on `PubkyErrorsTest`.
+
+Same change *fixes* a miss in the other direction: `with_session` re-imports and re-sends on a
+rejection, so a second 401 comes back under the operation's own wording ("Failed to put …") naming
+no session at all, and used to classify as `Unknown`.
+
+### The fork now names it, and the naming was driven against a real homeserver
+
+Guessing from prose is the wrong shape of fix for something whose two mistakes cost different
+things, so the FFI classifies it at the source instead — from the typed `pubky::Error`, where the
+answer already exists — and marks exactly the refusals (`jvsena42/pubky-core-ffi-fork#5`, reported
+upstream as `pubky/pubky-core-ffi#31`). The app believes the marker ahead of every heuristic and
+keeps the heuristics for a device carrying an older binary.
+
+Proved end to end with the CLI, which can be handed a session through `LOOPKY_SESSION`: a real pubky
+plus a garbage cookie, pointed at staging, costs no account anything and gets a genuine refusal back.
+
+```
+$ LOOPKY_SESSION="ma8tmsmd…:0123456789ABCDEFGHJKMNPQRS" loopky whoami --json --env staging
+Session rejected: the homeserver refused this session as invalid: Authentication error:
+The provided auth request has expired or was cancelled. (authentication)
+  → "code":"session_expired","exit":4
+```
+
+That is the case worth having: an `Error::Authentication` carries **no HTTP status at all**, so the
+status check the app-side fix rests on cannot see it, and before the marker only the prefix's wording
+made it land right. Now it is named rather than inferred.
+
+| Step | Result |
+| --- | --- |
+| Rebuilt binaries, cold start | ✅ PASS — session in 82 ms, `selfTag: loopky-user written` (an authenticated PUT through the changed `into_message` path), settings record read, `owned=1` |
+| Refused session against staging | ✅ PASS — marker present, CLI exit 4 |
+| `pubkycore.kt` / `pubkycore.swift` after the rebuild | ✅ byte-identical — compared, not assumed; the marker is a Rust `const` and `SessionOpError` was never exported |
+| APK size | 145,308,622 (old libs) → 145,309,166 (new) — **+544 bytes**. Checked because the number looked like it had jumped 14 MB against an earlier build in the same session; it had not, that build predated an unrelated task |
+
+### The Linux row, and the two silent failures it could have had — 2026-09-09
+
+`linux-x86-64/libpubkycore.so` cross-builds in a container, and Docker would not start on the first
+pass, so it briefly shipped with the old error surface on the platform the CLI actually runs on.
+Rebuilt with `./build_desktop.sh linux`, unchanged, once the engine came up.
+
+Two things checked rather than assumed, because neither shows up in a build log.
+
+**The glibc floor is still `GLIBC_2.34`.** `cli/Dockerfile` builds the native image inside
+`ubuntu:22.04` *because* this library needs 2.34 — a native image links against its builder's glibc,
+so building on anything newer produces a binary that refuses to start on hosts the library itself
+supports. The container that produces the `.so` runs `rust:1-bookworm`, a **moving tag** on glibc
+2.36, so the floor could have drifted upward on any rebuild and nothing would have said so until a
+downloaded binary died. Highest versioned symbol referenced is unchanged.
+
+**The marker is in the shipped bytes** — both strings, the import path's and `revalidate_session`'s
+`Ok(None)`. A green build says nothing about which source went into a 13 MB artifact.
+
+| Step | Result |
+| --- | --- |
+| `dlopen` under `ubuntu:22.04` (glibc 2.35, the CLI's own base) | ✅ PASS — loads, exports `ffi_pubkycore_uniffi_contract_version` |
+| The real CLI on Linux x86_64 (`eclipse-temurin:17-jdk-jammy`) | ✅ PASS — JNA finds the `.so` in the jar, `loopky 0.11.1 (schema 1)` |
+| Refused session from the **Linux** binary against staging | ✅ PASS — marker out, `"code":"session_expired"`, `"exit":4` |
+| All four rows vs the fork | ✅ byte-identical |
+
+`:shared:jvmTest` does **not** cover this: on a Mac it loads the darwin dylib, so 1,414 green tests
+would pass with the Linux row missing entirely — which is the same hole `ci.yml`'s `cli-linux` job
+exists for.
+
+**One momentary Keystore failure was permanent.** `openVaultOrNull` deleted the whole
+`EncryptedSharedPreferences` file on the *first* throw from `KVault`'s constructor. For a restored
+file whose hardware key does not decrypt it that is the only way forward; for a Keystore that was
+busy it is pure loss. The two are indistinguishable at the exception, so the discriminator is
+persistence: ask twice. A lock around construction goes with it, `androidx.security.crypto`
+generating the master key on first use not being safe to do concurrently — and Loopky builds four
+vaults from Koin field initialisers.
+
+**Not done, and why.** No `journeys/*.xml` was re-run: the diff is error classification and the
+vault-open path, neither of which appears in a scripted journey, and the vault path is exercised on
+every launch and was driven directly above instead. iOS was not built — `Vaults.kt` is `androidMain`
+and the classifier change is shared logic with test coverage.

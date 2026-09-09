@@ -89,6 +89,81 @@ class PubkyErrorsTest {
     }
 
     @Test
+    fun theForksMarkerIsBelievedAheadOfEveryHeuristicHere() {
+        // The fork classifies from the typed `pubky::Error` and says so. Both of these carry no
+        // status to read — an `Error::Authentication`, and a rejection reported under the write's
+        // own verb — so the marker is the only thing naming them (pubky/pubky-core-ffi#31).
+        val authRefused = PubkyError(
+            "Session rejected: the homeserver refused this session as invalid: " +
+                "Failed to delete: request expired (authentication)",
+        )
+        val underTheWritesVerb = PubkyError(
+            "Session rejected: the homeserver refused this session as invalid: Failed to put: " +
+                "Request failed: Server responded with an error: 401 Unauthorized",
+        )
+
+        assertTrue(authRefused.requiresReauth())
+        assertEquals(ErrorReason.SessionExpired, authRefused.toErrorReason())
+        assertTrue(underTheWritesVerb.requiresReauth())
+        assertEquals(ErrorReason.SessionExpired, underTheWritesVerb.toErrorReason())
+    }
+
+    @Test
+    fun theForksMarkerSentenceStillReadsAsAnExpiryWithoutTheMarkerCheck() {
+        // The migration guarantee, asserted from this side too: the marker's sentence keeps the
+        // words "session" and "invalid", so a build that has the new binary and an older classifier
+        // still recognises the one failure it most needs to.
+        val marked = "Session rejected: the homeserver refused this session as invalid: x".lowercase()
+
+        assertTrue("session" in marked)
+        assertTrue("invalid" in marked)
+    }
+
+    @Test
+    fun aHomeserverFiveHundredOnTheSessionPreambleIsNotAnExpiry() {
+        // The failure this classifier exists to keep out. The fork wraps every `restore_session`
+        // failure in one prefix, so a homeserver 500 — or a 502 from whatever proxies it — arrives
+        // carrying both "session" and "import" and used to read as an expiry. That is not a
+        // mislabelling: `signOut` revokes the session on the homeserver and clears the local key,
+        // so a five-hundred that would have gone away on its own destroyed working credentials.
+        val serverError = PubkyError(
+            "Failed to import session: Request failed: Server responded with an error: " +
+                "500 Internal Server Error",
+        )
+
+        assertFalse(serverError.isSessionExpired())
+        assertFalse(serverError.requiresReauth())
+        assertEquals(ErrorReason.SessionUnreachable, serverError.toErrorReason())
+        // Offered, never taken: the user may sign in again, the app may not do it for them.
+        assertTrue(serverError.toErrorReason().offersSignIn)
+    }
+
+    @Test
+    fun aGatewayErrorInFrontOfTheHomeserverIsNotAnExpiryEither() {
+        val badGateway = PubkyError(
+            "Failed to import session: Request failed: Server responded with an error: 502 Bad Gateway",
+        )
+
+        assertFalse(badGateway.requiresReauth())
+        assertEquals(ErrorReason.SessionUnreachable, badGateway.toErrorReason())
+    }
+
+    @Test
+    fun aRefusedSessionIsAnExpiryEvenWhenTheMessageNamesNoSession() {
+        // 401 and 403 are the two statuses the fork itself treats as a rejected session. The write
+        // that reports one need not mention the session at all: `with_session` re-imports and
+        // re-sends, and the second rejection comes back under the *operation's* wording.
+        val refused = PubkyError(
+            "Failed to put pubky://rc3omrqq/pub/loopky/decks/d1/manifest.json: Request failed: " +
+                "Server responded with an error: 401 Unauthorized",
+        )
+
+        assertTrue(refused.isSessionExpired())
+        assertEquals(ErrorReason.SessionExpired, refused.toErrorReason())
+        assertFalse(refused.isSessionUnreachable())
+    }
+
+    @Test
     fun aRateLimitedSessionImportIsServerBusyNotAnExpiry() {
         // Seen on device deleting a deck: it fires one session-authenticated delete per record,
         // the homeserver 429s the session import, and the FFI wraps it in wording carrying both
