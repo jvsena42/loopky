@@ -1,15 +1,15 @@
 package com.github.jvsena42.loopky.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,9 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -135,42 +135,38 @@ private fun SettingsNumberRow(
     val parsed = draft.toIntOrNull()
     val isValid = parsed != null && parsed in range
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+    ListItem(
+        headlineContent = {
             Text(
                 text = label,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (enabled) colors.foregroundPrimary else colors.foregroundMuted,
             )
-            description?.let {
+        },
+        supportingContent = description?.let {
+            {
                 Text(text = it, fontSize = 12.sp, lineHeight = 16.sp, color = colors.foregroundMuted)
             }
-        }
-        OutlinedTextField(
-            value = draft,
-            onValueChange = { entry ->
-                draft = entry.filter { it.isDigit() }.take(MAX_DIGITS)
-                draft.toIntOrNull()?.takeIf { it in range }?.let(onValueChange)
-            },
-            enabled = enabled,
-            isError = !isValid,
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier
-                .width(88.dp)
-                .testTag(testTag),
-        )
-    }
+        },
+        trailingContent = {
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { entry ->
+                    draft = entry.filter { it.isDigit() }.take(MAX_DIGITS)
+                    draft.toIntOrNull()?.takeIf { it in range }?.let(onValueChange)
+                },
+                enabled = enabled,
+                isError = !isValid,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .width(88.dp)
+                    .testTag(testTag),
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
 }
 
 @Composable
