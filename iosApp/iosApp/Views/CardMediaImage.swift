@@ -25,10 +25,10 @@ struct CardMediaImage: View {
     var body: some View {
         Group {
             if let data = pendingBytes ?? blob, let image = UIImage(data: data) {
-                Image(uiImage: image).resizable().aspectRatio(contentMode: contentMode)
+                scaled(Image(uiImage: image))
             } else if let url = ref?.url, let link = URL(string: url) {
                 AsyncImage(url: link) { image in
-                    image.resizable().aspectRatio(contentMode: contentMode)
+                    scaled(image)
                 } placeholder: {
                     placeholder
                 }
@@ -37,6 +37,25 @@ struct CardMediaImage: View {
             }
         }
         .task(id: ref?.sha256) { await loadBlobIfNeeded() }
+    }
+
+    /// A `.fill` picture is cropped to the box it was handed, never fitted into it.
+    ///
+    /// `aspectRatio(contentMode: .fill)` alone does not do that: the image reports its *own* size
+    /// to the parent, so a picture drawn on its own — a deck cover in its `ZStack` — decides how
+    /// wide the box is rather than filling it, and a square or portrait source ends up inset with
+    /// a strip of card down each side while a landscape neighbour runs corner to corner (#255).
+    /// `Color.clear` accepts whatever it is offered and the overlay is sized to *that*, which is
+    /// what makes every tile agree. The `.fit` half is unchanged — card media is fitted on purpose.
+    @ViewBuilder
+    private func scaled(_ image: Image) -> some View {
+        if contentMode == .fill {
+            Color.clear
+                .overlay { image.resizable().scaledToFill() }
+                .clipped()
+        } else {
+            image.resizable().aspectRatio(contentMode: .fit)
+        }
     }
 
     private var placeholder: some View {
