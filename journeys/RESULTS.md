@@ -3031,12 +3031,46 @@ failure as `"Failed to import session: …"`, so a homeserver 500 and a proxy's 
 exactly like a real expiry. Transport, 429 and 507 were already carved out; nothing else was. That
 is not a mislabelling — `signOut` revokes the session on the homeserver *and* clears the local key,
 so a five-hundred that would have cleared on its own destroyed working credentials. The status now
-decides it, and only 401/403 mean refused. Not reproduced on device: a staging homeserver will not
-5xx on demand, so this is covered by `PubkyErrorsTest` and by reading the fork's `is_session_rejected`.
+decides it, and only 401/403 mean refused. The 5xx half is not reproduced on device — a staging
+homeserver will not 500 on demand — so it rests on `PubkyErrorsTest`.
 
 Same change *fixes* a miss in the other direction: `with_session` re-imports and re-sends on a
 rejection, so a second 401 comes back under the operation's own wording ("Failed to put …") naming
 no session at all, and used to classify as `Unknown`.
+
+### The fork now names it, and the naming was driven against a real homeserver
+
+Guessing from prose is the wrong shape of fix for something whose two mistakes cost different
+things, so the FFI classifies it at the source instead — from the typed `pubky::Error`, where the
+answer already exists — and marks exactly the refusals (`jvsena42/pubky-core-ffi-fork#5`, reported
+upstream as `pubky/pubky-core-ffi#31`). The app believes the marker ahead of every heuristic and
+keeps the heuristics for a device carrying an older binary.
+
+Proved end to end with the CLI, which can be handed a session through `LOOPKY_SESSION`: a real pubky
+plus a garbage cookie, pointed at staging, costs no account anything and gets a genuine refusal back.
+
+```
+$ LOOPKY_SESSION="ma8tmsmd…:0123456789ABCDEFGHJKMNPQRS" loopky whoami --json --env staging
+Session rejected: the homeserver refused this session as invalid: Authentication error:
+The provided auth request has expired or was cancelled. (authentication)
+  → "code":"session_expired","exit":4
+```
+
+That is the case worth having: an `Error::Authentication` carries **no HTTP status at all**, so the
+status check the app-side fix rests on cannot see it, and before the marker only the prefix's wording
+made it land right. Now it is named rather than inferred.
+
+| Step | Result |
+| --- | --- |
+| Rebuilt binaries, cold start | ✅ PASS — session in 82 ms, `selfTag: loopky-user written` (an authenticated PUT through the changed `into_message` path), settings record read, `owned=1` |
+| Refused session against staging | ✅ PASS — marker present, CLI exit 4 |
+| `pubkycore.kt` / `pubkycore.swift` after the rebuild | ✅ byte-identical — compared, not assumed; the marker is a Rust `const` and `SessionOpError` was never exported |
+| APK size | 145,308,622 (old libs) → 145,309,166 (new) — **+544 bytes**. Checked because the number looked like it had jumped 14 MB against an earlier build in the same session; it had not, that build predated an unrelated task |
+
+**The Linux desktop row is not rebuilt.** `bindings/desktop/linux-x86-64/libpubkycore.so` cross-builds
+in a container and Docker would not start here, so the `loopky` CLI keeps the old error surface on the
+platform it actually runs on until `./build_desktop.sh linux` is run. It matters least there — the CLI
+reports and exits rather than signing anyone out — but it is a real gap.
 
 **One momentary Keystore failure was permanent.** `openVaultOrNull` deleted the whole
 `EncryptedSharedPreferences` file on the *first* throw from `KVault`'s constructor. For a restored
