@@ -3166,3 +3166,51 @@ purpose and four one-word labels do not need a 220dp drawer. `Card` for `DeckTil
 shadow is tinted from `shadowElevationXHigh`, and `Card`'s elevation API has no ambient/spot colour.
 `BadgedBox` on a tab — the due count lives in `HomeViewModel` and the shell has no VM, so it is
 plumbing plus a product decision rather than a component swap.
+
+## The five that were deferred, implemented — 2026-09-09, `Medium_Phone` + `Pixel_Tablet` (staging)
+
+The previous entry listed six Material 3 Expressive adoptions considered and rejected. Five were
+asked for anyway; this is what happened to each, and the badge was dropped again on sight.
+
+| Step | Result |
+| --- | --- |
+| Deck editor — `VerticalDragHandle` for the reorder grip | ✅ PASS — `card_drag_handle` still in `android layout`, 48dp target instead of 24dp |
+| Deck tile — `Card` with the brand shadow kept as a modifier | ✅ PASS — phone and tablet, light and dark |
+| Settings — four-segment theme picker | ✅ PASS — all four labels fit; Dark applied instantly and the segmented row reads correctly on the dark ground |
+| Rail — `ModalWideNavigationRail` opens and closes | ✅ PASS — `nav_rail_toggle` opens it over the content, picking a destination closes it |
+| Discover — people strip as `HorizontalUncontainedCarousel` | ✅ PASS — tiles at full width, only the leaving tile masked |
+| Discover — `TopSearchBar` + `ExpandedFullScreenSearchBar` | ✅ PASS — typed "spanish", got deck results; `search_back` collapses to Discover |
+| Discover — the bar floats, content scrolls behind it | ✅ PASS — the "Discover" title passes under the pill on the way up |
+| Deck detail — Study floats over the card list | ✅ PASS — full width, card rows scroll behind it, last row clears it |
+| Tab badge | ❌ removed at the user's request after one run |
+
+**A test tag inside a dialog window needs its own `testTagsAsResourceId`.** The expanded search bar
+is a separate Compose root, so `MainActivity`'s does not reach it and `search_input`, `search_back`,
+`search_scan` and `search_hint` were all invisible to `android layout` — a working screen with no
+handle on it. Same trap `DeckDetailDialogs.kt` already records for `AlertDialog`.
+
+**`ExpandedFullScreenSearchBar` ships no way out.** It is a full-screen dialog; without a back
+control in the input field's leading slot the only exit is the system gesture, which is not a
+control at all on a tablet.
+
+**A modal rail keeps its own container colour.** `WideNavigationRailDefaults.colors` has
+`modalContainerColor` beside `containerColor`, and setting only the latter leaves the rail dark
+while collapsed and pale lavender the moment it opens — brand tint gone, grey labels on it. It also
+does not close itself: picking a destination left the menu standing over the content it had just
+navigated to.
+
+**The badge was right and still wrong.** Reading `dueToday` it showed 14 beside a hero card reading
+15 — the hero shows `studyTarget`, which adds the day's new-card room. Switching to `studyTarget`
+made them agree, and the badge was dropped anyway; the finding is that a second surface for a count
+has to read the *same* property, not the nearest one.
+
+**`enterAlwaysSearchBarScrollBehavior` needs the connection above both.** On the scrolling content
+it did nothing; on the container holding the bar and the list — where `Scaffold` puts it — the bar
+collapsed and returned correctly. That version was then replaced by the floating bar, but the wiring
+is worth knowing.
+
+**Rotation, again.** `user_rotation` needed a second attempt on `Pixel_Tablet` and `dumpsys display`
+kept reporting `rotation=0` after the window had turned; `dumpsys window displays | grep cur=` was
+the reading that matched the screenshot. The emulator also lost its network twice and reported
+"You're offline" until the app was force-stopped and relaunched — not a Loopky fault, but it costs a
+few minutes each time.
