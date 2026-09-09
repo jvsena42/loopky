@@ -40,6 +40,12 @@ kotlin {
         }
     }
     
+    @Suppress("OPT_IN_USAGE")
+    swiftExport {
+        moduleName = "Shared"
+        flattenPackage = "com.github.jvsena42.loopky"
+    }
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
