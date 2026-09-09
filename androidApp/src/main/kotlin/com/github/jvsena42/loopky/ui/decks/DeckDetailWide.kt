@@ -258,7 +258,7 @@ internal fun WideDeckDetail(
                 )
                 LazyColumn(
                     modifier = Modifier.weight(1f).testTag("deck_detail_cards"),
-                    contentPadding = PaddingValues(bottom = 20.dp),
+                    contentPadding = PaddingValues(bottom = 96.dp),
                 ) {
                     item(key = "cards_heading") {
                         CardsHeading(count = state.cardPreviews.size, modifier = Modifier.padding(bottom = 12.dp))

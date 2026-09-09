@@ -8,15 +8,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +28,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -334,17 +332,18 @@ private fun DeckDetailContent(
 
     Scaffold(
         containerColor = colors.surfacePrimary,
-        bottomBar = {
+        floatingActionButtonPosition = FabPosition.Center,
+        floatingActionButton = {
             // *Study* is offered only for a deck you have kept. Grading a deck you are merely
             // browsing would strand review state under something that never reaches your
             // library or your due queue — progress you can neither see nor resume. Keeping the
             // deck is what earns it, so Follow sits up in the header instead, next to the stats
-            // it acts on, and the bottom bar stays a single unambiguous action.
+            // it acts on, and this stays a single unambiguous action.
             //
-            // On a deck nobody has kept, that same bar offers a *preview* instead: a handful of
-            // its cards, graded nowhere. It is what makes the deck worth opening for someone who
-            // has not signed in — and for a signed-in reader looking at a stranger's deck it is
-            // the honest version of the button, since there is nothing of theirs to be due.
+            // On a deck nobody has kept, that same button offers a *preview* instead: a handful
+            // of its cards, graded nowhere. It is what makes the deck worth opening for someone
+            // who has not signed in — and for a signed-in reader looking at a stranger's deck it
+            // is the honest version of the button, since there is nothing of theirs to be due.
             if (state.isOwned || state.isFollowing || state.canPreview) {
                 LoopkyPrimaryButton(
                     label = studyCtaLabel(state),
@@ -353,9 +352,13 @@ private fun DeckDetailContent(
                     // "All done!" — a primary CTA whose only outcome is a dead end (#101 §8).
                     // A preview always has cards, or canPreview would be false.
                     enabled = state.canStudy || state.canPreview,
+                    // Floating over the list rather than a bar under it: as a bar it reserved a
+                    // strip of every screenful, and the card list ended above it instead of
+                    // running to the bottom of the window. It keeps its full width — the pill is
+                    // the screen's one action, and shrunk to its label it reads as a chip.
                     modifier = Modifier
-                        .windowInsetsPadding(WindowInsets.navigationBars)
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .contentPane(PaneWidth.Reading)
+                        .padding(horizontal = 20.dp)
                         .testTag("deck_study"),
                     leadingIcon = {
                         Icon(
@@ -395,7 +398,9 @@ private fun DeckDetailContent(
                 // a pair — and the cover art above them becomes a letterbox.
                 .contentPane(PaneWidth.Reading)
                 .testTag("deck_detail_content"),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
+            // The floating button reserves no height of its own, so the list has to leave it
+            // room — without this the last card row sits under the pill and cannot be read.
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = STUDY_CTA_CLEARANCE),
         ) {
             // Everything above the card list is a fixed set of sections that are on screen
             // together anyway, so they stay in one item and keep their shared 20.dp rhythm.
@@ -453,6 +458,9 @@ private fun DeckDetailContent(
         }
     }
 }
+
+/** Room under the card list for the floating Study pill, so the last row clears it. */
+private val STUDY_CTA_CLEARANCE = 96.dp
 
 @Composable
 internal fun CardsHeading(count: Int, modifier: Modifier = Modifier) {
