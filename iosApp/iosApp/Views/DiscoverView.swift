@@ -76,7 +76,11 @@ struct DiscoverView: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
-            .padding(.bottom, 24)
+            // The tab bar floats over the content, so the grid reserves room for it the way Home
+            // and the library do — without it the last row's title and caption end the scroll
+            // behind the bar and cannot be read at all. A guest has no tab bar (`MainView`'s
+            // guest shell is Discover alone), so there is nothing there to clear.
+            .padding(.bottom, isGuest ? 24 : 100)
             // Mostly tile grids and horizontal strips, so it gets the widest ceiling — but a
             // ceiling all the same, or the guest banner's two lines of copy run the full 1366pt.
             .contentPane(PaneWidth.wide)
