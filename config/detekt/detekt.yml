@@ -220,6 +220,8 @@ Compose:
     active: true
   ContentEmitterReturningValues:
     active: true
+  ContentSlotReused:
+    active: true
   ContentTrailingLambda:
     active: true
   DefaultsVisibility:
@@ -258,11 +260,17 @@ Compose:
     active: false
   PreviewAnnotationNaming:
     active: true
+  # Off, as it is in the rule set's own defaults: it requires every preview to be named
+  # `…Preview`/`Preview…`, which is a naming convention rather than a Compose correctness rule.
+  PreviewNaming:
+    active: false
   PreviewPublic:
     active: true
   RememberContentMissing:
     active: true
-  RememberStateMissing:
+  # The rule id, not the class name — `RememberStateMissingCheck` registers itself as
+  # `RememberMissing`, so the old spelling here configured nothing and the rule ran on its default.
+  RememberMissing:
     active: true
   UnstableCollections:
     active: false

@@ -30,7 +30,11 @@ detekt = "1.23.8"
 # GraalVM `native-image` Gradle plugin (#210). Builds `loopky` as a single self-contained binary
 # so the machine it lands on needs no JRE — see cli/build.gradle.kts.
 graalvmNative = "1.1.12"
-detektComposeRules = "0.4.22"
+# Compose rules for detekt. **0.4.28 is the ceiling while detekt is on 1.x**: from 0.5.0 the
+# artifact compiles against `dev.detekt:detekt-core`, the detekt 2 group id, which has published
+# nothing but alphas. #273 listed 0.6.6 as the latest stable of this library, and it is — but
+# taking it means taking detekt 2.0.0-alpha with it. Move both together or neither.
+detektComposeRules = "0.4.28"
 koin = "4.2.2"
 navigationCompose = "2.10.0"
 kvault = "1.12.0"
