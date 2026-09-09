@@ -62,6 +62,7 @@
     <string name="deck_detail_edit">Editar baralho</string>
     <string name="deck_detail_delete">Excluir baralho</string>
     <string name="deck_detail_share">Compartilhar</string>
+    <string name="deck_detail_more_actions">Mais ações</string>
     <string name="deck_detail_delete_dialog_title">Excluir baralho?</string>
     <string name="deck_detail_delete_dialog_message">“%1$s” e tudo o que você aprendeu com ele serão excluídos. Isso não pode ser desfeito.</string>
     <string name="deck_detail_delete_confirm">Excluir</string>

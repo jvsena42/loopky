@@ -63,6 +63,7 @@
     <string name="deck_detail_edit">Edit deck</string>
     <string name="deck_detail_delete">Delete deck</string>
     <string name="deck_detail_share">Share</string>
+    <string name="deck_detail_more_actions">More actions</string>
     <string name="deck_detail_delete_dialog_title">Delete deck?</string>
     <string name="deck_detail_delete_dialog_message">“%1$s” and everything you\'ve learned from it will be deleted. This can\'t be undone.</string>
     <string name="deck_detail_delete_confirm">Delete</string>
