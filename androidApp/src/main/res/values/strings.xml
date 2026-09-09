@@ -507,8 +507,6 @@
     <string name="component_tag_chip_remove">Remove tag</string>
 
     <!-- Navigation / tabs -->
-    <string name="nav_rail_expand">Show labels</string>
-    <string name="nav_rail_collapse">Hide labels</string>
     <string name="nav_tab_study">Today</string>
     <string name="nav_tab_decks">Decks</string>
     <string name="nav_tab_discover">Discover</string>

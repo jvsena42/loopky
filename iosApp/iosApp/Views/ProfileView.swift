@@ -39,7 +39,10 @@ struct ProfileView: View {
         ScrollView {
             VStack(spacing: 20) {
                 toolbar
-                if state.isLoading {
+                // Only when there is genuinely nothing to draw. A launch with a persisted session
+                // paints the header and the counters from cache and refreshes them underneath,
+                // rather than covering a profile that has not changed since last time.
+                if state.showLoadingScreen {
                     ProgressView().padding(.top, 60)
                 } else if widthClass.isExpanded {
                     // Who you are on the left, what that adds up to on the right. Stacked, this
@@ -267,18 +270,20 @@ struct ProfileView: View {
 
     private var stats: some View {
         HStack(spacing: 0) {
-            stat(state.deckCount, "profile_stat_decks")
-            stat(state.cardCount, "profile_stat_cards")
-            stat(state.dueCount, "profile_stat_due", tint: LoopkyColor.accentPrimary)
+            stat(state.libraryCountsKnown ? state.deckCount : nil, "profile_stat_decks")
+            stat(state.libraryCountsKnown ? state.cardCount : nil, "profile_stat_cards")
+            stat(state.dueCountKnown ? state.dueCount : nil, "profile_stat_due", tint: LoopkyColor.accentPrimary)
         }
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
         .background(RoundedRectangle(cornerRadius: 18).fill(LoopkyColor.accentPrimarySoft.opacity(0.5)))
     }
 
-    private func stat(_ value: Int, _ label: LocalizedStringKey, tint: Color = LoopkyColor.foregroundPrimary) -> some View {
+    /// A nil [value] is a count that has not resolved yet — drawn as a dash, never as a zero the
+    /// screen would have to correct a round trip later.
+    private func stat(_ value: Int?, _ label: LocalizedStringKey, tint: Color = LoopkyColor.foregroundPrimary) -> some View {
         VStack(spacing: 2) {
-            Text("\(value)")
+            Text(value.map { "\($0)" } ?? "—")
                 .font(.system(size: 20, weight: .heavy))
                 .foregroundStyle(tint)
             Text(label)

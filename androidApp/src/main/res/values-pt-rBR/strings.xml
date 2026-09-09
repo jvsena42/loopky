@@ -482,8 +482,6 @@
     <string name="component_tag_chip_remove">Remover tag</string>
 
     <!-- Navigation / tabs -->
-    <string name="nav_rail_expand">Mostrar rótulos</string>
-    <string name="nav_rail_collapse">Ocultar rótulos</string>
     <string name="nav_tab_study">Hoje</string>
     <string name="nav_tab_decks">Baralhos</string>
     <string name="nav_tab_discover">Descobrir</string>

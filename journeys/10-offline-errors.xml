@@ -16,6 +16,8 @@
     <action>Verify the error message does not contain any raw URL, "HTTP transport error", or other FFI diagnostic text</action>
     <action>Tap the element with resource-id "tab_decks"</action>
     <action>Verify the Decks tab also shows an error with a retry action, NOT "No decks yet"</action>
+    <action>Tap the element with resource-id "tab_profile"</action>
+    <action>Verify the profile still shows the identity and the Decks/Cards counts this device last saw, with an em dash under "Due" — a listing that could not be read must never be reported as three zeros, which reads as "my decks are gone"</action>
     <action>Re-enable wifi and mobile data, then tap the element with resource-id "error_retry"</action>
     <action>Verify the deck list loads and the previously published decks are shown</action>
   </actions>

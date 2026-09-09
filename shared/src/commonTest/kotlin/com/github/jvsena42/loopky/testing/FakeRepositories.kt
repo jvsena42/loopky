@@ -494,7 +494,12 @@ class FakeDeckRepository : DeckRepository {
 
     override suspend fun isFollowingDeck(deckId: String): Boolean = deckId in followedDecks
 
+    /** How often the followed list was read — asserted where it must run beside [listOwned]. */
+    var listFollowedCount = 0
+        private set
+
     override suspend fun listFollowed(): List<Deck> {
+        listFollowedCount++
         listFollowedError?.let { throw it }
         return followedDecks.values.toList()
     }
