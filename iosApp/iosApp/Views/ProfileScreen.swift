@@ -81,7 +81,7 @@ struct ProfileScreen: View {
         guard let state = uiState else { return ProfileViewState() }
         let identity = state.identity.map { IdentityData($0) }
         return ProfileViewState(
-            isLoading: state.isLoading,
+            showLoadingScreen: state.showLoadingScreen,
             label: identity?.label ?? "",
             shortPubky: identity?.shortPubky ?? "",
             initial: identity?.initial ?? "?",
@@ -93,6 +93,8 @@ struct ProfileScreen: View {
             deckCount: Int(state.deckCount),
             cardCount: Int(state.cardCount),
             dueCount: Int(state.dueCount),
+            libraryCountsKnown: state.libraryCountsKnown,
+            dueCountKnown: state.dueCountKnown,
             followingCount: state.followingCount.map { Int(truncating: $0) },
             followerCount: state.followerCount.map { Int(truncating: $0) },
             showEditSheet: state.showEditSheet,
@@ -141,7 +143,9 @@ struct ProfileScreen: View {
 }
 
 struct ProfileViewState {
-    var isLoading: Bool = true
+    /// Nothing cached to draw yet, so the screen is a spinner. See `ProfileUiState.showLoadingScreen`:
+    /// an ordinary launch paints from the persisted session instead and refreshes underneath.
+    var showLoadingScreen: Bool = true
     var label: String = ""
     var shortPubky: String = ""
     var initial: String = "?"
@@ -158,6 +162,10 @@ struct ProfileViewState {
     var deckCount: Int = 0
     var cardCount: Int = 0
     var dueCount: Int = 0
+    /// False while `deckCount`/`cardCount` are placeholders — the stat card draws a dash.
+    var libraryCountsKnown: Bool = true
+    /// The same for `dueCount`, which resolves later: review state is not cached across launches.
+    var dueCountKnown: Bool = true
     var followingCount: Int?
     var followerCount: Int?
     var showEditSheet: Bool = false

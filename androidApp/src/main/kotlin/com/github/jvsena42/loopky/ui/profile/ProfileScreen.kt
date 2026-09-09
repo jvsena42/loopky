@@ -225,7 +225,10 @@ private fun ProfileScreen(
     }
     val colors = LoopkyTheme.colors
 
-    if (state.isLoading) {
+    // Only when there is genuinely nothing to draw. A launch with a persisted session paints the
+    // header and the counters from cache and refreshes them underneath, rather than covering a
+    // profile that has not changed since last time.
+    if (state.showLoadingScreen) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -591,22 +594,25 @@ private fun ProfileDetailsPane(
     modifier: Modifier = Modifier,
 ) {
     val colors = LoopkyTheme.colors
+    // Every count on this screen resolves at its own pace, so each shows a dash until it is a fact
+    // rather than a zero it would have to correct.
+    val pending = stringResource(R.string.profile_stat_pending)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // --- Stats card ---
         ProfileStatsCard(
             stats = listOf(
                 ProfileStat(
-                    value = state.deckCount.toString(),
+                    value = if (state.libraryCountsKnown) state.deckCount.toString() else pending,
                     label = stringResource(R.string.profile_stat_decks),
                     valueColor = colors.foregroundPrimary,
                 ),
                 ProfileStat(
-                    value = state.cardCount.toString(),
+                    value = if (state.libraryCountsKnown) state.cardCount.toString() else pending,
                     label = stringResource(R.string.profile_stat_cards),
                     valueColor = colors.accentPrimary,
                 ),
                 ProfileStat(
-                    value = state.dueCount.toString(),
+                    value = if (state.dueCountKnown) state.dueCount.toString() else pending,
                     label = stringResource(R.string.profile_stat_due),
                     valueColor = colors.srsGood,
                 ),
@@ -616,7 +622,6 @@ private fun ProfileDetailsPane(
         // --- People card ---
         // A second strip rather than five columns in the first: on a phone that reduces every
         // label to unreadable, and these two answer a different question than your library does.
-        val pending = stringResource(R.string.profile_stat_pending)
         ProfileStatsCard(
             stats = listOf(
                 ProfileStat(
@@ -867,6 +872,8 @@ private fun ProfileScreenPreview() {
                 deckCount = 8,
                 cardCount = 240,
                 dueCount = 12,
+                libraryCountsKnown = true,
+                dueCountKnown = true,
             ),
             errorMessage = null,
             onOpenSettings = {},

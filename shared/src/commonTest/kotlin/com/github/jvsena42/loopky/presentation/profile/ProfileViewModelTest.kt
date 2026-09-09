@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.presentation.profile
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
@@ -184,6 +185,84 @@ class ProfileViewModelTest {
         assertFalse(vm.state.value.isLoading)
         assertEquals(1, vm.state.value.deckCount)
         assertNull(vm.state.value.followingCount)
+    }
+
+    @Test
+    fun theProfileIsOnScreenFromCacheWhileTheLoadRuns() = runTest {
+        // The header used to sit behind a full-screen spinner for as long as a profile GET plus a
+        // deck listing took, on every visit, over a name that had not changed since last launch.
+        decks.cached = CachedDecks(owned = listOf(testDeck(id = "d1", cardCount = 12)), followed = emptyList())
+        decks.listOwnedGate = CompletableDeferred()
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val painted = vm.state.value
+        assertFalse(painted.showLoadingScreen)
+        assertEquals("Tester", painted.identity?.displayName)
+        assertEquals(1, painted.deckCount)
+        assertEquals(12, painted.cardCount)
+        assertTrue(painted.libraryCountsKnown)
+        // Review state is not cached across processes, so the due total is a dash rather than a
+        // "0" that turns into a real number a round trip later.
+        assertFalse(painted.dueCountKnown)
+
+        decks.listOwnedGate?.complete(Unit)
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.dueCountKnown)
+        assertFalse(vm.state.value.isLoading)
+    }
+
+    @Test
+    fun aColdCacheShowsTheHeaderWithDashesRatherThanCountsItIsGuessing() = runTest {
+        decks.cached = null
+        decks.listOwnedGate = CompletableDeferred()
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val painted = vm.state.value
+        assertFalse(painted.showLoadingScreen, "the session already names the account")
+        assertFalse(painted.libraryCountsKnown)
+        assertFalse(painted.dueCountKnown)
+    }
+
+    @Test
+    fun aFailedListingKeepsTheCachedCountsRatherThanReportingAnEmptyLibrary() = runTest {
+        // Reporting the failure as an empty library turned the counters this screen had just
+        // painted from cache into three zeros — which reads as "my decks are gone".
+        decks.cached = CachedDecks(owned = listOf(testDeck(id = "d1", cardCount = 12)), followed = emptyList())
+        decks.listOwnedError = IllegalStateException("offline")
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        assertEquals(1, vm.state.value.deckCount)
+        assertEquals(12, vm.state.value.cardCount)
+        assertTrue(vm.state.value.libraryCountsKnown)
+        assertFalse(vm.state.value.dueCountKnown, "nothing answered for the due half")
+    }
+
+    /**
+     * The profile record, the owned listing and the followed listing are three independent reads;
+     * running them one after another made this screen cost their sum.
+     */
+    @Test
+    fun theProfileAndBothDeckListingsAreFetchedTogether() = runTest {
+        decks.listOwnedGate = CompletableDeferred()
+        identity.profiles[TEST_PUBKY] = PubkyIdentity(TEST_PUBKY, "Ada", null, null)
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        // The owned listing is still held open, so anything that ran did so beside it.
+        assertEquals(listOf(TEST_PUBKY), identity.fetchedProfiles)
+        assertEquals(1, decks.listFollowedCount)
+
+        decks.listOwnedGate?.complete(Unit)
+        advanceUntilIdle()
+        assertEquals("Ada", vm.state.value.identity?.displayName)
     }
 
     @Test
