@@ -88,7 +88,6 @@ object Routes {
     const val TAG_BROWSE = "tag/{tag}"
 
     /** One box over people and decks, by name or by pubky. Reached from Discover's header. */
-    const val SEARCH = "search"
 
     /** One side of someone's follow graph. `source` is a [FollowSource] name, lowercased. */
     const val FOLLOW_LIST = "follows/{pubky}/{source}"

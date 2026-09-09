@@ -198,8 +198,7 @@ fun PersonTile(
             .clip(RoundedCornerShape(20.dp))
             .background(colors.surfaceCard)
             .clickable(onClick = onOpenProfile)
-            .padding(horizontal = 14.dp, vertical = 14.dp)
-            .width(120.dp),
+            .padding(horizontal = 14.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
