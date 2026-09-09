@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -34,6 +35,9 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemColors
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
@@ -52,11 +56,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.AnnotatedString
@@ -794,6 +800,14 @@ private fun SettingsSectionLabel(text: String) {
     )
 }
 
+/**
+ * A read-only fact about the account, with an optional control beside it.
+ *
+ * The three row shapes here are [ListItem]s tinted rather than hand-built Rows: the component owns
+ * the minimum heights that make a settings list tappable, and the slots are what let the switch row
+ * below become one toggle target instead of a label sitting next to one. The type is still
+ * Loopky's — a slot's own `Text` overrides the list item's default style.
+ */
 @Composable
 private fun SettingsValueRow(
     label: String,
@@ -801,33 +815,33 @@ private fun SettingsValueRow(
     trailing: @Composable () -> Unit = {},
 ) {
     val colors = LoopkyTheme.colors
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
+    ListItem(
+        overlineContent = {
             Text(
                 text = label,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.W500,
                 color = colors.foregroundMuted,
             )
+        },
+        headlineContent = {
             Text(
                 text = value,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.foregroundPrimary,
             )
-        }
-        trailing()
-    }
+        },
+        trailingContent = trailing,
+        colors = settingsRowColors(),
+    )
 }
+
+/** Transparent, so the section's own rounded background shows through every row in it. */
+@Composable
+private fun settingsRowColors(): ListItemColors = ListItemDefaults.colors(
+    containerColor = Color.Transparent,
+)
 
 /**
  * A preference the user toggles. Distinct from [SettingsValueRow] in carrying a description: this
@@ -843,40 +857,48 @@ private fun SettingsSwitchRow(
     testTag: String,
 ) {
     val colors = LoopkyTheme.colors
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+    ListItem(
+        headlineContent = {
             Text(
                 text = label,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.foregroundPrimary,
             )
+        },
+        // The whole row toggles, not just the switch at the end of it — which is where a thumb
+        // lands anyway, and what every other settings list on the device does. The switch takes a
+        // null handler so it reports the state and leaves the click to the row.
+        //
+        // The test tag rides the row for the same reason: `toggleable` merges the descendants'
+        // semantics, so a tag left on the switch disappears from `android layout` entirely.
+        modifier = Modifier
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = onCheckedChange,
+            )
+            .testTag(testTag),
+        supportingContent = {
             Text(
                 text = description,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
                 color = colors.foregroundMuted,
             )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            modifier = Modifier.testTag(testTag),
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = colors.surfacePrimary,
-                checkedTrackColor = colors.accentPrimary,
-            ),
-        )
-    }
+        },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = colors.surfacePrimary,
+                    checkedTrackColor = colors.accentPrimary,
+                ),
+            )
+        },
+        colors = settingsRowColors(),
+    )
 }
 
 /**
@@ -1020,28 +1042,26 @@ private fun SettingsLinkRow(
     modifier: Modifier = Modifier,
 ) {
     val colors = LoopkyTheme.colors
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.weight(1f),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.W500,
-            color = colors.foregroundPrimary,
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = colors.foregroundMuted,
-        )
-    }
+    ListItem(
+        headlineContent = {
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.W500,
+                color = colors.foregroundPrimary,
+            )
+        },
+        modifier = modifier.clickable(onClick = onClick),
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = colors.foregroundMuted,
+            )
+        },
+        colors = settingsRowColors(),
+    )
 }
 
 @Composable

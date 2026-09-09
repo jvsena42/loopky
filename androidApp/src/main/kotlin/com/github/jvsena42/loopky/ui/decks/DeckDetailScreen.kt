@@ -8,15 +8,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -25,17 +22,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,15 +42,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -341,17 +332,18 @@ private fun DeckDetailContent(
 
     Scaffold(
         containerColor = colors.surfacePrimary,
-        bottomBar = {
+        floatingActionButtonPosition = FabPosition.Center,
+        floatingActionButton = {
             // *Study* is offered only for a deck you have kept. Grading a deck you are merely
             // browsing would strand review state under something that never reaches your
             // library or your due queue — progress you can neither see nor resume. Keeping the
             // deck is what earns it, so Follow sits up in the header instead, next to the stats
-            // it acts on, and the bottom bar stays a single unambiguous action.
+            // it acts on, and this stays a single unambiguous action.
             //
-            // On a deck nobody has kept, that same bar offers a *preview* instead: a handful of
-            // its cards, graded nowhere. It is what makes the deck worth opening for someone who
-            // has not signed in — and for a signed-in reader looking at a stranger's deck it is
-            // the honest version of the button, since there is nothing of theirs to be due.
+            // On a deck nobody has kept, that same button offers a *preview* instead: a handful
+            // of its cards, graded nowhere. It is what makes the deck worth opening for someone
+            // who has not signed in — and for a signed-in reader looking at a stranger's deck it
+            // is the honest version of the button, since there is nothing of theirs to be due.
             if (state.isOwned || state.isFollowing || state.canPreview) {
                 LoopkyPrimaryButton(
                     label = studyCtaLabel(state),
@@ -360,9 +352,13 @@ private fun DeckDetailContent(
                     // "All done!" — a primary CTA whose only outcome is a dead end (#101 §8).
                     // A preview always has cards, or canPreview would be false.
                     enabled = state.canStudy || state.canPreview,
+                    // Floating over the list rather than a bar under it: as a bar it reserved a
+                    // strip of every screenful, and the card list ended above it instead of
+                    // running to the bottom of the window. It keeps its full width — the pill is
+                    // the screen's one action, and shrunk to its label it reads as a chip.
                     modifier = Modifier
-                        .windowInsetsPadding(WindowInsets.navigationBars)
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .contentPane(PaneWidth.Reading)
+                        .padding(horizontal = 20.dp)
                         .testTag("deck_study"),
                     leadingIcon = {
                         Icon(
@@ -402,7 +398,9 @@ private fun DeckDetailContent(
                 // a pair — and the cover art above them becomes a letterbox.
                 .contentPane(PaneWidth.Reading)
                 .testTag("deck_detail_content"),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
+            // The floating button reserves no height of its own, so the list has to leave it
+            // room — without this the last card row sits under the pill and cannot be read.
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = STUDY_CTA_CLEARANCE),
         ) {
             // Everything above the card list is a fixed set of sections that are on screen
             // together anyway, so they stay in one item and keep their shared 20.dp rhythm.
@@ -461,6 +459,9 @@ private fun DeckDetailContent(
     }
 }
 
+/** Room under the card list for the floating Study pill, so the last row clears it. */
+private val STUDY_CTA_CLEARANCE = 96.dp
+
 @Composable
 internal fun CardsHeading(count: Int, modifier: Modifier = Modifier) {
     val colors = LoopkyTheme.colors
@@ -500,89 +501,6 @@ internal fun CardsEmptyState(isOwned: Boolean) {
             .fillMaxWidth()
             .testTag("deck_cards_empty"),
     )
-}
-
-/**
- * [canEdit] is wider than [isOwned]: a followed deck carries the pencil too, and tapping it offers
- * a copy rather than the editor (#254). That is the whole of the clone flow's discoverability —
- * wanting to change someone's deck is the one moment owning your own version is the answer.
- */
-@Composable
-internal fun HeaderBar(
-    isOwned: Boolean,
-    canEdit: Boolean,
-    onBackClick: () -> Unit,
-    onShareClick: () -> Unit,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LoopkyTheme.colors
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        HeaderCircleButton(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-            contentDescription = stringResource(R.string.deck_detail_back),
-            iconSize = 24.dp,
-            onClick = onBackClick,
-        )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (canEdit) {
-                HeaderCircleButton(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = stringResource(R.string.deck_detail_edit),
-                    onClick = onEditClick,
-                    modifier = Modifier.testTag("deck_edit"),
-                )
-            }
-            if (isOwned) {
-                HeaderCircleButton(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.deck_detail_delete),
-                    tint = colors.danger,
-                    onClick = onDeleteClick,
-                    modifier = Modifier.testTag("deck_delete"),
-                )
-            }
-            HeaderCircleButton(
-                imageVector = Icons.Default.Share,
-                contentDescription = stringResource(R.string.deck_detail_share),
-                onClick = onShareClick,
-                modifier = Modifier.testTag("deck_share"),
-            )
-        }
-    }
-}
-
-@Composable
-private fun HeaderCircleButton(
-    imageVector: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    tint: Color = Color.Unspecified,
-    iconSize: Dp = 20.dp,
-) {
-    val colors = LoopkyTheme.colors
-    FilledIconButton(
-        onClick = onClick,
-        modifier = modifier.size(40.dp),
-        shape = RoundedCornerShape(50),
-        colors = IconButtonDefaults.filledIconButtonColors(
-            containerColor = colors.surfaceCard,
-            contentColor = if (tint == Color.Unspecified) colors.foregroundPrimary else tint,
-        ),
-    ) {
-        Icon(
-            imageVector = imageVector,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(iconSize),
-        )
-    }
 }
 
 /**

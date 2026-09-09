@@ -1,6 +1,11 @@
 package com.github.jvsena42.loopky.ui.decks
 
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -14,9 +19,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.VerticalDragHandle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailUiState
 import com.github.jvsena42.loopky.ui.components.AuthorRow
@@ -191,52 +208,82 @@ internal fun WideDeckDetail(
             onDeleteClick = onDeleteClick,
             modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
         )
-        Row(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
-        ) {
-            DeckDetailHeader(
-                state = state,
-                showHeaderBar = false,
-                onOpenTag = onOpenTag,
-                onOpenProfile = onOpenProfile,
-                onBackClick = onBackClick,
-                onShareClick = onShareClick,
-                onEditClick = onEditClick,
-                onDeleteClick = onDeleteClick,
-                onToggleFollow = onToggleFollow,
-                modifier = Modifier
-                    .width(DETAIL_PANE_WIDTH)
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 20.dp),
-            )
-            LazyColumn(
-                modifier = Modifier.weight(1f).testTag("deck_detail_cards"),
-                contentPadding = PaddingValues(bottom = 20.dp),
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            val maxPaneWidth = (maxWidth - MIN_CARDS_PANE_WIDTH - PANE_GAP).coerceAtLeast(MIN_DETAIL_PANE_WIDTH)
+            var paneWidth by rememberSaveable(stateSaver = DpSaver) {
+                mutableStateOf(DETAIL_PANE_WIDTH)
+            }
+            val density = LocalDensity.current
+            // In RTL the Row lays its first child out on the right, so a drag towards the trailing
+            // edge is a drag towards the left. Without the flip the handle widens the pane the finger
+            // is moving away from.
+            val towardsTrailing = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
+            val handleInteractionSource = remember { MutableInteractionSource() }
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(PANE_GAP / 2),
             ) {
-                item(key = "cards_heading") {
-                    CardsHeading(count = state.cardPreviews.size, modifier = Modifier.padding(bottom = 12.dp))
-                }
-                if (state.cardPreviews.isEmpty()) {
-                    item(key = "cards_empty") { CardsEmptyState(isOwned = state.isOwned) }
-                } else {
-                    items(state.cardPreviews, key = { it.id }) { card ->
-                        CardPreviewRow(
-                            frontText = card.frontText,
-                            backText = card.backText,
-                            frontImageRef = card.frontImageRef,
-                            deckId = state.deckId,
-                            authorPubky = state.author.pubky,
-                            onClick = if (state.isOwned) {
-                                { onCardClick(card.id) }
-                            } else {
-                                null
+                DeckDetailHeader(
+                    state = state,
+                    showHeaderBar = false,
+                    onOpenTag = onOpenTag,
+                    onOpenProfile = onOpenProfile,
+                    onBackClick = onBackClick,
+                    onShareClick = onShareClick,
+                    onEditClick = onEditClick,
+                    onDeleteClick = onDeleteClick,
+                    onToggleFollow = onToggleFollow,
+                    modifier = Modifier
+                        .width(paneWidth.coerceIn(MIN_DETAIL_PANE_WIDTH, maxPaneWidth))
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 20.dp),
+                )
+                // The split is the reader's to set: a deck whose description runs long wants a wider
+                // left column, and one being scanned for a card wants none of it. Not announced to
+                // TalkBack — a drag is not operable there, and both panes stay usable at the default,
+                // so a control that could only report itself would be one more dead stop.
+                VerticalDragHandle(
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .draggable(
+                            orientation = Orientation.Horizontal,
+                            interactionSource = handleInteractionSource,
+                            state = rememberDraggableState { delta ->
+                                val step = with(density) { (delta * towardsTrailing).toDp() }
+                                paneWidth = (paneWidth + step)
+                                    .coerceIn(MIN_DETAIL_PANE_WIDTH, maxPaneWidth)
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                                .testTag("deck_card_row"),
-                        )
+                        ),
+                    interactionSource = handleInteractionSource,
+                )
+                LazyColumn(
+                    modifier = Modifier.weight(1f).testTag("deck_detail_cards"),
+                    contentPadding = PaddingValues(bottom = 96.dp),
+                ) {
+                    item(key = "cards_heading") {
+                        CardsHeading(count = state.cardPreviews.size, modifier = Modifier.padding(bottom = 12.dp))
+                    }
+                    if (state.cardPreviews.isEmpty()) {
+                        item(key = "cards_empty") { CardsEmptyState(isOwned = state.isOwned) }
+                    } else {
+                        items(state.cardPreviews, key = { it.id }) { card ->
+                            CardPreviewRow(
+                                frontText = card.frontText,
+                                backText = card.backText,
+                                frontImageRef = card.frontImageRef,
+                                deckId = state.deckId,
+                                authorPubky = state.author.pubky,
+                                onClick = if (state.isOwned) {
+                                    { onCardClick(card.id) }
+                                } else {
+                                    null
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp)
+                                    .testTag("deck_card_row"),
+                            )
+                        }
                     }
                 }
             }
@@ -244,5 +291,17 @@ internal fun WideDeckDetail(
     }
 }
 
-/** The metadata column's width — a readable measure for the title and description. */
+/** The metadata column's starting width — a readable measure for the title and description. */
 private val DETAIL_PANE_WIDTH = 360.dp
+
+/** Narrow enough to still read a title, and the floor the handle cannot drag past. */
+private val MIN_DETAIL_PANE_WIDTH = 260.dp
+
+/** What the card list keeps whatever the handle does — a prompt and its answer on one row. */
+private val MIN_CARDS_PANE_WIDTH = 320.dp
+
+/** The gutter between the two panes, half of it either side of the handle. */
+private val PANE_GAP = 28.dp
+
+/** [Dp] is not one of the types [rememberSaveable] can bundle on its own. */
+private val DpSaver = Saver<Dp, Float>(save = { it.value }, restore = { it.dp })

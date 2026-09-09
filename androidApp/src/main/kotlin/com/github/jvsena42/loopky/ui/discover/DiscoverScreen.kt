@@ -3,14 +3,13 @@ package com.github.jvsena42.loopky.ui.discover
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -18,15 +17,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,15 +59,16 @@ import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.deckGridColumns
+import com.github.jvsena42.loopky.ui.search.DiscoverSearchBar
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoverRoute(
     onOpenProfile: (String) -> Unit = {},
     onOpenDeck: (deckId: String, author: String?) -> Unit = { _, _ -> },
-    onOpenSearch: () -> Unit = {},
     /**
      * Discover is the whole app for a signed-out visitor, so it carries the standing offer to
      * sign in. Passed down rather than read off the state because the *shell* decides it: only
@@ -80,18 +78,20 @@ fun DiscoverRoute(
     onSignIn: () -> Unit = {},
 ) {
     val viewModel = koinViewModel<DiscoverViewModel>()
+    val searchBarState = rememberSearchBarState()
 
     val context = LocalContext.current
     var signInPrompt by remember { mutableStateOf<SignInReason?>(null) }
     val currentOpenProfile by rememberUpdatedState(onOpenProfile)
     val currentOpenDeck by rememberUpdatedState(onOpenDeck)
-    val currentOpenSearch by rememberUpdatedState(onOpenSearch)
     var followError by remember { mutableStateOf<ErrorReason?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
-                DiscoverEffect.OpenSearch -> currentOpenSearch()
+                // Search is a bar on this screen since it stopped being a route: the CTA at the
+                // foot of an empty browse section raises it rather than leaving for it.
+                DiscoverEffect.OpenSearch -> searchBarState.animateToExpanded()
                 is DiscoverEffect.OpenProfile -> currentOpenProfile(effect.pubky)
                 is DiscoverEffect.OpenDeck -> currentOpenDeck(effect.deckId, effect.authorPubky)
                 is DiscoverEffect.ShowFollowError -> followError = effect.reason
@@ -127,6 +127,14 @@ fun DiscoverRoute(
         onSignIn = onSignIn,
         onTagSelected = viewModel::onTagSelected,
         onSearch = viewModel::onSearch,
+        searchBar = {
+            DiscoverSearchBar(
+                onOpenProfile = onOpenProfile,
+                onOpenDeck = onOpenDeck,
+                onSignIn = onSignIn,
+                state = searchBarState,
+            )
+        },
         onOpenAuthor = viewModel::onOpenAuthor,
         onOpenDeck = viewModel::onOpenDeck,
         onFollowToggle = viewModel::onFollowToggle,
@@ -143,6 +151,7 @@ private fun DiscoverScreen(
     onSignIn: () -> Unit,
     onTagSelected: (Tag?) -> Unit,
     onSearch: () -> Unit,
+    searchBar: @Composable () -> Unit,
     onOpenAuthor: (String) -> Unit,
     onOpenDeck: (String, String) -> Unit,
     onFollowToggle: (String) -> Unit,
@@ -171,10 +180,19 @@ private fun DiscoverScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .contentPane(PaneWidth.Wide),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+                // The box floats over this list rather than sitting above it, so the top padding
+                // is what keeps the first row from starting underneath it. Everything below simply
+                // passes behind the pill on the way up, which is the point: the way in stays put
+                // and costs no height.
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = SEARCH_BAR_CLEARANCE,
+                    bottom = 24.dp,
+                ),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                item(key = "header") { DiscoverHeader(onSearch = onSearch) }
+                item(key = "header") { DiscoverHeader() }
 
                 // Above the topics, below the search bar: first thing on the page, and it scrolls
                 // away with everything else rather than pinning itself over the content a visitor
@@ -197,8 +215,19 @@ private fun DiscoverScreen(
                 }
             }
         }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .contentPane(PaneWidth.Wide)
+                .padding(horizontal = 20.dp),
+        ) {
+            searchBar()
+        }
     }
 }
+
+/** Room above the first row for the floating search box, which reserves no height of its own. */
+private val SEARCH_BAR_CLEARANCE = 72.dp
 
 private fun LazyListScope.topicsSection(
     state: DiscoverUiState,
@@ -216,6 +245,7 @@ private fun LazyListScope.topicsSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 private fun LazyListScope.peopleSection(
     state: DiscoverUiState,
     onOpenAuthor: (String) -> Unit,
@@ -234,23 +264,39 @@ private fun LazyListScope.peopleSection(
         return
     }
     item(key = "people") {
-        Row(
+        // A carousel rather than a plain `horizontalScroll`: it snaps a tile to the leading edge
+        // instead of parking one half off it, and the item leaving the row is masked as it goes,
+        // which is the same "there is more this way" the topic row draws by hand.
+        //
+        // Uncontained, not multi-browse: the browsing variant squeezes the tiles at the keylines,
+        // and a squeezed tile here is a name cut mid-word — the exact thing that reads as a
+        // clipping bug rather than an invitation.
+        val carouselState = rememberCarouselState { state.people.items.size }
+        HorizontalUncontainedCarousel(
+            state = carouselState,
+            itemWidth = PERSON_TILE_WIDTH,
             modifier = Modifier
                 .fillMaxWidth()
-                .testTag("discover_people_row")
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            state.people.items.forEach { person ->
-                PersonTile(
-                    person = person,
-                    onOpenProfile = { onOpenAuthor(person.identity.pubky) },
-                    onFollowToggle = { onFollowToggle(person.identity.pubky) },
-                )
-            }
+                .height(PERSON_TILE_HEIGHT)
+                .testTag("discover_people_row"),
+            itemSpacing = 12.dp,
+        ) { index ->
+            val person = state.people.items[index]
+            PersonTile(
+                person = person,
+                onOpenProfile = { onOpenAuthor(person.identity.pubky) },
+                onFollowToggle = { onFollowToggle(person.identity.pubky) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
+
+/** [PersonTile]'s own width — the carousel gives each slot exactly the tile it holds. */
+private val PERSON_TILE_WIDTH = 148.dp
+
+/** Avatar, name, pubky and the follow pill, plus the tile's own padding. */
+private val PERSON_TILE_HEIGHT = 186.dp
 
 private fun LazyListScope.browseSection(
     state: DiscoverUiState,
@@ -364,34 +410,20 @@ private fun ClearTagButton(onClick: () -> Unit) {
     )
 }
 
+/**
+ * The title alone. The magnifier that used to sit opposite it is gone: it opened a route, and the
+ * search box it opened is now standing above this row all the time.
+ */
 @Composable
-private fun DiscoverHeader(onSearch: () -> Unit) {
-    val colors = LoopkyTheme.colors
-    Row(
+private fun DiscoverHeader() {
+    Text(
+        text = stringResource(R.string.discover_title),
+        color = LoopkyTheme.colors.foregroundPrimary,
+        fontSize = 28.sp,
+        lineHeight = 34.sp,
+        fontWeight = FontWeight.ExtraBold,
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.discover_title),
-            color = colors.foregroundPrimary,
-            fontSize = 28.sp,
-            lineHeight = 34.sp,
-            fontWeight = FontWeight.ExtraBold,
-        )
-        // A magnifier alone, and the platform's own button: what the icon means needs no label,
-        // and search reaches everything the old "Add friend" pill did — pasting a pubky is one of
-        // the things it accepts, rather than the only thing. Styled like the Decks header's search
-        // button so the two tab headers read as the same furniture.
-        IconButton(onClick = onSearch, modifier = Modifier.testTag("discover_search")) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = stringResource(R.string.discover_search),
-                tint = colors.foregroundPrimary,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-    }
+    )
 }
 
 private fun previewDeck(id: String, title: String, emoji: String, author: String, name: String) =
@@ -426,6 +458,7 @@ private fun DiscoverScreenPreview() {
             onSignIn = {},
             onTagSelected = {},
             onSearch = {},
+            searchBar = {},
             onOpenAuthor = {},
             onOpenDeck = { _, _ -> },
             onFollowToggle = {},
@@ -446,6 +479,7 @@ private fun DiscoverScreenEmptyBrowsePreview() {
             onSignIn = {},
             onTagSelected = {},
             onSearch = {},
+            searchBar = {},
             onOpenAuthor = {},
             onOpenDeck = { _, _ -> },
             onFollowToggle = {},
@@ -472,6 +506,7 @@ private fun DiscoverScreenGuestPreview() {
             onSignIn = {},
             onTagSelected = {},
             onSearch = {},
+            searchBar = {},
             onOpenAuthor = {},
             onOpenDeck = { _, _ -> },
             onFollowToggle = {},

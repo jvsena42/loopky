@@ -38,7 +38,6 @@ import com.github.jvsena42.loopky.ui.profile.FriendProfileRoute
 import com.github.jvsena42.loopky.ui.restore.RestoreFileRoute
 import com.github.jvsena42.loopky.ui.restore.RestorePhraseRoute
 import com.github.jvsena42.loopky.ui.restore.RestoreStartRoute
-import com.github.jvsena42.loopky.ui.search.SearchRoute
 import com.github.jvsena42.loopky.ui.settings.SettingsRoute
 import com.github.jvsena42.loopky.ui.signup.InviteCodeRoute
 import com.github.jvsena42.loopky.ui.signup.LightningVerificationRoute
@@ -171,9 +170,6 @@ internal fun LoopkyNavHost(
                 onNavigateSettings = {
                     navController.navigateTo(Routes.settings())
                 },
-                onNavigateSearch = {
-                    navController.navigateTo(Routes.SEARCH)
-                },
                 onNavigateFollows = { pubky, source ->
                     navController.navigateTo(Routes.followList(pubky, source))
                 },
@@ -235,16 +231,6 @@ internal fun LoopkyNavHost(
                 onOpenClone = { id ->
                     navController.popBackStack()
                     navController.navigateTo(Routes.deckDetail(id))
-                },
-            )
-        }
-        composable(Routes.SEARCH) {
-            SearchRoute(
-                onBack = { navController.popBackStack() },
-                onSignIn = { navController.navigateTo(Routes.ONBOARDING) },
-                onOpenProfile = { pubky -> navController.navigateTo(Routes.friendProfile(pubky)) },
-                onOpenDeck = { deckId, deckAuthor ->
-                    navController.navigateTo(Routes.deckDetail(deckId, deckAuthor))
                 },
             )
         }
