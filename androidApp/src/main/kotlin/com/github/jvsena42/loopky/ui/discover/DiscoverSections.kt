@@ -40,7 +40,7 @@ import com.github.jvsena42.loopky.presentation.discover.DiscoverDeck
 import com.github.jvsena42.loopky.presentation.discover.DiscoverPerson
 import com.github.jvsena42.loopky.ui.components.DeckTile
 import com.github.jvsena42.loopky.ui.components.PubkyAvatar
-import com.github.jvsena42.loopky.ui.components.TagChip
+import com.github.jvsena42.loopky.ui.components.TagFilterChip
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.label
 import com.github.jvsena42.loopky.ui.util.truncatedPubky
@@ -126,7 +126,7 @@ fun TopicRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         tags.forEach { tag ->
-            TagChip(
+            TagFilterChip(
                 tag = tag.value,
                 selected = tag == selectedTag,
                 onClick = { onTagSelected(tag) },
