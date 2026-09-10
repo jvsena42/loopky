@@ -273,8 +273,8 @@ private suspend fun dispatch(
 
         // The message stays one line. `--json` puts it in an `error.message`, and pasting a
         // 60-line usage block into a JSON string helps nobody parsing it; `--help` is where the
-        // usage lives, and the human path prints it below.
-        else -> throw CliError(ExitCode.Usage, "Unknown command '$verb'. Try `loopky --help`.")
+        // usage lives, and the human path prints it below. A near miss adds a clause, not a line.
+        else -> throw CliError(ExitCode.Usage, args.unknownCommandMessage())
     }
 }
 
