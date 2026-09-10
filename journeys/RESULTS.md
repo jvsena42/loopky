@@ -382,8 +382,10 @@ seconds.
 
 ### Notes
 
-- The app shows onboarding for a beat on cold start before the persisted session resolves. Not a
-  regression — worth knowing, because a layout dump taken too early reads as "signed out".
+- The app shows onboarding for a beat on cold start before the persisted session resolves. Worth
+  knowing, because a layout dump taken too early reads as "signed out". **Fixed 2026-09-10** — the
+  onboarding screen now holds the splash through `Success` too; see the entry at the end of this
+  file.
 - The 429-flakiness and rustls faults recorded above did not recur in this session.
 
 ## 15 — Pubky links — ✅ PASS
@@ -3372,3 +3374,36 @@ throwaway red fill answered it in one screenshot: red down the side before, none
 the same 100pt Home and the library reserve for the floating tab bar — but the guest shell is
 Discover *alone, with no tab bar* (`MainView`), so a guest gets the plain end-of-scroll padding
 and not 100pt of empty space.
+
+## The sign-in wall flashed past on every signed-in cold start — 2026-09-10, `Medium_Phone` (staging)
+
+A returning user's launch went splash → **the full sign-in screen** → home. Reproduced and fixed
+by capturing the launch as a burst of `screencap`s (no `ffmpeg` on this box, so 20 back-to-back
+grabs at ~120 ms rather than a video), signed in as `kfezy1`.
+
+| Frame | Before (0.11.2) | After |
+| --- | --- | --- |
+| 1 | launcher | launcher |
+| 2 | brand splash | brand splash |
+| 3 | **"Sign in with Pubky Ring", consent box, version — fully drawn** | splash cross-fading into Home |
+| 4 | that same screen fading into Home | Home ("Warming up…") |
+| 5+ | Home | Home |
+
+**`Success` was rendering the sign-in wall.** `OnboardingViewModel` starts in `Restoring`, which
+the screen draws as `SplashContent` — so the *first* frames were always right. What was missed is
+that finding a session moves the state to `Success` **and then** emits `NavigateHome`: for the
+whole navigation, `OnboardingContent` fell through to its default branch and painted the CTA. It
+is the nav transition's ~300 ms that makes it a visible flash rather than a dropped frame. `Success`
+now takes the same early return as `Restoring` and `leaving`.
+
+**iOS had the same bug and one more, and neither is verified here.** This box is Linux, so
+`xcodebuildmcp` cannot build or drive the simulator — the Swift change is reasoned, not run.
+`OnboardingScreen.uiState` is `Any?` and starts **`nil`**, which `isRestoring` answered false for,
+so the sign-in wall was drawn before the first `StateFlow` value even crossed the bridge; `Success`
+then flashed it a second time. `holdSplash` covers nil, `Restoring`, `Success`, and the
+signed-out hand-off to browsing that Android already held the splash for (`leaving`). Re-run the
+iOS cold start on a simulator before trusting this row.
+
+Not re-tested: the signed-out launch and the sign-out → onboarding arrival. Neither path reaches
+`Success`, so neither changes on Android — and signing out on this emulator is one-way without
+Pubky Ring on a real phone (see journey 01's warning).
