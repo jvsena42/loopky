@@ -32,18 +32,18 @@ interface PubkyClient {
      * Sign up / sign in with a secret key Loopky holds — the local alternative to the Ring
      * deeplink (#147).
      *
-     * **Both bind to the FFI's cookie variants**, like [startAuthFlow]. The fork's plain
-     * `sign_in`/`sign_up` delegate to the *grant* flow, which fails against Synonym's staging
-     * homeserver: `export_grant_session_secret` writes outside `/pub/`, refused with
-     * `403 Forbidden - Writing to directories other than '/pub/' is forbidden`. The cookie flow
-     * signs in cleanly and answers a pubky with no account with an honest 404.
+     * **Both still bind to the FFI's cookie variants**, where [startAuthFlow] has moved to grant
+     * (#130). The fork's plain `sign_in`/`sign_up` delegate to the grant flow, whose
+     * `POST /auth/grant/session` the homeserver refused in 2026-08 with
+     * `403 Forbidden - Writing to directories other than '/pub/' is forbidden`. Both homeservers
+     * route that endpoint as of 2026-09-10, so the blocker is gone — but nobody has driven these
+     * two down the grant path against a real account, and the cookie flow signs in cleanly and
+     * answers a pubky with no account with an honest 404.
      *
-     * It is also what the rest of this client expects — [signOut], [revalidateSession] and
-     * `put_with_session` take the cookie flow's `session_secret`, and every Ring session is a cookie
-     * session — so the local paths produce the same kind of session as every other path.
+     * Mixing the two kinds is safe: `restore_session` sniffs which it was handed, so [signOut],
+     * [revalidateSession] and `put_with_session` take either.
      *
-     * Revisit alongside #130: upstream marks the cookie flow deprecated, so this is a hold rather
-     * than a destination.
+     * Upstream marks the cookie flow deprecated, so this is a hold rather than a destination.
      */
     suspend fun signUp(
         secretKey: String,
@@ -57,25 +57,17 @@ interface PubkyClient {
     suspend fun revalidateSession(sessionSecret: String): Result<String>
 
     /**
-     * Pubky Ring-style deeplink flow.
+     * Pubky Ring-style deeplink flow, minting `pubkyauth://signin_grant?…` (#130).
      *
-     * Both bind to the FFI's **cookie** variant (`start_cookie_auth_flow` /
-     * `await_cookie_auth_approval`), not the grant variant its plain `start_auth_flow` now delegates
-     * to. That is a compatibility choice about the app on the other end of the deeplink:
+     * Needs a Ring built on pubky 0.10 on the other end — **v1.19 or newer**. Older releases bundle
+     * `react-native-pubky@0.13.0`, whose parser knows `signin`, `signup`, `direct_signup` and
+     * `session` and nothing else; they answer a grant URL with "Unrecognized format" and the user
+     * cannot sign in at all.
      *
-     * - pubky 0.10's grant flow mints `pubkyauth://signin_grant?…`. Every released Pubky Ring
-     *   bundles `react-native-pubky@0.13.0` — pubky 0.9.x, whose parser knows `signin`, `signup`,
-     *   `direct_signup` and `session` and nothing else. It answers a grant URL with "Unrecognized
-     *   format" and the user cannot sign in at all.
-     * - The grant flow returns its secret as `grant_secret`, where the rest of this client expects
-     *   `session_secret`. (`restore_session` takes either, so that half is survivable; the deeplink
-     *   half is not.)
-     *
-     * The cookie flow emits `pubkyauth://signin?caps=…&relay=…&secret=…`, which Ring understands
-     * today. It carries no `ClientId`, which is why these two are the only calls here without one.
-     *
-     * Revisit when Ring ships a release built on pubky 0.10 — #130 tracks undoing this and lists
-     * what has to ship first.
+     * The approval payload names the secret `grant_secret` rather than `session_secret`; the alias
+     * in [parseSessionPayload] absorbs that, and the FFI's `restore_session` sniffs which kind of
+     * token it was handed, so [signOut], [revalidateSession] and `put_with_session` take it
+     * unchanged.
      */
     suspend fun startAuthFlow(capabilities: String): Result<String>
     suspend fun awaitAuthApproval(): Result<String>

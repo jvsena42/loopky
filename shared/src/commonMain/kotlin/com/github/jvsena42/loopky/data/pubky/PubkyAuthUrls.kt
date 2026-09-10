@@ -3,17 +3,22 @@ package com.github.jvsena42.loopky.data.pubky
 /**
  * Turns the sign-in deeplink the FFI mints into the **signup** form Pubky Ring understands.
  *
- * Loopky cannot ask the FFI for a signup URL: `start_auth_flow` hardcodes `AuthFlowKind::SignIn`
- * (`pubky-core-ffi-fork/src/lib.rs`), and the fork exposes no way to override it. The SDK does
- * support the signup flow — it simply is not reachable through the binding. Rewriting the URL it
- * already returned is how Pubky App works around the same wall
+ * Loopky cannot ask the FFI for a signup URL: `start_grant_auth_flow` hardcodes
+ * `AuthFlowKind::signin()` (`pubky-core-ffi-fork/src/lib.rs`), and the fork exposes no way to
+ * override it. The SDK does support the signup flow — it simply is not reachable through the
+ * binding. Rewriting the URL it already returned is how Pubky App works around the same wall
  * (`HomeserverService.generateSignupAuthUrl`), and the two forms differ only by the intent host
  * and two extra params:
  *
  * ```
- * signin:  pubkyauth://signin?caps={caps}&relay={relay}&secret={secret}
- * signup:  pubkyauth://signup?caps={caps}&relay={relay}&secret={secret}&hs={homeserver}&st={token}
+ * signin_grant:  pubkyauth://signin_grant?caps={caps}&relay={relay}&secret={secret}&cid={id}&cpk={pk}
+ * signup_grant:  pubkyauth://signup_grant?…same…&hs={homeserver}&st={token}
  * ```
+ *
+ * `cid`/`cpk` are grant parameters and live in the query, so replacing the intent host carries
+ * them over untouched — which is the whole reason this stayed a one-word change when the deeplink
+ * moved from cookie to grant (#130). `SignupGrantParams` requires both, plus `hs`; `st` is
+ * optional there.
  *
  * The relay channel and client secret are the same either way, so the handle returned by
  * `startAuthFlow` still collects the approval — Ring just mints a key and redeems the token
@@ -21,7 +26,7 @@ package com.github.jvsena42.loopky.data.pubky
  */
 
 private const val SCHEME = "pubkyauth://"
-private const val SIGNUP_INTENT = "signup"
+private const val SIGNUP_INTENT = "signup_grant"
 
 /**
  * @param homeserverPubky z-base32 key of the homeserver to sign up on — the one the signup token
