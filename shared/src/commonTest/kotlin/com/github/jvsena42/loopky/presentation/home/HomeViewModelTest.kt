@@ -94,8 +94,21 @@ class HomeViewModelTest {
         val spanish = state.decks.first { it.id == "deck1" }
         assertEquals(expected = 2, actual = spanish.dueCount)
         assertEquals(expected = 2, actual = spanish.cardCount)
-        assertEquals('S', spanish.coverInitial)
+        assertEquals(expected = "S", actual = spanish.coverEmoji)
         assertEquals(expected = 0, actual = state.decks.first { it.id == "deck2" }.dueCount)
+    }
+
+    /** Home used to derive the cover from the title alone, so an author's emoji never reached it. */
+    @Test
+    fun aDeckWithACoverEmojiShowsItRatherThanTheTitlesInitial() = runTest {
+        val flag = "🇪🇸"
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish", coverEmoji = flag)
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val state = assertIs<HomeUiState.Content>(vm.state.value)
+        assertEquals(expected = flag, actual = state.decks.first { it.id == "deck1" }.coverEmoji)
     }
 
     @Test

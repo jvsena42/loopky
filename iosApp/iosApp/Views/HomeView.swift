@@ -150,7 +150,8 @@ struct HomeDeckSummary: Equatable, Identifiable {
     var newCount: Int = 0
     /// See `HomeContentData.countsKnown`: false means [dueCount] is a placeholder, not a claim.
     var countsKnown: Bool = true
-    let coverInitial: String
+    /// The author's cover emoji, or the title's initial when the deck carries none.
+    let coverEmoji: String
     var coverImage: MediaRef.Image?
     var authorPubky: String = ""
 
@@ -159,7 +160,7 @@ struct HomeDeckSummary: Equatable, Identifiable {
     static func == (lhs: HomeDeckSummary, rhs: HomeDeckSummary) -> Bool {
         lhs.id == rhs.id && lhs.title == rhs.title && lhs.cardCount == rhs.cardCount
             && lhs.dueCount == rhs.dueCount && lhs.newCount == rhs.newCount
-            && lhs.coverInitial == rhs.coverInitial
+            && lhs.coverEmoji == rhs.coverEmoji
             && lhs.coverImage === rhs.coverImage && lhs.authorPubky == rhs.authorPubky
     }
 }
@@ -176,9 +177,9 @@ struct HomeView_Previews: PreviewProvider {
                     dueToday: 24,
                     doneToday: 8,
                     decks: [
-                        HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverInitial: "S"),
-                        HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverInitial: "B"),
-                        HomeDeckSummary(id: "3", title: "Guitar Chords", cardCount: 18, dueCount: 5, coverInitial: "G"),
+                        HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverEmoji: "🇪🇸"),
+                        HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverEmoji: "B"),
+                        HomeDeckSummary(id: "3", title: "Guitar Chords", cardCount: 18, dueCount: 5, coverEmoji: "G"),
                     ]
                 ))
             )

@@ -2,13 +2,8 @@ import Foundation
 import Shared
 
 /// Small bridging helpers for values that cross the Kotlin/Native ObjC boundary
-/// in awkward shapes (Kotlin `Char` → `unichar`, `value class Tag` → opaque `id`).
+/// in awkward shapes (`value class Tag` → opaque `id`).
 enum KotlinInterop {
-    /// Kotlin `Char` arrives as `unichar` (UInt16). Converts to a one-character String.
-    static func charToString(_ value: unichar) -> String {
-        UnicodeScalar(value).map { String(Character($0)) } ?? "?"
-    }
-
     /// `Tag` is a Kotlin value class, so it crosses the bridge as an opaque `Any`.
     /// Extracts a displayable label without assuming the boxed representation.
     static func tagLabel(_ tag: Any) -> String {

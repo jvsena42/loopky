@@ -3407,3 +3407,35 @@ iOS cold start on a simulator before trusting this row.
 Not re-tested: the signed-out launch and the sign-out → onboarding arrival. Neither path reaches
 `Success`, so neither changes on Android — and signing out on this emulator is one-way without
 Pubky Ring on a real phone (see journey 01's warning).
+
+## Today's decks showed the title's initial where a deck has a cover emoji — 2026-09-10, `Medium_Phone` + `Pixel_Tablet` landscape (staging)
+
+A deck published with a cover emoji rendered it on Decks and on deck detail, and rendered the
+first letter of its title on Today. Reproduced on `kfezy1`'s library with **Math Symbols**, whose
+cover is `∑`: the Decks grid drew `∑`, Today drew `M`.
+
+**Home was the one screen deriving its cover from the title alone.** Every other ViewModel resolves
+`coverEmoji ?: title initial ?: 📚` into a single `coverEmoji: String`; home's `DeckSummary` carried
+a `coverInitial: Char` computed from the title and never read `Deck.coverEmoji` at all, so the
+author's emoji had no path to the screen. It is now the same `coverEmoji: String` as everywhere
+else, which fixes both home layouts at once — the compact `DeckRow` and the expanded
+`TodaysDecksGrid` tile were reading the same field.
+
+| Surface | Before | After |
+| --- | --- | --- |
+| Today, phone (`DeckRow`) | `M` | `∑` |
+| Today, tablet landscape (`TodaysDecksGrid`) | `M` | `∑` |
+| Decks grid, deck detail | `∑` | `∑` (unchanged) |
+
+Checked in the same pass that the two fallbacks still hold: decks with no emoji keep their initial
+(`I` Image render matrix, `C` Computer Networks, `A` Animals PT), and a deck with cover *art*
+(Spanish Nouns, Spanish basics) still paints the image over the fallback rather than beside it.
+
+**iOS had the identical bug and it is not verified here.** `HomeDeckSummary.coverInitial` was fed
+by `KotlinInterop.charToString(deck.coverInitial)`, so `DeckRow` in `HomeComponents.swift` showed
+the letter for the same reason. It now takes `deck.coverEmoji` straight across — no `Char` bridge,
+which leaves `charToString` with no callers and it has been dropped. This box is Linux, so
+`xcodebuildmcp` cannot build or drive a simulator: the Swift change is reasoned, not run. Drive
+Today on a simulator against a deck with a cover emoji before trusting this row.
+
+No `journeys/*.xml` asserts on Today's deck covers, so none was re-run for this.

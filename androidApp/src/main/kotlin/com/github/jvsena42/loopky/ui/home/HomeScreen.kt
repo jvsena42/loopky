@@ -300,7 +300,7 @@ private fun HomeScreenPreview() {
                         authorPubky = "alex1xqz9",
                         cardCount = 60,
                         dueCount = 12,
-                        coverInitial = 'S',
+                        coverEmoji = "🇪🇸",
                     ),
                     DeckSummary(
                         id = "2",
@@ -308,7 +308,7 @@ private fun HomeScreenPreview() {
                         authorPubky = "friend1xqz9",
                         cardCount = 103,
                         dueCount = 8,
-                        coverInitial = 'K',
+                        coverEmoji = "K",
                     ),
                 ),
             ),

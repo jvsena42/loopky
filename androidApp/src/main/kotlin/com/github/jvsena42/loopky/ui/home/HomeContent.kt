@@ -143,7 +143,7 @@ fun TodaysDecksGrid(
                         authorPubky = deck.authorPubky,
                         title = deck.title,
                         cardCount = deck.cardCount,
-                        coverEmoji = deck.coverInitial.toString(),
+                        coverEmoji = deck.coverEmoji,
                         coverImage = deck.coverImage,
                         authorLabel = dueCaption(deck, countsKnown),
                         onClick = { onDeckClick(deck.id) },
@@ -434,7 +434,7 @@ private fun DeckRow(deck: DeckSummary, countsKnown: Boolean, onClick: () -> Unit
             modifier = Modifier.size(56.dp),
         ) {
             Text(
-                text = deck.coverInitial.toString(),
+                text = deck.coverEmoji,
                 color = colors.accentPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -521,7 +521,7 @@ private fun HomeContentPreview() {
                             cardCount = 60,
                             dueCount = 12,
                             newCount = 0,
-                            coverInitial = 'S',
+                            coverEmoji = "🇪🇸",
                         ),
                         DeckSummary(
                             id = "2",
@@ -530,7 +530,7 @@ private fun HomeContentPreview() {
                             cardCount = 103,
                             dueCount = 0,
                             newCount = 40,
-                            coverInitial = 'K',
+                            coverEmoji = "K",
                         ),
                     ),
                 ),
