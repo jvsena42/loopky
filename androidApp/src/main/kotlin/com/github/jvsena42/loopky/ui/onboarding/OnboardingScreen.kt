@@ -185,7 +185,11 @@ private fun OnboardingContent(
      * flashing a call to action nobody is going to be given the chance to tap. */
     leaving: Boolean = false,
 ) {
-    if (leaving || state is OnboardingUiState.Restoring) {
+    // [OnboardingUiState.Success] belongs here with the other two: it is always followed by
+    // [OnboardingEffect.NavigateHome], so the CTA it would otherwise draw is on screen for the
+    // whole navigation — a returning user saw the sign-in wall flash between the splash and their
+    // own library on every cold start.
+    if (leaving || state is OnboardingUiState.Restoring || state is OnboardingUiState.Success) {
         SplashContent()
         return
     }

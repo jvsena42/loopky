@@ -45,7 +45,7 @@ struct OnboardingScreen: View {
 
     var body: some View {
         Group {
-            if isRestoring {
+            if holdSplash {
                 SplashView()
             } else {
                 OnboardingView(
@@ -130,10 +130,19 @@ struct OnboardingScreen: View {
         )
     }
 
-    /// Cold start, still reading the persisted session back. Showing the splash here keeps a
-    /// returning user from seeing the sign-in CTA flash by on the way home.
-    private var isRestoring: Bool {
-        uiState is OnboardingUiStateRestoring
+    /// Every state in which this screen is on its way somewhere else, and so must show the
+    /// branded splash rather than a sign-in wall the user is never given the chance to act on.
+    ///
+    /// Three of the four are not `Restoring`. `uiState` is `nil` until the first `StateFlow` value
+    /// crosses the bridge, which is a frame or more *before* the cold start's `Restoring` arrives;
+    /// `Success` is always followed by `NavigateHome`, so the CTA would otherwise be drawn for the
+    /// whole navigation; and a launch with no session is handed to browsing by `onExplore`, which
+    /// Android holds the splash for in the same way.
+    private var holdSplash: Bool {
+        guard let uiState else { return true }
+        if uiState is OnboardingUiStateRestoring { return true }
+        if uiState is OnboardingUiStateSuccess { return true }
+        return autoExplore && hasNoSession
     }
 
     /// The ViewModel has finished looking and found nothing to restore.
