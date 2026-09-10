@@ -39,6 +39,36 @@ class SessionSecretShapeTest {
         assertFailsWith<CliError> { requireSessionSecretShape("a:b:c") }
     }
 
+    /**
+     * The shape `loopky login` actually mints since the deeplink moved to grant auth (#130).
+     * Refusing this refused every deeplink session as `bad_input`.
+     */
+    @Test
+    fun `a grant credential passes`() {
+        requireSessionSecretShape(
+            "pubky-grant-credential-v1:" +
+                "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty:" +
+                "c2VjcmV0:header.payload.signature",
+        )
+    }
+
+    /** Matched by family, so a v2 token is not refused by a check that cannot try it. */
+    @Test
+    fun `a future grant credential version passes`() {
+        requireSessionSecretShape("pubky-grant-credential-v2:homeserver:secret:jws")
+    }
+
+    /** The prefix is not a bypass: a grant token still has to have all four parts. */
+    @Test
+    fun `a truncated grant credential is refused`() {
+        assertFailsWith<CliError> {
+            requireSessionSecretShape("pubky-grant-credential-v1:homeserver:secret")
+        }
+        assertFailsWith<CliError> {
+            requireSessionSecretShape("pubky-grant-credential-v1:homeserver::jws")
+        }
+    }
+
     @Test
     fun `the message names the shape rather than the value`() {
         val error = assertFailsWith<CliError> { requireSessionSecretShape("hunter2") }
