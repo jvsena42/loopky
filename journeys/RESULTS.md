@@ -30,6 +30,34 @@ callbacks (→ `loopky://login-callback`, `MainActivity` = singleTask) so Ring r
 after approval. On the installed Ring build the success screen shows an "OK" button and does
 not fire `openXSuccess`, so the user taps back to Loopky manually — a Ring-side issue, not Loopky.
 
+### 2026-09-10 — grant auth restored (#130) — ⛔ BLOCKED by Pubky Ring v1.19
+
+`startAuthFlow`/`awaitAuthApproval` now bind the FFI's **grant** variants, so Loopky mints
+`pubkyauth://signin_grant?…&cid=loopky.app&cpk=…` (confirmed in logcat on both emulators).
+
+**The journey cannot be completed, and the blocker is not the change.** Pubky Ring **v1.19**
+(versionCode 26 — the first release carrying the pubky 0.10 grant bindings) answers *every*
+`pubkyauth://` deeplink with `[InputRouter] Unknown input format` → "Unrecognized format.
+Expected a recovery phrase, invite code, auth URL, or session request."
+
+What was measured, on `emulator-5554` (Pixel_Tablet) and `emulator-5556` (Pixel_9, both Ring
+profiles set up):
+
+| Input to Ring v1.19 | Result |
+| --- | --- |
+| Real `signin_grant` URL, in-app flow (cold Ring) | Unrecognized format |
+| Real `signin_grant` URL, in-app flow (**warm** Ring) | Unrecognized format — so not the stale-task replay |
+| Real `signin` **cookie** URL, freshly minted by the FFI | Unrecognized format — **the control that matters** |
+
+The cookie row is the point: the flow Loopky shipped *before* this change fails on Ring v1.19
+too, so v1.19 breaks Loopky sign-in either way. Ring's own parser is fine — v1.19's
+`inputParser.ts` handles `signin_grant`/`signup_grant` and its lockfile pins
+`react-native-pubky@0.14.0` — and `libpubkycore.so` loads. The failure is inside Ring's native
+`parseDeepLink`, which returns an error where our own pubky 0.10.0 FFI parses all four URL
+shapes (encoded and decoded, cookie and grant) without complaint.
+
+Re-run `01-onboarding-ring-auth.xml` when a Ring release parses auth deeplinks again.
+
 ## 02 — Paste-to-Import → triage → publish — ✅ PASS
 
 Re-verified on `emulator-5554` 2026-06-17 after adding the triage step + card options.
