@@ -208,13 +208,13 @@ struct DeckRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
-                // Initial first, cover over it: the letter is the fallback, so a deck with a
-                // picture must not show both. The image is sized to the tile rather than left to
-                // grow, or the row with a cover stands taller than the row without.
+                // Emoji first, cover over it: the emoji (or the title's initial) is the fallback,
+                // so a deck with a picture must not show both. The image is sized to the tile
+                // rather than left to grow, or the row with a cover stands taller than one without.
                 ZStack {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(LoopkyColor.accentPrimarySoft)
-                    Text(deck.coverInitial)
+                    Text(deck.coverEmoji)
                         .font(.system(size: 22, weight: .heavy))
                         .foregroundColor(LoopkyColor.accentPrimary)
                     if deck.coverImage != nil {
@@ -280,9 +280,9 @@ struct DeckRow: View {
 }
 
 private let sampleHomeDecks = [
-    HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverInitial: "S"),
-    HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverInitial: "B"),
-    HomeDeckSummary(id: "3", title: "Guitar Chords", cardCount: 18, dueCount: 5, coverInitial: "G"),
+    HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverEmoji: "🇪🇸"),
+    HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverEmoji: "B"),
+    HomeDeckSummary(id: "3", title: "Guitar Chords", cardCount: 18, dueCount: 5, coverEmoji: "G"),
 ]
 
 #Preview("Content") {

@@ -69,7 +69,7 @@ struct HomeScreen: View {
                         dueCount: Int(deck.dueCount),
                         newCount: Int(deck.newCount),
                         countsKnown: content.countsKnown,
-                        coverInitial: KotlinInterop.charToString(deck.coverInitial),
+                        coverEmoji: deck.coverEmoji,
                         coverImage: deck.coverImage,
                         authorPubky: deck.authorPubky
                     )

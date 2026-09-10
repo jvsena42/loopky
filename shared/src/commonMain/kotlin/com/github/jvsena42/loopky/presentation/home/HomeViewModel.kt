@@ -276,7 +276,7 @@ class HomeViewModel(
         cardCount = cardCount,
         dueCount = counts.due,
         newCount = counts.new,
-        coverInitial = title.firstOrNull()?.uppercaseChar() ?: '•',
+        coverEmoji = coverEmoji ?: title.firstOrNull()?.uppercaseChar()?.toString() ?: "📚",
         coverImage = coverImageRef,
     )
 
@@ -357,8 +357,9 @@ data class DeckSummary(
     val dueCount: Int,
     /** Cards in this deck never graded. Shown when the deck has no reviews waiting. */
     val newCount: Int = 0,
-    val coverInitial: Char,
-    /** The deck's cover art, when it has one. Renders over [coverInitial]; null falls back to it. */
+    /** The author's cover emoji, or the title's initial when the deck carries none. */
+    val coverEmoji: String,
+    /** The deck's cover art, when it has one. Renders over [coverEmoji]; null falls back to it. */
     val coverImage: MediaRef.Image? = null,
 )
 
