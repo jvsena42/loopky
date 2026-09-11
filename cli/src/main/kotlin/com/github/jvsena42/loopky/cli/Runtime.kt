@@ -121,26 +121,43 @@ suspend fun requireSession(
 }
 
 /**
- * Refuse a `LOOPKY_SESSION` that is not a session secret at all (`<pubkey>:<cookie>`).
+ * Refuse a `LOOPKY_SESSION` that is not a session secret at all.
  *
  * Without this the FFI rejects the string and the failure classifies as [ExitCode.SessionExpired] —
  * the code that exists so an agent can tell a dead session from a wobbly network. A typo'd
  * environment variable teaching it "expired" is that same confusion one layer up.
  *
+ * **Two shapes, because there are two auth flows** (#130). `loopky login` goes through the Ring
+ * deeplink, which since the grant switch mints
+ * `pubky-grant-credential-v1:<homeserver>:<secret>:<jws>` — four parts, where the cookie flow's
+ * `<pubkey>:<cookie>` has two. Matching only the latter refused every deeplink session as
+ * `bad_input`. The prefix is matched by *family* rather than by `v1`, so a future version of the
+ * token is not refused here by a check that never sees whether it works.
+ *
  * Shape only. Whether the secret is *live* is the homeserver's answer, and `adoptSession` asks it.
  */
 internal fun requireSessionSecretShape(secret: String) {
     val parts = secret.split(':')
-    if (parts.size != SESSION_SECRET_PARTS || parts.any { it.isBlank() }) {
+    val expected = if (secret.startsWith(GRANT_SECRET_PREFIX_FAMILY)) {
+        GRANT_SECRET_PARTS
+    } else {
+        SESSION_SECRET_PARTS
+    }
+    if (parts.size != expected || parts.any { it.isBlank() }) {
         throw CliError(
             ExitCode.BadInput,
-            "LOOPKY_SESSION is not a session secret — it should look like `<pubkey>:<cookie>`. " +
+            "LOOPKY_SESSION is not a session secret — it should look like `<pubkey>:<cookie>` " +
+                "or `${GRANT_SECRET_PREFIX_FAMILY}v1:<homeserver>:<secret>:<jws>`. " +
                 "Mint one with `loopky login --export`.",
         )
     }
 }
 
+/** Mirrors `STORED_GRANT_CREDENTIAL_PREFIX_FAMILY` in pubky's `actors/auth/grant/credential.rs`. */
+private const val GRANT_SECRET_PREFIX_FAMILY = "pubky-grant-credential-"
+
 private const val SESSION_SECRET_PARTS = 2
+private const val GRANT_SECRET_PARTS = 4
 
 /**
  * Refuse to run when the session and the requested environment disagree.
