@@ -30,11 +30,14 @@ sealed interface OnboardingUiState {
      * @param ringInstalledHere whether anything on *this* device answers `pubkyauth://`, which is
      *  the only thing that makes the QR panel's "open it here instead" escape hatch worth
      *  offering — a dead button on the one screen a user cannot get past is worse than no button.
+     * @param stillWaiting set once the wait has run long enough to say so. Never a failure: an
+     *  approval is still accepted whenever it arrives (#299).
      */
     data class AwaitingApproval(
         val authUrl: String,
         val handoff: RingHandoff,
         val ringInstalledHere: Boolean,
+        val stillWaiting: Boolean = false,
     ) : OnboardingUiState
 
     /** Parsing the callback + persisting session. Full-screen progress overlay acceptable. */

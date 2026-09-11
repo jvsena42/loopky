@@ -1855,10 +1855,11 @@ approval for ~5 minutes, so the code already on screen stays valid and nobody ap
 resumes only when the failing URL is the relay's own — a failure in the homeserver exchange comes
 after the approval was ACKed, and a restored listener would wait on an empty inbox forever. It
 rides out an outage for up to 90 seconds — measured on the emulator: after a 20-second network cut
-the system resolver kept failing for another ~43 — and stops at 170 seconds, just under the app's
-three-minute approval timeout, which cannot interrupt the blocking call, so the caller reports the
-relay failure rather than "Ring never answered". A failure that surfaces is final: recovering
-means running `loopky login` again, which mints a new secret and a new code.
+the system resolver kept failing for another ~43 — and stops at 170 seconds. The app sets no
+deadline of its own: a timeout cannot interrupt the blocking call, and the three-minute one it used
+to have threw away approvals that arrived after it (#299); after 90 seconds the screen says it is
+still waiting instead, with Cancel. A failure that surfaces is final: recovering means running
+`loopky login` again, which mints a new secret and a new code.
 
 **`--timeout <seconds>` bounds the wait, and the reason it lives inside the process is the
 cleanup** (#240). Without it the only tool an unattended caller had was `timeout -s KILL`, which
