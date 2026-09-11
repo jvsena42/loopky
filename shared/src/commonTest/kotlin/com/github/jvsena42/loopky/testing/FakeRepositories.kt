@@ -103,6 +103,9 @@ class FakeIdentityRepository(var session: Session? = fakeSession()) : IdentityRe
      */
     var completionNeverReturns = false
 
+    /** When set, [AuthFlowHandle.complete] answers only once this completes — an approval that arrives late. */
+    var completionGate: CompletableDeferred<Unit>? = null
+
     /** Profiles served by [fetchProfile]; a pubky that is absent fails as an unpublished one would. */
     val profiles = mutableMapOf<String, PubkyIdentity>()
     val fetchedProfiles = mutableListOf<String>()
@@ -249,6 +252,7 @@ class FakeIdentityRepository(var session: Session? = fakeSession()) : IdentityRe
                 override val authUrl = this@FakeIdentityRepository.authUrl
                 override suspend fun complete(): Result<Session> {
                     if (completionNeverReturns) awaitCancellation()
+                    completionGate?.await()
                     return completionResult
                 }
             },

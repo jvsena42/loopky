@@ -51,6 +51,7 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 internal fun RingScanPanel(
     authUrl: String,
     ringInstalledHere: Boolean,
+    stillWaiting: Boolean,
     onOpenRingHere: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
@@ -60,6 +61,7 @@ internal fun RingScanPanel(
         authUrl = authUrl,
         title = stringResource(R.string.onboarding_qr_title),
         body = stringResource(R.string.onboarding_qr_body),
+        stillWaiting = stillWaiting,
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
@@ -110,6 +112,7 @@ internal fun RingScanPanel(
 @Composable
 internal fun RingScanSheet(
     authUrl: String,
+    stillWaiting: Boolean,
     onGetRing: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -132,6 +135,7 @@ internal fun RingScanSheet(
             authUrl = authUrl,
             title = stringResource(R.string.onboarding_qr_title),
             body = stringResource(R.string.onboarding_qr_sheet_body),
+            stillWaiting = stillWaiting,
             modifier = Modifier
                 .fillMaxWidth()
                 // A sheet is its own window, so the activity's setting does not reach it and the
@@ -179,6 +183,7 @@ private fun RingScanContent(
     authUrl: String,
     title: String,
     body: String,
+    stillWaiting: Boolean,
     modifier: Modifier = Modifier,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
@@ -213,14 +218,33 @@ private fun RingScanContent(
         ) {
             QrCode(content = authUrl, size = QR_SIZE)
         }
-        Text(
-            text = stringResource(R.string.onboarding_qr_waiting),
-            color = colors.foregroundMuted,
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center,
-        )
+        // In place of the waiting line, not under it: the panel is height-bound on a landscape
+        // tablet, and one more line pushed Cancel — the way out the note points to — below the fold.
+        if (stillWaiting) {
+            StillWaitingNote()
+        } else {
+            Text(
+                text = stringResource(R.string.onboarding_qr_waiting),
+                color = colors.foregroundMuted,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
         actions()
     }
+}
+
+/** Said once the wait has run long, never as a failure: a late approval is still accepted (#299). */
+@Composable
+internal fun StillWaitingNote(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(R.string.onboarding_still_waiting),
+        modifier = modifier.testTag("onboarding_still_waiting"),
+        color = LoopkyTheme.colors.foregroundSecondary,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        textAlign = TextAlign.Center,
+    )
 }
 
 /**

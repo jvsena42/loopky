@@ -10,7 +10,9 @@ import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.platform.PubkyRingPresence
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -19,7 +21,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The onboarding / Pubky Ring login screen: Idle → Starting → AwaitingApproval → Verifying →
@@ -103,13 +104,15 @@ class OnboardingViewModel(
             }
 
             Log.d(TAG, "onSignInClick: awaiting Pubky Ring approval…")
-            // Bounded because the relay poll is not: `await_auth_approval` blocks with no timeout
-            // of its own, and there are real cases where nothing is ever posted to the relay —
-            // notably a pubky the homeserver has no account for, which Ring rejects on its own
-            // side and never authorises. Without this the user sits on "Waiting for Pubky Ring…"
-            // forever with no error and no way back.
-            val completion = withTimeoutOrNull(APPROVAL_TIMEOUT_MS) { handle.complete() }
-                ?: Result.failure(RingApprovalTimeout())
+            // No deadline, on purpose (#299). The wait is a blocking FFI call nothing here can
+            // interrupt, so a timeout only decided what to do with an approval that arrived after it
+            // — and it threw that approval away. That is the ordinary path: Android freezes Loopky
+            // while the user approves in the signer, and the approval is collected on their return.
+            // The FFI ends the wait itself when the relay stays unreachable, and Cancel is always
+            // there; after a while the screen just says it is still waiting.
+            val stillWaiting = markStillWaitingLater(handle.authUrl)
+            val completion = handle.complete()
+            stillWaiting.cancel()
             _state.update { OnboardingUiState.Verifying }
             Log.d(TAG, "onSignInClick: state=Verifying, completion.success=${completion.isSuccess}")
 
@@ -138,6 +141,17 @@ class OnboardingViewModel(
         }
     }
 
+    private fun CoroutineScope.markStillWaitingLater(authUrl: String): Job = launch {
+        delay(APPROVAL_NUDGE_MS)
+        _state.update { current ->
+            if (current is OnboardingUiState.AwaitingApproval && current.authUrl == authUrl) {
+                current.copy(stillWaiting = true)
+            } else {
+                current
+            }
+        }
+    }
+
     /**
      * The pubky Ring authorised, when we managed to learn it. Null where the failure happened
      * before a session was ever parsed, so the screen shows the error without the follow-up rather
@@ -153,11 +167,6 @@ class OnboardingViewModel(
      * the user's point of view, not a mystery.
      */
     private fun Throwable.toSignInReason(): ErrorReason {
-        // Matched by type, not message: `toErrorReason` classifies "timed out"/"timeout" as a
-        // transport failure, which would render "the relay isn't responding". Ring going quiet
-        // is not the relay being down — the commonest cause is Ring declining on its own side
-        // and never posting anything, so this is an auth failure.
-        if (this is RingApprovalTimeout) return ErrorReason.AuthFailed
         return when (val reason = toErrorReason()) {
             ErrorReason.Offline -> ErrorReason.AuthRelayUnreachable
             ErrorReason.Unknown -> ErrorReason.AuthFailed
@@ -218,20 +227,12 @@ class OnboardingViewModel(
         private const val PUBKY_LOG_PREFIX_LEN = 8
 
         /**
-         * How long to wait for Pubky Ring before giving up. Generous on purpose — approving can
-         * mean creating a key and writing down a recovery phrase — but finite, because the
-         * alternative is a spinner that never resolves.
+         * When the waiting screen starts saying so. Not a deadline — the wait carries on — so it can
+         * sit well short of how long approving can take (creating a key, writing down a phrase).
          */
-        private const val APPROVAL_TIMEOUT_MS = 3 * 60 * 1000L
+        private const val APPROVAL_NUDGE_MS = 90 * 1000L
 
         /** Product landing page — forwards to the correct store for the user's platform. */
         const val DEFAULT_INSTALL_URL = "https://pubkyring.app"
     }
 }
-
-/**
- * Pubky Ring never came back within the approval window. A distinct type rather than a message
- * string because the message-based classifier in `PubkyErrors` reads "timed out" as a transport
- * failure, and this is not one — the relay is usually fine and simply has nothing to deliver.
- */
-internal class RingApprovalTimeout : RuntimeException("Pubky Ring did not complete the authorisation")

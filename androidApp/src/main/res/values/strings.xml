@@ -340,6 +340,7 @@
     <string name="onboarding_qr_body">Open Pubky Ring on your phone, tap Authorize, and scan this code.</string>
     <string name="onboarding_qr_content_description">QR code containing this sign-in request</string>
     <string name="onboarding_qr_waiting">Waiting for you to approve in Pubky Ring…</string>
+    <string name="onboarding_still_waiting">Still waiting. If Pubky Ring didn\'t show a request, cancel and try again.</string>
     <string name="onboarding_qr_open_here">I have Pubky Ring on this device</string>
     <string name="onboarding_qr_cancel">Cancel</string>
     <string name="onboarding_qr_copy">Copy sign-in link</string>

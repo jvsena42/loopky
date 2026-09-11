@@ -5894,6 +5894,23 @@
         }
       }
     },
+    "onboarding_still_waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still waiting. If Pubky Ring didn't show a request, cancel and try again."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda aguardando. Se o pedido não apareceu no Pubky Ring, cancele e tente de novo."
+          }
+        }
+      }
+    },
     "passphrase_hide": {
       "extractionState": "manual",
       "localizations": {

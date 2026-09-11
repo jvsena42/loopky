@@ -307,6 +307,7 @@ private fun OnboardingContent(
     if (awaitingHere != null) {
         RingScanSheet(
             authUrl = awaitingHere.authUrl,
+            stillWaiting = awaitingHere.stillWaiting,
             onGetRing = onGetRing,
             onDismiss = onCancelSignIn,
         )
@@ -379,6 +380,7 @@ private fun SignInPanel(
             RingScanPanel(
                 authUrl = awaitingScan.authUrl,
                 ringInstalledHere = awaitingScan.ringInstalledHere,
+                stillWaiting = awaitingScan.stillWaiting,
                 onOpenRingHere = onOpenRingHere,
                 onCancel = onCancelSignIn,
             )
@@ -390,6 +392,7 @@ private fun SignInPanel(
                 onSignInClick = onSignInClick,
                 onCreatePubky = onCreatePubky,
                 onRestore = onRestore,
+                onCancelSignIn = onCancelSignIn,
             )
             // Under the calls to action: the gate has to be visible before the buttons are usable,
             // but it is fine print rather than a step, and putting it between the hero and the
@@ -428,6 +431,7 @@ private fun CtaBlock(
     onSignInClick: () -> Unit,
     onCreatePubky: () -> Unit,
     onRestore: () -> Unit,
+    onCancelSignIn: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
     Column(
@@ -486,7 +490,26 @@ private fun CtaBlock(
         // spare from the hero, and they truncated to "Continue with Pubky" / "Use a recovery" —
         // which is worse than a scroll, because a clipped label reads as the whole label.
         ringButton(Modifier)
-        restoreButton(Modifier)
+        // Ring was opened over the deeplink, so this is the only way out of the wait — and a signer
+        // that does not send the user back leaves them on a button that is still spinning (#299).
+        // In the restore button's place, which is disabled for the whole wait: growing the column
+        // instead squeezed the hero on a phone until its subtitle clipped.
+        if ((state as? OnboardingUiState.AwaitingApproval)?.stillWaiting == true) {
+            StillWaitingNote()
+            TextButton(
+                onClick = onCancelSignIn,
+                modifier = Modifier.testTag("onboarding_signin_cancel"),
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.foregroundMuted),
+            ) {
+                Text(
+                    text = stringResource(R.string.onboarding_qr_cancel),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        } else {
+            restoreButton(Modifier)
+        }
         Text(
             text = stringResource(R.string.onboarding_no_email_notice),
             color = colors.foregroundMuted,
