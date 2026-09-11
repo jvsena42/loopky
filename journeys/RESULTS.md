@@ -77,6 +77,34 @@ outlasts the time it takes to approve. Two Bitkit quirks to know when re-running
 #1224: launch Bitkit and let it settle first (it drops a deep link that arrives during its cold
 start), and switch back to Loopky by hand (it ignores `x-success`).
 
+### 2026-09-11 — no approval deadline; "still waiting" after 90 s (#299) — ✅ PASS
+
+The sign-in no longer ends on a 3-minute timer. After 90 s the waiting screen says it is still
+waiting, with a way out, and an approval that lands later is still accepted.
+
+| Device | Presentation | Result |
+| --- | --- | --- |
+| Pixel_9 (`emulator-5556`) | spinning button, Ring opened over the deeplink, back to Loopky | note + Cancel at +102 s, in the restore button's place; Cancel → sign-in |
+| Pixel_Tablet, landscape (expanded) | inline QR panel | note replaces the waiting line; Cancel on screen (y=1318 of 1600); Cancel → sign-in |
+| Pixel_Tablet at a 1600x2560 window (medium) | stacked QR panel | same |
+| iPhone 17e simulator (compact) | scan sheet | note replaces the waiting line; Cancel → sign-in |
+| iPad Pro 11-inch (M5) simulator (regular) | scan sheet | same |
+
+**The late approval, end to end** (Pixel_Tablet, Bitkit as signer): approved at 07:42:23.8, Loopky
+left in the background for 3½ minutes, reopened → the approval was collected at 07:45:43.3 →
+`session saved` → `SUCCESS`, with no `RingApprovalTimeout`. The same flow earlier that morning
+collected the approval at 06:44:28.97 and then reported `RingApprovalTimeout` at 06:44:30.7.
+
+Two layout traps found only by driving it:
+- On the landscape tablet the panel is height-bound. A note placed *under* the waiting line pushed
+  Cancel below the fold, which is why the note replaces that line.
+- On the phone, growing the column squeezed the hero until its subtitle clipped. That is why the note
+  and Cancel take the place of the restore button, which is disabled for the whole wait anyway.
+
+This Pixel_Tablet AVD would not rotate: `user_rotation`, `cmd window user-rotation lock` and
+`emu rotate` all left `rotation=0`. The portrait check used `wm size 1600x2560`, which gives the same
+medium width class, followed by `wm size reset`.
+
 ## 02 — Paste-to-Import → triage → publish — ✅ PASS
 
 Re-verified on `emulator-5554` 2026-06-17 after adding the triage step + card options.
