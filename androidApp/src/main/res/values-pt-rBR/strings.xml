@@ -330,6 +330,7 @@
     <string name="onboarding_qr_body">Abra o Pubky Ring no seu celular, toque em Autorizar e leia este código.</string>
     <string name="onboarding_qr_content_description">Código QR com este pedido de acesso</string>
     <string name="onboarding_qr_waiting">Aguardando sua aprovação no Pubky Ring…</string>
+    <string name="onboarding_still_waiting">Ainda aguardando. Se o pedido não apareceu no Pubky Ring, cancele e tente de novo.</string>
     <string name="onboarding_qr_open_here">Tenho o Pubky Ring neste aparelho</string>
     <string name="onboarding_qr_cancel">Cancelar</string>
     <string name="onboarding_qr_copy">Copiar link de acesso</string>

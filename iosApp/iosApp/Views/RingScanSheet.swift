@@ -21,6 +21,8 @@ struct RingScanPanel: View {
     /// event — but on an iPad the handoff is to another device regardless, and the button is what
     /// lets someone whose key happens to be in Ring here take the short path anyway.
     let ringInstalledHere: Bool
+    /// Set once the wait has run long, never as a failure: a late approval is still accepted (#299).
+    var stillWaiting: Bool = false
     var onOpenRingHere: () -> Void
     /// Where Ring comes from, for someone who has it on no phone at all. This lives here rather
     /// than on onboarding: the panel is the one place that has already established Ring is not
@@ -46,11 +48,17 @@ struct RingScanPanel: View {
 
             QrCodeView(text: authUrl)
 
+            // In place of the waiting line, not under it, so the panel does not grow and push
+            // Cancel — the way out the note points to — below the fold.
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("onboarding_qr_waiting")
-                    .font(.footnote)
-                    .foregroundStyle(LoopkyColor.foregroundMuted)
+                if stillWaiting {
+                    StillWaitingNote()
+                } else {
+                    Text("onboarding_qr_waiting")
+                        .font(.footnote)
+                        .foregroundStyle(LoopkyColor.foregroundMuted)
+                }
             }
 
             VStack(spacing: 10) {
@@ -82,6 +90,7 @@ struct RingScanPanel: View {
 struct RingScanSheet: View {
     let authUrl: String
     let ringInstalledHere: Bool
+    var stillWaiting: Bool = false
     var onOpenRingHere: () -> Void
     var onGetRing: () -> Void
     var onCancel: () -> Void
@@ -90,6 +99,7 @@ struct RingScanSheet: View {
         RingScanPanel(
             authUrl: authUrl,
             ringInstalledHere: ringInstalledHere,
+            stillWaiting: stillWaiting,
             onOpenRingHere: onOpenRingHere,
             onGetRing: onGetRing,
             onCancel: onCancel
@@ -105,5 +115,17 @@ struct RingScanSheet: View {
         // Dragging the sheet away is the same intent as tapping Cancel: back out without leaving
         // an error behind. Without this the authorisation would keep polling behind a gone sheet.
         .interactiveDismissDisabled(false)
+    }
+}
+
+/// Said once the wait has run long, under the waiting line or the spinning button.
+struct StillWaitingNote: View {
+    var body: some View {
+        Text("onboarding_still_waiting")
+            .font(.footnote)
+            .foregroundStyle(LoopkyColor.foregroundSecondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("onboarding_still_waiting")
     }
 }

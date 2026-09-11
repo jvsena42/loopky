@@ -51,9 +51,11 @@ struct OnboardingScreen: View {
                 OnboardingView(
                     isWorking: isWorking,
                     errorMessage: errorMessage,
+                    stillWaiting: awaiting?.stillWaiting ?? false,
                     onSignInTapped: { viewModel?.onSignInClick(handoff: handoff) },
                     onRestoreTapped: onRestore,
                     onCreatePubkyTapped: onCreatePubky,
+                    onCancelTapped: { viewModel?.onCancelSignIn() },
                     // Inline only where there is a column to put it in; narrower windows get the
                     // same panel as a sheet, below.
                     scan: widthClass.isExpanded ? scanPrompt : nil
@@ -74,6 +76,7 @@ struct OnboardingScreen: View {
                 RingScanSheet(
                     authUrl: scanPrompt.authUrl,
                     ringInstalledHere: scanPrompt.ringInstalledHere,
+                    stillWaiting: scanPrompt.stillWaiting,
                     onOpenRingHere: scanPrompt.onOpenRingHere,
                     onGetRing: scanPrompt.onGetRing,
                     onCancel: scanPrompt.onCancel
@@ -114,6 +117,7 @@ struct OnboardingScreen: View {
         return RingScanPrompt(
             authUrl: awaiting.authUrl,
             ringInstalledHere: awaiting.ringInstalledHere,
+            stillWaiting: awaiting.stillWaiting,
             onOpenRingHere: { viewModel?.onOpenRingOnThisDevice() },
             onGetRing: { viewModel?.onGetRingClick() },
             onCancel: { viewModel?.onCancelSignIn() }
