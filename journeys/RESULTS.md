@@ -58,6 +58,25 @@ shapes (encoded and decoded, cookie and grant) without complaint.
 
 Re-run `01-onboarding-ring-auth.xml` when a Ring release parses auth deeplinks again.
 
+### 2026-09-10 — Bitkit as the signer, through a relay outage (pubky-core-ffi-fork#7) — ✅ sign-in PASS
+
+Bitkit dev (a build of synonymdev/bitkit-android#1224) approves Loopky's `signin_grant` where Ring
+v1.19 cannot. Run on `emulator-5556` (Pixel_Tablet):
+
+| Step | Result |
+| --- | --- |
+| Sign in → "I have Pubky Ring on this device" → Bitkit | Sheet shows "Requester ID: loopky.app", `/pub/loopky` + `/pub/pubky.app` READ, WRITE |
+| Wi-Fi + data cut for 20 s mid-wait | Poll dies on `dns error … No address associated with hostname`; 9 restores back off 1→8 s |
+| Network back, approve in Bitkit | Approval delivered to the inbox; the resolver keeps failing for another ~43 s |
+| A restore collects it after 33 s in the inbox | `session saved` → `SUCCESS pubky=j8zchnm5…`, payload `{capabilities, grant_secret, pubky}` |
+| Revalidate · deck list | PASSED · PASSED (`owned=0 followed=0`) |
+| Self-tag write | FAILED — `403 Write to this path is not allowed`: that identity's per-user `allowed_write_paths` quota on staging, not the grant. A grant for another staging account writes the same path |
+
+Without the resume the same flow failed on every attempt: the emulator's ~18 s lookup timeout
+outlasts the time it takes to approve. Two Bitkit quirks to know when re-running, both reported on
+#1224: launch Bitkit and let it settle first (it drops a deep link that arrives during its cold
+start), and switch back to Loopky by hand (it ignores `x-success`).
+
 ## 02 — Paste-to-Import → triage → publish — ✅ PASS
 
 Re-verified on `emulator-5554` 2026-06-17 after adding the triage step + card options.
