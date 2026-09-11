@@ -1846,13 +1846,19 @@ frequently dark, so drawing in the default foreground produces an inverted code.
 rather than ANSI 30/47 because 0–15 are exactly the range themes remap — the theme in the report
 above painted "white" at 78% grey.
 
-Two constraints worth knowing. `AUTH_FLOW` in the FFI is a **single global slot**
-(`static AUTH_FLOW: Mutex<Option<…>>`), so there is one in-flight auth per process — fine for a
-CLI invocation, relevant the moment anyone wraps this in a daemon serving several agents. And
-`awaitAuthApproval` *takes* that slot, so a failed poll consumes it and there is no in-place
-retry: recovering means running `loopky login` again, which mints a new secret and a new code. The
-CLI says that rather than looping, because a retry loop would silently invalidate the code already
-on screen.
+Two constraints worth knowing. `GRANT_AUTH_FLOW` in the FFI is a **single global slot**
+(`static GRANT_AUTH_FLOW: Mutex<Option<…>>`), so there is one in-flight auth per process — fine
+for a CLI invocation, relevant the moment anyone wraps this in a daemon serving several agents. And
+`awaitAuthApproval` *takes* that slot. A relay poll that dies mid-wait is resumed inside the FFI on
+the **same** channel (`grant_resume.rs`): the relay inbox is store-and-forward and holds the
+approval for ~5 minutes, so the code already on screen stays valid and nobody approves twice. It
+resumes only when the failing URL is the relay's own — a failure in the homeserver exchange comes
+after the approval was ACKed, and a restored listener would wait on an empty inbox forever. It
+rides out an outage for up to 90 seconds — measured on the emulator: after a 20-second network cut
+the system resolver kept failing for another ~43 — and stops at 170 seconds, just under the app's
+three-minute approval timeout, which cannot interrupt the blocking call, so the caller reports the
+relay failure rather than "Ring never answered". A failure that surfaces is final: recovering
+means running `loopky login` again, which mints a new secret and a new code.
 
 **`--timeout <seconds>` bounds the wait, and the reason it lives inside the process is the
 cleanup** (#240). Without it the only tool an unattended caller had was `timeout -s KILL`, which

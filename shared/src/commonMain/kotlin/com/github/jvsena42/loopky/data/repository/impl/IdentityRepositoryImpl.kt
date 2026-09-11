@@ -198,10 +198,11 @@ internal class IdentityRepositoryImpl(
     }
 
     /**
-     * Single-use: the FFI's auth flow is global state that `awaitAuthApproval` *takes*, so the first
-     * poll consumes it and a second can only answer "No auth flow in progress". A failed approval
-     * has no in-place retry — recovering means a fresh [beginSignIn], which mints a new secret and
-     * so requires the user to approve in Ring again (#59).
+     * Single-use: the FFI's auth flow is global state that `awaitAuthApproval` *takes*, so a second
+     * poll can only answer "No auth flow in progress" (#59). A relay poll that dies mid-wait never
+     * reaches here — the FFI rejoins the same channel, where the approval waits in the relay inbox,
+     * so the user never approves twice. A failure that does surface is final: recovering means a
+     * fresh [beginSignIn].
      */
     private inner class RingAuthFlowHandle(override val authUrl: String) : AuthFlowHandle {
         override suspend fun complete(): Result<Session> = runSuspendCatching {

@@ -123,10 +123,9 @@ data class WhoamiResult(
  * dangling `x-success` pointing at `loopky://` would bounce the user into Loopky on their phone
  * after a desktop login.
  *
- * The FFI's auth flow is a single global slot that `awaitAuthApproval` *takes*, so a failed poll
- * consumes it and there is no in-place retry — recovering means running `loopky login` again. Said
- * plainly in the failure rather than papered over with a retry loop that would silently invalidate
- * the code already on screen.
+ * The FFI's auth flow is a single global slot that `awaitAuthApproval` *takes*. A relay poll that
+ * dies mid-wait is resumed inside the FFI on the same channel, so the code already on screen stays
+ * valid; a failure that reaches here is final, and recovering means running `loopky login` again.
  */
 suspend fun login(
     args: Args,
