@@ -8,6 +8,7 @@ import com.github.jvsena42.loopky.cli.asCliError
 import com.github.jvsena42.loopky.cli.cliCommands
 import com.github.jvsena42.loopky.cli.cliJson
 import com.github.jvsena42.loopky.cli.eventEnvelope
+import com.github.jvsena42.loopky.cli.nearMissHint
 import com.github.jvsena42.loopky.cli.result
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
@@ -287,7 +288,7 @@ private fun parseOperation(index: Int, lineNumber: Int, line: String): BatchOper
     val args = runCatching { Args.parse(words.toTypedArray()) }.getOrElse {
         throw CliError(ExitCode.BadInput, "$where: ${it.message}")
     }
-    requireBatchable(where, args.verb)
+    requireBatchable(where, args)
     return BatchOperation(index, id, args)
 }
 
@@ -306,10 +307,15 @@ private fun JsonPrimitive.contentOrNullIfJsonNull(): String? = if (this is JsonN
  * commands, so a second list would make the published surface wrong the first time the two
  * disagreed. The six that are refused each carry their reason on the table entry.
  */
-private fun requireBatchable(where: String, verb: String) {
+private fun requireBatchable(where: String, args: Args) {
+    val verb = args.verb
     val command = cliCommands().firstOrNull { it.path == verb } ?: throw CliError(
         ExitCode.BadInput,
-        "$where: `$verb` is not a loopky command. `loopky commands --json` lists every one.",
+        listOfNotNull(
+            "$where: `$verb` is not a loopky command.",
+            args.nearMissHint(),
+            "`loopky commands --json` lists every one.",
+        ).joinToString(" "),
     )
     command.notBatchable?.let { reason ->
         throw CliError(ExitCode.BadInput, "$where: `$verb` cannot run inside a batch. $reason")

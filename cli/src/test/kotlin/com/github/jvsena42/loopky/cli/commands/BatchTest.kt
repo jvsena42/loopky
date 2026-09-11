@@ -247,6 +247,8 @@ class BatchTest {
         assertEquals(ExitCode.BadInput, error.exitCode)
         assertEquals(emptyList(), ran)
         assertTrue("deck crate" in error.message.orEmpty(), error.message.orEmpty())
+        // The same near-miss clause `dispatch` gives a command line (#293).
+        assertTrue("Did you mean `deck create`?" in error.message.orEmpty(), error.message.orEmpty())
     }
 
     /** The reported line is the file's line, so a blank above it does not shift the answer. */

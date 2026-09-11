@@ -175,6 +175,17 @@ loopky: Unknown option --from-file for 'import'. --from-file belongs to `deck cr
 --title, --description, …
 ```
 
+A command the binary does not have is refused the same way. The message names the near miss when
+exactly one command is within two edits, or lists the group's verbs when the noun was right. Where
+two commands are equally close it names neither, because a wrong guess is worse than no guess:
+
+```
+$ loopky command --json
+… "message": "Unknown command 'command'. Did you mean `commands`? Try `loopky --help`."
+$ loopky card delete d1 c1
+loopky: Unknown command 'card delete'. `card` takes one of: list, add, edit, rm. Try `loopky --help`.
+```
+
 The usage block still follows a usage error, with the message **repeated underneath it** — a
 terminal keeps its last lines, and sixty lines of manual is exactly how the one that mattered got
 scrolled away.
