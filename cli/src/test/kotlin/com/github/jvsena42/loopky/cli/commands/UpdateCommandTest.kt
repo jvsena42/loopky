@@ -203,7 +203,14 @@ class ReplaceInPlaceTest {
         replaceInPlace(target, "the new binary".toByteArray())
 
         assertEquals("the new binary", Files.readString(target))
-        assertTrue(Files.isExecutable(target))
+        // Only this line is guarded, not the whole test (#301). `replaceInPlace` sets the mode
+        // through a deliberately-swallowed `setPosixFilePermissions`, so on Windows this asserts
+        // nothing — NTFS grants FILE_EXECUTE on a file the runner just created, and the assertion
+        // passes while saying nothing about the thing it names. The two either side of it are
+        // exactly as meaningful there, so skipping the whole test would trade real coverage away.
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            assertTrue(Files.isExecutable(target))
+        }
         assertEquals(
             listOf(target),
             Files.list(dir).use { it.toList() },

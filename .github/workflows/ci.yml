@@ -31,6 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cli: ${{ steps.filter.outputs.cli }}
+      # `cli` plus the shared test sources. Two outputs rather than one because the jobs gating on
+      # them cost different amounts: a test-only change cannot affect a GraalVM native image, so
+      # `cli-binary-macos` stays on `cli` at the 10× multiplier while the 2× Windows row widens.
+      cliTests: ${{ steps.filter.outputs.cliTests }}
       ios: ${{ steps.filter.outputs.ios }}
     steps:
       - uses: actions/checkout@v7
@@ -69,6 +73,14 @@ jobs:
           # — the macOS row fails on reaching a JDK *native* library, and nothing in commonMain
           # can name one.
           CLI='^(cli/|shared/src/jvmMain/|shared/src/jvmSharedMain/|(shared/)?build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle/(libs\.versions\.toml|wrapper/)|\.github/(workflows/ci\.yml|actions/))'
+          # **What can break a *test* row, which `CLI` deliberately does not cover.**
+          # `shared/src/jvmTest/` reaches no native image, so adding it to `CLI` would put a
+          # `macos-14` `nativeCompile` on the 10× multiplier behind a change that cannot affect it.
+          # It does reach `cli-windows`, and a job skipped by `if:` still satisfies a required check
+          # — so without this a jvmTest-only PR goes green having run the Windows arm nowhere. That
+          # matters for exactly one shape, and it is the shape this stack is building toward: a test
+          # that assumes an ACL filesystem skips on Linux by construction and has no other row.
+          CLI_TESTS="${CLI%)}|shared/src/jvmTest/)"
           # What can break **iOS**: anything shared, because that is the arrangement — business
           # logic is shared, so a commonMain change breaks iOS as easily as Android.
           IOS='^(shared/|iosApp/|build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle/(libs\.versions\.toml|wrapper/)|\.github/(workflows/ci\.yml|actions/))'
@@ -76,7 +88,7 @@ jobs:
           decide() {
             if printf '%s\n' "$FILES" | grep -qE "$2"; then echo "$1=true"; else echo "$1=false"; fi
           }
-          { decide cli "$CLI"; decide ios "$IOS"; } | tee -a "$GITHUB_OUTPUT"
+          { decide cli "$CLI"; decide cliTests "$CLI_TESTS"; decide ios "$IOS"; } | tee -a "$GITHUB_OUTPUT"
 
   lint:
     name: Kotlin lint (detekt)
@@ -290,10 +302,13 @@ jobs:
     # nothing new. When that library lands the filter comes off in the same PR, and its removal is
     # the visible marker that the row is real.
     #
-    # `windows-latest` bills at 2×, so it takes the same `changes` gate as the macOS rows.
+    # `windows-latest` bills at 2×, so it is gated rather than unconditional — but on `cliTests`
+    # rather than `cli`, because this row runs `:shared:jvmTest` and `cli` does not cover
+    # `shared/src/jvmTest/`. A job skipped by `if:` still satisfies a required status check, so
+    # gating on `cli` would let a jvmTest-only PR go green having run the Windows arm nowhere.
     name: CLI on Windows x86_64
     needs: changes
-    if: needs.changes.outputs.cli == 'true'
+    if: needs.changes.outputs.cliTests == 'true'
     runs-on: windows-latest
     # bash, not the image's default pwsh: every other job here is written in it, and a second
     # dialect would be one more thing that can differ between the rows for no reason.
@@ -316,12 +331,24 @@ jobs:
         run: ./gradlew :cli:test
 
       # The desktop storage and host-matrix packages, which is where every Windows branch lives.
-      # `data.pubky` is what the filter is keeping out.
+      # What it holds out is **three** packages, not one: `data.pubky` (the FFI, which cannot load
+      # here yet), `data.anki` (the `.apkg` reader, which needs only the JDBC driver and is admitted
+      # as soon as there is a Windows-shaped reason to), and `di` (`KoinGraphTest`, which builds the
+      # real graph). Stated exactly because the block above makes this filter's removal the marker
+      # that the row is real, and a marker is worth nothing if the inventory beside it is wrong.
       - name: The desktop JVM tests that do not need the FFI
         run: >
           ./gradlew :shared:jvmTest
           --tests 'com.github.jvsena42.loopky.data.storage.*'
           --tests 'com.github.jvsena42.loopky.platform.*'
+
+      # Which test failed and why, in the log — the same reporter `test-build` and `cli-linux`
+      # carry (#239). It matters most here: this is the only row in the matrix a contributor on
+      # macOS or Linux cannot re-run locally, so "download and unzip the artifact to find out which
+      # test broke" is a worse tax than anywhere else. `shell: bash` + `python3`, both on the image.
+      - name: Say which tests failed
+        if: failure()
+        uses: ./.github/actions/failing-tests
 
       - name: Upload test reports
         if: failure()
