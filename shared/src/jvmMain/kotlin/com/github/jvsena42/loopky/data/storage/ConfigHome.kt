@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.data.storage
 
 import com.github.jvsena42.loopky.platform.isMacOs
+import com.github.jvsena42.loopky.platform.isWindows
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -27,7 +28,13 @@ import java.nio.file.Paths
  * 1. `LOOPKY_CONFIG_HOME` — an explicit override, so a container or a test can point somewhere
  *    disposable without touching the caller's real state.
  * 2. `$XDG_CONFIG_HOME/loopky`, the freedesktop location.
- * 3. `~/.config/loopky` (Linux) or `~/Library/Application Support/loopky` (macOS).
+ * 3. The platform default: `~/.config/loopky` on Linux, `~/Library/Application Support/loopky` on
+ *    macOS, `%LOCALAPPDATA%\loopky` on Windows.
+ *
+ * **The Windows row is `%LOCALAPPDATA%` rather than `%APPDATA%`, and that is a security choice
+ * rather than a convention** (#301). Everything in a Windows profile except `AppData\Local` roams,
+ * so with a roaming profile configured `%APPDATA%` — and `~/.config`, which this used to fall into
+ * there — is copied to the domain's profile server at logoff, session secret included.
  */
 object ConfigHome {
 
@@ -50,14 +57,35 @@ object ConfigHome {
      * a Keychain item shared across every config home would make a disposable one overwrite the
      * caller's real session.
      */
-    fun platformDefault(): Path {
-        val home = Paths.get(System.getProperty("user.home") ?: ".")
-        return if (isMacOs()) {
-            home.resolve("Library/Application Support").resolve(APP_DIR)
-        } else {
-            home.resolve(".config").resolve(APP_DIR)
+    fun platformDefault(
+        env: (String) -> String? = System::getenv,
+        osName: String = System.getProperty("os.name").orEmpty(),
+        userHome: String = System.getProperty("user.home") ?: ".",
+    ): Path {
+        val home = Paths.get(userHome)
+        return when {
+            isMacOs(osName) -> home.resolve("Library/Application Support").resolve(APP_DIR)
+            // `%LOCALAPPDATA%`, and **not** `%APPDATA%` (#301). Everything in a Windows profile
+            // except `AppData\Local` roams: with a roaming profile configured, `%APPDATA%` is
+            // copied to the domain's profile server at logoff, and the session secret goes with it.
+            // Falling into the `.config` branch below did the same thing, since that is under the
+            // profile root too — so this is a fix rather than a tidy-up.
+            isWindows(osName) -> windowsLocalAppData(env, home).resolve(APP_DIR)
+            else -> home.resolve(".config").resolve(APP_DIR)
         }
     }
+
+    /**
+     * `%LOCALAPPDATA%`, or the path it conventionally points at.
+     *
+     * The variable is the right answer when it is set — a redirected-folder policy moves it, and
+     * guessing would then write outside the place the machine reserves for this. The fallback is
+     * for the cases where a process inherits a stripped environment; it is where the variable
+     * points on every supported Windows.
+     */
+    private fun windowsLocalAppData(env: (String) -> String?, home: Path): Path =
+        env("LOCALAPPDATA")?.takeIf { it.isNotBlank() }?.let(Paths::get)
+            ?: home.resolve("AppData").resolve("Local")
 
     /**
      * Create [dir] if it is missing, owner-only where the host can express that.
