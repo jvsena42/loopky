@@ -193,6 +193,29 @@ class DesktopSessionStoreTest {
         assertNull(FileSecureSessionStore(secretsStore(home)).load())
     }
 
+    /**
+     * **An item that is answering and empty means the credential is in the file, and saying
+     * otherwise is a false claim about where a secret lives.**
+     *
+     * `session_store` is read by exactly two callers: a person whose session has gone missing, and
+     * an agent through `--json`, which this project documents as a verification channel. [save]
+     * falls back to the file whenever the item refuses a write, so "empty item" is precisely the
+     * state in which the file holds the credential — and the old two-way branch reported the item
+     * for it, because it distinguished only "answering" from "not answering".
+     *
+     * Latent on macOS, where it needs a failed write followed by a healthy-but-empty Keychain;
+     * deterministic on the DPAPI row, whose `exists()` is a file check and never answers null.
+     */
+    @Test
+    fun `an item that holds nothing reports the file, not the item`() = runTest {
+        val secrets = secretsStore(home)
+        FileSecureSessionStore(secrets).save(SESSION)
+
+        val store = desktopSecureSessionStore(home, secrets, FakeSecureItem())
+
+        assertEquals(home.resolve("secrets.json").toString(), store.location)
+    }
+
     @Test
     fun `a keychain that will not answer reads the file instead, and says so`() = runTest {
         val secrets = secretsStore(home)

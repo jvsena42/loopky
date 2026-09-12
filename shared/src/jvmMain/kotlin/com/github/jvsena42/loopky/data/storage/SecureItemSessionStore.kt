@@ -56,10 +56,20 @@ internal class SecureItemSessionStore(
      * command and exits, which is the only thing reading it today.
      */
     override val location: String by lazy {
-        if (item.exists() == null) {
-            "${fallback.location} — ${item.location} is not answering"
-        } else {
-            item.location
+        when (item.exists()) {
+            // Will not say. Naming the store that cannot be read would point somebody at the one
+            // place they cannot check, so this names both and which is which.
+            null -> "${fallback.location} — ${item.location} is not answering"
+            // **Answering, and holding nothing — so the credential is in the file.** [save] falls
+            // back there whenever the item refuses a write, and reporting the item in that state is
+            // a false claim about where a credential lives, on the field `--json` offers as its
+            // verification channel. It is also right when nobody is signed in at all.
+            //
+            // This branch used to be folded into `true`, which was latent on macOS — an empty but
+            // healthy Keychain after a failed write reports the same — and became *deterministic*
+            // with the DPAPI row, whose `exists()` is a file check and can never answer null (#301).
+            false -> fallback.location
+            true -> item.location
         }
     }
 
