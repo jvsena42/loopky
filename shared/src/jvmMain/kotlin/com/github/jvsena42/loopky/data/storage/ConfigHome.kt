@@ -4,7 +4,6 @@ import com.github.jvsena42.loopky.platform.isMacOs
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.attribute.PosixFilePermissions
 
 /**
  * Where the desktop client keeps its state, and why it is a directory of files rather than a
@@ -61,25 +60,21 @@ object ConfigHome {
     }
 
     /**
-     * Create [dir] if it is missing, owner-only where the filesystem can express that.
+     * Create [dir] if it is missing, owner-only where the host can express that.
      *
-     * Best-effort on the permissions, not on the directory: a POSIX mode is meaningless on a
-     * filesystem that has none, and refusing to run there would trade a real capability for a
-     * guarantee we could not have made anyway. The file writes carry the same mode, so a
-     * directory that could not take one is not the only line of defence.
+     * Best-effort on the permissions, not on the directory: a filesystem with neither a POSIX mode
+     * nor an ACL is a real host, and refusing to run there would trade a capability for a guarantee
+     * it was never going to give. The file writes carry the same restriction, so a directory that
+     * could not take one is not the only line of defence.
+     *
+     * [OwnerOnly] is what decides how this host spells it — a mode, or a DACL (#301). A directory
+     * created before this existed keeps whatever it has: re-restricting one on every call would
+     * fight a user who widened it deliberately.
      */
     fun prepare(dir: Path): Path {
-        if (!Files.exists(dir)) {
-            runCatching {
-                Files.createDirectories(
-                    dir,
-                    PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString(DIR_MODE)),
-                )
-            }.getOrElse { Files.createDirectories(dir) }
-        }
+        if (!Files.exists(dir)) OwnerOnly.createDirectories(dir)
         return dir
     }
 
     private const val APP_DIR = "loopky"
-    private const val DIR_MODE = "rwx------"
 }

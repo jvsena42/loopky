@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.cli
 
+import com.github.jvsena42.loopky.data.storage.OwnerOnly
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
@@ -9,7 +10,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions
 import java.util.zip.CRC32
 import java.util.zip.Deflater
 import java.util.zip.DeflaterOutputStream
@@ -102,15 +102,16 @@ object TerminalQr {
     /**
      * An empty file only its owner can read.
      *
-     * Best-effort on the mode, like the session store: a filesystem with no POSIX permissions
-     * cannot express it, and refusing to write there would cost a capability the host was never
-     * going to give anyway.
+     * Best-effort on the restriction, like the session store: a host that can express neither a
+     * POSIX mode nor an ACL is real, and refusing to write there would cost a capability it was
+     * never going to give. [OwnerOnly] decides which spelling this host uses (#301) — before, this
+     * asked only for a mode, so on Windows the file holding a live `pubkyauth://` credential landed
+     * at whatever the parent directory happened to allow while `login` printed "owner-readable
+     * only".
      */
     private fun createOwnerOnly(path: Path): Path {
         Files.deleteIfExists(path)
-        return runCatching {
-            Files.createFile(path, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString(FILE_MODE)))
-        }.getOrElse { Files.createFile(path) }
+        return OwnerOnly.createFile(path)
     }
 
     private fun encode(text: String, size: Int): BitMatrix =
@@ -153,8 +154,6 @@ object TerminalQr {
     private const val LIGHT_ON_LIGHT = "\u001B[38;5;231;48;5;231m"
 
     private const val ANSI_RESET = "\u001B[0m"
-
-    private const val FILE_MODE = "rw-------"
 
     /**
      * The matrix as a 1-bit greyscale PNG, encoded here in about thirty lines rather than by

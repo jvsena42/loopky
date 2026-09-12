@@ -11,6 +11,7 @@ import com.github.jvsena42.loopky.cli.hostSupport
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.cli.unsupportedHostMessage
 import com.github.jvsena42.loopky.cli.updateAdvice
+import com.github.jvsena42.loopky.data.storage.OwnerOnly
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -217,12 +218,17 @@ internal fun sha256(bytes: ByteArray): String =
  * rather than system temp because `ATOMIC_MOVE` cannot cross a filesystem.
  */
 internal fun replaceInPlace(target: Path, bytes: ByteArray) {
-    val temp = runCatching { Files.createTempFile(target.parent, target.fileName.toString(), ".new") }
+    // Owner-only *while it is being written*, then widened to 0755 once it holds the real bytes.
+    // This one is deliberately not an [OwnerOnly] file at rest — an executable everyone may run is
+    // the point — but the window in which a half-written binary sits in a directory somebody else
+    // can read is worth closing, and on a host with no POSIX mode it is the only restriction the
+    // temp file gets at all (#301).
+    val temp = runCatching { OwnerOnly.createTempFile(target.parent, target.fileName.toString(), ".new") }
         .getOrElse { throw replaceFailed(target, it) }
     runCatching {
         Files.write(temp, bytes)
-        // Best-effort, like every other 0600/0755 in this codebase: a filesystem with no POSIX
-        // mode cannot express it, and failing here would leave the user on the old binary for a
+        // Best-effort, like every other mode in this codebase: a filesystem with no POSIX mode
+        // cannot express it, and failing here would leave the user on the old binary for a
         // guarantee that host was never going to give.
         runCatching { Files.setPosixFilePermissions(temp, PosixFilePermissions.fromString(MODE)) }
         Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
