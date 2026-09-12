@@ -270,6 +270,19 @@ fun nativeBuildArgs(): List<String> {
         // `win32-x86-64` as of `linux-x86-64`; `darwin-aarch64` is the only row it cannot apply to.
         // Reading this as a Linux concern is what left Windows on the v3 default (#301).
         *(if (row.jnaPrefix.endsWith("x86-64")) arrayOf("-march=compatibility") else emptyArray()),
+        // **Attempting a static CRT on Windows, and it may not work** (#301). The image imports
+        // `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll` — the only two of its 23 imports that are not
+        // in-box on Windows 10+, since the `api-ms-win-crt-*` entries are the Universal CRT — so a
+        // downloaded `loopky.exe` will not start without the Visual C++ redistributable.
+        //
+        // GraalVM 25.0.2 offers no static-CRT switch here: `--static` and
+        // `-H:+StaticExecutableWithDynamicLibC` are Linux-only, and probing `--help-extra` and
+        // `--expert-options-all` on the runner returned nothing matching static, libc or linker.
+        // `/MT` goes straight to the linker instead. The expected failure is duplicate or missing
+        // symbols, because GraalVM's own Windows JDK static libraries are built against the
+        // dynamic CRT — if that happens, the answer is to accept the dependency and pin the import
+        // set so a *new* one still fails the build, rather than to relax the check.
+        *(if (row.jnaPrefix.startsWith("win32")) arrayOf("-H:NativeLinkerOption=/MT") else emptyArray()),
     )
 }
 

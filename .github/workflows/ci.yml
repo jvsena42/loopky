@@ -440,10 +440,15 @@ jobs:
       - name: What linking options does native-image have here
         run: |
           NI="$GRAALVM_HOME/bin/native-image"
-          echo "--- --help-extra ---"
-          "$NI" --help-extra 2>&1 | grep -iE "static|libc|linker" | head -20 || true
-          echo "--- expert options ---"
-          "$NI" --expert-options-all 2>&1 | grep -iE "StaticExecutable|NativeLinkerOption|StaticLibC" | head -20 || true
+          # Exit status printed, because the first run of this probe emitted both markers with
+          # nothing between them — and `| grep … || true` cannot distinguish "no option matched"
+          # from "the command failed". An empty result has to mean one thing.
+          echo "--- --help-extra (rc printed) ---"
+          "$NI" --help-extra > /tmp/he.txt 2>&1; echo "rc=$?  lines=$(wc -l < /tmp/he.txt)"
+          grep -iE "static|libc|linker" /tmp/he.txt | head -20 || echo "  (no static/libc/linker options)"
+          echo "--- expert options (rc printed) ---"
+          "$NI" --expert-options-all > /tmp/eo.txt 2>&1; echo "rc=$?  lines=$(wc -l < /tmp/eo.txt)"
+          grep -iE "StaticExecutable|NativeLinkerOption|StaticLibC" /tmp/eo.txt | head -20 || echo "  (none matched)"
 
       - name: The binary needs no Visual C++ redistributable
         run: |
