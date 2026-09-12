@@ -220,7 +220,13 @@ class ReplaceInPlaceTest {
         val target = dir.resolve("loopky")
         Files.writeString(target, "the old binary")
 
-        replaceInPlace(target, "the new binary".toByteArray())
+        // **Pinned to the write-over row rather than left to the host** (#301). This asserted the
+        // directory ends up holding exactly one file, which is true of that row and false of the
+        // rename-aside — so once `replaceInPlace` started choosing by `os.name`, this passed here
+        // and failed on `windows-latest`, for a behaviour difference no machine I can run would
+        // show. The branch is a parameter precisely so both rows are exercised everywhere; the
+        // other one is the test below.
+        replaceInPlace(target, "the new binary".toByteArray(), windows = false)
 
         assertEquals("the new binary", Files.readString(target))
         // Only this line is guarded, not the whole test (#301). `replaceInPlace` sets the mode
@@ -259,6 +265,14 @@ class ReplaceInPlaceTest {
             "the old binary",
             Files.readString(supersededPath(target)),
             "the previous image has to survive the swap — it is still running",
+        )
+        // The other half of what the write-over test asserts: the staging file is cleaned up on
+        // this row too. Stated as "nothing but these two" so a future third artifact has to be
+        // argued for rather than appearing quietly beside a binary people install by copying.
+        assertEquals(
+            listOf(target, supersededPath(target)).sorted(),
+            Files.list(dir).use { it.toList() }.sorted(),
+            "the new-binary staging file must not survive either",
         )
     }
 
