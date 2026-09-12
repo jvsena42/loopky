@@ -114,7 +114,12 @@ Install it once from https://aka.ms/vc14/vc_redist.x64.exe and run this again.
     # `-bor`, not `=`: assigning replaces the whole set, so a host whose default already includes
     # TLS 1.3 would be narrowed to 1.2 by an installer that was only trying to raise a floor. The
     # floor is the point — Windows PowerShell 5.1 still defaults to TLS 1.0/1.1 on some hosts, which
-    # github.com refuses. Scoped to this script block, so the session keeps its own setting.
+    # github.com refuses.
+    #
+    # This one is **not** scoped by the `& { … }` above, unlike every variable and preference here:
+    # it is a CLR static that outlives the block, the pipeline and this install. `-bor` is what
+    # makes that acceptable — it can only add a protocol, never remove one the session was relying
+    # on — rather than the scoping, which does not apply.
     [Net.ServicePointManager]::SecurityProtocol =
         [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
@@ -163,13 +168,26 @@ Install it once from https://aka.ms/vc14/vc_redist.x64.exe and run this again.
         # *present*, and Windows additionally requires them to be at least as new as the MSVC
         # toolset that linked the binary. A too-old runtime passes that probe and then fails here,
         # so an unchecked `--version` would print an error and report a successful install.
-        $out = & $target --version 2>&1
+        # No `2>&1`: under `Stop`, Windows PowerShell 5.1 raises `NativeCommandError` on a native
+        # command's first stderr line — before `$LASTEXITCODE` can be read — which would replace the
+        # guidance below with a generic failure on precisely the path that needs the guidance.
+        $out = & $target --version
         if ($LASTEXITCODE -ne 0) {
+            # `0xC0000135` (STATUS_DLL_NOT_FOUND) as the signed int PowerShell reports, and the
+            # status is the *only* evidence there is: Windows refuses to start the process rather
+            # than letting it run and complain, so there is no output to match on — `$out` is empty
+            # in exactly the case this check exists for.
+            if ($LASTEXITCODE -eq -1073741515) {
+                Die @"
+installed to $target, but Windows will not start it: a required DLL is missing.
+The Visual C++ runtime here is absent, or older than the toolset that built this binary — the probe
+above can only see that the two DLLs exist, not that they are new enough.
+Install the current one from https://aka.ms/vc14/vc_redist.x64.exe and run this again.
+"@
+            }
             Die @"
 installed to $target, but it does not start (exit $LASTEXITCODE):
 $out
-If that names VCRUNTIME140, the Visual C++ redistributable is present but older than the toolset
-that built this binary — install the current one from https://aka.ms/vc14/vc_redist.x64.exe.
 "@
         }
         Write-Host $out
