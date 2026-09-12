@@ -278,7 +278,9 @@ fun nativeBuildArgs(): List<String> {
         //
         // Do not reach for `-H:NativeLinkerOption=/MT`: it was tried and fails with `LNK1146: no
         // argument specified with option '/MT'`, because `/MT` is a **cl.exe** switch choosing the
-        // CRT each object compiles against, not a link.exe one. The link-time equivalent
+        // CRT each object compiles against, not a link.exe one. `native-image` puts `/MD` and
+        // `/NODEFAULTLIB:LIBCMT` on its own link line, so the toolchain is not merely indifferent
+        // to the static CRT — it excludes it. The link-time equivalent
         // (`/NODEFAULTLIB:msvcrt /DEFAULTLIB:libcmt`) would need GraalVM's own prebuilt Windows JDK
         // libraries to have been compiled `/MT` too; they were not, and mixing the two CRTs in one
         // image buys two heaps and two `FILE*` tables — worse than the dependency it removes.

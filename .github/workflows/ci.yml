@@ -467,6 +467,17 @@ jobs:
           dirs = opt + (112 if magic == 0x20B else 96)
           imp_rva = struct.unpack_from("<I", data, dirs + 8)[0]
 
+          # Directory 13 is the **delay-load** import descriptor, and everything below is blind to
+          # it: a delay-loaded DLL is resolved on first call rather than at load, and it does not
+          # appear in directory 1 at all. It is empty today, and asserting that is the difference
+          # between a pinned list that is complete and one that merely looks complete — a
+          # delay-loaded `vcruntime` would sail straight through the set comparison below.
+          delay_rva = struct.unpack_from("<I", data, dirs + 13 * 8)[0]
+          assert delay_rva == 0, (
+              f"delay-load import directory is not empty (RVA {delay_rva:#x}). There are imports "
+              "this check cannot see — parse it too rather than deleting this line."
+          )
+
           # Section headers, to map an RVA onto a file offset.
           nsec = struct.unpack_from("<H", data, pe + 6)[0]
           secs = pe + 24 + struct.unpack_from("<H", data, pe + 20)[0]
