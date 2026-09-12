@@ -192,9 +192,13 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   anyway); `-march=compatibility` is there because the default targets x86-64-v3 and a downloaded
   binary dies with SIGILL on a host without AVX2; and the Linux build runs inside `ubuntu:22.04`
   because a native image links against its builder's glibc and `libpubkycore.so`'s floor is 2.34,
-  not the runner's. **The two rows fail differently and CI only built one of them**: that JNA
-  entry left Linux clean and macOS at eleven files, and nobody saw it until the row was built on a
-  Mac, so build both before believing a metadata change is harmless.
+  not the runner's. **The three rows fail differently, which is why all three are built on every
+  PR**: that JNA entry left Linux clean and macOS at eleven files, and nobody saw it until the row
+  was built on a Mac. Windows then failed in a way neither of the others can — `loopky.exe` is one
+  file and still refuses to start without the Visual C++ redistributable, which every runner has
+  and a user may not — so its guard is a **pinned import list** rather than a file count, and the
+  binary's requirement is stated in `cli/README.md` rather than fixed (#301). Treat a metadata
+  change as unverified until every row has compiled it.
 - **On macOS the CLI's session is in the Keychain, and the Linux row's reasoning does not reach
   it.** `desktopSecureSessionStore` picks by OS behind `SecureSessionStore`, so nothing above the
   binding changes (#213). Five things not to undo. It shells out to **`security(1)`** rather than
