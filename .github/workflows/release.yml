@@ -485,11 +485,16 @@ jobs:
     # you choose an image needs no install step at all, and one with restricted egress may have
     # no other way in.
     #
-    # Behind every build job, because this pushes to a registry the moment it succeeds and a
+    # Behind the build jobs, because this pushes to a registry the moment it succeeds and a
     # registry push cannot be taken back the way an unpublished artifact can. It builds the same
     # source through the same Dockerfile, so if the Linux smoke test is going to fail, it fails
     # before anyone can pull this — and a keystore that never reached Gradle stops the tag before
     # a `:latest` moves under everyone for a release that has no APK.
+    #
+    # **`windows` is deliberately not among them.** This image carries the Linux binary, so that
+    # row's failure says nothing about whether this one is correct, and waiting would only stall a
+    # registry push on an unrelated host. What does wait for it is `:latest`, moved by
+    # `image-latest` behind `mark-latest`.
     needs: [check-version, android, linux, macos]
     runs-on: ubuntu-latest
     permissions:
@@ -564,15 +569,17 @@ jobs:
           docker run --rm "$IMAGE:latest" --version
 
   release:
-    # **The release is created here, and `latest` is moved here.** Both used to be done by hand
-    # against a workflow racing to do the same thing, which is why the runbook had a whole section
-    # on who won. One writer, one order: draft, upload everything, publish held back from `latest`,
-    # verify by running what was published, and only then move `latest`.
+    # **The release is created here; `latest` is moved by `mark-latest`.** Both used to be done by
+    # hand against a workflow racing to do the same thing, which is why the runbook had a whole
+    # section on who won. One writer, one order: draft, upload everything, publish held back from
+    # `latest`, verify by running what was published — and only then, from the one job that waits
+    # for every shipped row, move `latest`.
     #
-    # `latest` is what both documented install paths resolve through — `cli/install.sh` defaults to
-    # `releases/latest/download/loopky-linux-x86-64`, as does the README's one-liner — so moving it
-    # *is* the act of publishing rather than a flag on the way past. Held back until the assets are
-    # listed and one of them has been run, the previous release stays installable meanwhile.
+    # `latest` is what all three documented install paths resolve through — `cli/install.sh` and
+    # `cli/install.ps1` both default to `releases/latest/download/…`, as does the README's one-liner
+    # — so moving it *is* the act of publishing rather than a flag on the way past. Held back until
+    # the assets are listed and a published binary from each row has actually been run, the previous
+    # release stays installable meanwhile.
     name: Publish the release
     needs: [android, linux, macos, windows]
     if: github.event_name == 'push'

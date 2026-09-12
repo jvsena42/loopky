@@ -273,6 +273,33 @@ jobs:
           # Sourcing is the other half: a script that parses can still fail to define anything.
           bash -c 'source /tmp/loopky.bash && complete -p loopky' | grep -q _loopky
 
+      # The same argument as the step above, one file over — and it binds harder here. The two
+      # installers are the files this project asks strangers to pipe into a shell, and **nothing
+      # else in CI executes `install.ps1` at all**: the job that runs it lives in the release
+      # workflow behind `on: push: tags`, so an unbalanced quote, or a here-string terminator that
+      # drifted off column 0, would first surface while cutting a release. Parsing is not running,
+      # so this needs no network, no session and no Windows.
+      - name: The installers parse in the shells they are for
+        run: |
+          set -euo pipefail
+          # A *positive* precondition. Without it the whole step goes quietly vacuous the day this
+          # image stops shipping pwsh — a `command -v pwsh || true` guard would "pass" forever, and
+          # the one file nobody can run locally would be the one nothing checks.
+          command -v pwsh > /dev/null || { echo "::error::pwsh is not on this image — this check would be vacuous"; exit 1; }
+          sh -n cli/install.sh
+          pwsh -NoProfile -Command '
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path ./cli/install.ps1), [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) {
+              $errors | ForEach-Object {
+                Write-Host "::error file=cli/install.ps1,line=$($_.Extent.StartLineNumber)::$($_.Message)"
+              }
+              exit 1
+            }
+            Write-Host "cli/install.ps1 parses"
+          '
+
       # Which test failed and why, in the log. The artifact below is still uploaded; this is so
       # that reading the failure does not require downloading it (#239).
       - name: Say which tests failed
