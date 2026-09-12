@@ -346,6 +346,99 @@ jobs:
       # carry (#239). It matters most here: this is the only row in the matrix a contributor on
       # macOS or Linux cannot re-run locally, so "download and unzip the artifact to find out which
       # test broke" is a worse tax than anywhere else. `shell: bash` + `python3`, both on the image.
+      # **After the JDK 17 steps, never before.** `setup-graalvm` rewrites `JAVA_HOME`, and the two
+      # steps above resolve their Gradle toolchain from it — putting this first would silently run
+      # the test suites on 25 instead of the 17 every other row uses.
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the binary
+        run: ./gradlew :cli:nativeCompile
+
+      # The same block the other two binary rows carry. It is here rather than trusted to them
+      # because the defect `cli-binary-macos` exists for was one metadata entry that left Linux
+      # clean and broke macOS — three rows fail differently, and a check on two is a check on two.
+      - name: One file, and it works
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-native-windows
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/native/nativeCompile/loopky.exe
+          ls -la cli/build/native/nativeCompile
+          test "$(ls cli/build/native/nativeCompile | wc -l)" -eq 1
+
+          "$BIN" --version
+          "$BIN" --help > /dev/null
+
+          set +e; OUT=$("$BIN" whoami --json); CODE=$?; set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          echo "$OUT" | grep -q '"schema":1'
+          echo "$OUT" | grep -q '"environment":"production"'
+          echo "$OUT" | grep -q '"update_available":null'
+
+          set +e; "$BIN" frobnicate --json > /dev/null; CODE=$?; set -e
+          test "$CODE" -eq 2
+
+          # The FFI, which is the whole of the difficulty: this reaches `_UniFFILib.INSTANCE`, so
+          # it loads `pubkycore.dll` out of the binary's own resources, checks its API checksums
+          # and registers a JNA callback. A missing reachability registration dies here and
+          # nowhere earlier — and the registrations are exactly what differs between rows. 13 is
+          # nobody approving, 5 an unreachable relay; anything else is the FFI.
+          set +e; "$BIN" login --url-only --timeout 15 > /dev/null 2> qr.log; CODE=$?; set -e
+          cat qr.log
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 or 5"; exit 1;; esac
+          grep -q '^pubkyauth://' qr.log
+          # `RustLog.kt` through `SetEnvironmentVariableW` rather than libc `setenv`, which msvcrt
+          # does not export — so a regression here is the SDK logging at its own verbose default.
+          test "$(grep -c 'DEBUG\|INFO' qr.log || true)" -eq 0
+
+          # stdout carries the envelope and nothing else, proved by provoking the failure. The
+          # exit code first: a regressed `StdoutGuard` makes `startCli` refuse `--json` and throw
+          # before Koin, so the SDK never loads, stderr is empty, and `fail()` prints one
+          # well-formed envelope — every check below would pass on an unprotected channel.
+          set +e; RUST_LOG=trace "$BIN" login --url-only --timeout 5 --json > pure.json 2> loud.log; CODE=$?; set -e
+          echo "--- stdout ---"; cat pure.json; echo "--- stderr ---"; cat loud.log
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 (timeout) or 5"; exit 1;; esac
+          grep -qiE 'TRACE|DEBUG' loud.log
+          test -s pure.json
+          while read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s' "$line" | python -c 'import json,sys; json.loads(sys.stdin.read())' \
+              || { echo "::error::stdout was not pure JSON: $line"; exit 1; }
+          done < pure.json
+
+          # SQLite is JNA's problem over again in a second library, on a third native row:
+          # `org/sqlite/native/Windows/x86_64` rather than `Linux/x86_64`, extracted reflectively.
+          python cli/tools/make-sample-apkg.py sample.apkg
+          "$BIN" import sample.apkg --dry-run --json | tee apkg.json
+          grep -q '"cards":3' apkg.json
+          grep -q '"format":"apkg"' apkg.json
+
+      # **The assertion the build cannot make for itself**, and the same one the fork's workflow
+      # makes about `pubkycore.dll`. A downloaded `.exe` that imports `vcruntime140.dll` fails to
+      # start on a machine with no Visual C++ redistributable — and this runner has one, so the
+      # build and every check above are green either way. Import names sit in the PE import
+      # directory as plain ASCII, so this needs no `dumpbin` and no Visual Studio environment.
+      - name: The binary needs no Visual C++ redistributable
+        run: |
+          python - <<'PY'
+          import sys
+          exe = "cli/build/native/nativeCompile/loopky.exe"
+          data = open(exe, "rb").read().lower()
+          found = [n for n in (b"vcruntime140", b"msvcp140") if n in data]
+          print(f"{exe}: {len(data)} bytes")
+          if found:
+              sys.exit(f"::error::the binary imports {', '.join(n.decode() for n in found)}, so it "
+                       f"needs the VC++ redistributable, which is not part of Windows.")
+          print("no VC++ runtime imports")
+          PY
+
       - name: Say which tests failed
         if: failure()
         uses: ./.github/actions/failing-tests

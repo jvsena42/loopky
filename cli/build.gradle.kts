@@ -255,7 +255,11 @@ fun nativeBuildArgs(): List<String> {
         // v3 needs AVX2 and dies with SIGILL on a host without it — and this one is *downloaded*,
         // onto a sandbox whose CPU nobody chose. Irrelevant to a client that spends its life
         // waiting on a homeserver.
-        *(if (row.jnaPrefix == "linux-x86-64") arrayOf("-march=compatibility") else emptyArray()),
+        // Gated on the *architecture*, not the OS. The reason above is about x86-64 microarchitecture
+        // levels and a downloaded binary meeting a CPU nobody chose, which is as true of
+        // `win32-x86-64` as of `linux-x86-64`; `darwin-aarch64` is the only row it cannot apply to.
+        // Reading this as a Linux concern is what left Windows on the v3 default (#301).
+        *(if (row.jnaPrefix.endsWith("x86-64")) arrayOf("-march=compatibility") else emptyArray()),
     )
 }
 
@@ -304,12 +308,18 @@ val checkNativeImageIsOneFile = tasks.register("checkNativeImageIsOneFile") {
     group = "verification"
     description = "Fails if `nativeCompile` emitted anything beside the binary."
     val outputDir = layout.buildDirectory.dir("native/nativeCompile")
+    // `loopky.exe` on Windows, and derived from the host row rather than spelled a second time:
+    // the check filtered on the literal `loopky`, so on that row it counted the binary itself as a
+    // stray and failed every build (#301). Deliberately **not** widened to tolerate a `.pdb` or a
+    // `reports/` — whether `native-image` emits anything else there is unmeasured, and a filter
+    // loosened in advance would hide the answer rather than produce it.
+    val binaryName = if (hostNativeRow?.jnaPrefix?.startsWith("win32") == true) "loopky.exe" else "loopky"
     doLast {
         // Every entry, not just `isFile`. A stray *directory* — `reports/`, which a diagnostic
         // flag produces — used to pass here and then fail CI's `ls | wc -l` instead, which is a
         // bare exit code with none of the explanation below.
         val strays = outputDir.get().asFile.listFiles().orEmpty()
-            .filter { it.name != "loopky" }
+            .filter { it.name != binaryName }
             .map { if (it.isDirectory) "${it.name}/" else it.name }
             .sorted()
         check(strays.isEmpty()) {
