@@ -95,13 +95,6 @@ internal fun isWindowsOs(osName: String = System.getProperty("os.name").orEmpty(
     osName.startsWith("Windows", ignoreCase = true)
 
 /**
- * libc through JNA, which is already linked for the FFI.
- *
- * [Function.getFunction] rather than a mapped `Library` interface for the same reason
- * [defaultRustLogToWarn] uses it: an interface is a dynamic proxy `native-image` has to be told
- * about, for three calls.
- */
-/**
  * The same swap through kernel32, which is the only thing the Rust layer will notice (#301).
  *
  * `SetStdHandle(STD_OUTPUT_HANDLE, …)` rather than a descriptor dance: Rust's `std::io::stdout()`
@@ -143,6 +136,13 @@ private object Win32Stdio : Stdio {
     private const val INVALID_HANDLE = -1L
 }
 
+/**
+ * libc through JNA, which is already linked for the FFI.
+ *
+ * [Function.getFunction] rather than a mapped `Library` interface for the same reason
+ * [defaultRustLogToWarn] uses it: an interface is a dynamic proxy `native-image` has to be told
+ * about, for three calls.
+ */
 private object JnaStdio : Stdio {
     override fun dup(fd: Int): Int = call("dup", arrayOf<Any>(fd))
     override fun dup2(from: Int, to: Int): Int = call("dup2", arrayOf<Any>(from, to))
