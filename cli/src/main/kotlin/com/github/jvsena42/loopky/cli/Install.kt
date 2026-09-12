@@ -25,12 +25,16 @@ enum class InstallMethod(val json: String) {
     Binary("binary"),
 
     /**
-     * A downloaded `loopky.exe`. Its own row rather than [Binary], because **`update` cannot replace
-     * a running executable on Windows**: `ATOMIC_MOVE` over the target is refused by the OS, and
-     * `replaceFailed` maps that to "not writable by this user — a read-only layer, or an install
-     * that needs the owner", which tells an agent the machine is wrong rather than the method, and
-     * to stop retrying. The fix is to rename the running file aside and sweep it at start-up; until
-     * that lands this refuses by name and quotes `install.ps1` (#301).
+     * A downloaded `loopky.exe`, which **can** now self-update (#301).
+     *
+     * Still its own row rather than [Binary], for the reason that made it one: the POSIX branches
+     * in [detectInstallation] match `/Cellar/` and `/usr/bin/` against `Path.toString()`, which
+     * Windows spells with backslashes, so folding this back into [Binary] would re-open the hole
+     * where every Windows path fell through to the one value that lets `update` write over a file.
+     *
+     * How it replaces itself differs too, and that is the other reason to keep the distinction
+     * legible: Windows refuses to rename *over* a running image, so `replaceInPlace` moves the live
+     * binary aside and sweeps it on the next run.
      */
     WindowsBinary("windows-binary"),
 
@@ -51,7 +55,7 @@ enum class InstallMethod(val json: String) {
     ;
 
     /** Whether `loopky update` may replace this installation in place. */
-    val canSelfUpdate: Boolean get() = this == Binary
+    val canSelfUpdate: Boolean get() = this == Binary || this == WindowsBinary
 }
 
 /** What was found: the method, and the file to replace when there is one. */

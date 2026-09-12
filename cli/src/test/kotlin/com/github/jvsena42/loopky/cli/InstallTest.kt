@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Assumptions.assumeTrue
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Which tool owns this copy of `loopky` (#209).
@@ -131,7 +131,10 @@ class InstallTest {
         ).forEach { p ->
             val found = detect(path = p, osName = "Windows 11")
             assertEquals(InstallMethod.WindowsBinary, found.method, p)
-            assertFalse(found.canSelfUpdate, "a running .exe cannot be replaced in place: $p")
+            // It self-updates now, by renaming the running image aside rather than writing over it
+            // (#301) — the row stays separate because *how* it replaces the file differs, not
+            // because it cannot.
+            assertTrue(found.canSelfUpdate, "this row replaces itself via the rename-aside: $p")
             assertEquals(Path.of(p), found.path, "the path is still reported, so `update` can name it")
         }
     }
@@ -139,8 +142,9 @@ class InstallTest {
     /**
      * Order matters: the Windows arm sits *after* the jar and container checks, because neither of
      * those is about the host. A jar run on Windows is still a directory of jars rather than a file
-     * to swap, and saying `windows-binary` there would quote `install.ps1` at somebody holding a
-     * start script.
+     * to swap — and since `windows-binary` self-updates (#301), classifying one as that would
+     * report `can_self_update: true` for an install with no single file to replace, then send
+     * `update` at a generated start script.
      */
     @Test
     fun `the jar and container rows still win on windows`() {

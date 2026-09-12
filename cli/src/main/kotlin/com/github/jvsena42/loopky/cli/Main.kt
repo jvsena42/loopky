@@ -22,6 +22,7 @@ import com.github.jvsena42.loopky.cli.commands.importDryRun
 import com.github.jvsena42.loopky.cli.commands.login
 import com.github.jvsena42.loopky.cli.commands.logout
 import com.github.jvsena42.loopky.cli.commands.requireImageCheckOptions
+import com.github.jvsena42.loopky.cli.commands.sweepSupersededBinary
 import com.github.jvsena42.loopky.cli.commands.tagTrending
 import com.github.jvsena42.loopky.cli.commands.update
 import com.github.jvsena42.loopky.cli.commands.whoami
@@ -95,7 +96,13 @@ private fun run(argv: Array<String>): ExitCode {
 
     Log.debugEnabled = args.has("verbose")
     val environment = CliEnvironment.resolve(args)
-    val updates = Updates(UpdateChecker(environment.configHome), detectInstallation())
+    val installation = detectInstallation()
+    val updates = Updates(UpdateChecker(environment.configHome), installation)
+    // The first moment the previous image is no longer running, which is the only moment it can be
+    // deleted — Windows holds the file for as long as a process is executing it, so `update` has to
+    // leave it behind and somebody has to come back for it. Silent and best-effort by construction:
+    // see [sweepSupersededBinary] for why a leftover copy must never fail the command in hand.
+    sweepSupersededBinary(installation)
 
     // One `runBlocking` around the whole command rather than around `dispatch` alone, so the
     // update check can run *concurrently* with the work (#209). On the one invocation a day that

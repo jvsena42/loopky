@@ -223,10 +223,22 @@ class UpdateCheckTest {
         assertTrue(moved.contains("may be wrong"))
     }
 
+    /**
+     * **Only a downloaded file we own may replace itself, and that is now two rows** (#301).
+     *
+     * Written against the whole enum rather than against a list of the refusing ones, because the
+     * job is to make a *new* row's self-update capability a deliberate decision: an entry added
+     * without a thought about `canSelfUpdate` lands in the refusing set and fails nothing, while
+     * one that quietly joins the updating set has to be argued for here first.
+     *
+     * `WindowsBinary` joined by gaining a mechanism, not by relaxing a rule — it renames the
+     * running image aside instead of writing over it.
+     */
     @Test
-    fun `only a plain downloaded binary may replace itself`() {
-        assertTrue(InstallMethod.Binary.canSelfUpdate)
-        InstallMethod.entries.filter { it != InstallMethod.Binary }.forEach {
+    fun `only a downloaded binary may replace itself, on either of its two rows`() {
+        val updatable = setOf(InstallMethod.Binary, InstallMethod.WindowsBinary)
+        updatable.forEach { assertTrue(it.canSelfUpdate, "$it is a downloaded file in a directory we own") }
+        InstallMethod.entries.filterNot { it in updatable }.forEach {
             assertFalse(it.canSelfUpdate, "$it is owned by something else")
         }
         assertFalse(

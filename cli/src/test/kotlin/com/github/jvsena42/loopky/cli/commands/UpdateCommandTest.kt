@@ -122,39 +122,23 @@ class UpdateCommandTest {
     }
 
     /**
-     * **The wording is load-bearing here, not just the exit code.** Left as [InstallMethod.Binary],
-     * this row reaches `replaceInPlace`, Windows refuses to rename over a running image, and
-     * `replaceFailed` reports "not writable by this user — a read-only layer, or an install that
-     * needs the owner": a permissions diagnosis that sends a person to an elevated prompt which
-     * will not help, and tells an agent the machine is wrong rather than the method. So the refusal
-     * has to name the obstacle and the way past it, and must not describe a permissions problem.
+     * The row this used to refuse. It now self-updates, and `--json` has to say so: an agent that
+     * read `can_self_update: false` was being told to go and run an installer, and the value is the
+     * one it branches on. `install` stays `windows-binary` — the distinction is still real, because
+     * *how* the file is replaced differs — so a consumer must read the capability rather than infer
+     * it from the method's name.
      */
     @Test
-    fun `windows is refused by name, never as a permissions problem`() = runTest {
-        val error = assertFailsWith<CliError> {
-            update(
-                Args.parse(arrayOf("update")),
-                checker("""{"version":"0.9.0","schema":1}"""),
-                Installation(InstallMethod.WindowsBinary, Path.of("""C:\Users\agent\loopky.exe""")),
-            )
-        }
-        assertEquals(ExitCode.UpdateUnsupported, error.exitCode, "a refusal must never exit 0")
-        val message = error.message.orEmpty()
-        assertTrue("install.ps1" in message, message)
-        assertFalse("not writable" in message, message)
-    }
-
-    /** `--json` is what an agent branches on, so the capability is stated there rather than implied. */
-    @Test
-    fun `--check on windows states the capability and the reason`() = runTest {
+    fun `--check on windows reports a row that can update itself`() = runTest {
         val result = update(
             Args.parse(arrayOf("update", "--check")),
             checker("""{"version":"0.9.0","schema":1}"""),
             Installation(InstallMethod.WindowsBinary, Path.of("""C:\Users\agent\loopky.exe""")),
         )
         assertEquals("windows-binary", field(result, "install"))
-        assertFalse(field(result, "can_self_update").toBoolean())
-        assertTrue(field(result, "advice").contains("install.ps1"))
+        assertTrue(field(result, "can_self_update").toBoolean())
+        assertTrue(field(result, "advice").contains("loopky update"))
+        assertFalse(field(result, "advice").contains("install.ps1"), "it no longer sends you to the installer")
     }
 
     @Test
@@ -252,6 +236,60 @@ class ReplaceInPlaceTest {
             Files.list(dir).use { it.toList() },
             "no temp file left behind beside it",
         )
+    }
+
+    /**
+     * **The Windows path, driven on any host.** `replaceInPlace` takes the branch as a parameter
+     * rather than reading `os.name`, so the choreography — which is ordinary file work, and only
+     * *why* it is needed is Windows-specific — is exercised everywhere instead of on one runner.
+     *
+     * What it must do: leave the new bytes at the installed name, and leave the previous image
+     * beside it rather than deleted, because the OS will not free a file it is executing.
+     */
+    @Test
+    fun `on windows the running binary is renamed aside rather than written over`() {
+        val dir = Files.createTempDirectory("loopky-aside")
+        val target = dir.resolve("loopky.exe")
+        Files.writeString(target, "the old binary")
+
+        replaceInPlace(target, "the new binary".toByteArray(), windows = true)
+
+        assertEquals("the new binary", Files.readString(target))
+        assertEquals(
+            "the old binary",
+            Files.readString(supersededPath(target)),
+            "the previous image has to survive the swap — it is still running",
+        )
+    }
+
+    @Test
+    fun `the superseded copy is swept on the next run`() {
+        val dir = Files.createTempDirectory("loopky-sweep")
+        val target = dir.resolve("loopky.exe")
+        Files.writeString(target, "current")
+        Files.writeString(supersededPath(target), "previous")
+
+        sweepSupersededBinary(Installation(InstallMethod.WindowsBinary, target), windows = true)
+
+        assertFalse(Files.exists(supersededPath(target)))
+        assertEquals("current", Files.readString(target), "and the live binary is untouched")
+    }
+
+    /**
+     * The sweep runs before every command, so its failure modes are everyone's. None of these may
+     * throw: nothing to remove, no path to look at, and a row that never leaves one behind.
+     */
+    @Test
+    fun `sweeping is silent when there is nothing to sweep, or nowhere to look`() {
+        val dir = Files.createTempDirectory("loopky-sweep-none")
+        val target = dir.resolve("loopky.exe")
+        Files.writeString(target, "current")
+
+        sweepSupersededBinary(Installation(InstallMethod.WindowsBinary, target), windows = true)
+        sweepSupersededBinary(Installation(InstallMethod.WindowsBinary, null), windows = true)
+        sweepSupersededBinary(Installation(InstallMethod.Binary, target), windows = false)
+
+        assertEquals("current", Files.readString(target), "the sweep must never touch the live binary")
     }
 
     /**
