@@ -13,10 +13,12 @@ import com.github.jvsena42.loopky.data.nexus.HttpResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import java.io.IOException
 import java.nio.file.AccessDeniedException
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.FileSystemException
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -216,6 +218,13 @@ class ReplaceInPlaceTest {
      */
     @Test
     fun `an unwritable directory refuses without touching anything`() {
+        // The directory is made unwritable through POSIX modes, which Windows does not have (#301).
+        // Refusing to replace a *running* `.exe` is the case that matters there, and it is its own
+        // test rather than this one wearing a second hat.
+        assumeTrue(
+            FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+            "needs POSIX file permissions",
+        )
         val dir = Files.createTempDirectory("loopky-replace-ro")
         val target = dir.resolve("loopky")
         Files.writeString(target, "the old binary")

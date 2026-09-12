@@ -6,6 +6,7 @@ import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.platform.DesktopNativeRow
 import com.github.jvsena42.loopky.platform.desktopNativeRow
 import kotlinx.coroutines.test.runTest
+import org.junit.Assume.assumeTrue
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -319,6 +320,10 @@ class DesktopSessionStoreTest {
      */
     @Test
     fun `a security that never answers is cut off rather than waited on`() {
+        // The stand-in is a shebang script, so this needs a POSIX shell to run it at all (#301).
+        // On Windows the spawn fails for its own reason and the assertion below would be checking
+        // the wrong failure.
+        assumeTrue("needs a POSIX shell to stand in for security(1)", Files.isExecutable(Paths.get("/bin/sh")))
         val sleeper = Files.createTempFile("fake-security", ".sh")
         sleeper.toFile().writeText("#!/bin/sh\nsleep 30\n")
         sleeper.toFile().setExecutable(true)

@@ -275,6 +275,62 @@ jobs:
           path: '**/build/reports/tests/'
           if-no-files-found: ignore
 
+  cli-windows:
+    # **The third row, before there is a third row (#301).** Windows is refused at `SupportedHost`
+    # today, so nothing here builds a binary or loads the FFI. What it does is keep the *portable*
+    # half honest while the Windows-shaped fixes land — an ACL where POSIX modes are a silent
+    # no-op, a config home that is not `~/.config`, `SetStdHandle` where `dup2` is meaningless.
+    # Every one of those is a branch no other job in this workflow can reach, and each replaces
+    # something that currently fails open rather than loudly.
+    #
+    # **`:shared:jvmTest` is filtered, and the filter is temporary.** `UniffiPubkyClientJvmTest`
+    # loads `libpubkycore` and *fails* on a host outside the shipped matrix — by design, not as a
+    # flake; its own KDoc says so. There is no `win32-x86-64/pubkycore.dll` yet, so running the
+    # whole suite here would go red for the one thing this row already knows about and assert
+    # nothing new. When that library lands the filter comes off in the same PR, and its removal is
+    # the visible marker that the row is real.
+    #
+    # `windows-latest` bills at 2×, so it takes the same `changes` gate as the macOS rows.
+    name: CLI on Windows x86_64
+    needs: changes
+    if: needs.changes.outputs.cli == 'true'
+    runs-on: windows-latest
+    # bash, not the image's default pwsh: every other job here is written in it, and a second
+    # dialect would be one more thing that can differ between the rows for no reason.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: The CLI's own tests
+        run: ./gradlew :cli:test
+
+      # The desktop storage and host-matrix packages, which is where every Windows branch lives.
+      # `data.pubky` is what the filter is keeping out.
+      - name: The desktop JVM tests that do not need the FFI
+        run: >
+          ./gradlew :shared:jvmTest
+          --tests 'com.github.jvsena42.loopky.data.storage.*'
+          --tests 'com.github.jvsena42.loopky.platform.*'
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-windows-test-reports
+          path: '**/build/reports/tests/'
+          if-no-files-found: ignore
+
   cli-binary:
     # The packaging, checked on every change rather than at a tag (#210). Everything above this
     # job passes on a build that needs a JRE 17 installed, which is the thing the binary exists to
