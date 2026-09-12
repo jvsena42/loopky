@@ -5,7 +5,6 @@ import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -61,12 +60,20 @@ internal class JsonFileStore(internal val file: Path) {
         }
     }
 
+    /**
+     * **Restricted before it holds anything**, which is not what this did before (#301).
+     *
+     * The temp file used to be created with no attributes and narrowed after `writeString`, so the
+     * secret existed at the ambient mode for the length of a write. That was only ever safe by
+     * accident — `createTempFile` happens to make 0600 on POSIX — and on Windows, where nothing
+     * narrowed it at all, the accident was the whole guarantee. Same order `TerminalQr.writePng`
+     * states: permissions first, content second, so the readable window never exists.
+     */
     private fun persist(map: Map<String, String>) {
         ConfigHome.prepare(file.parent)
-        val temp = Files.createTempFile(file.parent, file.fileName.toString(), ".tmp")
+        val temp = OwnerOnly.createTempFile(file.parent, file.fileName.toString(), ".tmp")
         runCatching {
             Files.writeString(temp, json.encodeToString(map))
-            restrictToOwner(temp)
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         }.onFailure {
             Files.deleteIfExists(temp)
@@ -74,20 +81,8 @@ internal class JsonFileStore(internal val file: Path) {
         }
     }
 
-    /**
-     * Best-effort 0600. A filesystem with no POSIX permissions (a Windows share, some container
-     * overlays) cannot express it; failing the write there would cost the user their session for
-     * a guarantee that host was never going to give.
-     */
-    private fun restrictToOwner(path: Path) {
-        runCatching {
-            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(FILE_MODE))
-        }.onFailure { Log.d(TAG, "could not set $FILE_MODE on $path: ${it.message}") }
-    }
-
     private companion object {
         const val TAG = "Loopky/JsonFileStore"
-        const val FILE_MODE = "rw-------"
         val json = Json { ignoreUnknownKeys = true }
     }
 }

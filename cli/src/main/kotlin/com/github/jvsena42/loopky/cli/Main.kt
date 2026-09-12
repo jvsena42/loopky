@@ -131,7 +131,7 @@ private fun run(argv: Array<String>): ExitCode {
                 // the last point at which such a host can still be told what is wrong with it
                 // rather than about a deck that does not exist. See `requireSupportedHost`.
                 requireSupportedHost()
-                val koin = startCli(environment)
+                val koin = startCli(environment, args.has("json"))
                 dispatch(args, koin.identity(), koin, environment, args.has("json"), SessionCache())
             }
             emit(args, environment, args.verb, result, updates.notice(update.await()))
@@ -559,10 +559,15 @@ internal val USAGE = """
                                 way in on a sandbox that has no stored one. Mint it with
                                 `loopky login --export` on a machine with a human at it.
       LOOPKY_ENV                staging | production. --env wins. Defaults to production.
-      LOOPKY_CONFIG_HOME        Where state lives. Defaults to ${'$'}XDG_CONFIG_HOME/loopky. On macOS
-                                the session is in the login Keychain instead — unless this or
-                                XDG_CONFIG_HOME is set, either of which keeps everything under the
-                                directory it names. `loopky whoami` reports both.
+      LOOPKY_CONFIG_HOME        Where state lives. Defaults to ${'$'}XDG_CONFIG_HOME/loopky, then
+                                ~/.config/loopky — ~/Library/Application Support/loopky on macOS,
+                                %LOCALAPPDATA%\loopky on Windows. On macOS the session is in the
+                                login Keychain instead — unless this or XDG_CONFIG_HOME is set,
+                                either of which keeps everything under the directory it names. On
+                                Windows, pointing either at a roaming location (%APPDATA%,
+                                %USERPROFILE%\.config) puts the session back in the roaming profile
+                                and onto the domain's profile server at logoff.
+                                `loopky whoami` reports both.
       LOOPKY_NO_UPDATE_CHECK    Set to anything to never look for a newer release. The check is
                                 cached for a day, runs alongside the command, and can never fail
                                 it — but a pipeline that wants no surprises can switch it off.

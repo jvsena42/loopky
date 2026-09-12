@@ -13,10 +13,12 @@ import com.github.jvsena42.loopky.data.nexus.HttpResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import java.io.IOException
 import java.nio.file.AccessDeniedException
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.FileSystemException
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -201,7 +203,14 @@ class ReplaceInPlaceTest {
         replaceInPlace(target, "the new binary".toByteArray())
 
         assertEquals("the new binary", Files.readString(target))
-        assertTrue(Files.isExecutable(target))
+        // Only this line is guarded, not the whole test (#301). `replaceInPlace` sets the mode
+        // through a deliberately-swallowed `setPosixFilePermissions`, so on Windows this asserts
+        // nothing — NTFS grants FILE_EXECUTE on a file the runner just created, and the assertion
+        // passes while saying nothing about the thing it names. The two either side of it are
+        // exactly as meaningful there, so skipping the whole test would trade real coverage away.
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            assertTrue(Files.isExecutable(target))
+        }
         assertEquals(
             listOf(target),
             Files.list(dir).use { it.toList() },
@@ -216,6 +225,13 @@ class ReplaceInPlaceTest {
      */
     @Test
     fun `an unwritable directory refuses without touching anything`() {
+        // The directory is made unwritable through POSIX modes, which Windows does not have (#301).
+        // Refusing to replace a *running* `.exe` is the case that matters there, and it is its own
+        // test rather than this one wearing a second hat.
+        assumeTrue(
+            FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+            "needs POSIX file permissions",
+        )
         val dir = Files.createTempDirectory("loopky-replace-ro")
         val target = dir.resolve("loopky")
         Files.writeString(target, "the old binary")

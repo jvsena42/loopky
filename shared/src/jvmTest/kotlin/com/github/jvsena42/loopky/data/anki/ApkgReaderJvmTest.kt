@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.data.anki
 import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import kotlinx.coroutines.test.runTest
 import java.io.File
+import java.nio.file.Files
 import java.sql.DriverManager
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -48,6 +49,41 @@ class ApkgReaderJvmTest {
         val import = ApkgReader.readNotes(apkg.absolutePath, null, ::unusedImage).getOrThrow()
 
         assertEquals("Açaí", import.notes.single().front)
+    }
+
+    /**
+     * The collection is opened by a SQLite **URI**, and a path is not one (#301).
+     *
+     * Driven through [sqliteReadOnlyUrl] rather than through `readNotes`, because the file the
+     * driver actually opens is a `createTempFile` spool — so an import from a path with a space in
+     * it exercises the *zip* open and passes whether the URL is right or wrong. That test was
+     * written first and passed against the defect, which is the only reason this one exists in this
+     * shape.
+     *
+     * **The `#` is the whole of the discrimination — do not tidy it out of these names.** Measured
+     * on sqlite-jdbc 3.53.4.0: `#` and `?` make the parser open a *truncated* name and leave a
+     * stray 0-byte file, `%` fails `SQLITE_CANTOPEN`, and a **space needs no escaping at all**. So
+     * trimming `"loopky apkg #dir"` to `"loopky apkg dir"` would leave a test that passes against
+     * the defect, which is the exact failure this file exists to prevent.
+     *
+     * Not a Windows test, despite the fix being motivated by it: running `data.anki` on
+     * `windows-latest` against the old form came back green, because a plain temp path there
+     * carries none of the three characters that break it.
+     */
+    @Test
+    fun `opens a collection whose path needs escaping`() {
+        val dir = Files.createTempDirectory("loopky apkg #dir").toFile()
+        val collection = File(dir, "my collection #1.sqlite")
+        DriverManager.getConnection("jdbc:sqlite:${collection.absolutePath}").use { db ->
+            db.createStatement().use { it.executeUpdate("CREATE TABLE notes (id INTEGER PRIMARY KEY)") }
+        }
+
+        DriverManager.getConnection(sqliteReadOnlyUrl(collection)).use { db ->
+            db.createStatement().use { statement ->
+                val rs = statement.executeQuery("SELECT count(*) FROM notes")
+                assertTrue(rs.next())
+            }
+        }
     }
 
     @Test

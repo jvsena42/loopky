@@ -29,13 +29,19 @@ class StdoutGuardTest {
         assertEquals("hello", libc.written(fd = SAVED_FD))
     }
 
+    /**
+     * `print` with an explicit `\n`, not `println` (#301). `println` emits the *platform* line
+     * separator, so this asserted `\r\n` against `\n` on Windows and failed for a reason that has
+     * nothing to do with the descriptor swap being tested — the envelope is what matters here, not
+     * how the host spells the end of a line.
+     */
     @Test
     fun `writes the result to the saved descriptor and not to fd 1`() {
         val libc = FakeStdio()
         var installed: PrintStream? = null
         reserveStdoutForResults(libc) { installed = it }
 
-        installed?.println("""{"ok":true}""")
+        installed?.print("""{"ok":true}""" + "\n")
 
         assertEquals("""{"ok":true}""" + "\n", libc.written(fd = SAVED_FD))
         assertEquals("", libc.written(fd = 1))
@@ -72,10 +78,44 @@ class StdoutGuardTest {
         assertFalse(installed)
     }
 
+    /**
+     * Windows is a different call, not a different spelling (#301).
+     *
+     * `msvcrt` exports `dup`/`dup2`/`write`, so the POSIX path resolved there and reported success
+     * — against msvcrt's private CRT descriptor table, which neither the JVM nor Rust consults. It
+     * succeeded and lied. Pinned by selection rather than by behaviour, because the kernel32 calls
+     * cannot be made on this host.
+     */
+    @Test
+    fun `windows gets the kernel32 swap, and every other host gets libc`() {
+        assertEquals("Win32Stdio", defaultStdio("Windows 11")::class.simpleName)
+        assertEquals("Win32Stdio", defaultStdio("Windows Server 2022")::class.simpleName)
+        assertEquals("JnaStdio", defaultStdio("Linux")::class.simpleName)
+        assertEquals("JnaStdio", defaultStdio("Mac OS X")::class.simpleName)
+    }
+
+    /**
+     * On Windows only the *standard handle* moves: `System.out` keeps the handle it captured at
+     * start-up and is already writing to the console, so re-wrapping it would add a second path to
+     * the same place. The reservation still succeeded, which is what the caller acts on.
+     */
+    @Test
+    fun `a host whose saved handle is already Systemout installs nothing`() {
+        var installed = false
+
+        val result = reserveStdoutForResults(FakeStdio(writesThrough = false)) { installed = true }
+
+        assertTrue(result, "the swap succeeded and the caller has to be told so")
+        assertFalse(installed, "System.out must be left on the handle it already holds")
+    }
+
     private class FakeStdio(
         private val dupResult: Int = SAVED_FD,
         private val maxWrite: Int = Int.MAX_VALUE,
+        writesThrough: Boolean = true,
     ) : Stdio {
+
+        override val writesThroughSavedDescriptor = writesThrough
         val calls = mutableListOf<String>()
         private val sinks = mutableMapOf<Int, StringBuilder>()
 

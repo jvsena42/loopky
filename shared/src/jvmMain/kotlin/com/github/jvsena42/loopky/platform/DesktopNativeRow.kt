@@ -32,6 +32,16 @@ fun desktopNativeRow(
 internal fun isMacOs(osName: String = System.getProperty("os.name").orEmpty()): Boolean =
     osName.startsWith("Mac", ignoreCase = true)
 
+/**
+ * True on Windows, whatever the architecture.
+ *
+ * Deliberately not derived from [desktopNativeRow] being absent: that asks "is there a
+ * `libpubkycore` for this host", which is a different question and answers null for an Intel Mac
+ * too. Where state belongs on disk is decided before anything tries to load a library.
+ */
+internal fun isWindows(osName: String = System.getProperty("os.name").orEmpty()): Boolean =
+    osName.startsWith("Windows", ignoreCase = true)
+
 /** What a refused host is told: what it is, why there is no build for it, and what to do. */
 fun unsupportedDesktopHostMessage(
     osName: String = System.getProperty("os.name").orEmpty(),

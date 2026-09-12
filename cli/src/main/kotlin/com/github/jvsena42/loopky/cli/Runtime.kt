@@ -48,11 +48,26 @@ class CliEnvironment(val pubky: PubkyEnvironment, val configHome: Path) {
  * resurrecting AWT. The one path that does compress — `.apkg` import (#211) — takes the reader's
  * `compressImage` parameter directly rather than reaching through this graph.
  */
-fun startCli(environment: CliEnvironment): Koin {
+fun startCli(environment: CliEnvironment, json: Boolean = false): Koin {
     // Both before Koin, because Koin is what resolves `PubkyClient`: the SDK reads `RUST_LOG` from
     // the process environment on its way to the first network call, and its `tracing` subscriber
     // writes to fd 1 — which has to already be pointing somewhere other than the result channel.
-    reserveStdoutForResults()
+    //
+    // **The answer is read rather than discarded** (#301). `--json` is documented as a versioned
+    // API an agent parses, and that only means anything if the envelope is the sole thing on
+    // stdout. Where the reservation could not be made, the honest move is to refuse the promise
+    // rather than print onto a channel the SDK may also be writing to — a caller that gets one
+    // stray tracing line ahead of the envelope has no way to tell a wrong answer from a broken
+    // parser. Human output is unaffected: a noisy stdout is a reason not to promise a
+    // machine-readable channel, never a reason to refuse to run.
+    val reserved = reserveStdoutForResults()
+    if (json && !reserved) {
+        throw CliError(
+            ExitCode.Internal,
+            "stdout could not be reserved for the --json envelope on this host, so it may carry " +
+                "log lines from libpubkycore as well. Re-run without --json, or report this.",
+        )
+    }
     defaultRustLogToWarn()
     initKoinJvm(
         pubkyEnvironment = environment.pubky,

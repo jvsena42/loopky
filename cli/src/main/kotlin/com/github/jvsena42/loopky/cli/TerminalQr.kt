@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.cli
 
+import com.github.jvsena42.loopky.data.storage.OwnerOnly
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
@@ -9,7 +10,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions
 import java.util.zip.CRC32
 import java.util.zip.Deflater
 import java.util.zip.DeflaterOutputStream
@@ -87,30 +87,36 @@ object TerminalQr {
      * Same order as `JsonFileStore.persist` and for the same reason: permissions first, content
      * second, so the readable window never exists. The caller deletes it once approval lands.
      */
-    fun writePng(text: String, file: File) {
+    /**
+     * Returns whether the file actually came out owner-only, which the caller is expected to use:
+     * this is a live credential, and `login` must not promise a protection the host refused.
+     */
+    fun writePng(text: String, file: File): Boolean {
         val png = encode(text, PNG_SIZE).toPng()
         val target = file.absoluteFile
         target.parentFile?.mkdirs()
-        val path = createOwnerOnly(target.toPath())
+        val created = createOwnerOnly(target.toPath())
         // A stream on the file we just created, **not** a writer that takes a `File`: the
         // `ImageIO.write(…, File)` overload this used to call deletes the file and recreates it,
         // which throws away the mode set above and puts the credential back at the ambient umask.
         // Caught by QrCredentialTest, not by reading the API.
-        Files.newOutputStream(path).use { output -> output.write(png) }
+        Files.newOutputStream(created.path).use { output -> output.write(png) }
+        return created.ownerOnly
     }
 
     /**
      * An empty file only its owner can read.
      *
-     * Best-effort on the mode, like the session store: a filesystem with no POSIX permissions
-     * cannot express it, and refusing to write there would cost a capability the host was never
-     * going to give anyway.
+     * Best-effort on the restriction, like the session store: a host that can express neither a
+     * POSIX mode nor an ACL is real, and refusing to write there would cost a capability it was
+     * never going to give. [OwnerOnly] decides which spelling this host uses (#301) — before, this
+     * asked only for a mode, so on Windows the file holding a live `pubkyauth://` credential landed
+     * at whatever the parent directory happened to allow while `login` printed "owner-readable
+     * only".
      */
-    private fun createOwnerOnly(path: Path): Path {
+    private fun createOwnerOnly(path: Path): OwnerOnly.Created {
         Files.deleteIfExists(path)
-        return runCatching {
-            Files.createFile(path, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString(FILE_MODE)))
-        }.getOrElse { Files.createFile(path) }
+        return OwnerOnly.createFile(path)
     }
 
     private fun encode(text: String, size: Int): BitMatrix =
@@ -153,8 +159,6 @@ object TerminalQr {
     private const val LIGHT_ON_LIGHT = "\u001B[38;5;231;48;5;231m"
 
     private const val ANSI_RESET = "\u001B[0m"
-
-    private const val FILE_MODE = "rw-------"
 
     /**
      * The matrix as a 1-bit greyscale PNG, encoded here in about thirty lines rather than by

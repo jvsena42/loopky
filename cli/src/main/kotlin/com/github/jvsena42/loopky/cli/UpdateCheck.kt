@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.data.nexus.HttpFetcher
 import com.github.jvsena42.loopky.data.nexus.HttpRequest
 import com.github.jvsena42.loopky.data.nexus.JvmHttpFetcher
 import com.github.jvsena42.loopky.data.storage.ConfigHome
+import com.github.jvsena42.loopky.data.storage.OwnerOnly
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.serialization.SerialName
@@ -143,7 +144,11 @@ class UpdateChecker(
         runCatching {
             val file = cacheFile()
             ConfigHome.prepare(file.parent)
-            val temp = Files.createTempFile(file.parent, CACHE_FILE, ".tmp")
+            // Owner-only for consistency rather than secrecy: this holds a version string and a
+            // timestamp, not a credential. It sits in the same directory and uses the same
+            // temp-then-rename shape as the stores that *do* hold one, and an exception here is the
+            // one somebody copies next (#301).
+            val temp = OwnerOnly.createTempFile(file.parent, CACHE_FILE, ".tmp")
             runCatching {
                 Files.writeString(temp, manifestJson.encodeToString(record))
                 Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)

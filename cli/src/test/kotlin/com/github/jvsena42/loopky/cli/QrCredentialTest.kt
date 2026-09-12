@@ -1,6 +1,8 @@
 package com.github.jvsena42.loopky.cli
 
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import java.io.File
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermission
 import javax.imageio.ImageIO
@@ -24,8 +26,17 @@ class QrCredentialTest {
         "pubkyauth://signin?caps=%2Fpub%2Floopky%2F%3Arw&relay=https%3A%2F%2Fhttprelay.pubky.app" +
             "%2Finbox&secret=zSFFp0nyJ_kZINkVgxnC2tTUc02n9oDxBm_KdUP9SQY"
 
+    /**
+     * Skipped rather than passed where there are no POSIX modes (#301). A green test that asserted
+     * nothing is how the four `setPosixFilePermissions` sites came to be silent no-ops on Windows
+     * in the first place; the ACL that replaces them there gets its own assertion.
+     */
     @Test
     fun `the png is owner-only`() {
+        assumeTrue(
+            FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+            "needs POSIX file permissions",
+        )
         val file = File.createTempFile("loopky-qr", ".png")
         // Start it world-readable, so passing proves the writer set the mode rather than inherited
         // a strict umask from whatever ran the test.
@@ -39,7 +50,9 @@ class QrCredentialTest {
             ),
         )
 
-        TerminalQr.writePng(authUrl, file)
+        // The returned boolean is what `login` prints its promise from (#301), so it has to agree
+        // with the mode below rather than be assumed.
+        assertTrue(TerminalQr.writePng(authUrl, file), "writePng reported it could not restrict the file")
 
         val mode = Files.getPosixFilePermissions(file.toPath())
         assertEquals(

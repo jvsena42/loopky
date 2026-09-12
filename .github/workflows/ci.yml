@@ -31,6 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cli: ${{ steps.filter.outputs.cli }}
+      # `cli` plus the shared test sources. Two outputs rather than one because the jobs gating on
+      # them cost different amounts: a test-only change cannot affect a GraalVM native image, so
+      # `cli-binary-macos` stays on `cli` at the 10× multiplier while the 2× Windows row widens.
+      cliTests: ${{ steps.filter.outputs.cliTests }}
       ios: ${{ steps.filter.outputs.ios }}
     steps:
       - uses: actions/checkout@v7
@@ -69,6 +73,14 @@ jobs:
           # — the macOS row fails on reaching a JDK *native* library, and nothing in commonMain
           # can name one.
           CLI='^(cli/|shared/src/jvmMain/|shared/src/jvmSharedMain/|(shared/)?build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle/(libs\.versions\.toml|wrapper/)|\.github/(workflows/ci\.yml|actions/))'
+          # **What can break a *test* row, which `CLI` deliberately does not cover.**
+          # `shared/src/jvmTest/` reaches no native image, so adding it to `CLI` would put a
+          # `macos-14` `nativeCompile` on the 10× multiplier behind a change that cannot affect it.
+          # It does reach `cli-windows`, and a job skipped by `if:` still satisfies a required check
+          # — so without this a jvmTest-only PR goes green having run the Windows arm nowhere. That
+          # matters for exactly one shape, and it is the shape this stack is building toward: a test
+          # that assumes an ACL filesystem skips on Linux by construction and has no other row.
+          CLI_TESTS="${CLI%)}|shared/src/jvmTest/)"
           # What can break **iOS**: anything shared, because that is the arrangement — business
           # logic is shared, so a commonMain change breaks iOS as easily as Android.
           IOS='^(shared/|iosApp/|build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle/(libs\.versions\.toml|wrapper/)|\.github/(workflows/ci\.yml|actions/))'
@@ -76,7 +88,7 @@ jobs:
           decide() {
             if printf '%s\n' "$FILES" | grep -qE "$2"; then echo "$1=true"; else echo "$1=false"; fi
           }
-          { decide cli "$CLI"; decide ios "$IOS"; } | tee -a "$GITHUB_OUTPUT"
+          { decide cli "$CLI"; decide cliTests "$CLI_TESTS"; decide ios "$IOS"; } | tee -a "$GITHUB_OUTPUT"
 
   lint:
     name: Kotlin lint (detekt)
@@ -275,6 +287,81 @@ jobs:
           path: '**/build/reports/tests/'
           if-no-files-found: ignore
 
+  cli-windows:
+    # **The third row, before there is a third row (#301).** Windows is refused at `SupportedHost`
+    # today, so nothing here builds a binary or loads the FFI. What it does is keep the *portable*
+    # half honest while the Windows-shaped fixes land — an ACL where POSIX modes are a silent
+    # no-op, a config home that is not `~/.config`, `SetStdHandle` where `dup2` is meaningless.
+    # Every one of those is a branch no other job in this workflow can reach, and each replaces
+    # something that currently fails open rather than loudly.
+    #
+    # **`:shared:jvmTest` is filtered, and the filter is temporary.** `UniffiPubkyClientJvmTest`
+    # loads `libpubkycore` and *fails* on a host outside the shipped matrix — by design, not as a
+    # flake; its own KDoc says so. There is no `win32-x86-64/pubkycore.dll` yet, so running the
+    # whole suite here would go red for the one thing this row already knows about and assert
+    # nothing new. When that library lands the filter comes off in the same PR, and its removal is
+    # the visible marker that the row is real.
+    #
+    # `windows-latest` bills at 2×, so it is gated rather than unconditional — but on `cliTests`
+    # rather than `cli`, because this row runs `:shared:jvmTest` and `cli` does not cover
+    # `shared/src/jvmTest/`. A job skipped by `if:` still satisfies a required status check, so
+    # gating on `cli` would let a jvmTest-only PR go green having run the Windows arm nowhere.
+    name: CLI on Windows x86_64
+    needs: changes
+    if: needs.changes.outputs.cliTests == 'true'
+    runs-on: windows-latest
+    # bash, not the image's default pwsh: every other job here is written in it, and a second
+    # dialect would be one more thing that can differ between the rows for no reason.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: The CLI's own tests
+        run: ./gradlew :cli:test
+
+      # The desktop storage, host-matrix and `.apkg` packages, which is where every Windows branch
+      # lives. `data.anki` joins them here because it needs the JDBC driver rather than the FFI, and
+      # the path it opens a collection by is precisely the kind of thing that is correct everywhere
+      # but here.
+      #
+      # What it still holds out is **two** packages: `data.pubky` (the FFI, which cannot load until
+      # there is a `win32-x86-64/pubkycore.dll`) and `di` (`KoinGraphTest`, which builds the real
+      # graph). Stated exactly because the block above makes this filter's removal the marker that
+      # the row is real, and a marker is worth nothing if the inventory beside it is wrong.
+      - name: The desktop JVM tests that do not need the FFI
+        run: >
+          ./gradlew :shared:jvmTest
+          --tests 'com.github.jvsena42.loopky.data.storage.*'
+          --tests 'com.github.jvsena42.loopky.data.anki.*'
+          --tests 'com.github.jvsena42.loopky.platform.*'
+
+      # Which test failed and why, in the log — the same reporter `test-build` and `cli-linux`
+      # carry (#239). It matters most here: this is the only row in the matrix a contributor on
+      # macOS or Linux cannot re-run locally, so "download and unzip the artifact to find out which
+      # test broke" is a worse tax than anywhere else. `shell: bash` + `python3`, both on the image.
+      - name: Say which tests failed
+        if: failure()
+        uses: ./.github/actions/failing-tests
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-windows-test-reports
+          path: '**/build/reports/tests/'
+          if-no-files-found: ignore
+
   cli-binary:
     # The packaging, checked on every change rather than at a tag (#210). Everything above this
     # job passes on a build that needs a JRE 17 installed, which is the thing the binary exists to
@@ -398,6 +485,35 @@ jobs:
           # the failure is four ANSI-coloured lines on the channel an agent captures.
           test "$(grep -c 'DEBUG\|INFO' qr.log || true)" -eq 0
 
+          # **stdout carries the envelope and nothing else, proved by provoking the failure** (#301).
+          # `--json` is a versioned API an agent parses, which only means anything if nothing else
+          # can land on that channel — and `StdoutGuard` is what keeps the SDK's `tracing` writer
+          # off it. Asking politely is not a test: RUST_LOG=trace makes the SDK as loud as it gets,
+          # so if the guard is not working, stdout is where those lines go.
+          #
+          # The stderr check is the positive precondition, and it is the half that stops this going
+          # vacuous: without it, an SDK that logged nothing at all would pass while proving nothing.
+          set +e; RUST_LOG=trace dist/loopky login --url-only --timeout 5 --json > pure.json 2> loud.log; CODE=$?; set -e
+          echo "--- stdout ---"; cat pure.json; echo "--- stderr ---"; cat loud.log
+          # **The exit code first, because the failure this step exists for is a *clean* one.** If
+          # the guard regresses, `startCli` refuses `--json` and throws before Koin — so
+          # libpubkycore never loads, stderr is empty, and `fail()` prints one well-formed envelope
+          # to stdout. Every check below would pass on a binary whose result channel is exactly as
+          # unprotected as before. 13 is nobody approving and 5 is an unreachable relay; anything
+          # else, this refused. Same gate the FFI check 20 lines up uses.
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 (timeout) or 5"; exit 1;; esac
+          # `grep -q` *is* the assertion — no `test -s` in front of it. A command that fails while
+          # not last in an `&&` list is exempt from `set -e`, so `test -s loud.log && grep …` could
+          # never fail: an empty stderr skipped the grep and carried on. That is the precondition
+          # written to stop this going vacuous being the one part of it that could not.
+          grep -qiE 'TRACE|DEBUG' loud.log
+          test -s pure.json
+          while read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s' "$line" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' \
+              || { echo "::error::stdout was not pure JSON: $line"; exit 1; }
+          done < pure.json
+
           # SQLite, which is JNA's problem all over again in a second library (#211). `.apkg`
           # import opens its collection through the JDBC driver, which extracts a native library
           # from the image's own resources — reflective loading, the one thing a closed-world
@@ -490,6 +606,31 @@ jobs:
           # The SDK's tracing stays quiet by default — `RustLog.kt` through libc, since a binary
           # has no start script to export RUST_LOG from.
           test "$(grep -c 'DEBUG\|INFO' qr.log || true)" -eq 0
+
+          # **stdout carries the envelope and nothing else, proved by provoking the failure** (#301).
+          # Here as well as on the Linux row, and that symmetry is the point: the defect this job
+          # exists for was one metadata entry that left Linux clean and broke macOS, so a check on
+          # one row is a check on one row. RUST_LOG=trace makes the SDK as loud as it gets; if the
+          # guard is not working, that is where those lines land.
+          #
+          # The stderr check is the positive precondition and the half that stops this going
+          # vacuous: without it an SDK that logged nothing would pass while proving nothing.
+          set +e; RUST_LOG=trace "$BIN" login --url-only --timeout 5 --json > pure.json 2> loud.log; CODE=$?; set -e
+          echo "--- stdout ---"; cat pure.json; echo "--- stderr ---"; cat loud.log
+          # The exit code first: a regressed guard refuses `--json` and throws before Koin, so the
+          # SDK never loads, stderr is empty, and `fail()` prints one well-formed envelope — every
+          # check below would pass on an unprotected channel. 13 is nobody approving, 5 an
+          # unreachable relay; anything else, this refused.
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 (timeout) or 5"; exit 1;; esac
+          # `grep -q` is the assertion. `test -s X && grep …` could never fail, because a command
+          # that fails while not last in an `&&` list is exempt from `set -e`.
+          grep -qiE 'TRACE|DEBUG' loud.log
+          test -s pure.json
+          while read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s' "$line" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' \
+              || { echo "::error::stdout was not pure JSON: $line"; exit 1; }
+          done < pure.json
 
           # SQLite is JNA's problem over again in a second library, on a second native row:
           # `org/sqlite/native/Mac/aarch64` rather than `Linux/x86_64`, extracted reflectively.
