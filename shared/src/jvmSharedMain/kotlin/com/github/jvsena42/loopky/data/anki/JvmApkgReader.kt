@@ -61,8 +61,26 @@ internal class JvmApkgReader(private val openDb: AnkiDbOpener) {
         return try {
             readFirstUsable(candidates, mapping, compressImage)
         } finally {
-            candidates.forEach { it.file.delete() }
+            candidates.forEach { it.file.deleteWithSideFiles() }
         }
+    }
+
+    /**
+     * The spool file **and its `-wal`/`-shm` siblings**.
+     *
+     * A collection whose header bytes say WAL makes SQLite create both beside the file it opens,
+     * and a read-only connection cannot take the exclusive lock needed to unlink them at `close()`
+     * — so deleting only the main file left a 32 KB `-shm` and an empty `-wal` in `java.io.tmpdir`
+     * on every such import, accumulating forever. Genuine Anki exports switch to
+     * `journal_mode=delete` before packing, so this needs a hand-edited or unusually-produced file.
+     *
+     * **Not fixed with `immutable=1`.** That suppresses the side files by promising the database
+     * cannot change, and SQLite then refuses a WAL-header collection outright with
+     * `SQLITE_CANTOPEN` — trading a tidiness problem for an import that fails.
+     */
+    private fun File.deleteWithSideFiles() {
+        delete()
+        listOf("-wal", "-shm").forEach { suffix -> File("$path$suffix").delete() }
     }
 
     /**

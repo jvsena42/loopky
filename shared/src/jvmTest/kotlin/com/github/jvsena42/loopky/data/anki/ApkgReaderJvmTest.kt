@@ -60,11 +60,15 @@ class ApkgReaderJvmTest {
      * written first and passed against the defect, which is the only reason this one exists in this
      * shape.
      *
-     * A space and a `#` are what break it on any host (`#` starts a URI fragment, so `a#1.sqlite`
-     * opens as `a` and fails). On Windows the system temp path is `C:\Users\RUNNER~1\…`, so the
-     * drive-letter colon and backslashes make it unconditional there — which no POSIX box can
-     * reproduce, and is exactly why the assertion is on the URL's behaviour rather than on a
-     * platform.
+     * **The `#` is the whole of the discrimination — do not tidy it out of these names.** Measured
+     * on sqlite-jdbc 3.53.4.0: `#` and `?` make the parser open a *truncated* name and leave a
+     * stray 0-byte file, `%` fails `SQLITE_CANTOPEN`, and a **space needs no escaping at all**. So
+     * trimming `"loopky apkg #dir"` to `"loopky apkg dir"` would leave a test that passes against
+     * the defect, which is the exact failure this file exists to prevent.
+     *
+     * Not a Windows test, despite the fix being motivated by it: running `data.anki` on
+     * `windows-latest` against the old form came back green, because a plain temp path there
+     * carries none of the three characters that break it.
      */
     @Test
     fun `opens a collection whose path needs escaping`() {
