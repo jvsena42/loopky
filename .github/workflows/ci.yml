@@ -330,21 +330,18 @@ jobs:
       - name: The CLI's own tests
         run: ./gradlew :cli:test
 
-      # The desktop storage, host-matrix and `.apkg` packages, which is where every Windows branch
-      # lives. `data.anki` joins them here because it needs the JDBC driver rather than the FFI, and
-      # the path it opens a collection by is precisely the kind of thing that is correct everywhere
-      # but here.
+      # **Unfiltered, and that is the whole point of this change.** Every earlier version of this
+      # step held packages out because `win32-x86-64/pubkycore.dll` did not exist, and said so —
+      # the filter's removal was named there as the marker that the row is real. It is real, so the
+      # marker is gone.
       #
-      # What it still holds out is **two** packages: `data.pubky` (the FFI, which cannot load until
-      # there is a `win32-x86-64/pubkycore.dll`) and `di` (`KoinGraphTest`, which builds the real
-      # graph). Stated exactly because the block above makes this filter's removal the marker that
-      # the row is real, and a marker is worth nothing if the inventory beside it is wrong.
-      - name: The desktop JVM tests that do not need the FFI
-        run: >
-          ./gradlew :shared:jvmTest
-          --tests 'com.github.jvsena42.loopky.data.storage.*'
-          --tests 'com.github.jvsena42.loopky.data.anki.*'
-          --tests 'com.github.jvsena42.loopky.platform.*'
+      # What this now runs that nothing could before is `UniffiPubkyClientJvmTest`, which loads the
+      # DLL out of the jar through JNA and derives a keypair through it. That is the only thing in
+      # the suite that can tell a shipped row from a missing one: the ~1,300 shared tests run
+      # against a fake client and pass identically on a machine where the library is absent, the
+      # architecture is wrong, or the file is one directory off.
+      - name: The whole shared suite, FFI included
+        run: ./gradlew :shared:jvmTest
 
       # Which test failed and why, in the log — the same reporter `test-build` and `cli-linux`
       # carry (#239). It matters most here: this is the only row in the matrix a contributor on

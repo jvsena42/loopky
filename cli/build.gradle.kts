@@ -133,6 +133,9 @@ data class NativeRow(
 val nativeRows = listOf(
     NativeRow("linux-x86-64", "linux", "libpubkycore.so", "libjnidispatch.so", "Linux/x86_64"),
     NativeRow("darwin-aarch64", "macos", "libpubkycore.dylib", "libjnidispatch.jnilib", "Mac/aarch64"),
+    // No `lib` prefix on either native name, which is what JNA and sqlite-jdbc both expect on
+    // Windows: `com/sun/jna/win32-x86-64/jnidispatch.dll` and `org/sqlite/native/Windows/x86_64/`.
+    NativeRow("win32-x86-64", "windows", "pubkycore.dll", "jnidispatch.dll", "Windows/x86_64"),
 )
 
 /**
@@ -152,6 +155,7 @@ val hostNativeRow: NativeRow? = run {
     when {
         os.isLinux && (arch == "amd64" || arch == "x86_64") -> nativeRows[0]
         os.isMacOsX && arch == "aarch64" -> nativeRows[1]
+        os.isWindows && (arch == "amd64" || arch == "x86_64") -> nativeRows[2]
         else -> null
     }
 }

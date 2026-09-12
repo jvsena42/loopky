@@ -8,19 +8,23 @@ import kotlin.test.assertTrue
 class DesktopNativeRowTest {
 
     @Test
-    fun `the two shipped rows are recognised`() {
+    fun `the three shipped rows are recognised`() {
         assertEquals(DesktopNativeRow.LinuxX64, desktopNativeRow("Linux", "amd64"))
         assertEquals(DesktopNativeRow.LinuxX64, desktopNativeRow("Linux", "x86_64"))
         assertEquals(DesktopNativeRow.MacArm64, desktopNativeRow("Mac OS X", "aarch64"))
         // A JVM that reports arm64 rather than aarch64 is the same machine and the same row.
         assertEquals(DesktopNativeRow.MacArm64, desktopNativeRow("Mac OS X", "arm64"))
+        assertEquals(DesktopNativeRow.WinX64, desktopNativeRow("Windows 11", "amd64"))
+        assertEquals(DesktopNativeRow.WinX64, desktopNativeRow("Windows Server 2022", "x86_64"))
     }
 
     @Test
     fun `hosts with no native row are refused`() {
         assertNull(desktopNativeRow("Mac OS X", "x86_64"))
-        assertNull(desktopNativeRow("Windows 11", "amd64"))
         assertNull(desktopNativeRow("Linux", "aarch64"))
+        // ARM64 Windows: a real machine, and not this row. The x64 build runs there under
+        // emulation, but a JVM reporting aarch64 cannot load an x64 DLL into its own process.
+        assertNull(desktopNativeRow("Windows 11", "aarch64"))
     }
 
     /**
@@ -34,9 +38,16 @@ class DesktopNativeRowTest {
         assertTrue("Rosetta" in message, message)
     }
 
+    /**
+     * The refusal that survived the row landing. An x64 Windows machine is now supported, so the
+     * only Windows host still refused is ARM64 — and it must be told which builds exist rather than
+     * that its OS is unsupported, which would be false.
+     */
     @Test
-    fun `windows says it is deferred, not broken`() {
-        assertTrue("Windows is not a target yet" in unsupportedDesktopHostMessage("Windows 11", "amd64"))
+    fun `arm64 windows is told which builds exist, not that windows is unsupported`() {
+        val message = unsupportedDesktopHostMessage("Windows 11", "aarch64")
+        assertTrue("Windows x86_64" in message, message)
+        assertTrue("not a target" !in message, message)
     }
 
     @Test

@@ -22,6 +22,15 @@ import com.github.jvsena42.loopky.platform.unsupportedDesktopHostMessage
 internal enum class SupportedHost(val row: DesktopNativeRow, val asset: String) {
     LinuxX64(DesktopNativeRow.LinuxX64, "loopky-linux-x86-64"),
     MacArm64(DesktopNativeRow.MacArm64, "loopky-macos-aarch64"),
+
+    /**
+     * The `.exe` suffix is part of the asset name, unlike the other two.
+     *
+     * `loopky update` downloads by this name and writes it over the running file, and on Windows a
+     * file without the extension is not executable — so dropping it to match the siblings would
+     * produce an install that downloads correctly and then cannot be run.
+     */
+    WinX64(DesktopNativeRow.WinX64, "loopky-windows-x86-64.exe"),
 }
 
 internal fun hostSupport(

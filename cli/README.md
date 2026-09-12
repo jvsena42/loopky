@@ -47,11 +47,13 @@ curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/loopky-li
 | Container | `docker run --rm -e LOOPKY_SESSION ghcr.io/jvsena42/loopky deck list --json` |
 | Debian/Ubuntu | `loopky_<version>_amd64.deb` on the release page — `dpkg -i`. Depends on `libc6 (>= 2.34)` and `zlib1g`, which is the whole of it: no JRE, and nothing else |
 | Homebrew | `brew install jvsena42/loopky/loopky` — above |
+| Windows x86_64 | **the jar distribution only, for now.** `libpubkycore` loads there and the whole shared suite runs on it, but no `loopky-windows-x86-64.exe` is published yet: `nativeCompile` on Windows and a release row are the two pieces still outstanding (#301). Until then it needs a JRE 17, which is exactly what the binary exists to remove. |
 
-**An Intel Mac and Windows are not targets**, by decision rather than omission (#54). Both are
-refused with a message that says which, rather than failing at the first homeserver call: there is
-one `darwin-aarch64` row of `libpubkycore` and no `lipo`, and Windows would need a
-`win32-x86-64/pubkycore.dll` that is not built.
+**An Intel Mac is not a target**, by decision rather than omission (#54): there is one
+`darwin-aarch64` row of `libpubkycore` and no `lipo`. **ARM64 Windows** is not one either — the x64
+binary runs there under emulation, but a JVM reporting `aarch64` cannot load an x64 DLL into its own
+process. Both are refused with a message naming the builds that do exist, rather than failing at the
+first homeserver call with something that reads as "that deck does not exist".
 
 There is **no hosted apt repository today**, so the `.deb` is a file rather than a source: nothing
 tracks it and `apt upgrade` will never move it — a new version means downloading the next one, which
@@ -697,4 +699,10 @@ otherwise, which needs AVX2; this binary is *downloaded*, onto a sandbox whose C
 and a v3 binary on a host without it dies with SIGILL. Irrelevant to a client that spends its life
 waiting on a homeserver.
 
-Windows is out of scope for v1 by decision, not omission.
+**Windows loads, but does not yet ship as a binary.** `win32-x86-64/pubkycore.dll` is in the jar and
+the shared suite runs against it on `windows-latest`, so the row is real rather than refused — what
+is missing is `nativeCompile` on that host and a release job to publish the `.exe` (#301). Two
+things will need deciding when that lands: `-march=compatibility` is currently gated on the Linux
+row though its reason (a *downloaded* x64 binary must not SIGILL on a host without AVX2) is
+arch-shaped rather than OS-shaped, and `checkNativeImageIsOneFile` matches the literal name
+`loopky`, which would flag `loopky.exe` as a stray.

@@ -295,6 +295,24 @@ cp  ../pubky-core-ffi-fork/bindings/ios/pubkycore.swift \
     iosApp/iosApp/Pubky/pubkycore.swift
 ```
 
+**The desktop rows are a separate script and were missing from this section entirely** (#301).
+`build_desktop.sh` produces the cdylibs the JVM target loads through JNA, into
+`bindings/desktop/<jna-prefix>/`, and they are copied into `shared/src/jvmMain/resources/` — the
+same arrangement `androidMain/jniLibs` already has:
+
+```shell
+cd ../pubky-core-ffi-fork
+./build_desktop.sh all      # every row this host can produce
+# then, from loopky/
+cp -R ../pubky-core-ffi-fork/bindings/desktop/. shared/src/jvmMain/resources/
+```
+
+**`all` does not mean all three.** Linux builds natively or cross-builds in a container; macOS
+needs an Apple Silicon Mac; and **Windows cannot be produced from either** — `x86_64-pc-windows-msvc`
+wants the Microsoft linker and the Windows SDK, so that row comes from the fork's
+`desktop-windows.yml` and nowhere else. Take `win32-x86-64/pubkycore.dll` from that workflow's
+artifact rather than expecting a local build to make one.
+
 A future Gradle task can automate this; not worth building until the fork stabilises.
 
 ### 7.5 Session & key storage
@@ -1941,16 +1959,39 @@ exist, on a machine that could never read one. `SupportedHost` checks the pair b
 and says which host it is and why there is no build for it. It matters most for the *jar*
 distribution, which is architecture-blind and runs anywhere a JRE does.
 
-The jar distributions remain, and are now **per row**: `linuxDistTar` and `macosDistTar` each carry
-one `libpubkycore`, where `distTar` carried both and a Linux box hauled 11 MB of macOS dylib it
-could never load. They need a JRE 17, but they can be built for either row from either host, which
-a binary cannot — `native-image` does not cross-compile, so the release runs one job per host and
-the Linux one runs in a container.
+The jar distributions remain, and are **per row**: `linuxDistTar`, `macosDistTar` and now
+`windowsDistTar` each carry one `libpubkycore`, where `distTar` carried both and a Linux box hauled
+11 MB of macOS dylib it could never load. They need a JRE 17, but they can be built for **any** row
+from **any** host, which a binary cannot — `native-image` does not cross-compile, so the release
+runs one job per host and the Linux one runs in a container. That asymmetry is why Windows can be a
+jar row the day its library lands while its binary waits on a `windows-latest` job.
 
-**Windows** is out of scope for v1 — it is the same three rows (`win32-x86-64/pubkycore.dll`, a
-DPAPI session store, a UTF-8 console for the QR) and nothing in the design blocks it, but no part
-of the agent workload that motivated this runs there. An **Intel Mac** is out for a different
-reason: there is one `darwin-aarch64` row and no `lipo`, deliberately (#54).
+**Windows loads, and does not yet ship as a binary** (#301). `win32-x86-64/pubkycore.dll` is in the
+jar, `SupportedHost` has a third row, and the whole shared suite — `UniffiPubkyClientJvmTest`
+included, which is the only test that can tell a shipped row from a missing one — runs on
+`windows-latest`. What is missing is `nativeCompile` on that host and a release job to publish the
+`.exe`; until those land it is the jar distribution only, which needs a JRE 17 and is therefore
+exactly what the binary exists to remove.
+
+That row is the one nobody can rebuild here: `x86_64-pc-windows-msvc` needs the Microsoft linker
+and the Windows SDK, so unlike Linux there is no container that cross-builds it from a Mac. It
+comes from the fork's `desktop-windows.yml`, which also asserts the DLL imports no VC runtime —
+load-bearing rather than tidy, because a Rust MSVC cdylib links `vcruntime140.dll` dynamically by
+default, that library is not part of Windows, and a machine without the redistributable fails
+`LoadLibrary` in a way JNA reports as "not found" and the classifier reads as a 404. A CI runner has
+the redistributable, so the build is green either way.
+
+**Two things to settle when the binary row lands**, both recorded here rather than rediscovered:
+`-march=compatibility` is gated on `jnaPrefix == "linux-x86-64"` though its reason is arch-shaped
+(a *downloaded* x64 binary must not SIGILL on a host without AVX2), and
+`checkNativeImageIsOneFile` filters on the literal name `loopky`, which would flag `loopky.exe` as
+a stray. Whether GraalVM emits anything else beside it on Windows is unmeasured.
+
+Two hosts are still refused, for different reasons. An **Intel Mac**: one `darwin-aarch64` row and
+no `lipo`, deliberately (#54). **ARM64 Windows**: the x64 binary runs there under emulation, but a
+JVM reporting `aarch64` cannot load an x64 DLL into its own process — so the library exists and
+this host still cannot use it, which is why the refusal names the builds that do exist rather than
+saying one is missing.
 
 ### 13.12 Knowing the client is stale, and one command to stop being it
 
