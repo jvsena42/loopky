@@ -491,11 +491,14 @@ jobs:
     # before anyone can pull this — and a keystore that never reached Gradle stops the tag before
     # a `:latest` moves under everyone for a release that has no APK.
     #
-    # **`windows` is deliberately not among them.** This image carries the Linux binary, so that
-    # row's failure says nothing about whether this one is correct, and waiting would only stall a
-    # registry push on an unrelated host. What does wait for it is `:latest`, moved by
-    # `image-latest` behind `mark-latest`.
-    needs: [check-version, android, linux, macos]
+    # **`windows` included, and the "it would cost seven minutes" objection does not survive the
+    # graph.** `image-latest` already waits on `mark-latest` -> `verify-windows` -> `release` ->
+    # `windows`, a chain strictly longer than `windows` plus this build, so nothing observable
+    # happens any later for having waited here. What it buys is the rule above holding for *every*
+    # build that can fail the tag: without it a Windows-only failure leaves
+    # `ghcr.io/<owner>/loopky:<version>` pushed with no release behind it — and unlike `:latest`,
+    # which correctly stays put, that tag is resolvable by anyone who types the version.
+    needs: [check-version, android, linux, macos, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: read
