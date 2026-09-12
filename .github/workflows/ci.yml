@@ -429,28 +429,22 @@ jobs:
           grep -q '"cards":3' apkg.json
           grep -q '"format":"apkg"' apkg.json
 
-      # **The assertion the build cannot make for itself**, and the same one the fork's workflow
-      # makes about `pubkycore.dll`. A downloaded `.exe` that imports `vcruntime140.dll` fails to
-      # start on a machine with no Visual C++ redistributable — and this runner has one, so the
-      # build and every check above are green either way. Import names sit in the PE import
-      # directory as plain ASCII, so this needs no `dumpbin` and no Visual Studio environment.
-      # What `native-image` on this image actually offers for CRT linking, printed once so the
-      # static-CRT question is settled from the tool rather than from a guess at a flag name.
-      # Non-fatal: this is a probe, not an assertion.
-      - name: What linking options does native-image have here
-        run: |
-          NI="$GRAALVM_HOME/bin/native-image"
-          # Exit status printed, because the first run of this probe emitted both markers with
-          # nothing between them — and `| grep … || true` cannot distinguish "no option matched"
-          # from "the command failed". An empty result has to mean one thing.
-          echo "--- --help-extra (rc printed) ---"
-          "$NI" --help-extra > /tmp/he.txt 2>&1; echo "rc=$?  lines=$(wc -l < /tmp/he.txt)"
-          grep -iE "static|libc|linker" /tmp/he.txt | head -20 || echo "  (no static/libc/linker options)"
-          echo "--- expert options (rc printed) ---"
-          "$NI" --expert-options-all > /tmp/eo.txt 2>&1; echo "rc=$?  lines=$(wc -l < /tmp/eo.txt)"
-          grep -iE "StaticExecutable|NativeLinkerOption|StaticLibC" /tmp/eo.txt | head -20 || echo "  (none matched)"
-
-      - name: The binary needs no Visual C++ redistributable
+      # **The assertion the build cannot make for itself.** A downloaded `.exe` that imports a DLL
+      # which is not in-box fails to start on a clean machine — and this runner has the Visual C++
+      # redistributable installed, so the build and every check above are green either way. Import
+      # names sit in the PE import directory as plain ASCII, so this needs no `dumpbin` and no
+      # Visual Studio environment.
+      #
+      # `loopky.exe` **does** need that redistributable: `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll`
+      # are the only two of its 23 imports not in-box on Windows 10+. That is accepted rather than
+      # fixed (#301) — GraalVM's prebuilt Windows JDK libraries are compiled against the dynamic
+      # CRT, `--static` is Linux-only, and `-H:NativeLinkerOption=/MT` is rejected by link.exe
+      # because `/MT` is a *compiler* switch; cli/build.gradle.kts carries the detail and
+      # cli/README.md tells the user. So this pins the **whole** import list rather than banning two
+      # names. Banning goes green on any *other* new non-in-box dependency; set equality fails on a
+      # change in either direction, and fails closed — a parse returning nothing is a failure here,
+      # where the old `bad = [...]` filter would have called it a pass.
+      - name: The binary imports exactly the pinned set
         run: |
           python - <<'PY'
           import struct, sys
@@ -493,14 +487,41 @@ jobs:
               names.append(data[off(name_rva):end].decode("ascii", "replace"))
               cur += 20
 
+          # Frozen from the first green Windows image (#301). Lower-cased, because PE import names
+          # are not consistently cased even within one image — `IPHLPAPI.DLL` sits beside
+          # `KERNEL32.dll` — so a case-sensitive compare would fail on a re-link that changed
+          # nothing.
+          EXPECTED = {
+              # Win32, in-box.
+              "advapi32.dll", "crypt32.dll", "iphlpapi.dll", "kernel32.dll", "mswsock.dll",
+              "ncrypt.dll", "secur32.dll", "user32.dll", "userenv.dll", "version.dll",
+              "winhttp.dll", "ws2_32.dll",
+              # The Universal CRT: in-box since Windows 10, shipped by Windows Update before that.
+              "api-ms-win-crt-convert-l1-1-0.dll", "api-ms-win-crt-environment-l1-1-0.dll",
+              "api-ms-win-crt-filesystem-l1-1-0.dll", "api-ms-win-crt-heap-l1-1-0.dll",
+              "api-ms-win-crt-locale-l1-1-0.dll", "api-ms-win-crt-math-l1-1-0.dll",
+              "api-ms-win-crt-runtime-l1-1-0.dll", "api-ms-win-crt-stdio-l1-1-0.dll",
+              "api-ms-win-crt-string-l1-1-0.dll",
+              # **Not** in-box: the Visual C++ redistributable, and the whole reason the note in
+              # cli/README.md exists.
+              "vcruntime140.dll", "vcruntime140_1.dll",
+          }
+          REDIST = {"vcruntime140.dll", "vcruntime140_1.dll"}
+
+          got = {n.lower() for n in names}
           print(f"{exe}: {len(data)} bytes, {len(names)} imported libraries")
-          for n in sorted(names):
-              print(f"  {n}")
-          bad = [n for n in names if n.lower().startswith(("vcruntime", "msvcp"))]
-          if bad:
-              sys.exit(f"::error::the binary imports {', '.join(bad)}, so it needs the VC++ "
-                       f"redistributable, which is not part of Windows.")
-          print("no VC++ runtime imports")
+          for n in sorted(got):
+              print(f"  {n}" + ("   <- needs the VC++ redistributable" if n in REDIST else ""))
+
+          added, gone = sorted(got - EXPECTED), sorted(EXPECTED - got)
+          if added or gone:
+              sys.exit(
+                  f"::error::the import list changed — added: {added or 'none'}; gone: "
+                  f"{gone or 'none'}. A new entry that is not in-box means a downloaded loopky.exe "
+                  "stops starting on a clean machine, which no other check here can see. Decide "
+                  "what it costs a user, then update this set and cli/README.md together."
+              )
+          print(f"pinned: {len(got)} imports, {len(REDIST)} needing the VC++ redistributable")
           PY
 
       - name: Say which tests failed

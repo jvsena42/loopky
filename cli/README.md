@@ -705,10 +705,19 @@ otherwise, which needs AVX2; this binary is *downloaded*, onto a sandbox whose C
 and a v3 binary on a host without it dies with SIGILL. Irrelevant to a client that spends its life
 waiting on a homeserver.
 
-**Windows loads, but does not yet ship as a binary.** `win32-x86-64/pubkycore.dll` is in the jar and
-the shared suite runs against it on `windows-latest`, so the row is real rather than refused — what
-is missing is `nativeCompile` on that host and a release job to publish the `.exe` (#301). Two
-things will need deciding when that lands: `-march=compatibility` is currently gated on the Linux
-row though its reason (a *downloaded* x64 binary must not SIGILL on a host without AVX2) is
-arch-shaped rather than OS-shaped, and `checkNativeImageIsOneFile` matches the literal name
-`loopky`, which would flag `loopky.exe` as a stray.
+**Windows builds as one `loopky.exe`, and it needs the Visual C++ redistributable.** CI compiles the
+image on `windows-latest` on every PR; publishing it as a release asset is what is still missing
+(#301). The redistributable is a **stated gap rather than an oversight**: `VCRUNTIME140.dll` and
+`VCRUNTIME140_1.dll` are the only two of the binary's 23 imports that are not in-box on Windows 10+
+— the `api-ms-win-crt-*` entries are the Universal CRT, which is — and without them Windows refuses
+to start the process, naming the missing DLL rather than failing somewhere inside loopky. Install it
+once from [Microsoft](https://aka.ms/vs/17/release/vc_redist.x64.exe); most machines already have it,
+which makes this fail for the unlucky rather than for everyone.
+
+It is not fixable here. GraalVM's prebuilt Windows JDK libraries are compiled against the *dynamic*
+CRT, `--static` and `-H:+StaticExecutableWithDynamicLibC` are Linux-only, and
+`-H:NativeLinkerOption=/MT` is rejected outright (`LNK1146`) because `/MT` is a `cl.exe` switch
+rather than a `link.exe` one — forcing the static CRT underneath GraalVM's own objects would link
+two CRTs, with two heaps and two `FILE*` tables, into one image. So CI pins the **whole** import
+list: a new dependency fails the build in either direction, redistributable or not, instead of
+arriving unnoticed in an artifact that a runner with the redistributable installed cannot test.
