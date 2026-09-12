@@ -330,16 +330,20 @@ jobs:
       - name: The CLI's own tests
         run: ./gradlew :cli:test
 
-      # The desktop storage and host-matrix packages, which is where every Windows branch lives.
-      # What it holds out is **three** packages, not one: `data.pubky` (the FFI, which cannot load
-      # here yet), `data.anki` (the `.apkg` reader, which needs only the JDBC driver and is admitted
-      # as soon as there is a Windows-shaped reason to), and `di` (`KoinGraphTest`, which builds the
-      # real graph). Stated exactly because the block above makes this filter's removal the marker
-      # that the row is real, and a marker is worth nothing if the inventory beside it is wrong.
+      # The desktop storage, host-matrix and `.apkg` packages, which is where every Windows branch
+      # lives. `data.anki` joins them here because it needs the JDBC driver rather than the FFI, and
+      # the path it opens a collection by is precisely the kind of thing that is correct everywhere
+      # but here.
+      #
+      # What it still holds out is **two** packages: `data.pubky` (the FFI, which cannot load until
+      # there is a `win32-x86-64/pubkycore.dll`) and `di` (`KoinGraphTest`, which builds the real
+      # graph). Stated exactly because the block above makes this filter's removal the marker that
+      # the row is real, and a marker is worth nothing if the inventory beside it is wrong.
       - name: The desktop JVM tests that do not need the FFI
         run: >
           ./gradlew :shared:jvmTest
           --tests 'com.github.jvsena42.loopky.data.storage.*'
+          --tests 'com.github.jvsena42.loopky.data.anki.*'
           --tests 'com.github.jvsena42.loopky.platform.*'
 
       # Which test failed and why, in the log — the same reporter `test-build` and `cli-linux`
