@@ -19,10 +19,7 @@ actual object ApkgReader {
     private val reader = JvmApkgReader(
         object : AnkiDbOpener {
             override fun <T> use(file: File, read: (AnkiDb) -> T): T =
-                // `mode=ro` rather than a plain path: nothing here writes, and a read-write open
-                // of a collection whose journal is missing is how a driver ends up modifying a
-                // file we spooled out of somebody's archive.
-                DriverManager.getConnection("jdbc:sqlite:file:${file.absolutePath}?mode=ro")
+                DriverManager.getConnection(sqliteReadOnlyUrl(file))
                     .use { connection -> read(JdbcAnkiDb(connection)) }
         },
     )
@@ -35,6 +32,25 @@ actual object ApkgReader {
         compressImage: suspend (ByteArray, String) -> DraftCardImage,
     ): Result<ApkgImport> = reader.readNotes(path, mapping, compressImage)
 }
+
+/**
+ * How a spooled collection is opened: read-only, and by a **URI** rather than by a path.
+ *
+ * `mode=ro` because nothing here writes, and a read-write open of a collection whose journal is
+ * missing is how a driver ends up modifying a file we spooled out of somebody's archive.
+ *
+ * `toURI()`, never `absolutePath`. Everything after `jdbc:sqlite:` is a SQLite URI and a path is
+ * not one: `C:\Users\…` carries a drive-letter colon and backslashes the parser will not take, so
+ * every desktop `.apkg` import failed to open on Windows and was reported as "That .apkg has no
+ * readable collection" — a wrong diagnosis pointing at the user's file (#301). An unencoded space
+ * or `#` does the same on any host, `#` by starting a URI fragment.
+ *
+ * A function rather than an expression inside the opener so it can be tested directly. The file
+ * this is called with is always a `createTempFile` spool, so the awkward path is the *system temp
+ * directory's*, which no test driving `readNotes` can influence — that is why the obvious test,
+ * importing from a path with a space in it, passes with or without the fix.
+ */
+internal fun sqliteReadOnlyUrl(file: File): String = "jdbc:sqlite:${file.toURI()}?mode=ro"
 
 /**
  * [AnkiDb] over JDBC.
