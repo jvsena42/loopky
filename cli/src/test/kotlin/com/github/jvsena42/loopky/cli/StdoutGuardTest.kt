@@ -29,13 +29,19 @@ class StdoutGuardTest {
         assertEquals("hello", libc.written(fd = SAVED_FD))
     }
 
+    /**
+     * `print` with an explicit `\n`, not `println` (#301). `println` emits the *platform* line
+     * separator, so this asserted `\r\n` against `\n` on Windows and failed for a reason that has
+     * nothing to do with the descriptor swap being tested — the envelope is what matters here, not
+     * how the host spells the end of a line.
+     */
     @Test
     fun `writes the result to the saved descriptor and not to fd 1`() {
         val libc = FakeStdio()
         var installed: PrintStream? = null
         reserveStdoutForResults(libc) { installed = it }
 
-        installed?.println("""{"ok":true}""")
+        installed?.print("""{"ok":true}""" + "\n")
 
         assertEquals("""{"ok":true}""" + "\n", libc.written(fd = SAVED_FD))
         assertEquals("", libc.written(fd = 1))
