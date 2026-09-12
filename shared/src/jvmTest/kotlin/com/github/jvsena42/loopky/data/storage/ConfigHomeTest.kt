@@ -25,7 +25,7 @@ class ConfigHomeTest {
     fun `an explicit config home wins outright`() {
         val env = mapOf("LOOPKY_CONFIG_HOME" to "/tmp/disposable", "XDG_CONFIG_HOME" to "/xdg")
 
-        assertEquals(Paths.get("/tmp/disposable"), ConfigHome.resolve { env[it] })
+        assertEquals(Paths.get("/tmp/disposable"), ConfigHome.resolve({ env[it] }))
     }
 
     /** Blank is not set: `export LOOPKY_CONFIG_HOME=` must not point state at the empty path. */
@@ -33,14 +33,32 @@ class ConfigHomeTest {
     fun `a blank override is ignored`() {
         val env = mapOf("LOOPKY_CONFIG_HOME" to "  ", "XDG_CONFIG_HOME" to "/xdg")
 
-        assertEquals(Paths.get("/xdg", "loopky"), ConfigHome.resolve { env[it] })
+        assertEquals(Paths.get("/xdg", "loopky"), ConfigHome.resolve({ env[it] }))
     }
 
     @Test
     fun `xdg comes before the platform default`() {
         val env = mapOf("XDG_CONFIG_HOME" to "/xdg")
 
-        assertEquals(Paths.get("/xdg", "loopky"), ConfigHome.resolve { env[it] })
+        assertEquals(Paths.get("/xdg", "loopky"), ConfigHome.resolve({ env[it] }))
+    }
+
+    /**
+     * The whole chain, not just [ConfigHome.platformDefault].
+     *
+     * `resolve` used to call `platformDefault()` with no arguments, so `LOCALAPPDATA` came from the
+     * real environment however the lambda was injected. Nothing behaved differently in production —
+     * the defaults agree — but it meant a test written at this level read the host environment and
+     * passed for the wrong reason, which is the failure mode this suite exists to catch rather than
+     * commit.
+     */
+    @Test
+    fun `resolve carries the injected environment all the way to the windows branch`() {
+        val env = mapOf("LOCALAPPDATA" to """D:\Injected\Local""")
+
+        val home = ConfigHome.resolve({ env[it] }, osName = "Windows 11")
+
+        assertEquals(Paths.get("""D:\Injected\Local""", "loopky"), home)
     }
 
     // --- the three platform defaults ----------------------------------------

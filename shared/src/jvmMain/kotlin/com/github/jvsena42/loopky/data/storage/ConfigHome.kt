@@ -32,9 +32,18 @@ import java.nio.file.Paths
  *    macOS, `%LOCALAPPDATA%\loopky` on Windows.
  *
  * **The Windows row is `%LOCALAPPDATA%` rather than `%APPDATA%`, and that is a security choice
- * rather than a convention** (#301). Everything in a Windows profile except `AppData\Local` roams,
- * so with a roaming profile configured `%APPDATA%` — and `~/.config`, which this used to fall into
- * there — is copied to the domain's profile server at logoff, session secret included.
+ * rather than a convention** (#301). A Windows profile roams everything except `AppData\Local` and
+ * `AppData\LocalLow`, so with a roaming profile configured `%APPDATA%` — and `~/.config`, which
+ * this used to fall into there — is copied to the domain's profile server at logoff, session
+ * secret included.
+ *
+ * **`XDG_CONFIG_HOME` can undo that, and it is resolved before the Windows branch is reached.**
+ * Windows dotfile setups commonly export it — neovim, fontconfig and several git-for-windows
+ * guides suggest `%APPDATA%` or `%USERPROFILE%\.config`, both of which roam — so a user who set it
+ * still gets the session on the profile server. It is honoured anyway, because both variables mean
+ * "keep everything here" and silently ignoring one on a single platform would be a worse surprise
+ * than the one it prevents. Said out loud here and in `--help` because nothing about it announces
+ * itself.
  */
 object ConfigHome {
 
@@ -43,10 +52,21 @@ object ConfigHome {
      * it, and an agent debugging a container that has lost its session needs the path rather than
      * a description of the rules.
      */
-    fun resolve(env: (String) -> String? = System::getenv): Path {
+    fun resolve(
+        env: (String) -> String? = System::getenv,
+        // Injectable for the same reason `env` is, and defaulted so no caller changes. Without it
+        // the platform branch below is whatever host the test happens to run on, so the Windows row
+        // could only ever be reached by the machine least likely to be running the suite.
+        osName: String = System.getProperty("os.name").orEmpty(),
+    ): Path {
         env("LOOPKY_CONFIG_HOME")?.takeIf { it.isNotBlank() }?.let { return Paths.get(it) }
         env("XDG_CONFIG_HOME")?.takeIf { it.isNotBlank() }?.let { return Paths.get(it, APP_DIR) }
-        return platformDefault()
+        // `env` and `osName`, not the defaults. Without them `LOCALAPPDATA` is read from the real
+        // environment whatever was injected, so `resolve({ null })` on Windows answers with the
+        // *host's* AppData rather than the stripped-environment fallback this file promises — and a
+        // test written at this level would pass for the wrong reason. Nothing differs at runtime,
+        // since the defaults are the same; what it costs is the injectability the KDoc leans on.
+        return platformDefault(env, osName)
     }
 
     /**
@@ -78,9 +98,13 @@ object ConfigHome {
     /**
      * `%LOCALAPPDATA%`, or the path it conventionally points at.
      *
-     * The variable is the right answer when it is set — a redirected-folder policy moves it, and
-     * guessing would then write outside the place the machine reserves for this. The fallback is
-     * for the cases where a process inherits a stripped environment; it is where the variable
+     * Read rather than assembled because it is what the OS says. **Not** because Folder Redirection
+     * moves it — that policy cannot redirect Local AppData at all, which is the same exclusion this
+     * whole branch depends on. It moves when the profile is relocated (and `user.home` moves with
+     * it, so the fallback would have been right anyway) or by a direct `User Shell Folders` edit,
+     * and a machine that has done the latter by hand should not be second-guessed.
+     *
+     * The fallback is for a process that inherited a stripped environment; it is where the variable
      * points on every supported Windows.
      */
     private fun windowsLocalAppData(env: (String) -> String?, home: Path): Path =
