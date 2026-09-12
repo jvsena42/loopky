@@ -1960,18 +1960,38 @@ and says which host it is and why there is no build for it. It matters most for 
 distribution, which is architecture-blind and runs anywhere a JRE does.
 
 The jar distributions remain, and are **per row**: `linuxDistTar`, `macosDistTar` and now
-`windowsDistTar` each carry one `libpubkycore`, where `distTar` carried both and a Linux box hauled
+`windowsDistZip` each carry one `libpubkycore`, where `distTar` carried both and a Linux box hauled
 11 MB of macOS dylib it could never load. They need a JRE 17, but they can be built for **any** row
 from **any** host, which a binary cannot — `native-image` does not cross-compile, so the release
 runs one job per host and the Linux one runs in a container. That asymmetry is why Windows can be a
 jar row the day its library lands while its binary waits on a `windows-latest` job.
 
-**Windows loads, and does not yet ship as a binary** (#301). `win32-x86-64/pubkycore.dll` is in the
-jar, `SupportedHost` has a third row, and the whole shared suite — `UniffiPubkyClientJvmTest`
-included, which is the only test that can tell a shipped row from a missing one — runs on
-`windows-latest`. What is missing is `nativeCompile` on that host and a release job to publish the
-`.exe`; until those land it is the jar distribution only, which needs a JRE 17 and is therefore
-exactly what the binary exists to remove.
+**Windows builds as a binary, and that binary needs the Visual C++ redistributable** (#301).
+`win32-x86-64/pubkycore.dll` is in the jar, `SupportedHost` has a third row, and the whole shared
+suite — `UniffiPubkyClientJvmTest` included, which is the only test that can tell a shipped row from
+a missing one — runs on `windows-latest`, where CI also builds `loopky.exe` with `nativeCompile` on
+every PR. Publishing it as a release asset is what is still outstanding.
+
+`loopky.exe` imports `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll` — the only two of its 23 imports
+that are not in-box on Windows 10+, the `api-ms-win-crt-*` entries being the Universal CRT. That is
+an **accepted gap rather than an unfixed bug**, and it is recorded here because the obvious first
+move fails in a way that reads as a missing flag. GraalVM's prebuilt Windows JDK libraries are
+compiled against the dynamic CRT and `native-image`'s own link line carries `/MD` and
+`/NODEFAULTLIB:LIBCMT`, so the toolchain *excludes* the static CRT rather than merely not choosing
+it; `--static` and `-H:+StaticExecutableWithDynamicLibC` are Linux-only; and
+`-H:NativeLinkerOption=/MT` is rejected outright with `LNK1146`, because `/MT` is a `cl.exe` switch
+selecting the CRT each object compiles against rather than a `link.exe` one. Forcing the static CRT
+underneath GraalVM's own objects would link two CRTs — two heaps, two `FILE*` tables — into one
+image, which is worse than the dependency it removes.
+
+Unlike the `pubkycore.dll` case below, this one cannot be misclassified: Windows refuses to start
+the process and names the missing DLL, so nothing of ours runs to report a wrong exit code. CI pins
+the **whole** import list by set equality rather than banning two names — a ban goes green on any
+*other* new non-in-box DLL, and on a parse that returns nothing — and asserts the delay-load import
+directory is empty, since a delay-loaded library appears in neither. The remedy `cli/README.md`
+gives is the unpinned `aka.ms/vc14/` permalink, because the installed runtime must be at least as
+new as the MSVC toolset that linked the binary, and a version-pinned link already serves an older
+one.
 
 That row is the one nobody can rebuild here: `x86_64-pc-windows-msvc` needs the Microsoft linker
 and the Windows SDK, so unlike Linux there is no container that cross-builds it from a Mac. It
@@ -1981,11 +2001,13 @@ default, that library is not part of Windows, and a machine without the redistri
 `LoadLibrary` in a way JNA reports as "not found" and the classifier reads as a 404. A CI runner has
 the redistributable, so the build is green either way.
 
-**Two things to settle when the binary row lands**, both recorded here rather than rediscovered:
-`-march=compatibility` is gated on `jnaPrefix == "linux-x86-64"` though its reason is arch-shaped
-(a *downloaded* x64 binary must not SIGILL on a host without AVX2), and
-`checkNativeImageIsOneFile` filters on the literal name `loopky`, which would flag `loopky.exe` as
-a stray. Whether GraalVM emits anything else beside it on Windows is unmeasured.
+**Both things left open when the binary row landed are now settled.** `-march=compatibility` is
+gated on `jnaPrefix.endsWith("x86-64")` rather than on the Linux row by name: its reason is
+arch-shaped — a *downloaded* x64 binary must not SIGILL on a host without AVX2 — and reading it as
+a Linux concern is exactly what left Windows on the v3 default. And `checkNativeImageIsOneFile`
+expects `loopky.exe` on that host, where GraalVM emits the binary and nothing beside it; that is
+measured now rather than assumed, which matters because this check has twice caught the opposite on
+the other two rows.
 
 Two hosts are still refused, for different reasons. An **Intel Mac**: one `darwin-aarch64` row and
 no `lipo`, deliberately (#54). **ARM64 Windows**: the x64 binary runs there under emulation, but a

@@ -708,11 +708,18 @@ waiting on a homeserver.
 **Windows builds as one `loopky.exe`, and it needs the Visual C++ redistributable.** CI compiles the
 image on `windows-latest` on every PR; publishing it as a release asset is what is still missing
 (#301). The redistributable is a **stated gap rather than an oversight**: `VCRUNTIME140.dll` and
-`VCRUNTIME140_1.dll` are the only two of the binary's 23 imports that are not in-box on Windows 10+
-— the `api-ms-win-crt-*` entries are the Universal CRT, which is — and without them Windows refuses
-to start the process, naming the missing DLL rather than failing somewhere inside loopky. Install it
-once from [Microsoft](https://aka.ms/vs/17/release/vc_redist.x64.exe); most machines already have it,
+`VCRUNTIME140_1.dll` are the only two of the binary's 23 imports that are not in-box on Windows 10+,
+the `api-ms-win-crt-*` entries being the Universal CRT, which is. Without those two Windows refuses
+to start the process and names the missing DLL, rather than failing somewhere inside loopky. Install
+it once from [Microsoft](https://aka.ms/vc14/vc_redist.x64.exe); most machines already have it,
 which makes this fail for the unlucky rather than for everyone.
+
+**That link is the unpinned "latest supported v14" one on purpose.** Microsoft's rule is that the
+installed redistributable must be the same version as the MSVC build tools that produced the
+executable **or later** — and this binary is linked by whatever toolset the `windows-latest` runner
+ships, 14.51 at the time of writing. A version-pinned permalink such as `aka.ms/vs/17/release/…`
+currently serves 14.44, so a reader who followed it would install a runtime that is *older* than the
+one required and be refused anyway, having done what the documentation asked.
 
 It is not fixable here. GraalVM's prebuilt Windows JDK libraries are compiled against the *dynamic*
 CRT, `--static` and `-H:+StaticExecutableWithDynamicLibC` are Linux-only, and
