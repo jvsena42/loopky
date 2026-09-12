@@ -292,12 +292,47 @@ private fun incomingBinaryBeside(target: Path, windows: Boolean): Path =
  */
 private fun renameAside(target: Path, incoming: Path) {
     val superseded = supersededPath(target)
-    Files.deleteIfExists(superseded)
-    Files.move(target, superseded, StandardCopyOption.REPLACE_EXISTING)
+    // **Tolerated, not required.** A second, longer-lived `loopky` — a `login --timeout` waiting on
+    // approval — may still be executing the previous image, and Windows will not let a held file be
+    // deleted. Failing here would refuse the update before it had attempted anything. The move below
+    // fails on the same file anyway, and there the message can name the cause.
+    runCatching { Files.deleteIfExists(superseded) }
+
     try {
-        Files.move(incoming, target, StandardCopyOption.REPLACE_EXISTING)
+        Files.move(target, superseded, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     } catch (failure: IOException) {
-        runCatching { Files.move(superseded, target, StandardCopyOption.REPLACE_EXISTING) }
+        // **Nothing has been changed at this point, so this is retryable — and it must not reach
+        // [replaceFailed].** A scanner or backup agent holding the running image open without
+        // `FILE_SHARE_DELETE` answers `ERROR_SHARING_VIOLATION`, which arrives as
+        // `AccessDeniedException`, which that function maps to "not writable by this user — a
+        // read-only layer, or an install that needs the owner", exit 11. That is the terminal
+        // permissions verdict #312 removed from this row, arriving through a new door: a lock that
+        // clears in seconds reported as an install somebody else owns.
+        throw IOException(
+            "could not move the running ${target.fileName} aside — another process is holding it " +
+                "(an anti-malware scanner, or a second loopky). Nothing was changed; run " +
+                "`loopky update` again in a moment.",
+            failure,
+        )
+    }
+
+    try {
+        Files.move(incoming, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+    } catch (failure: IOException) {
+        // **The one moment the user has to be told where their binary is.** If the rollback also
+        // fails, the installed name has nothing at it and the previous image is sitting under a
+        // name nothing will run — the outcome this whole function exists to prevent — and a message
+        // about `target` would not mention the file they actually need.
+        if (runCatching {
+                Files.move(superseded, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            }.isFailure
+        ) {
+            throw IOException(
+                "the update failed and the previous binary could not be put back: it is at " +
+                    "$superseded — rename it to ${target.fileName} by hand to recover.",
+                failure,
+            )
+        }
         throw failure
     }
 }
