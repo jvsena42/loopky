@@ -6,6 +6,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.AclFileAttributeView
 import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.attribute.UserPrincipal
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -47,9 +48,12 @@ class OwnerOnlyTest {
 
     @Test
     fun `a file created through the helper is readable only by its owner`() {
-        val file = OwnerOnly.createFile(dir.resolve("secret.json"))
+        val created = OwnerOnly.createFile(dir.resolve("secret.json"))
 
-        assertOwnerOnly(file)
+        // The reported answer and the actual state have to agree: `--qr-out` prints a promise off
+        // this boolean, so a true here that the DACL does not back is a false assurance.
+        assertTrue(created.ownerOnly, "createFile reported it could not restrict on a host that supports it")
+        assertOwnerOnly(created.path)
     }
 
     /** The shape `JsonFileStore`, `UpdateCheck` and `update` all write through. */
@@ -109,8 +113,19 @@ class OwnerOnlyTest {
 
     /**
      * Asserted in the host's own terms: a mode where there are modes, and otherwise that the DACL
-     * names exactly one principal, the owner. Anything else — an inherited `Users` entry most of
-     * all — is the failure this exists to catch.
+     * names exactly one principal — **the current user**.
+     *
+     * The expected principal is resolved independently rather than read back from
+     * [Files.getOwner] (#301). Comparing against `getOwner` was the *same call* `restrictAcl` used
+     * to build the ACE, so it asserted "the ACE names whoever getOwner says", which is true by
+     * construction for any owner — including `BUILTIN\Administrators`, the one that locks a
+     * UAC-filtered token out of its own config. That is how a MEDIUM stayed invisible.
+     *
+     * **CI cannot prove the case this guards against.** GitHub's Windows runners are documented as
+     * running as administrator with UAC disabled, so there is one full token: `getOwner` returns
+     * Administrators and a filtered token never exists to be locked out. This is therefore a
+     * reasoned fix with a test that pins the *intent*, and the two-token behaviour is settled by an
+     * elevated `loopky login` on a real machine followed by a non-elevated `loopky whoami`.
      */
     private fun assertOwnerOnly(file: Path) {
         if (posix) {
@@ -123,7 +138,19 @@ class OwnerOnlyTest {
         }
         val view = Files.getFileAttributeView(file, AclFileAttributeView::class.java)
         val principals = view.acl.map { it.principal() }.toSet()
-        assertEquals(setOf(Files.getOwner(file)), principals, "the DACL names more than the owner: $principals")
+        assertEquals(setOf(expectedPrincipal()), principals, "the DACL names something other than this user: $principals")
+        // Whatever the DACL says, this process has to still be able to use the file — the failure
+        // being guarded is precisely one that reads as correct and denies the user.
+        assertTrue(Files.isReadable(file) && Files.isWritable(file), "owner-only locked this user out of $file")
+    }
+
+    /** The account the tests run as, resolved the way `OwnerOnly.restrictAcl` resolves it. */
+    private fun expectedPrincipal(): UserPrincipal {
+        val user = requireNotNull(System.getProperty("user.name")) { "no user.name" }
+        val lookup = FileSystems.getDefault().userPrincipalLookupService
+        val domain = System.getenv("USERDOMAIN")?.takeIf { it.isNotBlank() }
+        return runCatching { lookup.lookupPrincipalByName(if (domain == null) user else "$domain\\$user") }
+            .getOrElse { lookup.lookupPrincipalByName(user) }
     }
 
     private val posix: Boolean =

@@ -87,16 +87,21 @@ object TerminalQr {
      * Same order as `JsonFileStore.persist` and for the same reason: permissions first, content
      * second, so the readable window never exists. The caller deletes it once approval lands.
      */
-    fun writePng(text: String, file: File) {
+    /**
+     * Returns whether the file actually came out owner-only, which the caller is expected to use:
+     * this is a live credential, and `login` must not promise a protection the host refused.
+     */
+    fun writePng(text: String, file: File): Boolean {
         val png = encode(text, PNG_SIZE).toPng()
         val target = file.absoluteFile
         target.parentFile?.mkdirs()
-        val path = createOwnerOnly(target.toPath())
+        val created = createOwnerOnly(target.toPath())
         // A stream on the file we just created, **not** a writer that takes a `File`: the
         // `ImageIO.write(…, File)` overload this used to call deletes the file and recreates it,
         // which throws away the mode set above and puts the credential back at the ambient umask.
         // Caught by QrCredentialTest, not by reading the API.
-        Files.newOutputStream(path).use { output -> output.write(png) }
+        Files.newOutputStream(created.path).use { output -> output.write(png) }
+        return created.ownerOnly
     }
 
     /**
@@ -109,7 +114,7 @@ object TerminalQr {
      * at whatever the parent directory happened to allow while `login` printed "owner-readable
      * only".
      */
-    private fun createOwnerOnly(path: Path): Path {
+    private fun createOwnerOnly(path: Path): OwnerOnly.Created {
         Files.deleteIfExists(path)
         return OwnerOnly.createFile(path)
     }

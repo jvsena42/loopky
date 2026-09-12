@@ -117,6 +117,31 @@ data class WhoamiResult(
 )
 
 /**
+ * `--qr-out`, and the promise printed about it.
+ *
+ * **The promise is printed only when it was kept** (#301). This file *is* the `pubkyauth://` URL
+ * with `secret=` in it, so somebody told it is owner-readable will leave it where it is for the
+ * length of the approval window — which makes a false assurance worse than none. A filesystem that
+ * cannot express the restriction is a real place to point this: an exFAT stick, a FAT or NFS mount.
+ * The answer comes from the write itself rather than from `OwnerOnly.supported`, which asks the
+ * *default* filesystem and so cannot speak for a path that came from argv.
+ */
+private fun writeQrFile(args: Args, authUrl: String, stderr: (String) -> Unit): File? =
+    args.option("qr-out")?.let { path ->
+        File(path).also {
+            if (TerminalQr.writePng(authUrl, it)) {
+                stderr("QR code written to $path (owner-readable only; deleted when this command ends)")
+            } else {
+                stderr(
+                    "QR code written to $path — but this filesystem would not make it " +
+                        "owner-readable, so anyone who can reach that path can take this session " +
+                        "until the command ends. Prefer --url-only, or a path with permissions.",
+                )
+            }
+        }
+    }
+
+/**
  * Sign in by printing a QR code for Pubky Ring, then blocking on the relay until it is approved.
  *
  * The auth URL carries **no Ring return-callbacks**: there is no app here to return to, and a
@@ -142,12 +167,7 @@ suspend fun login(
     val handle = identity.beginSignIn(capabilities = CLI_CAPABILITIES, returnToApp = false)
         .getOrElse { throw asCliError(it) }
 
-    val qrFile = args.option("qr-out")?.let { path ->
-        File(path).also {
-            TerminalQr.writePng(handle.authUrl, it)
-            stderr("QR code written to $path (owner-readable only; deleted when this command ends)")
-        }
-    }
+    val qrFile = writeQrFile(args, handle.authUrl, stderr)
     // A `finally` is not enough on its own. `login` blocks on the relay for as long as it takes
     // somebody to reach for their phone, so the ordinary way it ends is **^C** — which is a signal,
     // not an exception, and takes the JVM down without unwinding. Without a hook the live

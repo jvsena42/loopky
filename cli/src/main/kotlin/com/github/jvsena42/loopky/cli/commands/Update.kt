@@ -230,6 +230,15 @@ internal fun replaceInPlace(target: Path, bytes: ByteArray) {
         // Best-effort, like every other mode in this codebase: a filesystem with no POSIX mode
         // cannot express it, and failing here would leave the user on the old binary for a
         // guarantee that host was never going to give.
+        //
+        // **Latent on Windows, and unreachable until the row lands** (#301). This widening is the
+        // "0755 at rest" half of the pair above, and it is a no-op there — `setPosixFilePermissions`
+        // throws `UnsupportedOperationException` and is swallowed, while `MoveFileEx` carries the
+        // temp's owner-only DACL onto the target. An elevated `update` of a shared install would
+        // then leave a `loopky.exe` no non-elevated shell can run. `SupportedHost` has no Windows
+        // row and this throws long before here, so it cannot happen yet; it is written down so the
+        // Windows spelling of "executable by everyone, writable by me" is decided in the PR that
+        // adds the row rather than rediscovered after it.
         runCatching { Files.setPosixFilePermissions(temp, PosixFilePermissions.fromString(MODE)) }
         Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }.onFailure {

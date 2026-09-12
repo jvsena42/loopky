@@ -50,7 +50,9 @@ class QrCredentialTest {
             ),
         )
 
-        TerminalQr.writePng(authUrl, file)
+        // The returned boolean is what `login` prints its promise from (#301), so it has to agree
+        // with the mode below rather than be assumed.
+        assertTrue(TerminalQr.writePng(authUrl, file), "writePng reported it could not restrict the file")
 
         val mode = Files.getPosixFilePermissions(file.toPath())
         assertEquals(
