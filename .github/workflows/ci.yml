@@ -434,17 +434,67 @@ jobs:
       # start on a machine with no Visual C++ redistributable — and this runner has one, so the
       # build and every check above are green either way. Import names sit in the PE import
       # directory as plain ASCII, so this needs no `dumpbin` and no Visual Studio environment.
+      # What `native-image` on this image actually offers for CRT linking, printed once so the
+      # static-CRT question is settled from the tool rather than from a guess at a flag name.
+      # Non-fatal: this is a probe, not an assertion.
+      - name: What linking options does native-image have here
+        run: |
+          NI="$GRAALVM_HOME/bin/native-image"
+          echo "--- --help-extra ---"
+          "$NI" --help-extra 2>&1 | grep -iE "static|libc|linker" | head -20 || true
+          echo "--- expert options ---"
+          "$NI" --expert-options-all 2>&1 | grep -iE "StaticExecutable|NativeLinkerOption|StaticLibC" | head -20 || true
+
       - name: The binary needs no Visual C++ redistributable
         run: |
           python - <<'PY'
-          import sys
+          import struct, sys
+
+          # **The PE import directory, not a substring search over the whole file.** A byte scan of
+          # the 66 MB image also covers the image heap and every embedded resource — and this build
+          # embeds three DLLs, a set that grew by two entries in this same PR. The next library
+          # added could carry `vcruntime140` in *its* import table and fail this step for a reason
+          # that has nothing to do with loopky.exe, which is how a check guarding the shipped
+          # artifact gets relaxed rather than investigated. Twenty lines of struct.unpack_from, no
+          # dependency, and the full import list in the error where it is actually useful.
           exe = "cli/build/native/nativeCompile/loopky.exe"
-          data = open(exe, "rb").read().lower()
-          found = [n for n in (b"vcruntime140", b"msvcp140") if n in data]
-          print(f"{exe}: {len(data)} bytes")
-          if found:
-              sys.exit(f"::error::the binary imports {', '.join(n.decode() for n in found)}, so it "
-                       f"needs the VC++ redistributable, which is not part of Windows.")
+          data = open(exe, "rb").read()
+
+          pe = struct.unpack_from("<I", data, 0x3C)[0]
+          assert data[pe:pe + 4] == b"PE\0\0", "not a PE file"
+          opt = pe + 24
+          magic = struct.unpack_from("<H", data, opt)[0]
+          # Data directories start at 96 in PE32, 112 in PE32+; import table is directory 1.
+          dirs = opt + (112 if magic == 0x20B else 96)
+          imp_rva = struct.unpack_from("<I", data, dirs + 8)[0]
+
+          # Section headers, to map an RVA onto a file offset.
+          nsec = struct.unpack_from("<H", data, pe + 6)[0]
+          secs = pe + 24 + struct.unpack_from("<H", data, pe + 20)[0]
+          sections = [struct.unpack_from("<IIII", data, secs + i * 40 + 8) for i in range(nsec)]
+
+          def off(rva):
+              for vsize, vaddr, rsize, raddr in sections:
+                  if vaddr <= rva < vaddr + max(vsize, rsize):
+                      return raddr + (rva - vaddr)
+              raise ValueError(f"RVA {rva:#x} in no section")
+
+          names, cur = [], off(imp_rva)
+          while True:
+              name_rva = struct.unpack_from("<I", data, cur + 12)[0]
+              if name_rva == 0:
+                  break
+              end = data.index(b"\0", off(name_rva))
+              names.append(data[off(name_rva):end].decode("ascii", "replace"))
+              cur += 20
+
+          print(f"{exe}: {len(data)} bytes, {len(names)} imported libraries")
+          for n in sorted(names):
+              print(f"  {n}")
+          bad = [n for n in names if n.lower().startswith(("vcruntime", "msvcp"))]
+          if bad:
+              sys.exit(f"::error::the binary imports {', '.join(bad)}, so it needs the VC++ "
+                       f"redistributable, which is not part of Windows.")
           print("no VC++ runtime imports")
           PY
 
