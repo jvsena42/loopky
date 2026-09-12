@@ -23,7 +23,27 @@ alongside the binaries it fetches. `raw.githubusercontent.com/.../main/cli/insta
 obvious URL and the wrong one: it pipes whatever `main` is at that second into `sh`, which is a
 moving target for the one command here that runs unreviewed shell as the user.
 
-Homebrew serves both rows:
+On Windows, the same thing in PowerShell:
+
+```powershell
+irm https://github.com/jvsena42/loopky/releases/latest/download/install.ps1 | iex
+```
+
+That installs to `%LOCALAPPDATA%\Programs\loopky` — `Local`, not `Roaming`, so a 66 MB binary is
+not replicated to a domain server at logoff — verifies the digest, and **tells** you about `PATH`
+rather than editing it. Two differences from `install.sh` worth knowing. The digest check is
+mandatory here instead of best-effort: `install.sh` degrades on a minimal host with no `sha256sum`
+because the alternative there is a bare `curl` with no check at all, whereas `Get-FileHash` has
+shipped with PowerShell since 4.0, so skipping it would be a choice rather than a limitation. And it
+refuses *before* downloading if the Visual C++ redistributable is missing, because `loopky.exe`
+cannot start without it and installing something unrunnable while reporting success is worse than
+refusing.
+
+There is deliberately no `-ExecutionPolicy Bypass` in that line. `irm | iex` never consults the
+execution policy — that gates *files* on disk — so adding it would buy nothing, while training the
+reader to disable a safety control for anything that calls itself an installer.
+
+Homebrew serves both POSIX rows:
 
 ```shell
 brew install jvsena42/loopky/loopky
@@ -47,7 +67,7 @@ curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/loopky-li
 | Container | `docker run --rm -e LOOPKY_SESSION ghcr.io/jvsena42/loopky deck list --json` |
 | Debian/Ubuntu | `loopky_<version>_amd64.deb` on the release page — `dpkg -i`. Depends on `libc6 (>= 2.34)` and `zlib1g`, which is the whole of it: no JRE, and nothing else |
 | Homebrew | `brew install jvsena42/loopky/loopky` — above |
-| Windows x86_64 | **build from source, for now.** `libpubkycore` loads there and the whole shared suite runs on it, but nothing Windows is published yet — no `loopky-windows-x86-64.exe`, and no jar distribution is a release asset on any row. `./gradlew :cli:windowsDistZip` is the answer until the release row lands (#301), and it needs a JRE 17, which is exactly what the binary exists to remove. |
+| Windows x86_64 | `loopky-windows-x86-64.exe` · needs the [Visual C++ redistributable](https://aka.ms/vc14/vc_redist.x64.exe), which is not part of Windows — see below. `loopky update` refuses on this row and tells you to re-run the installer (#301) |
 
 **An Intel Mac is not a target**, by decision rather than omission (#54): there is one
 `darwin-aarch64` row of `libpubkycore` and no `lipo`. **ARM64 Windows** is not one either — the x64

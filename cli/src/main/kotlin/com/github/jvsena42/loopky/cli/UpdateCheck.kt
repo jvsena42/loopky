@@ -272,6 +272,13 @@ fun updateNotice(update: UpdateAvailable, installation: Installation, repo: Stri
 fun updateAdvice(installation: Installation, version: String, repo: String = UpdateChecker.DEFAULT_REPO): String =
     when (installation.method) {
         InstallMethod.Binary -> "Run `loopky update`."
+        // Never "not writable by this user": that wording describes a permissions problem and sends
+        // the reader to an elevated prompt, which does not help, while telling an agent to give up.
+        // The obstacle is the OS refusing to replace a running image, and the way past it is the
+        // installer the release already publishes.
+        InstallMethod.WindowsBinary ->
+            "`loopky update` cannot replace a running .exe on Windows yet — re-run the installer: " +
+                "irm https://github.com/$repo/releases/latest/download/install.ps1 | iex"
         InstallMethod.Unknown ->
             "This binary's own path could not be determined, so `loopky update` cannot replace it — " +
                 "re-run the installer: https://github.com/$repo/releases/latest"

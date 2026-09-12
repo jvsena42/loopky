@@ -39,7 +39,11 @@ data class UpdateResult(
     val schema: Int,
     @SerialName("latest_schema") val latestSchema: Int?,
     @SerialName("schema_changed") val schemaChanged: Boolean,
-    /** How this copy was installed: `binary`, `homebrew`, `deb`, `container`, `jar`, `unknown`. */
+    /**
+     * How this copy was installed: `binary`, `windows-binary`, `homebrew`, `deb`, `container`,
+     * `jar`, `unknown`. Pair it with `can_self_update` rather than matching `binary` as a prefix —
+     * `windows-binary` is a downloaded file that `update` still refuses, and `advice` says why.
+     */
     val install: String,
     val path: String?,
     @SerialName("can_self_update") val canSelfUpdate: Boolean,
@@ -238,11 +242,14 @@ internal fun replaceInPlace(target: Path, bytes: ByteArray) {
         // of a shared install would leave a `loopky.exe` that no non-elevated shell can run. Same
         // species as the `getOwner` lockout, arriving through the other door.
         //
-        // `SupportedHost` **does** have a Windows row now. What still makes this unreachable is
-        // that no `loopky-windows-x86-64.exe` is published, so every Windows install resolves to
-        // `InstallMethod.Jar`, `canSelfUpdate` is false, and `update` exits 11 long before here.
-        // **The PR that adds the Windows release asset is the one that has to decide this**: on
-        // that row the moved file should inherit its directory's ACL rather than keep the temp's.
+        // **Decided by the PR that published the Windows release asset — which is where this
+        // comment said the decision had to be taken.** It is still unreachable, and no longer for
+        // the reason it used to give: a Windows install resolved to `InstallMethod.Jar` only
+        // because no `.exe` existed, and publishing one ended that. It now resolves to
+        // `InstallMethod.WindowsBinary`, whose `canSelfUpdate` is false for a separate and more
+        // durable reason — Windows refuses to rename over a *running* image — so `update` exits 11
+        // long before here. What re-arms this is the rename-aside making that row self-updatable,
+        // and the fix then is for the moved file to inherit its directory's ACL, not the temp's.
         runCatching { Files.setPosixFilePermissions(temp, PosixFilePermissions.fromString(MODE)) }
         Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }.onFailure {
