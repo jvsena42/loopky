@@ -233,8 +233,18 @@ fun nativeBuildArgs(): List<String> {
         "--enable-url-protocols=http,https",
         // The three native rows that have to survive into the image, all extracted at runtime by
         // a loader that reads them off the classpath.
-        "-H:IncludeResources=${Regex.escape(row.jnaPrefix)}/${Regex.escape(row.pubkyLib)}",
-        "-H:IncludeResources=com/sun/jna/${Regex.escape(row.jnaPrefix)}/${Regex.escape(row.jnaLib)}",
+        // **No `Regex.escape` here, and that is a Windows bug rather than a tidy-up** (#301).
+        // It emits `\Q…\E`, and those backslashes do not survive the trip to `native-image.exe`:
+        // the Windows build received `\\Qwin32-x86-64\\E/\\Qjnidispatch.dll\\E`, which is a literal
+        // `\Q…` rather than a quote block, so both patterns matched nothing. Neither library was
+        // embedded, `com.sun.jna.NativeLibrary` failed to initialise, and every
+        // `Function.getFunction` after it died — surfacing as `StdoutGuard` refusing `--json`.
+        // The two patterns below carry no backslashes and were unaffected, which is the tell.
+        //
+        // Nothing needs escaping: `.` is the only regex-special character in these names and it
+        // matches the literal dot it stands for.
+        "-H:IncludeResources=${row.jnaPrefix}/${row.pubkyLib}",
+        "-H:IncludeResources=com/sun/jna/${row.jnaPrefix}/${row.jnaLib}",
         "-H:IncludeResources=org/sqlite/native/${row.sqliteDir}/.*",
         // `ServiceLoader` files: the SQLite JDBC driver registers itself through one, and the
         // `.apkg` reader opens its collection through `DriverManager`.
