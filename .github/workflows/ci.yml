@@ -374,6 +374,15 @@ jobs:
           "$BIN" --version
           "$BIN" --help > /dev/null
 
+          # **Diagnostic first, and non-fatal.** `--verbose` sets `Log.debugEnabled` at `Main.kt:96`,
+          # before `startCli` at `:134`, so `StdoutGuard`'s "could not reserve stdout: <message>"
+          # reaches stderr — which is the only way to tell a kernel32 lookup that failed in a
+          # closed-world image from a handle JNA mapped to null. Without it the strict check below
+          # reports only *that* the guard failed, which is what a first run already told us.
+          echo "--- guard diagnostic (non-fatal) ---"
+          "$BIN" --verbose whoami 2>&1 | grep -iE "reserve stdout|RUST_LOG|UnsatisfiedLink|kernel32|Unable to load" || true
+          echo "--- end diagnostic ---"
+
           set +e; OUT=$("$BIN" whoami --json); CODE=$?; set -e
           echo "$OUT"
           test "$CODE" -eq 3
