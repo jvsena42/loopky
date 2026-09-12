@@ -121,6 +121,42 @@ class UpdateCommandTest {
         }
     }
 
+    /**
+     * **The wording is load-bearing here, not just the exit code.** Left as [InstallMethod.Binary],
+     * this row reaches `replaceInPlace`, Windows refuses to rename over a running image, and
+     * `replaceFailed` reports "not writable by this user — a read-only layer, or an install that
+     * needs the owner": a permissions diagnosis that sends a person to an elevated prompt which
+     * will not help, and tells an agent the machine is wrong rather than the method. So the refusal
+     * has to name the obstacle and the way past it, and must not describe a permissions problem.
+     */
+    @Test
+    fun `windows is refused by name, never as a permissions problem`() = runTest {
+        val error = assertFailsWith<CliError> {
+            update(
+                Args.parse(arrayOf("update")),
+                checker("""{"version":"0.9.0","schema":1}"""),
+                Installation(InstallMethod.WindowsBinary, Path.of("""C:\Users\agent\loopky.exe""")),
+            )
+        }
+        assertEquals(ExitCode.UpdateUnsupported, error.exitCode, "a refusal must never exit 0")
+        val message = error.message.orEmpty()
+        assertTrue("install.ps1" in message, message)
+        assertFalse("not writable" in message, message)
+    }
+
+    /** `--json` is what an agent branches on, so the capability is stated there rather than implied. */
+    @Test
+    fun `--check on windows states the capability and the reason`() = runTest {
+        val result = update(
+            Args.parse(arrayOf("update", "--check")),
+            checker("""{"version":"0.9.0","schema":1}"""),
+            Installation(InstallMethod.WindowsBinary, Path.of("""C:\Users\agent\loopky.exe""")),
+        )
+        assertEquals("windows-binary", field(result, "install"))
+        assertFalse(field(result, "can_self_update").toBoolean())
+        assertTrue(field(result, "advice").contains("install.ps1"))
+    }
+
     @Test
     fun `a binary that cannot locate itself refuses rather than writing over a guess`() = runTest {
         val error = assertFailsWith<CliError> {

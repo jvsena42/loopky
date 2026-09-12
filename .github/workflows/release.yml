@@ -9,11 +9,14 @@
 #                            asset, because an AAB cannot be installed
 #   loopky-linux-x86-64      a single binary, glibc 2.34+, built inside ubuntu:22.04
 #   loopky-macos-aarch64     a single binary, Apple Silicon
+#   loopky-windows-x86-64.exe  a single binary, x64, needing the VC++ redistributable (#301)
 #   loopky_<version>_amd64.deb
-#   install.sh, latest.json  the installer at this tag, and the manifest every `loopky` reads
+#   install.sh, install.ps1  the installer at this tag, one per shell family
+#   latest.json              the manifest every installed `loopky` reads to learn it is stale
 #   ghcr.io/<owner>/loopky   a container image
 #
-# plus a `.sha256` beside each binary, which `cli/install.sh` checks.
+# plus a `.sha256` beside each binary, which `cli/install.sh` checks and `cli/install.ps1`
+# *requires* — `Get-FileHash` has shipped since PowerShell 4.0, so there is no host to degrade for.
 #
 # **One job per host, because `native-image` does not cross-compile.** There is no matrix of
 # `--target` flags to be had: the machine that builds the binary is the machine it runs on, which
@@ -405,18 +408,97 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  windows:
+    name: Windows x86_64 binary
+    needs: check-version
+    # The host *is* the target — `native-image` does not cross-compile, and unlike Linux there is
+    # no container that cross-builds this one from anywhere else: `x86_64-pc-windows-msvc` needs
+    # the Microsoft linker and the Windows SDK (#301).
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build the binary
+        run: ./gradlew :cli:nativeCompile
+
+      - name: Smoke-test it
+        shell: bash
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-release
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/native/nativeCompile/loopky.exe
+          "$BIN" --version
+          set +e; OUT=$("$BIN" whoami --json); CODE=$?; set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          "$BIN" --version | grep -qF "loopky ${VERSION#v} "
+
+      # The Windows equivalent of the macOS job's Keychain step: the one thing about this row that
+      # a native image can get wrong while still exiting cleanly. `pubkycore.dll` and
+      # `jnidispatch.dll` are embedded resources extracted by JNA at runtime, and `sqlitejdbc.dll`
+      # is a third — an image that failed to fold any of them in builds, links and answers
+      # `--version` exactly like one that did, and only fails when something actually reaches the
+      # FFI. Reading an `.apkg` goes through JNA *and* the JDBC driver, so it exercises both.
+      - name: The native libraries are really in the binary
+        shell: bash
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-release
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/native/nativeCompile/loopky.exe
+          python cli/tools/make-sample-apkg.py sample.apkg
+          "$BIN" import sample.apkg --dry-run --json | tee out.json
+          grep -q '"cards":3' out.json
+
+      - name: Name it, and check it
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp cli/build/native/nativeCompile/loopky.exe dist/loopky-windows-x86-64.exe
+          # `sha256sum` from Git Bash, so the file is byte-identical in shape to the other rows'
+          # and `install.ps1` can split it the same way.
+          ( cd dist && sha256sum loopky-windows-x86-64.exe > loopky-windows-x86-64.exe.sha256 )
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-asset-windows
+          path: dist/*
+          if-no-files-found: error
+
   image:
     name: Container image
     # The other half of the install story rather than an alternative to it: a sandbox that lets
     # you choose an image needs no install step at all, and one with restricted egress may have
     # no other way in.
     #
-    # Behind every build job, because this pushes to a registry the moment it succeeds and a
+    # Behind the build jobs, because this pushes to a registry the moment it succeeds and a
     # registry push cannot be taken back the way an unpublished artifact can. It builds the same
     # source through the same Dockerfile, so if the Linux smoke test is going to fail, it fails
     # before anyone can pull this — and a keystore that never reached Gradle stops the tag before
     # a `:latest` moves under everyone for a release that has no APK.
-    needs: [check-version, android, linux, macos]
+    #
+    # **`windows` included, and the "it would cost seven minutes" objection does not survive the
+    # graph.** `image-latest` already waits on `mark-latest` -> `verify-windows` -> `release` ->
+    # `windows`, a chain strictly longer than `windows` plus this build, so nothing observable
+    # happens any later for having waited here. What it buys is the rule above holding for *every*
+    # build that can fail the tag: without it a Windows-only failure leaves
+    # `ghcr.io/<owner>/loopky:<version>` pushed with no release behind it — and unlike `:latest`,
+    # which correctly stays put, that tag is resolvable by anyone who types the version.
+    needs: [check-version, android, linux, macos, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -458,7 +540,10 @@ jobs:
     # `imagetools create` retags inside the registry, so nothing is pulled or rebuilt: the digest
     # `:latest` ends up pointing at is the one `image` pushed and `release` verified.
     name: Move the image's :latest
-    needs: [image, release]
+    # `mark-latest` rather than `release`: the two `latest`s have to answer for the same release or
+    # the README's two install paths hand people different versions, and GitHub's now waits for the
+    # published Windows installer as well.
+    needs: [image, mark-latest]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -487,17 +572,19 @@ jobs:
           docker run --rm "$IMAGE:latest" --version
 
   release:
-    # **The release is created here, and `latest` is moved here.** Both used to be done by hand
-    # against a workflow racing to do the same thing, which is why the runbook had a whole section
-    # on who won. One writer, one order: draft, upload everything, publish held back from `latest`,
-    # verify by running what was published, and only then move `latest`.
+    # **The release is created here; `latest` is moved by `mark-latest`.** Both used to be done by
+    # hand against a workflow racing to do the same thing, which is why the runbook had a whole
+    # section on who won. One writer, one order: draft, upload everything, publish held back from
+    # `latest`, verify by running what was published — and only then, from the one job that waits
+    # for every shipped row, move `latest`.
     #
-    # `latest` is what both documented install paths resolve through — `cli/install.sh` defaults to
-    # `releases/latest/download/loopky-linux-x86-64`, as does the README's one-liner — so moving it
-    # *is* the act of publishing rather than a flag on the way past. Held back until the assets are
-    # listed and one of them has been run, the previous release stays installable meanwhile.
+    # `latest` is what all three documented install paths resolve through — `cli/install.sh` and
+    # `cli/install.ps1` both default to `releases/latest/download/…`, as does the README's one-liner
+    # — so moving it *is* the act of publishing rather than a flag on the way past. Held back until
+    # the assets are listed and a published binary from each row has actually been run, the previous
+    # release stays installable meanwhile.
     name: Publish the release
-    needs: [android, linux, macos]
+    needs: [android, linux, macos, windows]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -523,8 +610,14 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Add the tagged installer to the assets
-        run: cp cli/install.sh dist/install.sh
+      # Both installers, for the same reason and at the same tag. `install.ps1` is not a translation
+      # of `install.sh` kept in step by hand — the install directory, the PATH advice, the
+      # mandatory digest and the Visual C++ precondition all differ — so it is a second asset
+      # rather than a second branch of the first.
+      - name: Add the tagged installers to the assets
+        run: |
+          cp cli/install.sh dist/install.sh
+          cp cli/install.ps1 dist/install.ps1
 
       # Mechanical, from the conventional-commit subjects. It is a floor rather than a ceiling:
       # `gh release edit <tag> --notes-file …` rewrites it afterwards, and the same script run
@@ -597,7 +690,8 @@ jobs:
           for want in \
             "loopky-linux-x86-64" "loopky-linux-x86-64.sha256" \
             "loopky-macos-aarch64" "loopky-macos-aarch64.sha256" \
-            "loopky_${NUM}_amd64.deb" "install.sh" "latest.json" \
+            "loopky-windows-x86-64.exe" "loopky-windows-x86-64.exe.sha256" \
+            "loopky_${NUM}_amd64.deb" "install.sh" "install.ps1" "latest.json" \
             "Loopky-${NUM}.apk"
           do
             printf '%s\n' "$HAVE" | grep -qxF "$want" ||
@@ -627,6 +721,62 @@ jobs:
           chmod +x "$RUNNER_TEMP/loopky"
           "$RUNNER_TEMP/loopky" --version | grep -qF "loopky ${VERSION#v} "
 
+  verify-windows:
+    # **The Windows half of "run what was published", and it runs the installer rather than the
+    # binary.** `install.ps1` is itself a release asset, and the one asset whose failure modes are
+    # invisible to every other job here: a digest line split the wrong way, the Visual C++
+    # precondition refusing a machine that is in fact fine, a PATH message naming a directory it
+    # never created. The Linux equivalent lives inside `release` because that job already runs on
+    # Linux; this one cannot, which is the whole reason it is a separate job.
+    name: The published Windows installer works
+    needs: release
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    steps:
+      - name: Install from the release, with the release's own installer
+        shell: pwsh
+        env:
+          LOOPKY_VERSION: ${{ env.VERSION }}
+          LOOPKY_INSTALL_DIR: ${{ runner.temp }}\loopky-verify
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # The **tag** URL, not `latest`. `latest` has deliberately not moved yet, so pointing this
+          # at it would either 404 or — worse — install the *previous* release and report success,
+          # which is precisely the shape of failure this job exists to catch.
+          $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:VERSION/install.ps1"
+          # Retried for the same reason the Linux step retries: the release stopped being a draft one
+          # step ago, and an asset URL is a read-your-own-write against a CDN.
+          $script = (Invoke-WebRequest -Uri $url -UseBasicParsing `
+            -MaximumRetryCount 5 -RetryIntervalSec 3).Content
+          $script | Invoke-Expression
+
+          # The installer already runs `--version`; this asserts *which* version, so a release whose
+          # Windows asset is a stale binary cannot pass by printing a number nobody compared.
+          $num = $env:VERSION -replace '^v', ''
+          $out = & "$env:LOOPKY_INSTALL_DIR\loopky.exe" --version
+          if ($out -notmatch [regex]::Escape("loopky $num ")) {
+            throw "the published Windows binary reports '$out', not loopky $num"
+          }
+
+  mark-latest:
+    # **The single writer of `latest`, in its own job so that it can wait for every row.** Moving it
+    # *is* the act of publishing — `install.sh`, `install.ps1` and the README's one-liner all resolve
+    # through it — so it belongs behind a published binary from each shipped row having actually
+    # been run, rather than behind the Linux one alone. Same shape as `image-latest`, and for the
+    # same reason it was split out.
+    #
+    # The cost is deliberate and is the trade this file already makes everywhere else: a
+    # Windows-only failure withholds `latest` from all three rows, leaving the previous release
+    # installable everywhere. A half-published release that nobody can reach by the documented URL
+    # is the *desired* outcome of a partial failure, not a consolation for one.
+    name: Move latest
+    needs: [release, verify-windows]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
       - name: Mark it latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -696,7 +846,10 @@ jobs:
     # Without the token the job says so in the run summary rather than failing — a tap that does
     # not exist yet is a fine state to be in and a bad one to leave implied.
     name: Homebrew tap
-    needs: release
+    # `mark-latest`, not `release`: a formula pointing at a release that `latest` does not
+    # acknowledge would have `brew install` and the documented `curl` handing people different
+    # versions, which is the divergence moving `latest` in one place exists to prevent.
+    needs: mark-latest
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:

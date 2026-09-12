@@ -24,6 +24,16 @@ enum class InstallMethod(val json: String) {
     /** A downloaded single file, in a directory the user owns. The only row that can self-update. */
     Binary("binary"),
 
+    /**
+     * A downloaded `loopky.exe`. Its own row rather than [Binary], because **`update` cannot replace
+     * a running executable on Windows**: `ATOMIC_MOVE` over the target is refused by the OS, and
+     * `replaceFailed` maps that to "not writable by this user — a read-only layer, or an install
+     * that needs the owner", which tells an agent the machine is wrong rather than the method, and
+     * to stop retrying. The fix is to rename the running file aside and sweep it at start-up; until
+     * that lands this refuses by name and quotes `install.ps1` (#301).
+     */
+    WindowsBinary("windows-binary"),
+
     /** A Homebrew Cellar file, reached through a symlink in `bin`. */
     Homebrew("homebrew"),
 
@@ -62,6 +72,7 @@ fun detectInstallation(
     property: (String) -> String? = System::getProperty,
     exists: (String) -> Boolean = { Files.exists(Paths.get(it)) },
     executable: () -> Path? = ::currentExecutable,
+    osName: String = System.getProperty("os.name").orEmpty(),
 ): Installation {
     // `org.graalvm.nativeimage.imagecode` is `runtime` inside a native image and unset on a JVM.
     // The jar distribution is a `lib/` of jars plus a generated start script, so there is no one
@@ -79,6 +90,16 @@ fun detectInstallation(
 
     val path = executable() ?: return Installation(InstallMethod.Unknown, null)
     val text = path.toString()
+
+    // **Windows is its own row, and the POSIX branches below are not merely inapplicable there —
+    // they are wrong.** They match `/Cellar/` and `/usr/bin/` against `Path.toString()`, which
+    // Windows spells with backslashes, so every path falls through to [InstallMethod.Binary]: the
+    // one value that lets `update` write over a file. Harmless only while no `.exe` was published
+    // and every Windows install resolved to [InstallMethod.Jar]; publishing one is what arms it.
+    if (osName.startsWith("Windows", ignoreCase = true)) {
+        return Installation(InstallMethod.WindowsBinary, path)
+    }
+
     return when {
         // Homebrew installs into `<prefix>/Cellar/loopky/<version>/bin` and links from
         // `<prefix>/bin`. The Cellar segment is the one that appears on both Apple Silicon
