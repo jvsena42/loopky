@@ -369,6 +369,42 @@ jobs:
       - name: The whole shared suite, FFI included
         run: ./gradlew :shared:jvmTest
 
+      # **The only place `CryptProtectData` is ever called, asserted rather than assumed** (#301).
+      #
+      # The step above passing says nothing about it. Gradle prints no test names for a passing
+      # task, so a green `:shared:jvmTest` is equally consistent with the DPAPI round trip having
+      # run and with it having returned early — and `DpapiSecureItemTest` guards that test with
+      # `if (!dpapiEligible()) return`, which JUnit records as a **pass**, not a skip. The results
+      # XML is uploaded only on failure, so after a green run the distinction is unrecoverable.
+      #
+      # What makes this real evidence is the host: on `windows-latest` `dpapiEligible()` cannot be
+      # false, so "that case ran and did not fail *here*" is exactly the statement that the two
+      # crypt32 calls executed against a real Windows profile. Everywhere else in the suite the
+      # store is exercised through a fake, which can never say anything about the binding.
+      - name: The DPAPI round trip really ran
+        run: |
+          python - <<'PY'
+          import glob, sys, xml.etree.ElementTree as ET
+
+          files = glob.glob("shared/build/test-results/jvmTest/TEST-*DpapiSecureItemTest.xml")
+          # A positive precondition: no results file means the class never ran, which would make
+          # every assertion below vacuously true by having nothing to assert against.
+          if not files:
+              sys.exit("::error::no DpapiSecureItemTest results — the shared suite did not run it")
+
+          wanted = "real DPAPI round trip"
+          for path in files:
+              root = ET.parse(path).getroot()
+              case = next((c for c in root.iter("testcase") if wanted in c.get("name", "")), None)
+              if case is None:
+                  sys.exit(f"::error::{path} has no '{wanted}' case — was it renamed or deleted?")
+              if case.find("skipped") is not None:
+                  sys.exit("::error::the DPAPI round trip was skipped on Windows, so crypt32 was never called")
+              if case.find("failure") is not None or case.find("error") is not None:
+                  sys.exit("::error::the DPAPI round trip failed — see the uploaded test report")
+              print(f"CryptProtectData exercised: {case.get('name')} ({case.get('time')}s)")
+          PY
+
       # Which test failed and why, in the log — the same reporter `test-build` and `cli-linux`
       # carry (#239). It matters most here: this is the only row in the matrix a contributor on
       # macOS or Linux cannot re-run locally, so "download and unzip the artifact to find out which
