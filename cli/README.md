@@ -47,11 +47,13 @@ curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/loopky-li
 | Container | `docker run --rm -e LOOPKY_SESSION ghcr.io/jvsena42/loopky deck list --json` |
 | Debian/Ubuntu | `loopky_<version>_amd64.deb` on the release page — `dpkg -i`. Depends on `libc6 (>= 2.34)` and `zlib1g`, which is the whole of it: no JRE, and nothing else |
 | Homebrew | `brew install jvsena42/loopky/loopky` — above |
+| Windows x86_64 | **build from source, for now.** `libpubkycore` loads there and the whole shared suite runs on it, but nothing Windows is published yet — no `loopky-windows-x86-64.exe`, and no jar distribution is a release asset on any row. `./gradlew :cli:windowsDistZip` is the answer until the release row lands (#301), and it needs a JRE 17, which is exactly what the binary exists to remove. |
 
-**An Intel Mac and Windows are not targets**, by decision rather than omission (#54). Both are
-refused with a message that says which, rather than failing at the first homeserver call: there is
-one `darwin-aarch64` row of `libpubkycore` and no `lipo`, and Windows would need a
-`win32-x86-64/pubkycore.dll` that is not built.
+**An Intel Mac is not a target**, by decision rather than omission (#54): there is one
+`darwin-aarch64` row of `libpubkycore` and no `lipo`. **ARM64 Windows** is not one either — the x64
+binary runs there under emulation, but a JVM reporting `aarch64` cannot load an x64 DLL into its own
+process. Both are refused with a message naming the builds that do exist, rather than failing at the
+first homeserver call with something that reads as "that deck does not exist".
 
 There is **no hosted apt repository today**, so the `.deb` is a file rather than a source: nothing
 tracks it and `apt upgrade` will never move it — a new version means downloading the next one, which
@@ -67,6 +69,7 @@ trade-off is unsettled rather than closed: **#247** holds what it would take and
 ./gradlew :cli:installDist          # -> cli/build/install/loopky/bin/loopky, jar + start script
 ./gradlew :cli:linuxDistTar         # -> cli/build/distributions/loopky-linux-x86-64.tar
 ./gradlew :cli:macosDistTar         # -> cli/build/distributions/loopky-darwin-aarch64.tar
+./gradlew :cli:windowsDistZip       # -> cli/build/distributions/loopky-win32-x86-64.zip
 ./gradlew :cli:test                 # the CLI's own unit tests
 ./gradlew :shared:jvmTest           # the whole shared suite on the jvm() target, plus the
                                     # FFI smoke test that proves libpubkycore actually loads
@@ -88,13 +91,18 @@ built it, and the floor is not ours to choose — `libpubkycore.so` already need
 newer runner produces a binary that will not start on hosts the library is perfectly happy on.
 
 The jar distributions are still built and are still worth having: they need a JRE 17, but they are
-produced for either row from either host, where a binary cannot be. `installDist` carries both
-native rows because cross-row is the point of a developer build; `linuxDistTar` and `macosDistTar`
-carry one each, so a Linux box no longer hauls 11 MB of macOS dylib it can never load.
+produced for **any** row from **any** host, where a binary cannot be. `installDist` carries all
+three native rows because cross-row is the point of a developer build; `linuxDistTar`,
+`macosDistTar` and `windowsDistZip` carry one each, so a Linux box no longer hauls 11 MB of macOS
+dylib it can never load. None of them is published as a release asset.
 
 The native library ships inside the jar under JNA's resource layout, so nothing is installed by
-hand. Rebuild it in the fork with `./build_desktop.sh linux|macos|all` and copy
+hand. Rebuild it in the fork with `./build_desktop.sh linux|macos|windows|all` and copy
 `bindings/desktop/` into `shared/src/jvmMain/resources/`; see the README there.
+
+**`all` cannot produce the Windows row here.** `x86_64-pc-windows-msvc` needs the Microsoft linker
+and the Windows SDK, so unlike Linux there is no container that cross-builds it from a Mac — that
+row comes from the fork's `desktop-windows.yml` and nowhere else.
 
 ## Use
 
@@ -697,4 +705,26 @@ otherwise, which needs AVX2; this binary is *downloaded*, onto a sandbox whose C
 and a v3 binary on a host without it dies with SIGILL. Irrelevant to a client that spends its life
 waiting on a homeserver.
 
-Windows is out of scope for v1 by decision, not omission.
+**Windows builds as one `loopky.exe`, and it needs the Visual C++ redistributable.** CI compiles the
+image on `windows-latest` on every PR; publishing it as a release asset is what is still missing
+(#301). The redistributable is a **stated gap rather than an oversight**: `VCRUNTIME140.dll` and
+`VCRUNTIME140_1.dll` are the only two of the binary's 23 imports that are not in-box on Windows 10+,
+the `api-ms-win-crt-*` entries being the Universal CRT, which is. Without those two Windows refuses
+to start the process and names the missing DLL, rather than failing somewhere inside loopky. Install
+it once from [Microsoft](https://aka.ms/vc14/vc_redist.x64.exe); most machines already have it,
+which makes this fail for the unlucky rather than for everyone.
+
+**That link is the unpinned "latest supported v14" one on purpose.** Microsoft's rule is that the
+installed redistributable must be the same version as the MSVC build tools that produced the
+executable **or later** — and this binary is linked by whatever toolset the `windows-latest` runner
+ships, 14.51 at the time of writing. A version-pinned permalink such as `aka.ms/vs/17/release/…`
+currently serves 14.44, so a reader who followed it would install a runtime that is *older* than the
+one required and be refused anyway, having done what the documentation asked.
+
+It is not fixable here. GraalVM's prebuilt Windows JDK libraries are compiled against the *dynamic*
+CRT, `--static` and `-H:+StaticExecutableWithDynamicLibC` are Linux-only, and
+`-H:NativeLinkerOption=/MT` is rejected outright (`LNK1146`) because `/MT` is a `cl.exe` switch
+rather than a `link.exe` one — forcing the static CRT underneath GraalVM's own objects would link
+two CRTs, with two heaps and two `FILE*` tables, into one image. So CI pins the **whole** import
+list: a new dependency fails the build in either direction, redistributable or not, instead of
+arriving unnoticed in an artifact that a runner with the redistributable installed cannot test.

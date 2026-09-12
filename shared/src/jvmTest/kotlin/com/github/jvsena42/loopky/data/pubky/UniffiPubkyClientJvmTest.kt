@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
  * Deliberately offline: mnemonic generation and key derivation are pure, so this asserts the
  * *binding* works without asserting anything about a network.
  *
- * It fails on a host outside the shipped matrix (an x86-64 Mac, Windows) — which is the intended
+ * It fails on a host outside the shipped matrix (an x86-64 Mac, ARM64 Windows) — which is the intended
  * signal, not a flake. See `shared/src/jvmMain/resources/` for what ships.
  */
 class UniffiPubkyClientJvmTest {

@@ -133,6 +133,9 @@ data class NativeRow(
 val nativeRows = listOf(
     NativeRow("linux-x86-64", "linux", "libpubkycore.so", "libjnidispatch.so", "Linux/x86_64"),
     NativeRow("darwin-aarch64", "macos", "libpubkycore.dylib", "libjnidispatch.jnilib", "Mac/aarch64"),
+    // No `lib` prefix on either native name, which is what JNA and sqlite-jdbc both expect on
+    // Windows: `com/sun/jna/win32-x86-64/jnidispatch.dll` and `org/sqlite/native/Windows/x86_64/`.
+    NativeRow("win32-x86-64", "windows", "pubkycore.dll", "jnidispatch.dll", "Windows/x86_64"),
 )
 
 /**
@@ -152,6 +155,7 @@ val hostNativeRow: NativeRow? = run {
     when {
         os.isLinux && (arch == "amd64" || arch == "x86_64") -> nativeRows[0]
         os.isMacOsX && arch == "aarch64" -> nativeRows[1]
+        os.isWindows && (arch == "amd64" || arch == "x86_64") -> nativeRows[2]
         else -> null
     }
 }
@@ -229,8 +233,18 @@ fun nativeBuildArgs(): List<String> {
         "--enable-url-protocols=http,https",
         // The three native rows that have to survive into the image, all extracted at runtime by
         // a loader that reads them off the classpath.
-        "-H:IncludeResources=${Regex.escape(row.jnaPrefix)}/${Regex.escape(row.pubkyLib)}",
-        "-H:IncludeResources=com/sun/jna/${Regex.escape(row.jnaPrefix)}/${Regex.escape(row.jnaLib)}",
+        // **No `Regex.escape` here, and that is a Windows bug rather than a tidy-up** (#301).
+        // It emits `\Q…\E`, and those backslashes do not survive the trip to `native-image.exe`:
+        // the Windows build received `\\Qwin32-x86-64\\E/\\Qjnidispatch.dll\\E`, which is a literal
+        // `\Q…` rather than a quote block, so both patterns matched nothing. Neither library was
+        // embedded, `com.sun.jna.NativeLibrary` failed to initialise, and every
+        // `Function.getFunction` after it died — surfacing as `StdoutGuard` refusing `--json`.
+        // The two patterns below carry no backslashes and were unaffected, which is the tell.
+        //
+        // Nothing needs escaping: `.` is the only regex-special character in these names and it
+        // matches the literal dot it stands for.
+        "-H:IncludeResources=${row.jnaPrefix}/${row.pubkyLib}",
+        "-H:IncludeResources=com/sun/jna/${row.jnaPrefix}/${row.jnaLib}",
         "-H:IncludeResources=org/sqlite/native/${row.sqliteDir}/.*",
         // `ServiceLoader` files: the SQLite JDBC driver registers itself through one, and the
         // `.apkg` reader opens its collection through `DriverManager`.
@@ -251,7 +265,25 @@ fun nativeBuildArgs(): List<String> {
         // v3 needs AVX2 and dies with SIGILL on a host without it — and this one is *downloaded*,
         // onto a sandbox whose CPU nobody chose. Irrelevant to a client that spends its life
         // waiting on a homeserver.
-        *(if (row.jnaPrefix == "linux-x86-64") arrayOf("-march=compatibility") else emptyArray()),
+        // Gated on the *architecture*, not the OS. The reason above is about x86-64 microarchitecture
+        // levels and a downloaded binary meeting a CPU nobody chose, which is as true of
+        // `win32-x86-64` as of `linux-x86-64`; `darwin-aarch64` is the only row it cannot apply to.
+        // Reading this as a Linux concern is what left Windows on the v3 default (#301).
+        *(if (row.jnaPrefix.endsWith("x86-64")) arrayOf("-march=compatibility") else emptyArray()),
+        // **No static-CRT option on Windows, and that is not an omission** (#301). `loopky.exe`
+        // imports `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll` — the only two of its 23 imports not
+        // in-box on Windows 10+, the `api-ms-win-crt-*` entries being the Universal CRT — so it
+        // needs the Visual C++ redistributable. That is pinned by ci.yml's import check and stated
+        // in cli/README.md rather than fixed here, because it cannot be fixed here.
+        //
+        // Do not reach for `-H:NativeLinkerOption=/MT`: it was tried and fails with `LNK1146: no
+        // argument specified with option '/MT'`, because `/MT` is a **cl.exe** switch choosing the
+        // CRT each object compiles against, not a link.exe one. `native-image` puts `/MD` and
+        // `/NODEFAULTLIB:LIBCMT` on its own link line, so the toolchain is not merely indifferent
+        // to the static CRT — it excludes it. The link-time equivalent
+        // (`/NODEFAULTLIB:msvcrt /DEFAULTLIB:libcmt`) would need GraalVM's own prebuilt Windows JDK
+        // libraries to have been compiled `/MT` too; they were not, and mixing the two CRTs in one
+        // image buys two heaps and two `FILE*` tables — worse than the dependency it removes.
     )
 }
 
@@ -300,12 +332,18 @@ val checkNativeImageIsOneFile = tasks.register("checkNativeImageIsOneFile") {
     group = "verification"
     description = "Fails if `nativeCompile` emitted anything beside the binary."
     val outputDir = layout.buildDirectory.dir("native/nativeCompile")
+    // `loopky.exe` on Windows, and derived from the host row rather than spelled a second time:
+    // the check filtered on the literal `loopky`, so on that row it counted the binary itself as a
+    // stray and failed every build (#301). Deliberately **not** widened to tolerate a `.pdb` or a
+    // `reports/` — whether `native-image` emits anything else there is unmeasured, and a filter
+    // loosened in advance would hide the answer rather than produce it.
+    val binaryName = if (hostNativeRow?.jnaPrefix?.startsWith("win32") == true) "loopky.exe" else "loopky"
     doLast {
         // Every entry, not just `isFile`. A stray *directory* — `reports/`, which a diagnostic
         // flag produces — used to pass here and then fail CI's `ls | wc -l` instead, which is a
         // bare exit code with none of the explanation below.
         val strays = outputDir.get().asFile.listFiles().orEmpty()
-            .filter { it.name != "loopky" }
+            .filter { it.name != binaryName }
             .map { if (it.isDirectory) "${it.name}/" else it.name }
             .sorted()
         check(strays.isEmpty()) {

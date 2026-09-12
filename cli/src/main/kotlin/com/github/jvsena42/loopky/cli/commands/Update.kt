@@ -231,14 +231,18 @@ internal fun replaceInPlace(target: Path, bytes: ByteArray) {
         // cannot express it, and failing here would leave the user on the old binary for a
         // guarantee that host was never going to give.
         //
-        // **Latent on Windows, and unreachable until the row lands** (#301). This widening is the
-        // "0755 at rest" half of the pair above, and it is a no-op there — `setPosixFilePermissions`
-        // throws `UnsupportedOperationException` and is swallowed, while `MoveFileEx` carries the
-        // temp's owner-only DACL onto the target. An elevated `update` of a shared install would
-        // then leave a `loopky.exe` no non-elevated shell can run. `SupportedHost` has no Windows
-        // row and this throws long before here, so it cannot happen yet; it is written down so the
-        // Windows spelling of "executable by everyone, writable by me" is decided in the PR that
-        // adds the row rather than rediscovered after it.
+        // **Latent on Windows, and the fence is no longer `SupportedHost`** (#301). This widening
+        // is the "0755 at rest" half of the pair above and is a no-op there:
+        // `setPosixFilePermissions` throws `UnsupportedOperationException` and is swallowed, while
+        // `MoveFileEx` carries the temp's owner-only DACL onto the target — so an elevated `update`
+        // of a shared install would leave a `loopky.exe` that no non-elevated shell can run. Same
+        // species as the `getOwner` lockout, arriving through the other door.
+        //
+        // `SupportedHost` **does** have a Windows row now. What still makes this unreachable is
+        // that no `loopky-windows-x86-64.exe` is published, so every Windows install resolves to
+        // `InstallMethod.Jar`, `canSelfUpdate` is false, and `update` exits 11 long before here.
+        // **The PR that adds the Windows release asset is the one that has to decide this**: on
+        // that row the moved file should inherit its directory's ACL rather than keep the temp's.
         runCatching { Files.setPosixFilePermissions(temp, PosixFilePermissions.fromString(MODE)) }
         Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }.onFailure {

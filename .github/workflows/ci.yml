@@ -288,19 +288,18 @@ jobs:
           if-no-files-found: ignore
 
   cli-windows:
-    # **The third row, before there is a third row (#301).** Windows is refused at `SupportedHost`
-    # today, so nothing here builds a binary or loads the FFI. What it does is keep the *portable*
-    # half honest while the Windows-shaped fixes land — an ACL where POSIX modes are a silent
-    # no-op, a config home that is not `~/.config`, `SetStdHandle` where `dup2` is meaningless.
-    # Every one of those is a branch no other job in this workflow can reach, and each replaces
-    # something that currently fails open rather than loudly.
+    # **The third row (#301).** `win32-x86-64/pubkycore.dll` is in the jar and `SupportedHost` has
+    # a Windows entry, so this runs the FFI rather than working around its absence. It is also the
+    # only job that reaches a set of branches no other row can: an ACL where POSIX modes are a
+    # silent no-op, a config home that is not `~/.config`, `SetStdHandle` where `dup2` is
+    # meaningless. Each replaces something that used to fail open rather than loudly.
     #
-    # **`:shared:jvmTest` is filtered, and the filter is temporary.** `UniffiPubkyClientJvmTest`
-    # loads `libpubkycore` and *fails* on a host outside the shipped matrix — by design, not as a
-    # flake; its own KDoc says so. There is no `win32-x86-64/pubkycore.dll` yet, so running the
-    # whole suite here would go red for the one thing this row already knows about and assert
-    # nothing new. When that library lands the filter comes off in the same PR, and its removal is
-    # the visible marker that the row is real.
+    # **`:shared:jvmTest` is unfiltered, and that is the marker.** Earlier versions of this job held
+    # packages out because the library did not exist, and named the filter's removal as the sign the
+    # row was real. It is gone. What that turns on is `UniffiPubkyClientJvmTest`, which loads the
+    # DLL through JNA and derives a keypair through it — the only test that can tell a shipped row
+    # from a missing one, since the ~1,300 shared tests run against a fake client and pass
+    # identically where the library is absent, the wrong architecture, or one directory off.
     #
     # `windows-latest` bills at 2×, so it is gated rather than unconditional — but on `cliTests`
     # rather than `cli`, because this row runs `:shared:jvmTest` and `cli` does not cover
@@ -330,26 +329,212 @@ jobs:
       - name: The CLI's own tests
         run: ./gradlew :cli:test
 
-      # The desktop storage, host-matrix and `.apkg` packages, which is where every Windows branch
-      # lives. `data.anki` joins them here because it needs the JDBC driver rather than the FFI, and
-      # the path it opens a collection by is precisely the kind of thing that is correct everywhere
-      # but here.
+      # **Unfiltered, and that is the whole point of this change.** Every earlier version of this
+      # step held packages out because `win32-x86-64/pubkycore.dll` did not exist, and said so —
+      # the filter's removal was named there as the marker that the row is real. It is real, so the
+      # marker is gone.
       #
-      # What it still holds out is **two** packages: `data.pubky` (the FFI, which cannot load until
-      # there is a `win32-x86-64/pubkycore.dll`) and `di` (`KoinGraphTest`, which builds the real
-      # graph). Stated exactly because the block above makes this filter's removal the marker that
-      # the row is real, and a marker is worth nothing if the inventory beside it is wrong.
-      - name: The desktop JVM tests that do not need the FFI
-        run: >
-          ./gradlew :shared:jvmTest
-          --tests 'com.github.jvsena42.loopky.data.storage.*'
-          --tests 'com.github.jvsena42.loopky.data.anki.*'
-          --tests 'com.github.jvsena42.loopky.platform.*'
+      # What this now runs that nothing could before is `UniffiPubkyClientJvmTest`, which loads the
+      # DLL out of the jar through JNA and derives a keypair through it. That is the only thing in
+      # the suite that can tell a shipped row from a missing one: the ~1,300 shared tests run
+      # against a fake client and pass identically on a machine where the library is absent, the
+      # architecture is wrong, or the file is one directory off.
+      - name: The whole shared suite, FFI included
+        run: ./gradlew :shared:jvmTest
 
       # Which test failed and why, in the log — the same reporter `test-build` and `cli-linux`
       # carry (#239). It matters most here: this is the only row in the matrix a contributor on
       # macOS or Linux cannot re-run locally, so "download and unzip the artifact to find out which
       # test broke" is a worse tax than anywhere else. `shell: bash` + `python3`, both on the image.
+      # **After the JDK 17 steps, never before.** `setup-graalvm` rewrites `JAVA_HOME`, and the two
+      # steps above resolve their Gradle toolchain from it — putting this first would silently run
+      # the test suites on 25 instead of the 17 every other row uses.
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the binary
+        run: ./gradlew :cli:nativeCompile
+
+      # The same block the other two binary rows carry. It is here rather than trusted to them
+      # because the defect `cli-binary-macos` exists for was one metadata entry that left Linux
+      # clean and broke macOS — three rows fail differently, and a check on two is a check on two.
+      - name: One file, and it works
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-native-windows
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/native/nativeCompile/loopky.exe
+          ls -la cli/build/native/nativeCompile
+          test "$(ls cli/build/native/nativeCompile | wc -l)" -eq 1
+
+          "$BIN" --version
+          "$BIN" --help > /dev/null
+
+          # **Diagnostic first, and non-fatal.** `--verbose` sets `Log.debugEnabled` at `Main.kt:96`,
+          # before `startCli` at `:134`, so `StdoutGuard`'s "could not reserve stdout: <message>"
+          # reaches stderr — which is the only way to tell a kernel32 lookup that failed in a
+          # closed-world image from a handle JNA mapped to null. Without it the strict check below
+          # reports only *that* the guard failed, which is what a first run already told us.
+          echo "--- guard diagnostic (non-fatal) ---"
+          "$BIN" --verbose whoami 2>&1 | grep -iE "reserve stdout|RUST_LOG|UnsatisfiedLink|kernel32|Unable to load" || true
+          echo "--- end diagnostic ---"
+
+          set +e; OUT=$("$BIN" whoami --json); CODE=$?; set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          echo "$OUT" | grep -q '"schema":1'
+          echo "$OUT" | grep -q '"environment":"production"'
+          echo "$OUT" | grep -q '"update_available":null'
+
+          set +e; "$BIN" frobnicate --json > /dev/null; CODE=$?; set -e
+          test "$CODE" -eq 2
+
+          # The FFI, which is the whole of the difficulty: this reaches `_UniFFILib.INSTANCE`, so
+          # it loads `pubkycore.dll` out of the binary's own resources, checks its API checksums
+          # and registers a JNA callback. A missing reachability registration dies here and
+          # nowhere earlier — and the registrations are exactly what differs between rows. 13 is
+          # nobody approving, 5 an unreachable relay; anything else is the FFI.
+          set +e; "$BIN" login --url-only --timeout 15 > /dev/null 2> qr.log; CODE=$?; set -e
+          cat qr.log
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 or 5"; exit 1;; esac
+          grep -q '^pubkyauth://' qr.log
+          # `RustLog.kt` through `SetEnvironmentVariableW` rather than libc `setenv`, which msvcrt
+          # does not export — so a regression here is the SDK logging at its own verbose default.
+          test "$(grep -c 'DEBUG\|INFO' qr.log || true)" -eq 0
+
+          # stdout carries the envelope and nothing else, proved by provoking the failure. The
+          # exit code first: a regressed `StdoutGuard` makes `startCli` refuse `--json` and throw
+          # before Koin, so the SDK never loads, stderr is empty, and `fail()` prints one
+          # well-formed envelope — every check below would pass on an unprotected channel.
+          set +e; RUST_LOG=trace "$BIN" login --url-only --timeout 5 --json > pure.json 2> loud.log; CODE=$?; set -e
+          echo "--- stdout ---"; cat pure.json; echo "--- stderr ---"; cat loud.log
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 (timeout) or 5"; exit 1;; esac
+          grep -qiE 'TRACE|DEBUG' loud.log
+          test -s pure.json
+          while read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s' "$line" | python -c 'import json,sys; json.loads(sys.stdin.read())' \
+              || { echo "::error::stdout was not pure JSON: $line"; exit 1; }
+          done < pure.json
+
+          # SQLite is JNA's problem over again in a second library, on a third native row:
+          # `org/sqlite/native/Windows/x86_64` rather than `Linux/x86_64`, extracted reflectively.
+          python cli/tools/make-sample-apkg.py sample.apkg
+          "$BIN" import sample.apkg --dry-run --json | tee apkg.json
+          grep -q '"cards":3' apkg.json
+          grep -q '"format":"apkg"' apkg.json
+
+      # **The assertion the build cannot make for itself.** A downloaded `.exe` that imports a DLL
+      # which is not in-box fails to start on a clean machine — and this runner has the Visual C++
+      # redistributable installed, so the build and every check above are green either way. Import
+      # names sit in the PE import directory as plain ASCII, so this needs no `dumpbin` and no
+      # Visual Studio environment.
+      #
+      # `loopky.exe` **does** need that redistributable: `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll`
+      # are the only two of its 23 imports not in-box on Windows 10+. That is accepted rather than
+      # fixed (#301) — GraalVM's prebuilt Windows JDK libraries are compiled against the dynamic
+      # CRT, `--static` is Linux-only, and `-H:NativeLinkerOption=/MT` is rejected by link.exe
+      # because `/MT` is a *compiler* switch; cli/build.gradle.kts carries the detail and
+      # cli/README.md tells the user. So this pins the **whole** import list rather than banning two
+      # names. Banning goes green on any *other* new non-in-box dependency; set equality fails on a
+      # change in either direction, and fails closed — a parse returning nothing is a failure here,
+      # where the old `bad = [...]` filter would have called it a pass.
+      - name: The binary imports exactly the pinned set
+        run: |
+          python - <<'PY'
+          import struct, sys
+
+          # **The PE import directory, not a substring search over the whole file.** A byte scan of
+          # the 66 MB image also covers the image heap and every embedded resource — and this build
+          # embeds three DLLs, a set that grew by two entries in this same PR. The next library
+          # added could carry `vcruntime140` in *its* import table and fail this step for a reason
+          # that has nothing to do with loopky.exe, which is how a check guarding the shipped
+          # artifact gets relaxed rather than investigated. Twenty lines of struct.unpack_from, no
+          # dependency, and the full import list in the error where it is actually useful.
+          exe = "cli/build/native/nativeCompile/loopky.exe"
+          data = open(exe, "rb").read()
+
+          pe = struct.unpack_from("<I", data, 0x3C)[0]
+          assert data[pe:pe + 4] == b"PE\0\0", "not a PE file"
+          opt = pe + 24
+          magic = struct.unpack_from("<H", data, opt)[0]
+          # Data directories start at 96 in PE32, 112 in PE32+; import table is directory 1.
+          dirs = opt + (112 if magic == 0x20B else 96)
+          imp_rva = struct.unpack_from("<I", data, dirs + 8)[0]
+
+          # Directory 13 is the **delay-load** import descriptor, and everything below is blind to
+          # it: a delay-loaded DLL is resolved on first call rather than at load, and it does not
+          # appear in directory 1 at all. It is empty today, and asserting that is the difference
+          # between a pinned list that is complete and one that merely looks complete — a
+          # delay-loaded `vcruntime` would sail straight through the set comparison below.
+          delay_rva = struct.unpack_from("<I", data, dirs + 13 * 8)[0]
+          assert delay_rva == 0, (
+              f"delay-load import directory is not empty (RVA {delay_rva:#x}). There are imports "
+              "this check cannot see — parse it too rather than deleting this line."
+          )
+
+          # Section headers, to map an RVA onto a file offset.
+          nsec = struct.unpack_from("<H", data, pe + 6)[0]
+          secs = pe + 24 + struct.unpack_from("<H", data, pe + 20)[0]
+          sections = [struct.unpack_from("<IIII", data, secs + i * 40 + 8) for i in range(nsec)]
+
+          def off(rva):
+              for vsize, vaddr, rsize, raddr in sections:
+                  if vaddr <= rva < vaddr + max(vsize, rsize):
+                      return raddr + (rva - vaddr)
+              raise ValueError(f"RVA {rva:#x} in no section")
+
+          names, cur = [], off(imp_rva)
+          while True:
+              name_rva = struct.unpack_from("<I", data, cur + 12)[0]
+              if name_rva == 0:
+                  break
+              end = data.index(b"\0", off(name_rva))
+              names.append(data[off(name_rva):end].decode("ascii", "replace"))
+              cur += 20
+
+          # Frozen from the first green Windows image (#301). Lower-cased, because PE import names
+          # are not consistently cased even within one image — `IPHLPAPI.DLL` sits beside
+          # `KERNEL32.dll` — so a case-sensitive compare would fail on a re-link that changed
+          # nothing.
+          EXPECTED = {
+              # Win32, in-box.
+              "advapi32.dll", "crypt32.dll", "iphlpapi.dll", "kernel32.dll", "mswsock.dll",
+              "ncrypt.dll", "secur32.dll", "user32.dll", "userenv.dll", "version.dll",
+              "winhttp.dll", "ws2_32.dll",
+              # The Universal CRT: in-box since Windows 10, shipped by Windows Update before that.
+              "api-ms-win-crt-convert-l1-1-0.dll", "api-ms-win-crt-environment-l1-1-0.dll",
+              "api-ms-win-crt-filesystem-l1-1-0.dll", "api-ms-win-crt-heap-l1-1-0.dll",
+              "api-ms-win-crt-locale-l1-1-0.dll", "api-ms-win-crt-math-l1-1-0.dll",
+              "api-ms-win-crt-runtime-l1-1-0.dll", "api-ms-win-crt-stdio-l1-1-0.dll",
+              "api-ms-win-crt-string-l1-1-0.dll",
+              # **Not** in-box: the Visual C++ redistributable, and the whole reason the note in
+              # cli/README.md exists.
+              "vcruntime140.dll", "vcruntime140_1.dll",
+          }
+          REDIST = {"vcruntime140.dll", "vcruntime140_1.dll"}
+
+          got = {n.lower() for n in names}
+          print(f"{exe}: {len(data)} bytes, {len(names)} imported libraries")
+          for n in sorted(got):
+              print(f"  {n}" + ("   <- needs the VC++ redistributable" if n in REDIST else ""))
+
+          added, gone = sorted(got - EXPECTED), sorted(EXPECTED - got)
+          if added or gone:
+              sys.exit(
+                  f"::error::the import list changed — added: {added or 'none'}; gone: "
+                  f"{gone or 'none'}. A new entry that is not in-box means a downloaded loopky.exe "
+                  "stops starting on a clean machine, which no other check here can see. Decide "
+                  "what it costs a user, then update this set and cli/README.md together."
+              )
+          print(f"pinned: {len(got)} imports, {len(REDIST)} needing the VC++ redistributable")
+          PY
+
       - name: Say which tests failed
         if: failure()
         uses: ./.github/actions/failing-tests

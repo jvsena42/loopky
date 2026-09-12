@@ -49,7 +49,16 @@ target — see cli/README.md. (If this *is* an Apple Silicon Mac, you are in a R
         Linux:aarch64|Linux:arm64)
             die "no Linux arm64 build yet. What is missing is a libpubkycore for that host, not
 this client — see shared/src/jvmMain/resources/README.md." ;;
-        *) die "no build for $os $arch. The builds are Linux x86_64 and macOS on Apple Silicon." ;;
+        # Reached under Git Bash, MSYS or Cygwin, where `uname -s` answers with one of these rather
+        # than the Windows anyone would type. There *is* a Windows build; this script is not how you
+        # get it, because a POSIX shell here says nothing about the shell the binary will be run
+        # from. Named rather than dropped into the catch-all, which would say no build exists.
+        MINGW*|MSYS*|CYGWIN*)
+            die "no Windows binary is published yet. libpubkycore loads on Windows and the jar
+distribution works there, but loopky-windows-x86-64.exe does not exist on the release page — see
+cli/README.md (#301). Named rather than left to the catch-all below, which would say there is no
+Windows support at all." ;;
+        *) die "no build for $os $arch. The builds are Linux x86_64, macOS on Apple Silicon and Windows x86_64." ;;
     esac
 }
 
