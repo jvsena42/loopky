@@ -47,7 +47,7 @@ curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/loopky-li
 | Container | `docker run --rm -e LOOPKY_SESSION ghcr.io/jvsena42/loopky deck list --json` |
 | Debian/Ubuntu | `loopky_<version>_amd64.deb` on the release page — `dpkg -i`. Depends on `libc6 (>= 2.34)` and `zlib1g`, which is the whole of it: no JRE, and nothing else |
 | Homebrew | `brew install jvsena42/loopky/loopky` — above |
-| Windows x86_64 | **the jar distribution only, for now.** `libpubkycore` loads there and the whole shared suite runs on it, but no `loopky-windows-x86-64.exe` is published yet: `nativeCompile` on Windows and a release row are the two pieces still outstanding (#301). Until then it needs a JRE 17, which is exactly what the binary exists to remove. |
+| Windows x86_64 | **build from source, for now.** `libpubkycore` loads there and the whole shared suite runs on it, but nothing Windows is published yet — no `loopky-windows-x86-64.exe`, and no jar distribution is a release asset on any row. `./gradlew :cli:windowsDistZip` is the answer until the release row lands (#301), and it needs a JRE 17, which is exactly what the binary exists to remove. |
 
 **An Intel Mac is not a target**, by decision rather than omission (#54): there is one
 `darwin-aarch64` row of `libpubkycore` and no `lipo`. **ARM64 Windows** is not one either — the x64
@@ -69,6 +69,7 @@ trade-off is unsettled rather than closed: **#247** holds what it would take and
 ./gradlew :cli:installDist          # -> cli/build/install/loopky/bin/loopky, jar + start script
 ./gradlew :cli:linuxDistTar         # -> cli/build/distributions/loopky-linux-x86-64.tar
 ./gradlew :cli:macosDistTar         # -> cli/build/distributions/loopky-darwin-aarch64.tar
+./gradlew :cli:windowsDistZip       # -> cli/build/distributions/loopky-win32-x86-64.zip
 ./gradlew :cli:test                 # the CLI's own unit tests
 ./gradlew :shared:jvmTest           # the whole shared suite on the jvm() target, plus the
                                     # FFI smoke test that proves libpubkycore actually loads
@@ -90,13 +91,18 @@ built it, and the floor is not ours to choose — `libpubkycore.so` already need
 newer runner produces a binary that will not start on hosts the library is perfectly happy on.
 
 The jar distributions are still built and are still worth having: they need a JRE 17, but they are
-produced for either row from either host, where a binary cannot be. `installDist` carries both
-native rows because cross-row is the point of a developer build; `linuxDistTar` and `macosDistTar`
-carry one each, so a Linux box no longer hauls 11 MB of macOS dylib it can never load.
+produced for **any** row from **any** host, where a binary cannot be. `installDist` carries all
+three native rows because cross-row is the point of a developer build; `linuxDistTar`,
+`macosDistTar` and `windowsDistZip` carry one each, so a Linux box no longer hauls 11 MB of macOS
+dylib it can never load. None of them is published as a release asset.
 
 The native library ships inside the jar under JNA's resource layout, so nothing is installed by
-hand. Rebuild it in the fork with `./build_desktop.sh linux|macos|all` and copy
+hand. Rebuild it in the fork with `./build_desktop.sh linux|macos|windows|all` and copy
 `bindings/desktop/` into `shared/src/jvmMain/resources/`; see the README there.
+
+**`all` cannot produce the Windows row here.** `x86_64-pc-windows-msvc` needs the Microsoft linker
+and the Windows SDK, so unlike Linux there is no container that cross-builds it from a Mac — that
+row comes from the fork's `desktop-windows.yml` and nowhere else.
 
 ## Use
 

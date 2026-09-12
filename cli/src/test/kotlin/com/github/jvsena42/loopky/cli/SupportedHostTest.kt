@@ -1,7 +1,9 @@
 package com.github.jvsena42.loopky.cli
 
+import com.github.jvsena42.loopky.platform.DesktopNativeRow
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -22,6 +24,29 @@ class SupportedHostTest {
     @Test
     fun `the windows asset keeps its exe suffix`() {
         assertEquals("loopky-windows-x86-64.exe", SupportedHost.WinX64.asset)
+    }
+
+    /**
+     * `hostSupport` resolves the row with `entries.first { … }`, which throws rather than returning
+     * null when a [DesktopNativeRow] has no entry here. That is the right choice — `firstOrNull`
+     * would hand back "host not supported" for a row that *is* supported — but it makes the two
+     * enums a landmine, because they sit either side of a module boundary: `DesktopNativeRow` is
+     * public in `:shared`, this is internal to `:cli`, and `install.sh` already anticipates Linux
+     * arm64 as the next row.
+     *
+     * Adding a row there and forgetting one here throws `NoSuchElementException` out of
+     * `requireSupportedHost` on exactly the host being added — an unchecked throw instead of the
+     * clean exit 10 the whole refusal path exists to produce. The per-host tests above all stay
+     * green, because they enumerate hosts rather than assert coverage.
+     */
+    @Test
+    fun `every native row has a supported host`() {
+        DesktopNativeRow.entries.forEach { row ->
+            assertNotNull(
+                SupportedHost.entries.firstOrNull { it.row == row },
+                "no SupportedHost for $row — hostSupport() would throw rather than exit 10",
+            )
+        }
     }
 
     @Test

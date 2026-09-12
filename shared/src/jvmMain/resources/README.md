@@ -12,7 +12,7 @@ installing the CLI fetches one by hand, sets `-Djna.library.path`, or runs `ldco
 | --- | --- | --- |
 | `linux-x86-64/libpubkycore.so` | Linux x86_64 (glibc) | `pubky-core-ffi-fork/build_desktop.sh linux` |
 | `darwin-aarch64/libpubkycore.dylib` | macOS on Apple Silicon | `pubky-core-ffi-fork/build_desktop.sh macos` |
-| `win32-x86-64/pubkycore.dll` | Windows x86_64 | the fork's `desktop-windows.yml` — see below |
+| `win32-x86-64/pubkycore.dll` | Windows x86_64 | the fork's `desktop-windows.yml` at **`c2ac88f`** (merged as `2fc531a`, fork PR #8) |
 
 **Do not edit these; they are build output.** Regenerate them in the fork and copy the
 `bindings/desktop/` tree here — the same arrangement `shared/src/androidMain/jniLibs` already has

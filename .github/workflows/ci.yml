@@ -288,19 +288,18 @@ jobs:
           if-no-files-found: ignore
 
   cli-windows:
-    # **The third row, before there is a third row (#301).** Windows is refused at `SupportedHost`
-    # today, so nothing here builds a binary or loads the FFI. What it does is keep the *portable*
-    # half honest while the Windows-shaped fixes land — an ACL where POSIX modes are a silent
-    # no-op, a config home that is not `~/.config`, `SetStdHandle` where `dup2` is meaningless.
-    # Every one of those is a branch no other job in this workflow can reach, and each replaces
-    # something that currently fails open rather than loudly.
+    # **The third row (#301).** `win32-x86-64/pubkycore.dll` is in the jar and `SupportedHost` has
+    # a Windows entry, so this runs the FFI rather than working around its absence. It is also the
+    # only job that reaches a set of branches no other row can: an ACL where POSIX modes are a
+    # silent no-op, a config home that is not `~/.config`, `SetStdHandle` where `dup2` is
+    # meaningless. Each replaces something that used to fail open rather than loudly.
     #
-    # **`:shared:jvmTest` is filtered, and the filter is temporary.** `UniffiPubkyClientJvmTest`
-    # loads `libpubkycore` and *fails* on a host outside the shipped matrix — by design, not as a
-    # flake; its own KDoc says so. There is no `win32-x86-64/pubkycore.dll` yet, so running the
-    # whole suite here would go red for the one thing this row already knows about and assert
-    # nothing new. When that library lands the filter comes off in the same PR, and its removal is
-    # the visible marker that the row is real.
+    # **`:shared:jvmTest` is unfiltered, and that is the marker.** Earlier versions of this job held
+    # packages out because the library did not exist, and named the filter's removal as the sign the
+    # row was real. It is gone. What that turns on is `UniffiPubkyClientJvmTest`, which loads the
+    # DLL through JNA and derives a keypair through it — the only test that can tell a shipped row
+    # from a missing one, since the ~1,300 shared tests run against a fake client and pass
+    # identically where the library is absent, the wrong architecture, or one directory off.
     #
     # `windows-latest` bills at 2×, so it is gated rather than unconditional — but on `cliTests`
     # rather than `cli`, because this row runs `:shared:jvmTest` and `cli` does not cover
