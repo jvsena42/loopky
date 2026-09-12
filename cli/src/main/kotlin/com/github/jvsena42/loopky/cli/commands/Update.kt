@@ -43,8 +43,10 @@ data class UpdateResult(
     @SerialName("schema_changed") val schemaChanged: Boolean,
     /**
      * How this copy was installed: `binary`, `windows-binary`, `homebrew`, `deb`, `container`,
-     * `jar`, `unknown`. Pair it with `can_self_update` rather than matching `binary` as a prefix —
-     * `windows-binary` is a downloaded file that `update` still refuses, and `advice` says why.
+     * `jar`, `unknown`. Pair it with `can_self_update` rather than matching `binary` as a prefix:
+     * `windows-binary` self-updates too (#301), but by renaming the running image aside rather than
+     * writing over it, so it stays a separate value — and the two that refuse for a *reason*
+     * (`homebrew`, `deb`) are the ones `advice` names another tool for.
      */
     val install: String,
     val path: String?,
@@ -251,7 +253,19 @@ internal fun replaceInPlace(target: Path, bytes: ByteArray, windows: Boolean = i
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         }
     }.onFailure {
-        Files.deleteIfExists(temp)
+        // **Guarded for the same reason the sweep's delete is** (#301), and the asymmetry between
+        // the two was the bug. On POSIX `unlink` never fails on an open file, so this was safe when
+        // it was written. On Windows the likeliest cause of the failure being cleaned up after is a
+        // scanner holding the freshly written `.new` open without `FILE_SHARE_DELETE` — and then
+        // this line throws for that same reason, escapes past the classification below, and the
+        // user is told about a temp file instead of being told their binary was rolled back and is
+        // fine. In the compound case it destroys the recovery instruction from [renameAside].
+        runCatching { Files.deleteIfExists(temp) }
+        // A failure that already knows the state says so itself. [renameAside]'s two crafted
+        // messages describe outcomes `replaceFailed` cannot infer from an exception — most of all
+        // "there is nothing at the installed name" — and its generic arm would append "Nothing was
+        // changed, and the old binary is untouched" to precisely that.
+        if (it is CliError) throw it
         throw replaceFailed(target, it)
     }
 }
@@ -298,27 +312,38 @@ private fun renameAside(target: Path, incoming: Path) {
     // fails on the same file anyway, and there the message can name the cause.
     runCatching { Files.deleteIfExists(superseded) }
 
-    try {
+    // `runCatching`/`getOrElse` rather than `try`/`catch`, here and below. It is the idiom every
+    // other `CliError` thrower in this module uses, and the reason is not style: `CliError` carries
+    // no cause, so a `catch` that folds the original's *message* into the text and drops the
+    // exception is a swallowed one — which detekt says, correctly. Through `getOrElse` the failure
+    // is a value being consumed rather than an exception being discarded.
+    runCatching {
         Files.move(target, superseded, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-    } catch (failure: IOException) {
+    }.getOrElse { failure ->
         // **Nothing has been changed at this point, so this is retryable — and it must not reach
         // [replaceFailed].** A scanner or backup agent holding the running image open without
-        // `FILE_SHARE_DELETE` answers `ERROR_SHARING_VIOLATION`, which arrives as
-        // `AccessDeniedException`, which that function maps to "not writable by this user — a
-        // read-only layer, or an install that needs the owner", exit 11. That is the terminal
-        // permissions verdict #312 removed from this row, arriving through a new door: a lock that
-        // clears in seconds reported as an install somebody else owns.
-        throw IOException(
+        // `FILE_SHARE_DELETE` answers `ERROR_SHARING_VIOLATION`, which the JDK translates to a
+        // plain [FileSystemException] — *not* `AccessDeniedException`, which is `ERROR_ACCESS_DENIED`
+        // and is what this line gets from its other cause: `REPLACE_EXISTING` having to delete a
+        // `.old` that is itself a running image, i.e. a second update in a row. Both arrive here,
+        // and the distinction matters because only the second reaches `replaceFailed`'s permission
+        // arm — "not writable by this user — a read-only layer, or an install that needs the
+        // owner", exit 11 — the terminal verdict #312 removed from this row, arriving through a new
+        // door: a lock that clears in seconds reported as an install somebody else owns.
+        //
+        // The original's message is folded into the text because it is the only thing naming
+        // *which* file and *which* process, which is the whole of the diagnosis.
+        throw CliError(
+            ExitCode.Internal,
             "could not move the running ${target.fileName} aside — another process is holding it " +
-                "(an anti-malware scanner, or a second loopky). Nothing was changed; run " +
-                "`loopky update` again in a moment.",
-            failure,
+                "(an anti-malware scanner, or a second loopky): ${failure.message}. " +
+                "Nothing was changed; run `loopky update` again in a moment.",
         )
     }
 
-    try {
+    runCatching {
         Files.move(incoming, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-    } catch (failure: IOException) {
+    }.getOrElse { failure ->
         // **The one moment the user has to be told where their binary is.** If the rollback also
         // fails, the installed name has nothing at it and the previous image is sitting under a
         // name nothing will run — the outcome this whole function exists to prevent — and a message
@@ -327,10 +352,17 @@ private fun renameAside(target: Path, incoming: Path) {
                 Files.move(superseded, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
             }.isFailure
         ) {
-            throw IOException(
+            // **A [CliError], so the message survives intact.** Routed through `replaceFailed` this
+            // would be re-wrapped by its generic arm, which appends "Nothing was changed, and the
+            // old binary is untouched" — and this is the one state where both halves are false:
+            // there is nothing at the installed name, and the previous image is under one nothing
+            // will run. Telling somebody to recover by hand and then that there is nothing to
+            // recover leaves them to pick, and the reassuring half is the wrong one.
+            throw CliError(
+                ExitCode.Internal,
                 "the update failed and the previous binary could not be put back: it is at " +
-                    "$superseded — rename it to ${target.fileName} by hand to recover.",
-                failure,
+                    "$superseded — rename it to ${target.fileName} by hand to recover. " +
+                    "The cause was: ${failure.message}",
             )
         }
         throw failure

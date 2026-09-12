@@ -276,6 +276,21 @@ class ReplaceInPlaceTest {
         )
     }
 
+    /**
+     * **The rollback path has no test, and that is a statement rather than an omission.**
+     *
+     * It runs only when the *second* move fails — and `renameAside` vacates that destination itself
+     * one statement earlier, so nothing an external fixture puts there survives to block it. I
+     * tried: making `loopky.exe` a non-empty directory blocks the **first** move's destination, and
+     * measuring it showed the directory is simply carried to `.old` and the new file lands cleanly,
+     * so `replaceInPlace` returns success and the assertions never run. That test passed against a
+     * throw that could not happen, which is worse than no test — it reports coverage that is not
+     * there.
+     *
+     * Provoking it for real needs a held file handle, which is a Windows behaviour and not
+     * reproducible on the rows this suite runs on. So the crafted message at that site rests on
+     * reading the code, not on evidence, and the same is true of the on-disk re-hash rejection.
+     */
     @Test
     fun `the superseded copy is swept on the next run`() {
         val dir = Files.createTempDirectory("loopky-sweep")
