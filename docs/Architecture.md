@@ -1535,7 +1535,7 @@ session, never a secret key — that never leaves Pubky Ring.
 **None of that reasoning transfers to macOS, so that row does not inherit it** (#213). macOS is
 the developer's-machine row: there is a human at the keyboard and the Keychain is always there.
 `SecureSessionStore` is the seam, so this is a `PlatformModule.jvm.kt` binding chosen by OS and
-nothing above it changes — `desktopSecureSessionStore` returns `MacKeychainSessionStore` there and
+nothing above it changes — `desktopSecureSessionStore` returns `SecureItemSessionStore` there and
 `FileSecureSessionStore` everywhere else. Five things about it are decisions rather than details:
 
 - **`security(1)`, not JNA into Security.framework.** `SecItemAdd` from the binary ties the item's

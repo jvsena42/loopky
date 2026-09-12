@@ -108,9 +108,10 @@ class DesktopSessionStoreTest {
 
     /**
      * The failure that is worse than not storing the session: storing it *somewhere the reader
-     * does not look first*. [SecureItemSessionStore.load] reads the Keychain before the file, so
-     * a second sign-in whose write fails used to leave the previous account winning every command
-     * afterwards — with `session_live` true, because that session really is live.
+     * does not look first*. [SecureItemSessionStore.load] reads **the file first**, and this is the
+     * arrangement that makes it necessary: when it read the item first, a second sign-in whose
+     * write failed left the previous account winning every command afterwards — with
+     * `session_live` true, because that session really is live.
      *
      * Starting from a populated keychain is the whole test. The `writable = false` case above
      * starts from an empty one, falls through to the file, and looks correct.
