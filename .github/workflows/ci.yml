@@ -494,7 +494,13 @@ jobs:
           # The stderr check is the positive precondition, and it is the half that stops this going
           # vacuous: without it, an SDK that logged nothing at all would pass while proving nothing.
           set +e; RUST_LOG=trace dist/loopky login --url-only --timeout 5 --json > pure.json 2> loud.log; set -e
+          echo "--- stdout ---"; cat pure.json; echo "--- stderr ---"; cat loud.log
+          # Both files non-empty, and *both* checks are preconditions rather than the assertion.
+          # An empty stderr would mean the SDK never logged, and an empty stdout would make the
+          # loop below iterate zero times and pass while checking nothing — which is the exact
+          # shape of vacuous check this whole step exists to avoid.
           test -s loud.log && grep -qiE 'TRACE|DEBUG' loud.log
+          test -s pure.json
           while read -r line; do
             [ -z "$line" ] && continue
             printf '%s' "$line" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' \
@@ -603,7 +609,12 @@ jobs:
           # The stderr check is the positive precondition and the half that stops this going
           # vacuous: without it an SDK that logged nothing would pass while proving nothing.
           set +e; RUST_LOG=trace "$BIN" login --url-only --timeout 5 --json > pure.json 2> loud.log; set -e
+          echo "--- stdout ---"; cat pure.json; echo "--- stderr ---"; cat loud.log
+          # Both files non-empty, and *both* checks are preconditions rather than the assertion.
+          # An empty stderr would mean the SDK never logged, and an empty stdout would make the
+          # loop below iterate zero times and pass while checking nothing.
           test -s loud.log && grep -qiE 'TRACE|DEBUG' loud.log
+          test -s pure.json
           while read -r line; do
             [ -z "$line" ] && continue
             printf '%s' "$line" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' \
