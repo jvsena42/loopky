@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.data.storage
 
+import org.junit.Assume.assumeTrue
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFileAttributeView
@@ -20,7 +21,12 @@ import kotlin.test.assertTrue
  * where the blob goes, that a half-written one cannot be read, that a blob which will not decrypt is
  * reported as a failure rather than as an absence — and all of it is host-independent, so it is
  * tested here and runs on every row. The two native calls themselves are exercised only on
- * `windows-latest`, by [`a real DPAPI round trip, on Windows`] below and by the binary's smoke test.
+ * `windows-latest`, by the round trip below — and **only on the JVM**. The binary's smoke steps run
+ * `--version`, `whoami`, `login --url-only` and an `.apkg` dry run, none of which stores a session,
+ * so the *native image* never reaches `CryptProtectData`. That `Function.getFunction("crypt32", …)`
+ * resolves inside a closed-world image is therefore inferred from `RustLog.kt` doing the same thing
+ * with `SetEnvironmentVariableW`, not observed. Observing it needs a session write in the image,
+ * which today means a real sign-in — the `journeys/RESULTS.md` item on #301.
  *
  * That split is deliberate rather than a limitation accepted quietly: a fake that round-trips
  * proves the *store* is right, and a fake can never say anything about whether the blob is actually
@@ -177,10 +183,13 @@ class DpapiSecureItemTest {
      */
     @Test
     fun `a real DPAPI round trip, on Windows`() {
-        if (!dpapiEligible()) {
-            println("skipping the real DPAPI round trip: not Windows")
-            return
-        }
+        // `assumeTrue`, not an early `return`: a return records this as **passed** on Linux and
+        // macOS, which is exactly what made a green `:shared:jvmTest` on Windows indistinguishable
+        // from one where crypt32 was never called. Skipped is the honest record off Windows, and it
+        // is what the CI step asserting this case ran reads to tell the two apart.
+        // JUnit 4's `Assume`, like the sibling test in this source set — `:shared`'s jvmTest has no
+        // Jupiter on it, and this overload takes the message first.
+        assumeTrue("the real DPAPI round trip needs Windows", dpapiEligible())
         val item = DpapiSecureItem(blob)
         assertTrue(item.write("c2Vzc2lvbg==").isSuccess, "CryptProtectData refused")
         assertEquals(SecureItemRead.Found("c2Vzc2lvbg=="), item.read())

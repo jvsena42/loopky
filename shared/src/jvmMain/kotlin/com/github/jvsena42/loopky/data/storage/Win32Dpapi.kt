@@ -5,6 +5,7 @@ import com.sun.jna.Function
 import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.Pointer
+import java.lang.ref.Reference
 
 /**
  * `CryptProtectData` / `CryptUnprotectData`, called directly (#301).
@@ -46,17 +47,33 @@ internal object Win32Dpapi : DpapiCrypto {
         val entropyBlob = blob(ENTROPY.size, entropyData)
         val outputBlob = Memory(BLOB_SIZE.toLong()).apply { clear() }
 
-        val ok = Function.getFunction(CRYPT32, symbol).invokeInt(
-            arrayOf<Any>(
-                inputBlob,
-                Pointer.NULL,
-                entropyBlob,
-                Pointer.NULL,
-                Pointer.NULL,
-                CRYPTPROTECT_UI_FORBIDDEN,
-                outputBlob,
-            ),
-        )
+        // **The fences are load-bearing, and their absence would have been silent.** `blob()` copies
+        // each buffer's *address* into a `DATA_BLOB`; it keeps no Java reference to the `Memory`. So
+        // after those two calls `inputData` and `entropyData` have no live use left in this method,
+        // and JLS §12.6.1 lets the collector reclaim them from that point — which both HotSpot's JIT
+        // and Graal's AOT compiler act on. JNA frees a `Memory`'s native block when the Java object
+        // goes, so crypt32 would read a freed and possibly reused block, encrypt *that*, and return
+        // success: `write` reports a stored session, the next `read` decrypts cleanly to bytes that
+        // are not one, and the user is silently signed out with nothing in the log.
+        //
+        // In a `finally` rather than after the call so the `ok == 0` path is covered too, and
+        // because a fence placed after an early return is not a fence at all.
+        val ok = try {
+            Function.getFunction(CRYPT32, symbol).invokeInt(
+                arrayOf<Any>(
+                    inputBlob,
+                    Pointer.NULL,
+                    entropyBlob,
+                    Pointer.NULL,
+                    Pointer.NULL,
+                    CRYPTPROTECT_UI_FORBIDDEN,
+                    outputBlob,
+                ),
+            )
+        } finally {
+            Reference.reachabilityFence(inputData)
+            Reference.reachabilityFence(entropyData)
+        }
         if (ok == 0) return null
 
         val length = outputBlob.getInt(0)

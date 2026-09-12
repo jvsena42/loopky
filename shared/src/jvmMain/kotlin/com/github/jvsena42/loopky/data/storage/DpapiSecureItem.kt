@@ -23,8 +23,11 @@ internal interface DpapiCrypto {
  * The session as a DPAPI blob in the config home (#301).
  *
  * **What this buys, stated at its ceiling rather than above it.** `CryptProtectData` at user scope
- * keys the blob to the logon, so the file is useless to another account on the same machine and to
- * anyone who walks off with the disk. It is *not* protection from code running as this user —
+ * keys the blob to the account's logon secret, so it is useless to another account on the same
+ * machine, and a disk taken offline yields it only to somebody who can also recover that secret —
+ * or, on a domain, who holds the DPAPI backup key, which decrypts any user's master keys by design.
+ * That is strictly better than the plaintext file it replaces and is not the same as safe.
+ * It is *not* protection from code running as this user —
  * anything that can read the file can call `CryptUnprotectData` on it, exactly as anything that can
  * run `security` can read the macOS Keychain item. What it removes is a plaintext credential sitting
  * in a directory people tar up into bug reports.
