@@ -1567,6 +1567,30 @@ nothing above it changes — `desktopSecureSessionStore` returns `MacKeychainSes
 still under the directory, and an agent debugging a box that has lost its session needs to be told
 which of the two to look at. `login`'s `stored_at` is the store, not the directory.
 
+**Windows is the third row: the file store, with a different lock on the door** (#301).
+`desktopSecureSessionStore` hands it `FileSecureSessionStore`, so nothing above the binding changes
+— what differs is what "0600" can mean on a filesystem that has no POSIX mode.
+`Files.setPosixFilePermissions` throws `UnsupportedOperationException` there and was being swallowed
+by a `runCatching`, so all four owner-only sites were quietly no-ops while `Identity.kt` went on
+printing "owner-readable only", and `--qr-out` — which *is* a live `pubkyauth://` credential — was
+world-readable. `OwnerOnly` now rewrites the ACL to a single owner-`FULL` entry plus SYSTEM and
+returns **false rather than degrading**, because a claim that cannot be kept should not be made. It
+names the *current user* rather than `Files.getOwner()`: under elevation the owner is
+`BUILTIN\Administrators`, and an ACL granting only that would lock the ordinary user out of their
+own session file.
+
+The directory is `%LOCALAPPDATA%\loopky` — **not** `%APPDATA%`, and not `~/.config`. A roaming
+profile is copied to a domain server at logoff, so a session secret placed in one is replicated off
+the machine to somewhere this tool cannot revoke it. Setting `LOOPKY_CONFIG_HOME` or
+`XDG_CONFIG_HOME` at a roaming location puts it back, which is the user's choice to make and is
+said in `--help`.
+
+There is **no keystore on this row yet**. DPAPI (`CryptProtectData`, `CurrentUser` scope, through
+`Function.getFunction` rather than a mapped `Library` interface, so the image stays one file) is the
+intended successor and is not built — so the honest statement today is the Linux one: the secret is
+protected by an ACL and nothing else, and what is stored is a capability-scoped, expiring session
+rather than a secret key.
+
 The same issue closes the other half of the macOS row. Only `darwin-aarch64` is built — one row
 rather than two and a `lipo`, because no part of the workload that motivated this runs on an Intel
 Mac — and an x86-64 Mac used to get *no message*: the JNA lookup missed and the first homeserver
@@ -2076,6 +2100,24 @@ precisely the stale-client problem, and naming the right command beats silence.
 `InstallMethod.Binary` is the only row that may self-update, and `Installation.canSelfUpdate` also
 requires a known path: `/proc/self/exe` first, `ProcessHandle` for macOS, and null rather than a
 guess — the consumer of that answer writes 60 MB over a file.
+
+**A downloaded `loopky.exe` is `InstallMethod.WindowsBinary`, and it refuses too** (#301) — for a
+platform reason rather than a package-manager one. Windows will not rename over a *running* image,
+so `ATOMIC_MOVE` fails and `replaceFailed` classifies the result as "not writable by this user": a
+permissions diagnosis for something that is not a permissions problem, which sends a person to an
+elevated prompt that cannot help and tells an agent the machine is wrong rather than the method, so
+it stops retrying. The refusal instead quotes `install.ps1`, the installer the release already
+publishes.
+
+It is a **separate `install` value** rather than `binary` carrying `can_self_update: false`, because
+that pair already means "a package manager owns this file" and reusing it would change a meaning
+rather than add one — `--json` consumers should read `can_self_update` and never match `binary` as
+a prefix. Two further things are latent behind the refusal rather than fixed by it: the rename-aside
+that would make this row self-updatable (rename the running file to `<self>.old`, move the new one
+in, sweep at start-up), and the fact that `MoveFileEx` carries the temp file's owner-only DACL onto
+the target — so whichever change makes this row updatable must also make the moved file inherit its
+directory's ACL, or an elevated update of a shared install leaves a `loopky.exe` no ordinary shell
+can run.
 
 **The installer itself is a release asset**, at the tag, and the documented one-liner fetches it
 from there rather than from `raw.githubusercontent.com/.../main/cli/install.sh`. Piping `main` into
