@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.cli
 import com.github.jvsena42.loopky.util.Log
 import com.sun.jna.Function
 import com.sun.jna.Platform
+import com.sun.jna.WString
 
 /**
  * Quiet `libpubkycore`'s own `tracing` output unless the user asked for it.
@@ -37,13 +38,26 @@ import com.sun.jna.Platform
  * a binding-time hook would fire at the same moment this does. Not worth the machinery for the
  * commands it would actually save.
  */
-internal fun defaultRustLogToWarn(env: (String) -> String? = System::getenv) {
+internal fun defaultRustLogToWarn(
+    env: (String) -> String? = System::getenv,
+    osName: String = System.getProperty("os.name").orEmpty(),
+) {
     if (env("RUST_LOG") != null) return
     runCatching {
-        Function.getFunction(Platform.C_LIBRARY_NAME, "setenv")
-            // `Any` explicitly: the array mixes two Strings and an Int, and Kotlin would
-            // otherwise infer an intersection type for it.
-            .invokeInt(arrayOf<Any>("RUST_LOG", RUST_LOG_DEFAULT, OVERWRITE_EXISTING))
+        if (isWindowsOs(osName)) {
+            // `msvcrt` has no `setenv`, and porting to `_putenv_s` would not help: Rust's
+            // `std::env` on Windows reads the process environment *block* through
+            // `GetEnvironmentVariableW`, not the CRT's copy, so only the Win32 setter is observed
+            // by the layer this is for (#301). `W`, because the wide form is the one that takes
+            // `WString`.
+            Function.getFunction("kernel32", "SetEnvironmentVariableW")
+                .invokeInt(arrayOf<Any>(WString("RUST_LOG"), WString(RUST_LOG_DEFAULT)))
+        } else {
+            Function.getFunction(Platform.C_LIBRARY_NAME, "setenv")
+                // `Any` explicitly: the array mixes two Strings and an Int, and Kotlin would
+                // otherwise infer an intersection type for it.
+                .invokeInt(arrayOf<Any>("RUST_LOG", RUST_LOG_DEFAULT, OVERWRITE_EXISTING))
+        }
     }.onFailure { Log.d(TAG, "could not default RUST_LOG: ${it.message}") }
 }
 

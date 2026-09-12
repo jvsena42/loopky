@@ -131,7 +131,7 @@ private fun run(argv: Array<String>): ExitCode {
                 // the last point at which such a host can still be told what is wrong with it
                 // rather than about a deck that does not exist. See `requireSupportedHost`.
                 requireSupportedHost()
-                val koin = startCli(environment)
+                val koin = startCli(environment, args.has("json"))
                 dispatch(args, koin.identity(), koin, environment, args.has("json"), SessionCache())
             }
             emit(args, environment, args.verb, result, updates.notice(update.await()))

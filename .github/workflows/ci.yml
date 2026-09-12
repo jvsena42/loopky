@@ -485,6 +485,22 @@ jobs:
           # the failure is four ANSI-coloured lines on the channel an agent captures.
           test "$(grep -c 'DEBUG\|INFO' qr.log || true)" -eq 0
 
+          # **stdout carries the envelope and nothing else, proved by provoking the failure** (#301).
+          # `--json` is a versioned API an agent parses, which only means anything if nothing else
+          # can land on that channel — and `StdoutGuard` is what keeps the SDK's `tracing` writer
+          # off it. Asking politely is not a test: RUST_LOG=trace makes the SDK as loud as it gets,
+          # so if the guard is not working, stdout is where those lines go.
+          #
+          # The stderr check is the positive precondition, and it is the half that stops this going
+          # vacuous: without it, an SDK that logged nothing at all would pass while proving nothing.
+          set +e; RUST_LOG=trace dist/loopky login --url-only --timeout 5 --json > pure.json 2> loud.log; set -e
+          test -s loud.log && grep -qiE 'TRACE|DEBUG' loud.log
+          while read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s' "$line" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' \
+              || { echo "::error::stdout was not pure JSON: $line"; exit 1; }
+          done < pure.json
+
           # SQLite, which is JNA's problem all over again in a second library (#211). `.apkg`
           # import opens its collection through the JDBC driver, which extracts a native library
           # from the image's own resources — reflective loading, the one thing a closed-world
@@ -577,6 +593,22 @@ jobs:
           # The SDK's tracing stays quiet by default — `RustLog.kt` through libc, since a binary
           # has no start script to export RUST_LOG from.
           test "$(grep -c 'DEBUG\|INFO' qr.log || true)" -eq 0
+
+          # **stdout carries the envelope and nothing else, proved by provoking the failure** (#301).
+          # Here as well as on the Linux row, and that symmetry is the point: the defect this job
+          # exists for was one metadata entry that left Linux clean and broke macOS, so a check on
+          # one row is a check on one row. RUST_LOG=trace makes the SDK as loud as it gets; if the
+          # guard is not working, that is where those lines land.
+          #
+          # The stderr check is the positive precondition and the half that stops this going
+          # vacuous: without it an SDK that logged nothing would pass while proving nothing.
+          set +e; RUST_LOG=trace "$BIN" login --url-only --timeout 5 --json > pure.json 2> loud.log; set -e
+          test -s loud.log && grep -qiE 'TRACE|DEBUG' loud.log
+          while read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s' "$line" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' \
+              || { echo "::error::stdout was not pure JSON: $line"; exit 1; }
+          done < pure.json
 
           # SQLite is JNA's problem over again in a second library, on a second native row:
           # `org/sqlite/native/Mac/aarch64` rather than `Linux/x86_64`, extracted reflectively.
