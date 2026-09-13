@@ -277,19 +277,59 @@ class ReplaceInPlaceTest {
     }
 
     /**
+     * **The first move's failure, which is the only test that reaches the `CliError` route.**
+     *
+     * `renameAside`'s destination here — `<self>.old` — is the one it does *not* vacate: the
+     * `deleteIfExists` before it is deliberately guarded, and a guarded delete cannot remove a
+     * non-empty directory. So a directory there fails the move deterministically on every row:
+     * `rename(2)` onto a non-empty directory is `ENOTEMPTY`, and `MoveFileEx(MOVEFILE_REPLACE_EXISTING)`
+     * refuses an existing directory. No permissions games, no held handles.
+     *
+     * It exercises three things at once, and the third is the reason it matters most: the crafted
+     * message, the guarded temp cleanup under a real failure, and — uniquely — the
+     * `if (it is CliError) throw it` pass-through. Without that line `replaceFailed` re-wraps this
+     * into "could not replace …: Nothing was changed, and the old binary is untouched", so the two
+     * absence assertions below are the only check on the fix they belong to.
+     */
+    @Test
+    fun `a held superseded name fails the first move and keeps its own message`() {
+        val dir = Files.createTempDirectory("loopky-first-move")
+        val target = Files.writeString(dir.resolve("loopky.exe"), "the old binary")
+        // Occupied and un-deletable: the guarded `deleteIfExists` leaves it, so the move must fail.
+        Files.createDirectory(supersededPath(target))
+        Files.createFile(supersededPath(target).resolve("occupied"))
+
+        val error = assertFailsWith<CliError> {
+            replaceInPlace(target, "the new binary".toByteArray(), windows = true)
+        }
+
+        val message = error.message.orEmpty()
+        assertTrue("another process is holding it" in message, message)
+        assertTrue("run `loopky update` again" in message, message)
+        // Not re-wrapped: these two are the whole test of the pass-through.
+        assertFalse("could not replace" in message, message)
+        assertFalse("old binary is untouched" in message, message)
+        // Nothing was changed, exactly as the message promises.
+        assertEquals("the old binary", Files.readString(target))
+        assertEquals(
+            listOf(target, supersededPath(target)).sorted(),
+            Files.list(dir).use { it.toList() }.sorted(),
+            "the staging file must not survive a failed first move",
+        )
+    }
+
+    /**
      * **The rollback path has no test, and that is a statement rather than an omission.**
      *
      * It runs only when the *second* move fails — and `renameAside` vacates that destination itself
-     * one statement earlier, so nothing an external fixture puts there survives to block it. I
-     * tried: making `loopky.exe` a non-empty directory blocks the **first** move's destination, and
-     * measuring it showed the directory is simply carried to `.old` and the new file lands cleanly,
-     * so `replaceInPlace` returns success and the assertions never run. That test passed against a
-     * throw that could not happen, which is worse than no test — it reports coverage that is not
-     * there.
+     * one statement earlier, so nothing an external fixture puts there survives to block it.
+     * Provoking it needs a held file handle, which is Windows behaviour and not reproducible on the
+     * rows this suite runs on. So the crafted message at that site rests on reading the code rather
+     * than on evidence, as does the on-disk re-hash rejection.
      *
-     * Provoking it for real needs a held file handle, which is a Windows behaviour and not
-     * reproducible on the rows this suite runs on. So the crafted message at that site rests on
-     * reading the code, not on evidence, and the same is true of the on-disk re-hash rejection.
+     * The first move is a different matter and *is* covered — see above. An earlier version of this
+     * note claimed the whole function was untestable, which was wrong: it generalised from a
+     * fixture that blocked the wrong step.
      */
     @Test
     fun `the superseded copy is swept on the next run`() {
