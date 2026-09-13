@@ -745,16 +745,27 @@ jobs:
           # at it would either 404 or — worse — install the *previous* release and report success,
           # which is precisely the shape of failure this job exists to catch.
           $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:VERSION/install.ps1"
+          # `irm | iex`, which is the one-liner `cli/README.md` gives the reader, and the point of
+          # this job is that *that* line works. It is deliberately not `(iwr …).Content | iex`:
+          # GitHub serves a release asset as `application/octet-stream`, for which
+          # `Invoke-WebRequest` hands `.Content` back as a `byte[]` rather than a string, so the
+          # pipe feeds `Invoke-Expression` one byte at a time — and a bare number evaluates to
+          # itself, so the installer is *printed* as a column of integers, never run, and the only
+          # symptom is the missing `loopky.exe` two lines further down. `Invoke-RestMethod` decodes
+          # to a string, which is why the documented line is unaffected.
           # Retried for the same reason the Linux step retries: the release stopped being a draft one
           # step ago, and an asset URL is a read-your-own-write against a CDN.
-          $script = (Invoke-WebRequest -Uri $url -UseBasicParsing `
-            -MaximumRetryCount 5 -RetryIntervalSec 3).Content
-          $script | Invoke-Expression
+          Invoke-RestMethod -Uri $url -MaximumRetryCount 5 -RetryIntervalSec 3 | Invoke-Expression
 
           # The installer already runs `--version`; this asserts *which* version, so a release whose
           # Windows asset is a stale binary cannot pass by printing a number nobody compared.
           $num = $env:VERSION -replace '^v', ''
-          $out = & "$env:LOOPKY_INSTALL_DIR\loopky.exe" --version
+          $exe = "$env:LOOPKY_INSTALL_DIR\loopky.exe"
+          # A clearer failure than `&` on a missing path, which reports it as an unknown *command*.
+          if (-not (Test-Path $exe)) {
+            throw "the installer reported success but left no binary at $exe"
+          }
+          $out = & $exe --version
           if ($out -notmatch [regex]::Escape("loopky $num ")) {
             throw "the published Windows binary reports '$out', not loopky $num"
           }
