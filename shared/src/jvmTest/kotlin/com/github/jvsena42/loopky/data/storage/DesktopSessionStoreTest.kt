@@ -58,7 +58,7 @@ class DesktopSessionStoreTest {
 
     @Test
     fun `an ineligible host gets the plain file store`() {
-        val store = desktopSecureSessionStore(home, secretsStore(home), keychain = null)
+        val store = desktopSecureSessionStore(home, secretsStore(home), item = null)
         assertEquals(home.resolve("secrets.json").toString(), store.location)
     }
 
@@ -66,7 +66,7 @@ class DesktopSessionStoreTest {
 
     @Test
     fun `a saved session comes back, and does not stay in the file`() = runTest {
-        val keychain = FakeKeychain()
+        val keychain = FakeSecureItem()
         val store = desktopSecureSessionStore(home, secretsStore(home), keychain)
 
         store.save(SESSION)
@@ -85,7 +85,7 @@ class DesktopSessionStoreTest {
     fun `a session stored by an older version is adopted into the keychain`() = runTest {
         val secrets = secretsStore(home)
         FileSecureSessionStore(secrets).save(SESSION)
-        val keychain = FakeKeychain()
+        val keychain = FakeSecureItem()
 
         val store = desktopSecureSessionStore(home, secrets, keychain)
 
@@ -96,7 +96,7 @@ class DesktopSessionStoreTest {
 
     @Test
     fun `a keychain that will not write leaves the session in the file`() = runTest {
-        val keychain = FakeKeychain(writable = false)
+        val keychain = FakeSecureItem(writable = false)
         val store = desktopSecureSessionStore(home, secretsStore(home), keychain)
 
         store.save(SESSION)
@@ -108,9 +108,10 @@ class DesktopSessionStoreTest {
 
     /**
      * The failure that is worse than not storing the session: storing it *somewhere the reader
-     * does not look first*. [MacKeychainSessionStore.load] reads the Keychain before the file, so
-     * a second sign-in whose write fails used to leave the previous account winning every command
-     * afterwards — with `session_live` true, because that session really is live.
+     * does not look first*. [SecureItemSessionStore.load] reads **the file first**, and this is the
+     * arrangement that makes it necessary: when it read the item first, a second sign-in whose
+     * write failed left the previous account winning every command afterwards — with
+     * `session_live` true, because that session really is live.
      *
      * Starting from a populated keychain is the whole test. The `writable = false` case above
      * starts from an empty one, falls through to the file, and looks correct.
@@ -118,10 +119,10 @@ class DesktopSessionStoreTest {
     @Test
     fun `a failed write does not let the previous account win`() = runTest {
         val secrets = secretsStore(home)
-        val keychain = FakeKeychain()
+        val keychain = FakeSecureItem()
         desktopSecureSessionStore(home, secrets, keychain).save(SESSION)
 
-        val locked = FakeKeychain(value = keychain.value, writable = false)
+        val locked = FakeSecureItem(value = keychain.value, writable = false)
         val store = desktopSecureSessionStore(home, secretsStore(home), locked)
         store.save(SECOND)
 
@@ -138,7 +139,7 @@ class DesktopSessionStoreTest {
      */
     @Test
     fun `a keychain that answers nothing still signs you in`() = runTest {
-        val keychain = FakeKeychain(value = "c3RhbGU=", writable = false, deletable = false, readable = false)
+        val keychain = FakeSecureItem(value = "c3RhbGU=", writable = false, deletable = false, readable = false)
         val store = desktopSecureSessionStore(home, secretsStore(home), keychain)
 
         store.save(SESSION)
@@ -155,8 +156,8 @@ class DesktopSessionStoreTest {
     @Test
     fun `the stale item is overwritten once the keychain answers again`() = runTest {
         val secrets = secretsStore(home)
-        desktopSecureSessionStore(home, secrets, FakeKeychain(writable = false)).save(SESSION)
-        val recovered = FakeKeychain(value = "c3RhbGU=")
+        desktopSecureSessionStore(home, secrets, FakeSecureItem(writable = false)).save(SESSION)
+        val recovered = FakeSecureItem(value = "c3RhbGU=")
 
         val store = desktopSecureSessionStore(home, secretsStore(home), recovered)
 
@@ -172,7 +173,7 @@ class DesktopSessionStoreTest {
      */
     @Test
     fun `clearing succeeds when the keychain holds nothing, whatever it says about deleting`() = runTest {
-        val store = desktopSecureSessionStore(home, secretsStore(home), FakeKeychain(deletable = false))
+        val store = desktopSecureSessionStore(home, secretsStore(home), FakeSecureItem(deletable = false))
         store.clear()
     }
 
@@ -184,7 +185,7 @@ class DesktopSessionStoreTest {
     fun `clearing reports a keychain that will not give the credential up`() = runTest {
         val secrets = secretsStore(home)
         // Still `Found`, so the read-gate above cannot excuse it.
-        val keychain = FakeKeychain(value = "c3RpbGwtaGVyZQ==", deletable = false)
+        val keychain = FakeSecureItem(value = "c3RpbGwtaGVyZQ==", deletable = false)
         val store = desktopSecureSessionStore(home, secrets, keychain)
 
         assertFailsWith<IllegalStateException> { store.clear() }
@@ -192,11 +193,34 @@ class DesktopSessionStoreTest {
         assertNull(FileSecureSessionStore(secretsStore(home)).load())
     }
 
+    /**
+     * **An item that is answering and empty means the credential is in the file, and saying
+     * otherwise is a false claim about where a secret lives.**
+     *
+     * `session_store` is read by exactly two callers: a person whose session has gone missing, and
+     * an agent through `--json`, which this project documents as a verification channel. [save]
+     * falls back to the file whenever the item refuses a write, so "empty item" is precisely the
+     * state in which the file holds the credential — and the old two-way branch reported the item
+     * for it, because it distinguished only "answering" from "not answering".
+     *
+     * Latent on macOS, where it needs a failed write followed by a healthy-but-empty Keychain;
+     * deterministic on the DPAPI row, whose `exists()` is a file check and never answers null.
+     */
+    @Test
+    fun `an item that holds nothing reports the file, not the item`() = runTest {
+        val secrets = secretsStore(home)
+        FileSecureSessionStore(secrets).save(SESSION)
+
+        val store = desktopSecureSessionStore(home, secrets, FakeSecureItem())
+
+        assertEquals(home.resolve("secrets.json").toString(), store.location)
+    }
+
     @Test
     fun `a keychain that will not answer reads the file instead, and says so`() = runTest {
         val secrets = secretsStore(home)
         FileSecureSessionStore(secrets).save(SESSION)
-        val store = desktopSecureSessionStore(home, secrets, FakeKeychain(readable = false))
+        val store = desktopSecureSessionStore(home, secrets, FakeSecureItem(readable = false))
 
         assertEquals(SESSION, store.load())
         assertContains(store.location, "not answering")
@@ -205,7 +229,7 @@ class DesktopSessionStoreTest {
     @Test
     fun `clearing empties both places`() = runTest {
         val secrets = secretsStore(home)
-        val keychain = FakeKeychain()
+        val keychain = FakeSecureItem()
         val store = desktopSecureSessionStore(home, secrets, keychain)
         store.save(SESSION)
         // Put a stale copy back to prove `clear` does not trust the invariant it maintains.
@@ -220,7 +244,7 @@ class DesktopSessionStoreTest {
 
     @Test
     fun `an item that is not a session is treated as absent rather than fatal`() = runTest {
-        val keychain = FakeKeychain(value = "bm90LWEtc2Vzc2lvbg==")
+        val keychain = FakeSecureItem(value = "bm90LWEtc2Vzc2lvbg==")
         val store = desktopSecureSessionStore(home, secretsStore(home), keychain)
 
         assertNull(store.load())
@@ -232,7 +256,7 @@ class DesktopSessionStoreTest {
      */
     @Test
     fun `what is handed to the keychain is one argv-safe token`() = runTest {
-        val keychain = FakeKeychain()
+        val keychain = FakeSecureItem()
         val store = desktopSecureSessionStore(home, secretsStore(home), keychain)
 
         store.save(SESSION.copy(identity = SESSION.identity.copy(displayName = "Ana \"la\" Peña")))
@@ -243,7 +267,7 @@ class DesktopSessionStoreTest {
 
     @Test
     fun `the file the fallback writes is the same one the file store owns`() = runTest {
-        val store = desktopSecureSessionStore(home, secretsStore(home), FakeKeychain(writable = false))
+        val store = desktopSecureSessionStore(home, secretsStore(home), FakeSecureItem(writable = false))
 
         store.save(SESSION)
 
@@ -279,17 +303,17 @@ class DesktopSessionStoreTest {
         }
         val keychain = SecurityCliKeychain(service = "loopky.test.${System.nanoTime()}")
         try {
-            assertIs<KeychainRead.Missing>(keychain.read())
+            assertIs<SecureItemRead.Missing>(keychain.read())
             if (keychain.write("aGVsbG8=").wedged()) return
-            assertEquals(KeychainRead.Found("aGVsbG8="), keychain.read())
+            assertEquals(SecureItemRead.Found("aGVsbG8="), keychain.read())
             // getOrThrow, not isSuccess: `security`'s own message is the only useful diagnostic
             // when this breaks, and a bare boolean throws it away.
             if (keychain.write("d29ybGQ=").wedged()) return
-            assertEquals(KeychainRead.Found("d29ybGQ="), keychain.read())
+            assertEquals(SecureItemRead.Found("d29ybGQ="), keychain.read())
         } finally {
             keychain.delete()
         }
-        assertIs<KeychainRead.Missing>(keychain.read())
+        assertIs<SecureItemRead.Missing>(keychain.read())
     }
 
     /**
@@ -332,28 +356,28 @@ class DesktopSessionStoreTest {
         val read = SecurityCliKeychain(security = sleeper, timeoutSeconds = 1).read()
         val elapsedMs = (System.nanoTime() - started) / 1_000_000
 
-        assertIs<KeychainRead.Failed>(read)
+        assertIs<SecureItemRead.Failed>(read)
         assertContains(read.message, "no answer in 1s")
         assertTrue(elapsedMs < 15_000, "gave up after ${elapsedMs}ms, so the bound did not fire")
         Files.deleteIfExists(sleeper)
     }
 
-    private class FakeKeychain(
+    private class FakeSecureItem(
         var value: String? = null,
         private val readable: Boolean = true,
         private val writable: Boolean = true,
         private val deletable: Boolean = true,
-    ) : Keychain {
-        override val location = "a fake keychain"
+    ) : SecureItem {
+        override val location = "a fake secure item"
 
         var secretsRead = 0
             private set
 
-        override fun read(): KeychainRead {
+        override fun read(): SecureItemRead {
             secretsRead++
             return when {
-                !readable -> KeychainRead.Failed("no")
-                else -> value?.let { KeychainRead.Found(it) } ?: KeychainRead.Missing
+                !readable -> SecureItemRead.Failed("no")
+                else -> value?.let { SecureItemRead.Found(it) } ?: SecureItemRead.Missing
             }
         }
 
@@ -378,7 +402,7 @@ class DesktopSessionStoreTest {
      */
     @Test
     fun `the probes do not pull the secret out of the keychain`() = runTest {
-        val keychain = FakeKeychain(value = "c2Vzc2lvbg==")
+        val keychain = FakeSecureItem(value = "c2Vzc2lvbg==")
         val store = desktopSecureSessionStore(home, secretsStore(home), keychain)
 
         store.location
@@ -396,16 +420,16 @@ class DesktopSessionStoreTest {
     @Test
     fun `a file that will not clear keeps the newer session, not the older one`() = runTest {
         val secrets = secretsStore(home)
-        val keychain = FakeKeychain()
+        val keychain = FakeSecureItem()
         desktopSecureSessionStore(home, secrets, keychain).save(SESSION)
 
         val unclearable = object : SecureSessionStore by FileSecureSessionStore(secretsStore(home)) {
             override suspend fun clear() = throw java.io.IOException("no space left on device")
         }
-        MacKeychainSessionStore(keychain, unclearable).save(SECOND)
+        SecureItemSessionStore(keychain, unclearable).save(SECOND)
 
         // Whatever the file ends up holding, it must not be the credential that is now stale.
-        assertEquals(SECOND, MacKeychainSessionStore(keychain, FileSecureSessionStore(secretsStore(home))).load())
+        assertEquals(SECOND, SecureItemSessionStore(keychain, FileSecureSessionStore(secretsStore(home))).load())
     }
 
     /**

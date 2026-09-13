@@ -1535,7 +1535,7 @@ session, never a secret key — that never leaves Pubky Ring.
 **None of that reasoning transfers to macOS, so that row does not inherit it** (#213). macOS is
 the developer's-machine row: there is a human at the keyboard and the Keychain is always there.
 `SecureSessionStore` is the seam, so this is a `PlatformModule.jvm.kt` binding chosen by OS and
-nothing above it changes — `desktopSecureSessionStore` returns `MacKeychainSessionStore` there and
+nothing above it changes — `desktopSecureSessionStore` returns `SecureItemSessionStore` there and
 `FileSecureSessionStore` everywhere else. Five things about it are decisions rather than details:
 
 - **`security(1)`, not JNA into Security.framework.** `SecItemAdd` from the binary ties the item's
@@ -2097,27 +2097,37 @@ prevent. The image sets `LOOPKY_CONTAINER=1` so it says what it is rather than b
 and the *check* still runs there — an image pinned to an old tag in a long-lived sandbox is
 precisely the stale-client problem, and naming the right command beats silence.
 
-`InstallMethod.Binary` is the only row that may self-update, and `Installation.canSelfUpdate` also
-requires a known path: `/proc/self/exe` first, `ProcessHandle` for macOS, and null rather than a
-guess — the consumer of that answer writes 60 MB over a file.
+**Two rows may self-update, and both are a downloaded file in a directory the user owns.**
+`Installation.canSelfUpdate` also requires a known path: `/proc/self/exe` first, `ProcessHandle`
+for macOS, and null rather than a guess — the consumer of that answer writes 60 MB over a file.
 
-**A downloaded `loopky.exe` is `InstallMethod.WindowsBinary`, and it refuses too** (#301) — for a
-platform reason rather than a package-manager one. Windows will not rename over a *running* image,
-so `ATOMIC_MOVE` fails and `replaceFailed` classifies the result as "not writable by this user": a
-permissions diagnosis for something that is not a permissions problem, which sends a person to an
-elevated prompt that cannot help and tells an agent the machine is wrong rather than the method, so
-it stops retrying. The refusal instead quotes `install.ps1`, the installer the release already
-publishes.
+`InstallMethod.WindowsBinary` is the second, and it stays a separate value because *how* it replaces
+itself differs (#301). Windows will not let a running image be written over, but it will let one be
+renamed **away** — the handle follows the file rather than the name — so `replaceInPlace` moves the
+live binary to `<self>.old`, puts the new one at the installed name, and rolls that rename back if
+the second move fails. A failed update has to leave a working binary, not a working one under a
+different name. The superseded copy cannot be deleted while the process executing it is alive, so
+`sweepSupersededBinary` removes it at the next start-up — silently, because the file is inert and
+failing somebody's actual command over a leftover copy of a binary they already replaced would be
+the wrong trade in every direction.
 
-It is a **separate `install` value** rather than `binary` carrying `can_self_update: false`, because
-that pair already means "a package manager owns this file" and reusing it would change a meaning
-rather than add one — `--json` consumers should read `can_self_update` and never match `binary` as
-a prefix. Two further things are latent behind the refusal rather than fixed by it: the rename-aside
-that would make this row self-updatable (rename the running file to `<self>.old`, move the new one
-in, sweep at start-up), and the fact that `MoveFileEx` carries the temp file's owner-only DACL onto
-the target — so whichever change makes this row updatable must also make the moved file inherit its
-directory's ACL, or an elevated update of a shared install leaves a `loopky.exe` no ordinary shell
-can run.
+Keeping it a separate `install` value also protects the classifier. The POSIX branches match
+`/Cellar/` and `/usr/bin/` against `Path.toString()`, which Windows spells with backslashes, so
+folding it back into `binary` would re-open the hole where every Windows path fell through to the
+one value that lets `update` write over a file. `--json` consumers should read `can_self_update`
+rather than matching `binary` as a prefix.
+
+**Two things had to be right before that row could update itself**, and neither is visible from the
+call site. The staged file is deliberately **not** `OwnerOnly` on Windows: `MoveFileEx` carries the
+source's DACL onto the destination, so an owner-only temp installs a `loopky.exe` that only the
+updating account can run — and under elevation that account is `BUILTIN\Administrators`, whose SID
+the same human's filtered token holds as `SE_GROUP_USE_FOR_DENY_ONLY` and is granted nothing by. A
+plain temp inherits the install directory's ACL, which is what an executable everyone may run should
+carry. And the bytes are **re-hashed from disk** before the swap rather than carried over from
+memory: `fetchVerifiedBinary` proved the download matched its published digest, and this proves what
+*landed* is what was downloaded — which is what catches a short write, a directory somebody else can
+write to, or an anti-malware product that quarantines a freshly written executable in the moment
+between the write and the rename.
 
 **The installer itself is a release asset**, at the tag, and the documented one-liner fetches it
 from there rather than from `raw.githubusercontent.com/.../main/cli/install.sh`. Piping `main` into

@@ -67,8 +67,11 @@ private val SECRETS = named("secrets")
  * [configHome] is where state lives. Injected rather than resolved here so a test — and a
  * container — can point somewhere disposable; see [ConfigHome] for the default and for why it is
  * a directory of 0600 files rather than an OS keyring. The **session** is the one exception, and
- * only on macOS: [desktopSecureSessionStore] puts it in the Keychain there, unless [configHome]
- * has been pointed somewhere explicit (#213).
+ * on the two rows that have somewhere better to put it: [desktopSecureSessionStore] uses the macOS
+ * Keychain — unless [configHome] has been pointed somewhere explicit (#213) — and a DPAPI blob on
+ * Windows, which needs no such condition because it lives inside [configHome] and is therefore as
+ * disposable as the directory holding it (#301). Linux keeps the file, as the default rather than
+ * a fallback.
  *
  * [mediaProcessor] is the one binding a caller has to think about, and it decides how many files
  * the client is (#210). [JvmMediaProcessor] reaches `javax.imageio` and therefore `java.awt`,

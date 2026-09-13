@@ -8,6 +8,7 @@ import com.github.jvsena42.loopky.cli.Installation
 import com.github.jvsena42.loopky.cli.SupportedHost
 import com.github.jvsena42.loopky.cli.UpdateChecker
 import com.github.jvsena42.loopky.cli.hostSupport
+import com.github.jvsena42.loopky.cli.isWindowsOs
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.cli.unsupportedHostMessage
 import com.github.jvsena42.loopky.cli.updateAdvice
@@ -16,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.file.AccessDeniedException
@@ -41,8 +43,10 @@ data class UpdateResult(
     @SerialName("schema_changed") val schemaChanged: Boolean,
     /**
      * How this copy was installed: `binary`, `windows-binary`, `homebrew`, `deb`, `container`,
-     * `jar`, `unknown`. Pair it with `can_self_update` rather than matching `binary` as a prefix —
-     * `windows-binary` is a downloaded file that `update` still refuses, and `advice` says why.
+     * `jar`, `unknown`. Pair it with `can_self_update` rather than matching `binary` as a prefix:
+     * `windows-binary` self-updates too (#301), but by renaming the running image aside rather than
+     * writing over it, so it stays a separate value — and the two that refuse for a *reason*
+     * (`homebrew`, `deb`) are the ones `advice` names another tool for.
      */
     val install: String,
     val path: String?,
@@ -221,42 +225,167 @@ internal fun sha256(bytes: ByteArray): String =
  * command will run — and a `loopky` already running from that path keeps its open file. Same directory
  * rather than system temp because `ATOMIC_MOVE` cannot cross a filesystem.
  */
-internal fun replaceInPlace(target: Path, bytes: ByteArray) {
-    // Owner-only *while it is being written*, then widened to 0755 once it holds the real bytes.
-    // This one is deliberately not an [OwnerOnly] file at rest — an executable everyone may run is
-    // the point — but the window in which a half-written binary sits in a directory somebody else
-    // can read is worth closing, and on a host with no POSIX mode it is the only restriction the
-    // temp file gets at all (#301).
-    val temp = runCatching { OwnerOnly.createTempFile(target.parent, target.fileName.toString(), ".new") }
+internal fun replaceInPlace(target: Path, bytes: ByteArray, windows: Boolean = isWindowsOs()) {
+    val temp = runCatching { incomingBinaryBeside(target, windows) }
         .getOrElse { throw replaceFailed(target, it) }
     runCatching {
         Files.write(temp, bytes)
+
+        // **Re-hashed from disk, not carried over from memory.** `fetchVerifiedBinary` proved the
+        // downloaded *bytes* matched the published digest; this proves the bytes that actually
+        // landed are those bytes. It catches a short write, a directory somebody else can write to
+        // between these two statements, and — the one that matters on this row — an anti-malware
+        // product that quarantines or rewrites a freshly written executable before it is renamed.
+        // Without it that arrives as a successful update to a file that will not run.
+        if (runCatching { sha256(Files.readAllBytes(temp)) }.getOrNull() != sha256(bytes)) {
+            throw IOException("what was written to $temp is not what was downloaded; nothing was replaced")
+        }
+
         // Best-effort, like every other mode in this codebase: a filesystem with no POSIX mode
         // cannot express it, and failing here would leave the user on the old binary for a
-        // guarantee that host was never going to give.
-        //
-        // **Latent on Windows, and the fence is no longer `SupportedHost`** (#301). This widening
-        // is the "0755 at rest" half of the pair above and is a no-op there:
-        // `setPosixFilePermissions` throws `UnsupportedOperationException` and is swallowed, while
-        // `MoveFileEx` carries the temp's owner-only DACL onto the target — so an elevated `update`
-        // of a shared install would leave a `loopky.exe` that no non-elevated shell can run. Same
-        // species as the `getOwner` lockout, arriving through the other door.
-        //
-        // **Decided by the PR that published the Windows release asset — which is where this
-        // comment said the decision had to be taken.** It is still unreachable, and no longer for
-        // the reason it used to give: a Windows install resolved to `InstallMethod.Jar` only
-        // because no `.exe` existed, and publishing one ended that. It now resolves to
-        // `InstallMethod.WindowsBinary`, whose `canSelfUpdate` is false for a separate and more
-        // durable reason — Windows refuses to rename over a *running* image — so `update` exits 11
-        // long before here. What re-arms this is the rename-aside making that row self-updatable,
-        // and the fix then is for the moved file to inherit its directory's ACL, not the temp's.
+        // guarantee that host was never going to give. A no-op on Windows, where the ACL the file
+        // needs is the one it inherits — see [incomingBinaryBeside].
         runCatching { Files.setPosixFilePermissions(temp, PosixFilePermissions.fromString(MODE)) }
-        Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+
+        if (windows) {
+            renameAside(target, temp)
+        } else {
+            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        }
     }.onFailure {
-        Files.deleteIfExists(temp)
+        // **Guarded for the same reason the sweep's delete is** (#301), and the asymmetry between
+        // the two was the bug. On POSIX `unlink` never fails on an open file, so this was safe when
+        // it was written. On Windows the likeliest cause of the failure being cleaned up after is a
+        // scanner holding the freshly written `.new` open without `FILE_SHARE_DELETE` — and then
+        // this line throws for that same reason, escapes past the classification below, and the
+        // user is told about a temp file instead of being told their binary was rolled back and is
+        // fine. In the compound case it destroys the recovery instruction from [renameAside].
+        runCatching { Files.deleteIfExists(temp) }
+        // A failure that already knows the state says so itself. [renameAside]'s two crafted
+        // messages describe outcomes `replaceFailed` cannot infer from an exception — most of all
+        // "there is nothing at the installed name" — and its generic arm would append "Nothing was
+        // changed, and the old binary is untouched" to precisely that.
+        if (it is CliError) throw it
         throw replaceFailed(target, it)
     }
 }
+
+/**
+ * Where the new bytes are staged, which is **not** the same decision on both rows.
+ *
+ * POSIX gets an [OwnerOnly] temp: an executable everyone may run is the point, but the window in
+ * which a half-written binary sits in a directory somebody else can read is worth closing, and the
+ * mode is widened to 0755 before the rename.
+ *
+ * Windows gets a plain one, deliberately. `MoveFileEx` carries the *source* file's DACL onto the
+ * destination, so an owner-only temp installs a `loopky.exe` only the updating account can run —
+ * and under elevation that account is `BUILTIN\Administrators`, not the human, whose filtered token
+ * holds that SID as `SE_GROUP_USE_FOR_DENY_ONLY` and is granted nothing by it. The result is an
+ * update that reports success and leaves a binary its owner cannot execute. A plain temp inherits
+ * the install directory's ACL, which is exactly what the replaced file should carry.
+ */
+private fun incomingBinaryBeside(target: Path, windows: Boolean): Path =
+    if (windows) {
+        Files.createTempFile(target.parent, target.fileName.toString(), ".new")
+    } else {
+        OwnerOnly.createTempFile(target.parent, target.fileName.toString(), ".new")
+    }
+
+/**
+ * Replace a **running** executable, which Windows will not let you rename over (#301).
+ *
+ * It does allow the running image to be renamed *away*, because the handle follows the file rather
+ * than the name. So the live binary is moved aside and the new one takes its place; the superseded
+ * copy cannot be deleted while this process is executing it, which is what [sweepSupersededBinary]
+ * is for on the next run.
+ *
+ * **The rollback is the part that earns its keep.** If the second move fails — a virus scanner
+ * holding the new file open, a full disk — the original has already been renamed, and leaving it
+ * there means the very next `loopky` finds nothing at the name it was installed under. An update
+ * that fails must leave a working binary, not a working one under a different name.
+ */
+private fun renameAside(target: Path, incoming: Path) {
+    val superseded = supersededPath(target)
+    // **Tolerated, not required.** A second, longer-lived `loopky` — a `login --timeout` waiting on
+    // approval — may still be executing the previous image, and Windows will not let a held file be
+    // deleted. Failing here would refuse the update before it had attempted anything. The move below
+    // fails on the same file anyway, and there the message can name the cause.
+    runCatching { Files.deleteIfExists(superseded) }
+
+    // `runCatching`/`getOrElse` rather than `try`/`catch`, here and below. It is the idiom every
+    // other `CliError` thrower in this module uses, and the reason is not style: `CliError` carries
+    // no cause, so a `catch` that folds the original's *message* into the text and drops the
+    // exception is a swallowed one — which detekt says, correctly. Through `getOrElse` the failure
+    // is a value being consumed rather than an exception being discarded.
+    runCatching {
+        Files.move(target, superseded, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+    }.getOrElse { failure ->
+        // **Nothing has been changed at this point, so this is retryable — and it must not reach
+        // [replaceFailed].** A scanner or backup agent holding the running image open without
+        // `FILE_SHARE_DELETE` answers `ERROR_SHARING_VIOLATION`, which the JDK translates to a
+        // plain [FileSystemException] — *not* `AccessDeniedException`, which is `ERROR_ACCESS_DENIED`
+        // and is what this line gets from its other cause: `REPLACE_EXISTING` having to delete a
+        // `.old` that is itself a running image, i.e. a second update in a row. Both arrive here,
+        // and the distinction matters because only the second reaches `replaceFailed`'s permission
+        // arm — "not writable by this user — a read-only layer, or an install that needs the
+        // owner", exit 11 — the terminal verdict #312 removed from this row, arriving through a new
+        // door: a lock that clears in seconds reported as an install somebody else owns.
+        //
+        // The original's message is folded into the text because it is the only thing naming
+        // *which* file and *which* process, which is the whole of the diagnosis.
+        throw CliError(
+            ExitCode.Internal,
+            "could not move the running ${target.fileName} aside — another process is holding it " +
+                "(an anti-malware scanner, or a second loopky): ${failure.message}. " +
+                "Nothing was changed; run `loopky update` again in a moment.",
+        )
+    }
+
+    runCatching {
+        Files.move(incoming, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+    }.getOrElse { failure ->
+        // **The one moment the user has to be told where their binary is.** If the rollback also
+        // fails, the installed name has nothing at it and the previous image is sitting under a
+        // name nothing will run — the outcome this whole function exists to prevent — and a message
+        // about `target` would not mention the file they actually need.
+        if (runCatching {
+                Files.move(superseded, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            }.isFailure
+        ) {
+            // **A [CliError], so the message survives intact.** Routed through `replaceFailed` this
+            // would be re-wrapped by its generic arm, which appends "Nothing was changed, and the
+            // old binary is untouched" — and this is the one state where both halves are false:
+            // there is nothing at the installed name, and the previous image is under one nothing
+            // will run. Telling somebody to recover by hand and then that there is nothing to
+            // recover leaves them to pick, and the reassuring half is the wrong one.
+            throw CliError(
+                ExitCode.Internal,
+                "the update failed and the previous binary could not be put back: it is at " +
+                    "$superseded — rename it to ${target.fileName} by hand to recover. " +
+                    "The cause was: ${failure.message}",
+            )
+        }
+        throw failure
+    }
+}
+
+/**
+ * Remove the copy a previous [replaceInPlace] had to leave behind, if any.
+ *
+ * Called at start-up because that is the first moment the old image is no longer running. It is
+ * **best-effort and silent**: the file is inert, a second `loopky` running concurrently may still
+ * hold it, and failing a user's actual command over a leftover byte-for-byte copy of a binary they
+ * already replaced would be the wrong trade in every direction.
+ */
+internal fun sweepSupersededBinary(installation: Installation, windows: Boolean = isWindowsOs()) {
+    if (!windows) return
+    val target = installation.path ?: return
+    runCatching { Files.deleteIfExists(supersededPath(target)) }
+}
+
+/** The name the running image is moved to. Beside the target, so the rename never crosses a device. */
+internal fun supersededPath(target: Path): Path =
+    target.resolveSibling("${target.fileName}$SUPERSEDED_SUFFIX")
 
 /**
  * Why the replace did not happen, and **only a permission problem is [ExitCode.UpdateUnsupported]**.
@@ -289,6 +418,12 @@ internal fun replaceFailed(target: Path, cause: Throwable): CliError {
 }
 
 private const val MODE = "rwxr-xr-x"
+
+/**
+ * Not `.bak`: this is not a backup anyone should restore from, it is the previous image kept alive
+ * only because the OS will not free it while it runs. [sweepSupersededBinary] removes it.
+ */
+private const val SUPERSEDED_SUFFIX = ".old"
 private const val MB = 1024 * 1024
 private const val MAX_DOWNLOAD_BYTES = 256 * MB
 private const val HTTP_NOT_FOUND = 404

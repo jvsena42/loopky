@@ -67,7 +67,7 @@ curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/loopky-li
 | Container | `docker run --rm -e LOOPKY_SESSION ghcr.io/jvsena42/loopky deck list --json` |
 | Debian/Ubuntu | `loopky_<version>_amd64.deb` on the release page — `dpkg -i`. Depends on `libc6 (>= 2.34)` and `zlib1g`, which is the whole of it: no JRE, and nothing else |
 | Homebrew | `brew install jvsena42/loopky/loopky` — above |
-| Windows x86_64 | `loopky-windows-x86-64.exe` · needs the [Visual C++ redistributable](https://aka.ms/vc14/vc_redist.x64.exe), which is not part of Windows — see below. `loopky update` refuses on this row and tells you to re-run the installer (#301) |
+| Windows x86_64 | `loopky-windows-x86-64.exe` · needs the [Visual C++ redistributable](https://aka.ms/vc14/vc_redist.x64.exe), which is not part of Windows — see below. `loopky update` works here too: Windows will not let a running `.exe` be written over, so it renames the old one aside and removes it on the next run (#301) |
 
 **An Intel Mac is not a target**, by decision rather than omission (#54): there is one
 `darwin-aarch64` row of `libpubkycore` and no `lipo`. **ARM64 Windows** is not one either — the x64
