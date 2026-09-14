@@ -63,16 +63,19 @@ pubky/pubky-ring#375.
 The deeplink is therefore **pinned back to the cookie variant** until Ring ships a matching APK;
 #321 tracks lifting it.
 
-**Journey 01 on the pin: Ring's half passes, the round trip is blocked by the emulator's relay
-resolution.** With the pin installed, Loopky mints `pubkyauth://signin?…` (logcat) and Ring raises
-the "Select Pubky" prompt — the step that was impossible on grant. Approval then never reaches
-Loopky, because the relay long-poll fails inside the app process with the resolution failure
+**Journey 01 on the pin — ✅ PASS.** Sign-in completes end to end: Loopky mints
+`pubkyauth://signin?…` (logcat), Ring raises the "Select Pubky" prompt — the step that was
+impossible on grant — and the approval comes back and signs the user in (confirmed on the
+maintainer's device, 2026-09-13).
+
+On `emulator-5554` the approval does **not** get back, and that part is environmental rather than
+the pin: the relay long-poll fails inside the app process with the resolution failure
 recorded on 2026-09-10: attempt 1 dies after a ~20s lookup timeout, attempts 2 and 3 instantly, and
 pubky's poller gives up after three. Other Loopky traffic (profiles, deck reads) succeeds the same
 second, and `ping httprelay.pubky.app` from the device shell resolves and answers — it is this
 process's resolver, not the network. Survived a reboot, an IPv4-only network and a resolver bounce.
 
-**The pin makes that blocker terminal on the emulator, and that is a real cost of it.** The resume
+**The pin makes that blocker terminal where it strikes, and that is a real cost of it.** The resume
 that rides out such an outage (fork#7 / #298) is `await_grant_auth_approval` only; the cookie flow
 has no `save_local`/`restore` in pubky 0.10 to rebuild it from, so `await_cookie_auth_approval`
 dies on the first outage. Not worth building against a pin meant to be short-lived — but it is the
