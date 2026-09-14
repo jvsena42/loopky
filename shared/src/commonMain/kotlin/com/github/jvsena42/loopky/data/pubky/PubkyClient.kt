@@ -57,17 +57,21 @@ interface PubkyClient {
     suspend fun revalidateSession(sessionSecret: String): Result<String>
 
     /**
-     * Pubky Ring-style deeplink flow, minting `pubkyauth://signin_grant?…` (#130).
+     * Pubky Ring-style deeplink flow, minting `pubkyauth://signin?…`.
      *
-     * Needs a Ring built on pubky 0.10 on the other end — **v1.19 or newer**. Older releases bundle
-     * `react-native-pubky@0.13.0`, whose parser knows `signin`, `signup`, `direct_signup` and
-     * `session` and nothing else; they answer a grant URL with "Unrecognized format" and the user
-     * cannot sign in at all.
+     * **Pinned to the cookie variant because no Ring release can parse a grant URL** (#321).
+     * v1.19's APK ships the pre-0.10 `libpubkycore.so` — byte-identical to the one
+     * react-native-pubky#39 replaced — whose parser accepts the intent hosts `""`, `signin` and
+     * `signup` and answers `signin_grant` with "Unrecognized format", filed as
+     * pubky/pubky-ring#375. Measured back to back on 2026-09-13: the cookie URL raises Ring's
+     * approval prompt, the grant URL does not reach it. Grant is still where this ends up — the
+     * cookie flow is deprecated upstream — so revert the pin, do not rebuild it, once Ring ships
+     * an APK whose native library matches its bindings.
      *
-     * The approval payload names the secret `grant_secret` rather than `session_secret`; the alias
-     * in [parseSessionPayload] absorbs that, and the FFI's `restore_session` sniffs which kind of
-     * token it was handed, so [signOut], [revalidateSession] and `put_with_session` take it
-     * unchanged.
+     * Either flow's approval payload is read the same way: [parseSessionPayload] takes both
+     * `session_secret` and grant's `grant_secret`, and the FFI's `restore_session` sniffs which
+     * kind of token it was handed, so [signOut], [revalidateSession] and `put_with_session` take
+     * either unchanged.
      */
     suspend fun startAuthFlow(capabilities: String): Result<String>
     suspend fun awaitAuthApproval(): Result<String>

@@ -4,6 +4,9 @@ import Shared
 /// Which application the homeserver is being told it is talking to, required by pubky 0.10's
 /// `ClientId` on every sign-in, sign-up and secret-key write.
 ///
+/// Not on the Ring deeplink flow: that is pinned to the cookie variant, which predates `ClientId`
+/// and takes none — see `PubkyClient.startAuthFlow` for why.
+///
 /// The type wants a domain string (its own example is `franky.pubky.app`), non-empty and at most
 /// 253 characters — not the iOS bundle identifier. Kept byte-for-byte identical to
 /// `LOOPKY_CLIENT_ID` in `UniffiPubkyClient.kt`: it travels to the homeserver, so the two
@@ -75,10 +78,10 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
     }
 
     func startAuthFlow(capabilities: String) -> [String] {
-        Loopky.startAuthFlow(capabilitiesStr: capabilities, clientId: loopkyClientId)
+        Loopky.startCookieAuthFlow(capabilitiesStr: capabilities)
     }
 
-    func awaitAuthApproval() -> [String] { Loopky.awaitAuthApproval() }
+    func awaitAuthApproval() -> [String] { Loopky.awaitCookieAuthApproval() }
 
     func parseAuthUrl(url: String) -> [String] { Loopky.parseAuthUrl(url: url) }
 

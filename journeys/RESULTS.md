@@ -32,31 +32,55 @@ not fire `openXSuccess`, so the user taps back to Loopky manually — a Ring-sid
 
 ### 2026-09-10 — grant auth restored (#130) — ⛔ BLOCKED by Pubky Ring v1.19
 
-`startAuthFlow`/`awaitAuthApproval` now bind the FFI's **grant** variants, so Loopky mints
-`pubkyauth://signin_grant?…&cid=loopky.app&cpk=…` (confirmed in logcat on both emulators).
+`startAuthFlow`/`awaitAuthApproval` bound the FFI's **grant** variants, so Loopky minted
+`pubkyauth://signin_grant?…&cid=loopky.app&cpk=…` (confirmed in logcat on both emulators). Pubky
+Ring **v1.19** (versionCode 26) answered it with `[InputRouter] Unknown input format` → the
+"Unrecognized format" screen, so the journey could not be completed.
 
-**The journey cannot be completed, and the blocker is not the change.** Pubky Ring **v1.19**
-(versionCode 26 — the first release carrying the pubky 0.10 grant bindings) answers *every*
-`pubkyauth://` deeplink with `[InputRouter] Unknown input format` → "Unrecognized format.
-Expected a recovery phrase, invite code, auth URL, or session request."
+**One row of that day's table was wrong, and it pointed the blame the wrong way** — see the
+2026-09-13 entry below. It recorded a freshly minted **cookie** URL as also rejected, and
+concluded v1.19 broke sign-in either way. It does not reproduce.
 
-What was measured, on `emulator-5554` (Pixel_Tablet) and `emulator-5556` (Pixel_9, both Ring
-profiles set up):
+### 2026-09-13 — cookie pin (#321) — ✅ PASS on Ring v1.19
+
+Re-measured on `emulator-5554` (Pixel_9, Ring v1.19 / versionCode 26), both URLs minted by the
+FFI in a scratch `:shared:jvmTest` and sent back to back with
+`adb shell am start -a android.intent.action.VIEW -d '<url>' to.pubky.ring`:
 
 | Input to Ring v1.19 | Result |
 | --- | --- |
-| Real `signin_grant` URL, in-app flow (cold Ring) | Unrecognized format |
-| Real `signin_grant` URL, in-app flow (**warm** Ring) | Unrecognized format — so not the stale-task replay |
-| Real `signin` **cookie** URL, freshly minted by the FFI | Unrecognized format — **the control that matters** |
+| `pubkyauth://signin?caps=…&relay=…&secret=…` (cookie) | **Ring shows "Select Pubky … authorize this service"** |
+| `pubkyauth://signin_grant?…&cid=loopky.app&cpk=…` (grant) | `[InputRouter] Unknown input format` |
 
-The cookie row is the point: the flow Loopky shipped *before* this change fails on Ring v1.19
-too, so v1.19 breaks Loopky sign-in either way. Ring's own parser is fine — v1.19's
-`inputParser.ts` handles `signin_grant`/`signup_grant` and its lockfile pins
-`react-native-pubky@0.14.0` — and `libpubkycore.so` loads. The failure is inside Ring's native
-`parseDeepLink`, which returns an error where our own pubky 0.10.0 FFI parses all four URL
-shapes (encoded and decoded, cookie and grant) without complaint.
+**Cause, by hash rather than inference.** v1.19's APK ships `lib/arm64-v8a/libpubkycore.so` at md5
+`af6af1809d6e6767b82b51c3a00c2584`, 9,718,912 bytes — byte-identical to the pre-0.10 binary that
+react-native-pubky#39 replaced (`9718912 -> 10651088`), with no `signin_grant` string and no
+`parse_deep_link` symbol. Its parser accepts the intent hosts `""`, `signin` and `signup` only.
+The npm package is fine (`@synonymdev/react-native-pubky@0.14.0` ships md5 `89709ec8…`,
+10,651,088 bytes), so the stale library comes from Ring's release build. Filed as
+pubky/pubky-ring#375.
 
-Re-run `01-onboarding-ring-auth.xml` when a Ring release parses auth deeplinks again.
+The deeplink is therefore **pinned back to the cookie variant** until Ring ships a matching APK;
+#321 tracks lifting it.
+
+**Journey 01 on the pin — ✅ PASS.** Sign-in completes end to end: Loopky mints
+`pubkyauth://signin?…` (logcat), Ring raises the "Select Pubky" prompt — the step that was
+impossible on grant — and the approval comes back and signs the user in (confirmed on the
+maintainer's device, 2026-09-13).
+
+On `emulator-5554` the approval does **not** get back, and that part is environmental rather than
+the pin: the relay long-poll fails inside the app process with the resolution failure
+recorded on 2026-09-10: attempt 1 dies after a ~20s lookup timeout, attempts 2 and 3 instantly, and
+pubky's poller gives up after three. Other Loopky traffic (profiles, deck reads) succeeds the same
+second, and `ping httprelay.pubky.app` from the device shell resolves and answers — it is this
+process's resolver, not the network. Survived a reboot, an IPv4-only network and a resolver bounce.
+
+**The pin makes that blocker terminal where it strikes, and that is a real cost of it.** The resume
+that rides out such an outage (fork#7 / #298) is `await_grant_auth_approval` only; the cookie flow
+has no `save_local`/`restore` in pubky 0.10 to rebuild it from, so `await_cookie_auth_approval`
+dies on the first outage. Not worth building against a pin meant to be short-lived — but it is the
+second reason to lift #321 promptly, and it means a flaky network now breaks Ring sign-in where it
+used to recover.
 
 ### 2026-09-10 — Bitkit as the signer, through a relay outage (pubky-core-ffi-fork#7) — ✅ sign-in PASS
 
