@@ -19,16 +19,15 @@ class PubkyAuthUrlsTest {
     private val clientId = "loopky.app"
     private val clientPk = "5jsjx1o6fzu6aeeo697r3i5rx15zq41kikcye8wtwdqm4nb4tryo"
 
-    private val signinUrl =
-        "pubkyauth://signin_grant?caps=$caps&relay=$relay&secret=$secret&cid=$clientId&cpk=$clientPk"
+    private val signinUrl = "pubkyauth://signin?caps=$caps&relay=$relay&secret=$secret"
 
     @Test
-    fun theIntentHostBecomesSignupGrant() {
+    fun theIntentHostBecomesSignup() {
         // Ring reads the intent out of the host position — this is what routes the deeplink to
         // "mint a key and redeem a token" instead of "pick an existing pubky".
         val url = signinUrl.asSignupUrl(homeserver, token)
 
-        assertTrue(url.startsWith("pubkyauth://signup_grant?"))
+        assertTrue(url.startsWith("pubkyauth://signup?"))
     }
 
     @Test
@@ -44,9 +43,13 @@ class PubkyAuthUrlsTest {
 
     @Test
     fun theGrantParamsSurviveTheHostRewrite() {
-        // `SignupGrantParams` requires both cid and cpk. They live in the query, so replacing the
-        // intent host carries them over — drop either and Ring rejects the link (#130).
-        val url = signinUrl.asSignupUrl(homeserver, token)
+        // The rewrite replaces the host and nothing else, which is what lets the grant form's
+        // required cid/cpk ride through untouched when the cookie pin is lifted (#321).
+        val grantUrl =
+            "pubkyauth://signin_grant?caps=$caps&relay=$relay&secret=$secret" +
+                "&cid=$clientId&cpk=$clientPk"
+
+        val url = grantUrl.asSignupUrl(homeserver, token)
 
         assertTrue("cid=$clientId" in url)
         assertTrue("cpk=$clientPk" in url)
@@ -65,8 +68,7 @@ class PubkyAuthUrlsTest {
     @Test
     fun theWholeUrlIsExactlyTheSigninUrlPlusTheTwoSignupParams() {
         assertEquals(
-            "pubkyauth://signup_grant?caps=$caps&relay=$relay&secret=$secret" +
-                "&cid=$clientId&cpk=$clientPk&hs=$homeserver&st=$token",
+            "pubkyauth://signup?caps=$caps&relay=$relay&secret=$secret&hs=$homeserver&st=$token",
             signinUrl.asSignupUrl(homeserver, token),
         )
     }
@@ -80,7 +82,7 @@ class PubkyAuthUrlsTest {
         val url = legacy.asSignupUrl(homeserver, token)
 
         assertEquals(
-            "pubkyauth://signup_grant?caps=$caps&relay=$relay&secret=$secret&hs=$homeserver&st=$token",
+            "pubkyauth://signup?caps=$caps&relay=$relay&secret=$secret&hs=$homeserver&st=$token",
             url,
         )
     }
