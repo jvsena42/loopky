@@ -34,6 +34,11 @@ struct DiscoverScreen: View {
                 viewModel?.onOpenDeck(authorPubky: author, deckId: deckId)
             },
             onRetryFollowing: { viewModel?.onRetryFollowing() },
+            onBrowseEndReached: { viewModel?.onBrowseEndReached() },
+            onPeopleEndReached: { viewModel?.onPeopleEndReached() },
+            onGridColumnsChanged: { viewModel?.onGridColumnsChanged(columns: Int32($0)) },
+            onRetryBrowse: { viewModel?.onRetryBrowse() },
+            onRetryBrowsePage: { viewModel?.onRetryBrowsePage() },
             isGuest: isGuest,
             onSignIn: onSignIn
         )
@@ -110,7 +115,10 @@ struct DiscoverScreen: View {
         DiscoverSection(
             items: state.items.compactMap { ($0 as? Wire).map(transform) },
             isLoading: state.isLoading,
-            errorMessage: state.error.map { ErrorCopy.message(for: $0) }
+            errorMessage: state.error.map { ErrorCopy.message(for: $0) },
+            hasMore: state.hasMore,
+            isLoadingMore: state.isLoadingMore,
+            pageErrorMessage: state.pageError.map { ErrorCopy.message(for: $0) }
         )
     }
 

@@ -37,6 +37,8 @@ import com.github.jvsena42.loopky.presentation.discover.DiscoverDeck
 import com.github.jvsena42.loopky.presentation.discover.TagBrowseEffect
 import com.github.jvsena42.loopky.presentation.discover.TagBrowseUiState
 import com.github.jvsena42.loopky.presentation.discover.TagBrowseViewModel
+import com.github.jvsena42.loopky.ui.components.LoadMoreFooter
+import com.github.jvsena42.loopky.ui.components.LoopkyErrorBlock
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
 import com.github.jvsena42.loopky.ui.discover.DeckRow
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
@@ -75,6 +77,9 @@ fun TagBrowseRoute(
         onBack = onBack,
         onOpenDeck = viewModel::onOpenDeck,
         onOpenAuthor = viewModel::onOpenAuthor,
+        onEndReached = viewModel::onEndReached,
+        onRetry = viewModel::onRetry,
+        onRetryPage = viewModel::onRetryPage,
     )
 }
 
@@ -86,6 +91,9 @@ private fun TagBrowseScreen(
     onBack: () -> Unit,
     onOpenDeck: (String, String) -> Unit,
     onOpenAuthor: (String) -> Unit,
+    onEndReached: () -> Unit,
+    onRetry: () -> Unit,
+    onRetryPage: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
     Scaffold(
@@ -118,10 +126,19 @@ private fun TagBrowseScreen(
             when (state) {
                 TagBrowseUiState.Loading -> LoopkyLoadingScreen()
                 TagBrowseUiState.Empty -> EmptyBlock(label = label)
+                // Not the empty block: "No decks tagged X yet" is a claim about the network, and
+                // an indexer that never answered has told us nothing about it (#321).
+                is TagBrowseUiState.Error -> LoopkyErrorBlock(
+                    reason = state.reason,
+                    onRetry = onRetry,
+                    modifier = Modifier.testTag("tag_browse_error"),
+                )
                 is TagBrowseUiState.Content -> DeckGrid(
-                    decks = state.decks,
+                    content = state,
                     onOpenDeck = onOpenDeck,
                     onOpenAuthor = onOpenAuthor,
+                    onEndReached = onEndReached,
+                    onRetryPage = onRetryPage,
                 )
             }
         }
@@ -130,9 +147,11 @@ private fun TagBrowseScreen(
 
 @Composable
 private fun DeckGrid(
-    decks: List<DiscoverDeck>,
+    content: TagBrowseUiState.Content,
     onOpenDeck: (String, String) -> Unit,
     onOpenAuthor: (String) -> Unit,
+    onEndReached: () -> Unit,
+    onRetryPage: () -> Unit,
 ) {
     val columns = deckGridColumns()
     LazyColumn(
@@ -144,7 +163,7 @@ private fun DeckGrid(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(
-            items = decks.chunked(columns),
+            items = content.decks.chunked(columns),
             key = { row -> row.joinToString(",") { "${it.authorPubky}/${it.id}" } },
         ) { row ->
             DeckRow(
@@ -154,6 +173,20 @@ private fun DeckGrid(
                 onOpenAuthor = onOpenAuthor,
                 tileTestTag = "tag_browse_tile",
             )
+        }
+        content.pageError?.let { reason ->
+            item(key = "tag_browse_page_error") {
+                LoopkyErrorBlock(
+                    reason = reason,
+                    onRetry = onRetryPage,
+                    modifier = Modifier.testTag("tag_browse_page_error"),
+                )
+            }
+        }
+        if (content.hasMore && content.pageError == null) {
+            item(key = "tag_browse_more") {
+                LoadMoreFooter(isLoading = content.isLoadingMore, onLoadMore = onEndReached)
+            }
         }
     }
 }
@@ -206,6 +239,9 @@ private fun TagBrowseScreenPreview() {
             onBack = {},
             onOpenDeck = { _, _ -> },
             onOpenAuthor = {},
+            onEndReached = {},
+            onRetry = {},
+            onRetryPage = {},
         )
     }
 }

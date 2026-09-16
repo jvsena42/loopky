@@ -60,8 +60,12 @@ struct TagBrowseScreen: View {
             centred { ProgressView().tint(LoopkyColor.accentPrimary) }
         case is TagBrowseUiStateEmpty:
             centred { empty }
+        case let failed as TagBrowseUiStateError:
+            // Not the empty block: "No decks tagged X yet" is a claim about the network, and an
+            // indexer that never answered has told us nothing about it (#321).
+            centred { retry(message: ErrorCopy.message(for: failed.reason), action: { viewModel?.onRetry() }) }
         case let loaded as TagBrowseUiStateContent:
-            grid(decks: loaded.decks.compactMap { $0 as? DiscoverDeck })
+            grid(content: loaded)
         default:
             centred { ProgressView().tint(LoopkyColor.accentPrimary) }
         }
@@ -84,10 +88,10 @@ struct TagBrowseScreen: View {
         .padding(.horizontal, 32)
     }
 
-    private func grid(decks: [DiscoverDeck]) -> some View {
+    private func grid(content: TagBrowseUiStateContent) -> some View {
         ScrollView {
             LazyVGrid(columns: deckGridItems(widthClass, spacing: 12), spacing: 12) {
-                ForEach(decks, id: \.id) { deck in
+                ForEach(content.decks.compactMap { $0 as? DiscoverDeck }, id: \.id) { deck in
                     DeckTileView(
                         title: deck.title,
                         cardCount: Int(deck.cardCount),
@@ -103,11 +107,43 @@ struct TagBrowseScreen: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 32)
             // A wall of tiles, which is the one thing that genuinely improves with more room — it
             // answers with more columns, not wider tiles.
             .contentPane(PaneWidth.wide)
+
+            if let failed = content.pageError {
+                // A failed page keeps the grid above it and offers the retry in its place.
+                retry(message: ErrorCopy.message(for: failed), action: { viewModel?.onRetryPage() })
+                    .accessibilityIdentifier("tag_browse_page_error")
+            } else if content.hasMore {
+                // The sentinel: appearing inside the scroll view already means the reader has
+                // reached the end. The ViewModel guards the repeats — see `Content.canLoadMore`.
+                HStack {
+                    Spacer()
+                    if content.isLoadingMore { ProgressView().tint(LoopkyColor.accentPrimary) }
+                    Spacer()
+                }
+                .frame(height: 44)
+                .onAppear { viewModel?.onEndReached() }
+                .accessibilityIdentifier("load_more_footer")
+            }
         }
+        .padding(.bottom, 32)
+    }
+
+    /// What happened, and a way to ask again.
+    private func retry(message: String, action: @escaping () -> Void) -> some View {
+        VStack(spacing: 8) {
+            Text(verbatim: message)
+                .font(.system(size: 14))
+                .foregroundStyle(LoopkyColor.foregroundMuted)
+                .multilineTextAlignment(.center)
+            Button("home_retry", action: action)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(LoopkyColor.accentPrimary)
+        }
+        .padding(.horizontal, 32)
+        .accessibilityIdentifier("tag_browse_error")
     }
 
     private func centred<Body: View>(@ViewBuilder _ body: () -> Body) -> some View {
