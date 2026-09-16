@@ -111,6 +111,26 @@ class DiscoverMultiTagTest {
     }
 
     @Test
+    fun `a topic nothing on screen carries keeps the row until its page lands`() = runTest(mainDispatcher) {
+        // Narrowing from zero matching decks collapsed the row to the one chosen chip, then grew it
+        // back as soon as the page landed — a flicker, animated.
+        seedLanguageDecks()
+        tagRepo.deckTags = listOf(Tag("stem"), Tag("spanish"), Tag("language"), Tag("bosnian"))
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        discovery.globalGate = CompletableDeferred()
+        vm.onTagSelected(Tag("bosnian"))
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(Tag("bosnian"), Tag("stem"), Tag("spanish"), Tag("language")),
+            vm.state.value.visibleTopics.take(4),
+        )
+        discovery.globalGate?.complete(Unit)
+    }
+
+    @Test
     fun `dropping a topic widens the row again`() = runTest(mainDispatcher) {
         seedLanguageDecks()
         tagRepo.deckTags = listOf(Tag("stem"), Tag("spanish"), Tag("language"), Tag("portuguese"))

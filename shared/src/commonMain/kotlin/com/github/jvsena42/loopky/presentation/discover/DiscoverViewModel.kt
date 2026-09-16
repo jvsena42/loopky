@@ -420,14 +420,16 @@ class DiscoverViewModel(
             else -> current + tag
         }
         val before = _state.value
-        val decksOnScreen = before.browse.items + before.following.items
-        // Until the new page lands, the row is narrowed from what is already on screen when a tag
-        // was added — a subset of those decks is all the new selection can match — and otherwise
-        // stays as it was, so a dropped chip does not vanish under the finger.
-        val pending = if (tag != null && tag !in current && decksOnScreen.isNotEmpty()) {
-            before.copy(selectedTags = next).narrowedTopics(decksOnScreen)
+        val chosen = next.mapTo(mutableSetOf()) { it.value }
+        val matchingOnScreen = (before.browse.items + before.following.items).filter { it.tags.containsAll(chosen) }
+        // Until the new page lands, the row is narrowed from the decks on screen that already match
+        // — a subset of the answer, so every chip it keeps is right. With none of them matching
+        // that would collapse the row to the chosen chips and grow it back a moment later, so the
+        // row stays as it was, chosen chips first, and narrows once the page lands.
+        val pending = if (matchingOnScreen.isNotEmpty()) {
+            before.copy(selectedTags = next).narrowedTopics(matchingOnScreen)
         } else {
-            before.visibleTopics
+            next + (before.visibleTopics - next.toSet())
         }
         browseJob?.cancel()
         // A page in flight for the previous topic would append someone else's decks under this
