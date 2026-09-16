@@ -101,7 +101,7 @@ class TagBrowseViewModelTest {
     }
 
     @Test
-    fun `an unreachable indexer is an error, not an empty tag`() = runTest(mainDispatcher) {
+    fun `an unreachable indexer is an error rather than an empty tag`() = runTest(mainDispatcher) {
         // "No decks tagged X yet" is a claim about the network, and a device that never reached
         // the indexer has heard nothing about it (#321).
         discovery.globalError = RuntimeException("Unable to resolve host \"nexus.test\"")

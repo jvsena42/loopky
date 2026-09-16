@@ -607,7 +607,7 @@ class DiscoverViewModelTest {
     // ── an unreachable indexer is not an empty network (#321) ────────────
 
     @Test
-    fun `an unreachable indexer shows an error, never the empty state`() = runTest(mainDispatcher) {
+    fun `an unreachable indexer shows an error rather than the empty state`() = runTest(mainDispatcher) {
         // "Nothing published here yet" is a claim about the world. A device that never heard from
         // the indexer cannot make it, and used to make it confidently and with no way to retry.
         discovery.globalError = RuntimeException("Unable to resolve host \"nexus.test\"")
