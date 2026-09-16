@@ -3,8 +3,10 @@ package com.github.jvsena42.loopky.presentation.discover
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
+import com.github.jvsena42.loopky.data.repository.DeckPage
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
+import com.github.jvsena42.loopky.data.repository.PeoplePage
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.ErrorReason
@@ -40,6 +42,10 @@ import kotlinx.coroutines.launch
  * No strip gates another and none of them can blank the screen: each owns its loading, empty and
  * error state, and every loader catches its own failure so a sibling cannot take the rest down.
  */
+// Over the function ceiling because Discover is four independent strips on one screen, and each
+// owns its own entry points — load, retry, page. Splitting it would mean splitting the state they
+// share, which is what the single [DiscoverUiState] exists to avoid.
+@Suppress("TooManyFunctions")
 class DiscoverViewModel(
     private val discoveryRepository: DiscoveryRepository,
     private val tagRepository: TagRepository,
@@ -53,6 +59,17 @@ class DiscoverViewModel(
 
     private var loadJob: Job? = null
     private var browseJob: Job? = null
+    private var browseMoreJob: Job? = null
+    private var peopleMoreJob: Job? = null
+
+    /** Every deck browse has fetched this session — the seed authors a people page can reach. */
+    private var browsedDecks: List<Deck> = emptyList()
+
+    /**
+     * Tiles per page of global browse. Set by whichever platform is drawing the grid — see
+     * [onGridColumnsChanged].
+     */
+    private var browsePageSize = BROWSE_LIMIT
 
     /** The followed feed, kept so selecting a topic re-filters that strip with no round-trip. */
     private var feed: List<Deck> = emptyList()
@@ -68,6 +85,18 @@ class DiscoverViewModel(
     }
 
     fun onRefresh() = load(isRefresh = true)
+
+    /**
+     * Tell the ViewModel how wide the deck grid is, so a page is a screenful wherever it is drawn.
+     *
+     * The width class itself stays in the platform layer — it is a UI concern, and it changes while
+     * the app is running on a tablet that rotates or goes split-screen. Only the resulting column
+     * count crosses, and only pages loaded *after* the change use the new size: re-fetching what is
+     * already on screen because the device turned would throw away the reader's place.
+     */
+    fun onGridColumnsChanged(columns: Int) {
+        browsePageSize = (columns * BROWSE_ROWS).coerceIn(BROWSE_LIMIT, MAX_BROWSE_LIMIT)
+    }
 
     private fun load(isRefresh: Boolean = false) {
         if (loadJob?.isActive == true) return
@@ -134,23 +163,124 @@ class DiscoverViewModel(
      */
     private suspend fun loadBrowse(tag: Tag?): List<Deck> {
         val label = tag ?: ReservedTags.DECK
-        // Documented never to throw; guarded anyway so a future change cannot cancel siblings.
-        val decks = runSuspendCatching { discoveryRepository.decksByTagGlobal(label, BROWSE_LIMIT) }
-            .onFailure { Log.e(TAG, "loadBrowse('${label.value}'): FAILED — ${it.message}", it) }
-            .getOrElse { emptyList() }
+        val result = runSuspendCatching {
+            discoveryRepository.decksByTagGlobalPage(label, browsePageSize, DeckPage.START)
+        }
 
+        val error = result.exceptionOrNull()
+        if (error != null) {
+            // The strip reports it rather than settling empty. An unreachable indexer used to render
+            // as "Nothing published here yet" — a confident claim about the world, made by a device
+            // that had not heard from it, with no retry offered (#321).
+            Log.e(TAG, "loadBrowse('${label.value}'): FAILED — ${error.message}", error)
+            _state.update { current ->
+                if (current.selectedTag != tag) {
+                    current
+                } else {
+                    current.copy(browse = current.browse.failed(error.toErrorReason()))
+                }
+            }
+            return emptyList()
+        }
+
+        val page = result.getOrThrow()
         _state.update { current ->
             // A newer selection may have landed while this was in flight; cancelling the job can
             // miss a suspension point, so the selection itself is the token.
             if (current.selectedTag != tag) {
                 current
             } else {
-                current.copy(browse = current.browse.loaded(decks.toCards(authors)))
+                current.copy(
+                    browse = current.browse.loaded(
+                        items = page.decks.toCards(authors),
+                        cursor = page.nextCursor,
+                        hasMore = page.hasMore,
+                    ),
+                )
             }
         }
-        Log.d(TAG, "loadBrowse('${label.value}'): ${decks.size} decks")
-        loadAuthorProfiles(decks)
-        return decks
+        Log.d(TAG, "loadBrowse('${label.value}'): ${page.decks.size} decks, hasMore=${page.hasMore}")
+        loadAuthorProfiles(page.decks)
+        return page.decks
+    }
+
+    /**
+     * Retries the *page* that failed, from the cursor it failed at — the decks already on screen
+     * stay. Clearing [SectionState.pageError] is what re-opens [SectionState.canLoadMore].
+     */
+    fun onRetryBrowsePage() {
+        if (_state.value.browse.pageError == null) return
+        _state.update { it.copy(browse = it.browse.copy(pageError = null)) }
+        onBrowseEndReached()
+    }
+
+    /** Retries global browse alone, at the first page — the other strips are unaffected. */
+    fun onRetryBrowse() {
+        if (_state.value.browse.isLoading) return
+        browseJob?.cancel()
+        browseMoreJob?.cancel()
+        val tag = _state.value.selectedTag
+        _state.update { it.copy(browse = it.browse.loading()) }
+        browseJob = viewModelScope.launch { loadBrowse(tag) }
+    }
+
+    /**
+     * The next page of global browse. The reader is already looking at the grid, so this appends
+     * under it rather than going back through [SectionState.loading] — see [SectionState].
+     *
+     * Called from a scroll position, which means it is called repeatedly and out of order.
+     * [SectionState.canLoadMore] is the whole guard: no page in flight, no error standing, and the
+     * repository has said there is more.
+     */
+    fun onBrowseEndReached() {
+        if (!_state.value.browse.canLoadMore || browseMoreJob?.isActive == true) return
+        val tag = _state.value.selectedTag
+        val label = tag ?: ReservedTags.DECK
+        val cursor = _state.value.browse.cursor
+        _state.update { it.copy(browse = it.browse.copy(isLoadingMore = true)) }
+
+        browseMoreJob = viewModelScope.launch {
+            val page = runSuspendCatching {
+                discoveryRepository.decksByTagGlobalPage(label, browsePageSize, cursor)
+            }
+                .onFailure { Log.e(TAG, "onBrowseEndReached('${label.value}'): FAILED — ${it.message}", it) }
+
+            page.exceptionOrNull()?.let { err ->
+                // A failed *page* keeps the decks already on screen and puts the error under them:
+                // this is a footer that could not load, not a strip that could not load. Clearing
+                // `isLoadingMore` matters most — without it the footer spins forever.
+                _state.update { current ->
+                    if (current.selectedTag != tag) {
+                        current
+                    } else {
+                        current.copy(browse = current.browse.pageFailed(err.toErrorReason()))
+                    }
+                }
+                return@launch
+            }
+
+            _state.update { current ->
+                // Same token as the first page: a topic chosen mid-flight makes this page answer a
+                // question nobody is asking any more, and appending it would mix two browses.
+                if (current.selectedTag != tag) {
+                    current
+                } else {
+                    current.copy(
+                        browse = current.browse.appended(
+                            more = page.getOrThrow().decks.toCards(authors),
+                            cursor = page.getOrThrow().nextCursor,
+                            hasMore = page.getOrThrow().hasMore,
+                        ),
+                    )
+                }
+            }
+            val decks = page.getOrThrow().decks
+            Log.d(TAG, "onBrowseEndReached('${label.value}'): +${decks.size}")
+            loadAuthorProfiles(decks)
+            // Browse is also where the people strip gets its seed authors, so a new page of decks
+            // widens the candidate roll the next page of people walks.
+            browsedDecks = browsedDecks + decks
+        }
     }
 
     /**
@@ -159,11 +289,58 @@ class DiscoverViewModel(
      * [DiscoveryRepository.suggestedPeople].
      */
     private suspend fun loadPeople(seed: List<Deck>) {
-        val people = runSuspendCatching { discoveryRepository.suggestedPeople(seed, PEOPLE_LIMIT) }
+        browsedDecks = seed
+        val page = runSuspendCatching {
+            discoveryRepository.suggestedPeoplePage(seed, PEOPLE_LIMIT, PeoplePage.START)
+        }
             .onFailure { Log.e(TAG, "loadPeople: FAILED — ${it.message}", it) }
-            .getOrElse { emptyList() }
-        _state.update { it.copy(people = it.people.loaded(people.map(::DiscoverPerson))) }
-        Log.d(TAG, "loadPeople: ${people.size} suggestions")
+            .getOrElse { PeoplePage(emptyList(), PeoplePage.START, hasMore = false) }
+        _state.update {
+            it.copy(
+                people = it.people.loaded(
+                    items = page.people.map(::DiscoverPerson),
+                    cursor = page.nextCursor,
+                    hasMore = page.hasMore,
+                ),
+            )
+        }
+        Log.d(TAG, "loadPeople: ${page.people.size} suggestions, hasMore=${page.hasMore}")
+    }
+
+    /**
+     * The next page of suggestions, appended to the carousel the reader is already scrolling.
+     *
+     * Handed [browsedDecks] rather than only the first page's seed, so authors turned up by a later
+     * browse page can be suggested too — the repository appends them to its candidate roll and the
+     * cursor keeps indexing the same list.
+     */
+    fun onPeopleEndReached() {
+        if (!_state.value.people.canLoadMore || peopleMoreJob?.isActive == true) return
+        val cursor = _state.value.people.cursor
+        val seed = browsedDecks
+        _state.update { it.copy(people = it.people.copy(isLoadingMore = true)) }
+
+        peopleMoreJob = viewModelScope.launch {
+            val page = runSuspendCatching {
+                discoveryRepository.suggestedPeoplePage(seed, PEOPLE_LIMIT, cursor)
+            }
+                .onFailure { Log.e(TAG, "onPeopleEndReached: FAILED — ${it.message}", it) }
+                .getOrElse { PeoplePage(emptyList(), cursor, hasMore = false) }
+
+            _state.update { current ->
+                // Deduped on the pubky: the roll is append-only, but a deck author already shown
+                // from the directory can arrive again as a seed author.
+                val shown = current.people.items.mapTo(mutableSetOf()) { it.identity.pubky }
+                current.copy(
+                    people = current.people.appended(
+                        more = page.people.filterNot { it.pubky in shown }.map(::DiscoverPerson),
+                        cursor = page.nextCursor,
+                        hasMore = page.hasMore,
+                    ),
+                )
+            }
+            Log.d(TAG, "onPeopleEndReached: +${page.people.size}, hasMore=${page.hasMore}")
+        }
     }
 
     private suspend fun loadTopics() {
@@ -208,6 +385,10 @@ class DiscoverViewModel(
     fun onTagSelected(tag: Tag?) {
         val next = if (tag == _state.value.selectedTag) null else tag
         browseJob?.cancel()
+        // A page in flight for the previous topic would append someone else's decks under this
+        // one's header. The selection token in [onBrowseEndReached] catches it too; cancelling
+        // here is what stops the request being paid for at all.
+        browseMoreJob?.cancel()
         _state.update {
             it.copy(
                 selectedTag = next,
@@ -277,11 +458,25 @@ class DiscoverViewModel(
         private const val TAG = "Loopky/DiscoverVM"
 
         /**
-         * Global browse costs one manifest fetch per deck, four at a time, each against a
-         * different homeserver. Twelve is three waves and six rows of the grid; the repository
-         * default of thirty would be eight waves before anything renders.
+         * How many grid rows one page of global browse is worth.
+         *
+         * A page is counted in *rows*, not tiles, because the tile count that fills a screen is a
+         * property of the screen: twelve tiles is six rows on a phone and three on a 4-column
+         * tablet, where it lands barely past the fold and every reader pays a round-trip
+         * immediately. Six rows is roughly two screenfuls at any width.
+         */
+        internal const val BROWSE_ROWS = 6
+
+        /**
+         * The page size before any platform has reported its grid, and the floor under
+         * [onGridColumnsChanged]. Global browse costs one manifest fetch per deck, four at a time,
+         * each against a different homeserver — twelve is three waves; the repository default of
+         * thirty would be eight before anything renders.
          */
         internal const val BROWSE_LIMIT = 12
+
+        /** No grid is wider than this, so nothing can ask for an unbounded page. */
+        internal const val MAX_BROWSE_LIMIT = 30
 
         /**
          * Each candidate costs a self-tag check plus a profile fetch, and the indexer clamps the
@@ -401,18 +596,62 @@ data class DiscoverPerson(
     val isFollowPending: Boolean = false,
 )
 
-/** One independently-loading strip. Strips never gate each other. */
+/**
+ * One independently-loading strip. Strips never gate each other.
+ *
+ * [hasMore] and [isLoadingMore] are separate from [isLoading] because they draw different things: a
+ * first load is a strip that is not there yet, a page load is a footer under a strip the reader is
+ * already looking at. Collapsing them made the whole grid disappear on every "load more".
+ */
 data class SectionState<T>(
     val items: List<T> = emptyList(),
     val isLoading: Boolean = false,
     val error: ErrorReason? = null,
+    /** Where the next page resumes. Meaningless to anything but the repository that issued it. */
+    val cursor: Int = DeckPage.START,
+    val hasMore: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    /** A failed *page*, shown under the items rather than instead of them. */
+    val pageError: ErrorReason? = null,
 ) {
     /** Settled with nothing to show — the only case that draws an empty placeholder. */
     val isEmpty: Boolean get() = items.isEmpty() && !isLoading && error == null
 
-    fun loading(): SectionState<T> = copy(isLoading = true, error = null)
-    fun loaded(items: List<T>): SectionState<T> = SectionState(items = items)
-    fun failed(reason: ErrorReason): SectionState<T> = copy(isLoading = false, error = reason)
+    /** True only when another page is worth asking for right now. */
+    /**
+     * True only when another page is worth asking for right now. A standing [pageError] blocks it:
+     * the sentinel is still on screen, so without this a failed page retries on every recomposition
+     * — a spin against a host that is not answering.
+     */
+    val canLoadMore: Boolean
+        get() = hasMore && !isLoading && !isLoadingMore && error == null && pageError == null
+
+    fun loading(): SectionState<T> = copy(isLoading = true, error = null, pageError = null)
+
+    /** First page: replaces the items and resets the cursor. */
+    fun loaded(items: List<T>, cursor: Int = DeckPage.START, hasMore: Boolean = false) =
+        SectionState(items = items, cursor = cursor, hasMore = hasMore)
+
+    /** A later page: appends. */
+    fun appended(more: List<T>, cursor: Int, hasMore: Boolean) = copy(
+        items = items + more,
+        cursor = cursor,
+        hasMore = hasMore,
+        isLoadingMore = false,
+        error = null,
+        pageError = null,
+    )
+
+    /** The strip itself could not load: [items] is empty and [error] is what to show instead. */
+    fun failed(reason: ErrorReason): SectionState<T> =
+        copy(isLoading = false, isLoadingMore = false, error = reason)
+
+    /**
+     * A *page* could not load. Keeps the items already on screen and stops the footer spinning;
+     * [hasMore] stays true, so the footer is still a retry rather than the end of the list.
+     */
+    fun pageFailed(reason: ErrorReason): SectionState<T> =
+        copy(isLoadingMore = false, pageError = reason)
 }
 
 data class DiscoverDeck(
