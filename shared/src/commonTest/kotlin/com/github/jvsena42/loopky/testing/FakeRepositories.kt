@@ -3,16 +3,19 @@ package com.github.jvsena42.loopky.testing
 import com.github.jvsena42.loopky.data.anki.BulkNote
 import com.github.jvsena42.loopky.data.homegate.LnInvoice
 import com.github.jvsena42.loopky.data.homegate.MethodAvailability
+import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.CardChunking
 import com.github.jvsena42.loopky.data.repository.AuthFlowHandle
 import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.CompactionOutcome
+import com.github.jvsena42.loopky.data.repository.DeckPage
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.data.repository.ImportRepository
 import com.github.jvsena42.loopky.data.repository.MediaRepository
+import com.github.jvsena42.loopky.data.repository.PeoplePage
 import com.github.jvsena42.loopky.data.repository.PinnedBlob
 import com.github.jvsena42.loopky.data.repository.PublishProgress
 import com.github.jvsena42.loopky.data.repository.RehostOutcome
@@ -952,11 +955,21 @@ class FakeDiscoveryRepository : DiscoveryRepository {
     /** Exact per-label results, when a test needs finer control than [globalDecks] gives. */
     var globalDecksByTag: Map<Tag, List<Deck>>? = null
 
-    override suspend fun decksByTagGlobal(tag: Tag, limit: Int): List<Deck> {
+    /** When set, the indexer read throws — the "unreachable", not "nothing published", case. */
+    var globalError: Throwable? = null
+
+    override suspend fun decksByTagGlobalPage(tag: Tag, limit: Int, cursor: Int): DeckPage {
         globalRequests.add(tag to limit)
         globalGate?.await()
-        globalDecksByTag?.let { return it[tag].orEmpty().take(limit) }
-        return globalDecks.filter { tag in it.tags || tag == ReservedTags.DECK }.take(limit)
+        globalError?.let { throw it }
+        val all = globalDecksByTag?.get(tag).orEmpty()
+            .ifEmpty { globalDecks.filter { tag in it.tags || tag == ReservedTags.DECK } }
+        val page = all.drop(cursor).take(limit)
+        return DeckPage(
+            decks = page,
+            nextCursor = cursor + page.size,
+            hasMore = cursor + page.size < all.size,
+        )
     }
 
     override suspend fun loopkyUsers(limit: Int): List<PubkyIdentity> = loopkyUsers.take(limit)
@@ -985,7 +998,11 @@ class FakeDiscoveryRepository : DiscoveryRepository {
     }
 
     /** Mirrors the real union: directory first, then deck authors, minus self and follows. */
-    override suspend fun suggestedPeople(seedDecks: List<Deck>, limit: Int): List<PubkyIdentity> {
+    override suspend fun suggestedPeoplePage(
+        seedDecks: List<Deck>,
+        limit: Int,
+        cursor: Int,
+    ): PeoplePage {
         suggestedRequests.add(limit)
         peopleGate?.await()
         val directory = loopkyUsers.filterNot { it.pubky in follows }
@@ -994,7 +1011,13 @@ class FakeDiscoveryRepository : DiscoveryRepository {
             .distinct()
             .filter { it !in follows && seen.add(it) }
             .map { PubkyIdentity(it, displayName = null, avatarUrl = null, bio = null) }
-        return (directory + authors).take(limit)
+        val all = directory + authors
+        val page = all.drop(cursor).take(limit)
+        return PeoplePage(
+            people = page,
+            nextCursor = cursor + page.size,
+            hasMore = cursor + page.size < all.size,
+        )
     }
 }
 
@@ -1058,9 +1081,22 @@ class RecordingTagRepository : TagRepository {
     /** Every indexer read, so a test can pin how often a caller asks for the same thing. */
     val taggedRequests = mutableListOf<Pair<Tag, Int>>()
 
-    override suspend fun taggedSubjects(tag: Tag, limit: Int): List<TaggedSubject> {
+    /** Every read with its cursor, for the paging assertions. */
+    val taggedWindows = mutableListOf<Triple<Tag, Int, Int>>()
+
+    /** Every order asked for — paging is only sound under one of them. */
+    val taggedSortings = mutableListOf<NexusResourceSorting>()
+
+    override suspend fun taggedSubjects(
+        tag: Tag,
+        limit: Int,
+        skip: Int,
+        sorting: NexusResourceSorting,
+    ): List<TaggedSubject> {
         taggedRequests.add(tag to limit)
-        return subjectsByTag[tag].orEmpty().take(limit)
+        taggedWindows.add(Triple(tag, limit, skip))
+        taggedSortings.add(sorting)
+        return subjectsByTag[tag].orEmpty().drop(skip).take(limit)
     }
 
     override suspend fun usersTagged(tag: Tag, limit: Int): List<String> {

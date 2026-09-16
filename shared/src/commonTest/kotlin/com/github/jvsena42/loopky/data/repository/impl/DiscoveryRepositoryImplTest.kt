@@ -704,7 +704,9 @@ class DiscoveryRepositoryImplTest {
         sampleOf("strangerpk" to "deck1")
 
         assertEquals(listOf("deck1"), repo.searchDecks("spanish verbs").map { it.id })
-        assertEquals(listOf(ReservedTags.DECK), tagRepo.taggedRequests.map { it.first })
+        // The sample read may take several windows to fill a page, so it is the set of *labels*
+        // asked about that matters: the phrase must never reach the tag index as a label.
+        assertEquals(listOf(ReservedTags.DECK), tagRepo.taggedRequests.map { it.first }.distinct())
     }
 
     @Test
@@ -713,10 +715,15 @@ class DiscoveryRepositoryImplTest {
         sampleOf("strangerpk" to "deck1")
 
         repo.searchDecks("spanish verbs")
+        val afterFirst = tagRepo.taggedRequests.count { it.first == ReservedTags.DECK }
         repo.searchDecks("verbs")
 
-        // One indexer read for the sample; the second query filtered what was already in hand.
-        assertEquals(expected = 1, actual = tagRepo.taggedRequests.count { it.first == ReservedTags.DECK })
+        // The second query filtered what was already in hand. Counted as a delta rather than
+        // pinned at 1, because filling one page can legitimately take more than one window.
+        assertEquals(
+            expected = afterFirst,
+            actual = tagRepo.taggedRequests.count { it.first == ReservedTags.DECK },
+        )
     }
 
     // --- announceDeck (#39) ---------------------------------------------------
