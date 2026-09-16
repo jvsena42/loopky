@@ -10,6 +10,11 @@
     honest empty state rather than skipping the journey. Confirm which case you are in with
     `curl 'https://nexus.staging.pubky.app/v0/stream/resources?app=loopky&amp;tags=loopky-deck&amp;limit=5'`
     before starting.
+
+    **The empty block and the error block are different screens and this journey checks both** (#321).
+    "Nothing published here yet" is a claim about the network and may only appear after the indexer
+    has actually answered; an unreachable one shows "You're offline" with a Retry. Browse also pages
+    now, so the count that curl reports is the number to hold the screen to — not the first screenful.
   </description>
   <actions>
     <action>Launch the Loopky app and verify the Home screen is shown</action>
@@ -18,6 +23,8 @@
     <action>Verify a "Browse decks" section is present — this is the global browse, and it must NOT require following anyone</action>
     <action>Wait for the browse strip to settle, then verify EITHER at least one deck tile (resource-id: discover_deck_tile) OR the empty block (resource-id: discover_browse_empty) reading "Nothing published here yet" with a "Search people &amp; decks" button (resource-id: discover_browse_empty_search). There must never be a bare "Follow a friend to see their decks here" dead end.</action>
     <action>Verify every deck tile's cover follows ONE rule: the picture runs the full width of its tile, corner to corner, with no strip of the tile's own surface down either side. Square and portrait covers are the ones that break this (#255), so check a grid holding both those and a landscape cover — the defect is the inconsistency between neighbours, not the inset alone.</action>
+    <action>Count the indexed decks first: `curl -s 'https://nexus.staging.pubky.app/v0/stream/resources?app=loopky&amp;tags=loopky-deck&amp;sorting=timeline&amp;limit=100&amp;skip=0' | jq length`. Scroll the browse grid to its end, counting distinct deck titles, and verify the screen reaches that number rather than stopping at the first page (#321). Before paging, Discover showed 11 of 71 on staging and nothing reached the rest.</action>
+    <action>While scrolling, verify each new page appends UNDER the decks already on screen — the grid must never blank and re-populate, and your scroll position must not jump</action>
     <action>Scroll to the end of the browse grid and verify the last row's title and "N cards · author" line clear the floating tab bar and can be read</action>
     <action>If a topic chip row is visible (resource-id: discover_topic_row), tap the first chip (resource-id: discover_topic_chip)</action>
     <action>Verify the browse heading changes to "Decks tagged “…”" and a "Clear" control appears (resource-id: discover_clear_tag). The deck list is re-queried from the indexer, so it may legitimately differ from the unfiltered list.</action>
@@ -36,7 +43,9 @@
     <action>Tap the element with resource-id "search_direct_hit"</action>
     <action>Verify your own profile is shown with NO Follow button (regression: you could follow yourself)</action>
     <action>Navigate back to Discover</action>
-    <action>Turn the device radios off, pull to refresh, and verify the screen still renders: the "From people you follow" section shows an error with a working Retry, while the other strips show their own empty states. The screen must never go blank.</action>
-    <action>Turn the radios back on and pull to refresh to confirm recovery</action>
+    <action>Turn the device radios off, pull to refresh, and verify the screen still renders: BOTH the "From people you follow" section and the "Discover decks" section show "You're offline" with a working Retry. The screen must never go blank — and browse must NEVER show "Nothing published here yet" here, which is the #321 bug: a claim about the network from a device that never reached it.</action>
+    <action>Tap the Retry under "Discover decks" with the radios still off and verify it fails again honestly — same message, no spinner left running, no empty state</action>
+    <action>Turn the radios back on, tap that same Retry, and verify the browse grid fills without needing a pull-to-refresh</action>
+    <action>Turn the radios off again mid-scroll, scroll to the foot of the browse grid, and verify the decks already loaded STAY on screen with an error and Retry under them — a failed page is a footer that could not load, not a strip that could not load. Turn the radios back on, tap that Retry, and verify the next page appends below the decks already there with no duplicates.</action>
   </actions>
 </journey>

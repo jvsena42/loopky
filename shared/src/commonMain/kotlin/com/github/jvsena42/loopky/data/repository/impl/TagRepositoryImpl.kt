@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
 import com.github.jvsena42.loopky.data.nexus.NexusClient
+import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.PubkyUris
@@ -145,11 +146,18 @@ class TagRepositoryImpl(
             .map { Tag(it.key) }
     }
 
-    override suspend fun taggedSubjects(tag: Tag, limit: Int): List<TaggedSubject> {
+    override suspend fun taggedSubjects(
+        tag: Tag,
+        limit: Int,
+        skip: Int,
+        sorting: NexusResourceSorting,
+    ): List<TaggedSubject> {
         val label = sanitizeLabel(tag).getOrElse { return emptyList() }
-        return nexus.resourcesByTag(label, limit)
+        // Propagated, not swallowed — see the contract. An unreachable indexer must never reach a
+        // screen as "nothing published".
+        return nexus.resourcesByTag(label, limit, skip, sorting)
             .onFailure { Log.w(TAG, "taggedSubjects('$label'): FAILED — ${it.message}") }
-            .getOrElse { emptyList() }
+            .getOrThrow()
             .map { resource ->
                 // Prefer the count for *this* label; the resource-level count spans every label
                 // on the subject, and the per-label entry can be missing if the tag list was cut.

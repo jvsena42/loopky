@@ -35,8 +35,10 @@ class NexusClient(
         limit: Int = DEFAULT_SEARCH_LIMIT,
     ): Result<List<String>> = runSuspendCatching {
         val encoded = encodeUriComponent(prefix)
-        val body = http.get("$baseUrl/v0/search/tags/by_prefix/$encoded?limit=$limit").getOrThrow()
-        loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
+        withIndexerRetry("searchTagsByPrefix") {
+            val body = http.get("$baseUrl/v0/search/tags/by_prefix/$encoded?limit=$limit").getOrThrow()
+            loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
+        }
     }
 
     /**
@@ -51,8 +53,10 @@ class NexusClient(
     ): Result<List<String>> = runSuspendCatching {
         val url = "$baseUrl/v0/search/users/by_name/${encodeUriComponent(prefix)}" +
             "?limit=${limit.coerceIn(1, MAX_USER_SEARCH_LIMIT)}"
-        val body = http.get(url).getOrThrow()
-        loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
+        withIndexerRetry("searchUsersByName") {
+            val body = http.get(url).getOrThrow()
+            loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
+        }
     }
 
     /**
@@ -66,31 +70,44 @@ class NexusClient(
     ): Result<List<String>> = runSuspendCatching {
         val url = "$baseUrl/v0/search/users/by_id/${encodeUriComponent(prefix)}" +
             "?limit=${limit.coerceIn(1, MAX_USER_SEARCH_LIMIT)}"
-        val body = http.get(url).getOrThrow()
-        loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
+        withIndexerRetry("searchUsersById") {
+            val body = http.get(url).getOrThrow()
+            loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
+        }
     }
 
     /**
-     * Loopky resources carrying [label], most-tagged first — the label → URIs read behind global
-     * browse. Only tag records written outside the pubky.app namespace reach this index, which is
-     * why deck tags live under `/pub/loopky/tags/`. `app` is that namespace, so this cannot return
-     * another app's resources.
+     * Loopky resources carrying [label] — the label → URIs read behind global browse. Only tag
+     * records written outside the pubky.app namespace reach this index, which is why deck tags live
+     * under `/pub/loopky/tags/`. `app` is that namespace, so this cannot return another app's
+     * resources.
+     *
+     * [skip] indexes the indexer's *raw* sorted set, not the entries that come back: Nexus drops a
+     * resource whose details no longer resolve, so a page is routinely shorter than [limit] with
+     * more behind it. A short page is therefore never evidence of the end — only an empty one is.
+     * Measured on staging: `limit=100&skip=0` returned 69 of 71, and `skip=40` surfaced two the
+     * first page had never shown.
+     *
+     * See [NexusResourceSorting] for why paging and [NexusResourceSorting.TaggersCount] do not mix.
      */
     suspend fun resourcesByTag(
         label: String,
         limit: Int = DEFAULT_RESOURCE_LIMIT,
         skip: Int = 0,
+        sorting: NexusResourceSorting = NexusResourceSorting.TaggersCount,
     ): Result<List<NexusResourceDto>> = runSuspendCatching {
         val url = buildString {
             append("$baseUrl/v0/stream/resources")
             append("?app=$LOOPKY_APP")
             append("&tags=${encodeUriComponent(label)}")
-            append("&sorting=taggers_count")
+            append("&sorting=${sorting.wire}")
             append("&limit=${limit.coerceIn(1, MAX_RESOURCE_LIMIT)}")
             append("&skip=$skip")
         }
-        val body = http.get(url).getOrThrow()
-        loopkyJson.decodeFromString(ListSerializer(NexusResourceDto.serializer()), body)
+        withIndexerRetry("resourcesByTag") {
+            val body = http.get(url).getOrThrow()
+            loopkyJson.decodeFromString(ListSerializer(NexusResourceDto.serializer()), body)
+        }
     }
 
     /**
@@ -102,8 +119,10 @@ class NexusClient(
             "?uri=${encodeUriComponent(uri)}" +
             "&limit_tags=$MAX_TAGS_PER_RESOURCE" +
             "&limit_taggers=1"
-        val body = http.get(url).getOrThrow()
-        loopkyJson.decodeFromString(NexusResourceTagsDto.serializer(), body)
+        withIndexerRetry("resourceByUri") {
+            val body = http.get(url).getOrThrow()
+            loopkyJson.decodeFromString(NexusResourceTagsDto.serializer(), body)
+        }
     }
 
     /**
@@ -131,9 +150,11 @@ class NexusClient(
         val url = "$baseUrl/v0/search/users/by_tags" +
             "?tags=${encodeUriComponent(label)}" +
             "&limit=${limit.coerceIn(1, MAX_PROFILE_TAG_LIMIT)}"
-        val body = http.get(url).getOrThrow()
-        loopkyJson.decodeFromString(ListSerializer(NexusScoredUserDto.serializer()), body)
-            .map { it.user_id }
+        withIndexerRetry("usersByProfileTag") {
+            val body = http.get(url).getOrThrow()
+            loopkyJson.decodeFromString(ListSerializer(NexusScoredUserDto.serializer()), body)
+                .map { it.user_id }
+        }
     }
 
     /**
@@ -147,10 +168,12 @@ class NexusClient(
     ): Result<List<String>> = runSuspendCatching {
         val url = "$baseUrl/v0/search/posts/by_tag/${encodeUriComponent(label)}" +
             "?limit=${limit.coerceIn(1, MAX_POST_SEARCH_LIMIT)}"
-        val body = http.get(url).getOrThrow()
-        loopkyJson.decodeFromString(ListSerializer(NexusPostKeyDto.serializer()), body)
-            .mapNotNull { it.post_key.substringBefore(':').takeIf { author -> author.isNotEmpty() } }
-            .distinct()
+        withIndexerRetry("postAuthorsByTag") {
+            val body = http.get(url).getOrThrow()
+            loopkyJson.decodeFromString(ListSerializer(NexusPostKeyDto.serializer()), body)
+                .mapNotNull { it.post_key.substringBefore(':').takeIf { author -> author.isNotEmpty() } }
+                .distinct()
+        }
     }
 
     /**
@@ -164,8 +187,10 @@ class NexusClient(
     ): Result<List<String>> = runSuspendCatching {
         val url = "$baseUrl/v0/user/${encodeUriComponent(userId)}/taggers/${encodeUriComponent(label)}" +
             "?limit=${limit.coerceIn(1, MAX_USER_TAGGERS_LIMIT)}"
-        val body = http.get(url).getOrThrow()
-        loopkyJson.decodeFromString(NexusTaggersDto.serializer(), body).users
+        withIndexerRetry("userTaggers") {
+            val body = http.get(url).getOrThrow()
+            loopkyJson.decodeFromString(NexusTaggersDto.serializer(), body).users
+        }
     }
 
     /**
@@ -180,8 +205,10 @@ class NexusClient(
     ): Result<List<String>> = runSuspendCatching {
         val url = "$baseUrl/v0/user/${encodeUriComponent(userId)}/followers" +
             "?limit=${limit.coerceIn(1, MAX_FOLLOWS_LIMIT)}"
-        val body = http.get(url).getOrThrow()
-        loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
+        withIndexerRetry("followers") {
+            val body = http.get(url).getOrThrow()
+            loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
+        }
     }
 
     companion object {
@@ -206,6 +233,27 @@ class NexusClient(
         private const val DEFAULT_FOLLOWS_LIMIT = 60
         private const val MAX_FOLLOWS_LIMIT = 200
     }
+}
+
+/**
+ * How `/v0/stream/resources` orders a page. Nexus accepts these two and rejects anything else.
+ *
+ * **Only [Timeline] can be paged.** [TaggersCount] re-ranks whenever anyone tags anything, so a
+ * `skip`-based page 2 taken a moment after page 1 can repeat entries and skip others — there is no
+ * stable position to resume from. [Timeline] orders by `indexed_at` descending, which only ever
+ * grows at the head, so a cursor stays meaningful.
+ *
+ * [TaggersCount] is also a poor popularity signal for a deck: the resource-level count sums
+ * *distinct taggers across every label*, so a deck whose author typed five topics outranks one four
+ * people actually follow. Measured on staging, that put 7 of the top 12 decks under a single author
+ * while 11 decks sat at the bottom permanently unreachable (#321).
+ */
+enum class NexusResourceSorting(val wire: String) {
+    /** `indexed_at` descending — newest first, and the only order with a stable cursor. */
+    Timeline("timeline"),
+
+    /** Distinct taggers summed over every label on the resource. Unstable under paging. */
+    TaggersCount("taggers_count"),
 }
 
 /** Identity of an indexed resource (Nexus `ResourceDetails`). */

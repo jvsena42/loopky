@@ -3538,3 +3538,83 @@ which leaves `charToString` with no callers and it has been dropped. This box is
 Today on a simulator against a deck with a cover emoji before trusting this row.
 
 No `journeys/*.xml` asserts on Today's deck covers, so none was re-run for this.
+
+---
+
+## 04 + 13 — Discover paging, and an unreachable indexer that claimed to be an empty network — ✅ PASS (2026-09-16, `emulator-5554`, signed in as `pk:kfezy1…ccpqf4y`)
+
+Investigation of "Discover is not showing all decks" (#321). Staging had **71 indexed Loopky
+decks**; Discover showed **11**, and scrolling to the bottom reached nothing more. Three causes,
+all measured against the live staging indexer before any code changed.
+
+| | Before | After |
+| --- | --- | --- |
+| Distinct deck titles reachable on Discover | 11 | 56 and still scrolling (40 swipes) |
+| Page size, phone (2 columns) | 12, fixed | 12 per page, unbounded |
+| Page size, tablet (4 columns) | 12, fixed | 24 per page |
+| Indexer reads to fill a page | 1, short pages accepted | up to 4, refilled |
+
+**1. The limit was spent at the indexer and the drops came off the top.** `decksByTagGlobal(tag, 12)`
+asked Nexus for exactly 12 resources and *then* dropped your own decks, non-manifest URIs and
+manifests that would not fetch. Live check of the top-12 window: 7 of the 12 belonged to one author,
+so that author — who had published 30 of the network's 71 decks — saw **5 tiles**.
+
+**2. `sorting=taggers_count` froze the window.** The resource-level count sums distinct taggers over
+*every* label, so a deck whose author typed five topics outranked one four people follow. It is
+deterministic, so the same 12 appeared forever; 11 staging decks sat at `taggers_count: 1`,
+permanently unreachable. Browse now asks for `timeline`.
+
+**3. `skip` indexes the indexer's raw sorted set, not what comes back.** Verified: `limit=100&skip=0`
+returned 69 of 71, while `skip=40` surfaced two the first page had never shown. So the cursor
+advances by the window *asked for* and a short page is never the end — only an empty one is.
+`timeline` paged cleanly at `limit=20`: 20 / 20 / 20 / 7 / 0, monotonic, no duplicates.
+
+Device log confirming the page size follows the grid, same build, same account:
+
+```
+phone  (2 col) decksByTagGlobalPage('loopky-deck'): 12/12 in 1 requests, cursor 0 -> 12, hasMore=true
+tablet (4 col) decksByTagGlobalPage('loopky-deck'):  0/24 in 1 requests, cursor 0 -> 24, hasMore=false
+               onBrowseEndReached('loopky-deck'): +12   (×3, scrolling)
+```
+
+### The empty state was lying, and that is the more serious half
+
+Found while checking the tablet, which had not got DNS yet: `taggedSubjects` swallowed the indexer
+failure and returned `emptyList()`, so **an unreachable Nexus rendered as "Nothing published here
+yet"** — a confident claim about the network, from a device that had never reached it, with no retry
+offered. The same screen's "From people you follow" strip correctly said "You're offline" about the
+same dead connection, because that one repository propagates.
+
+Reproduced deliberately with `svc wifi disable && svc data disable`:
+
+| Strip | Before | After |
+| --- | --- | --- |
+| From people you follow | "You're offline" + Retry | unchanged |
+| Discover decks | "Nothing published here yet" | "You're offline" + Retry |
+
+Retry verified end to end: tapped with the radios still off → same honest error, no spinner left
+running; radios back on, tapped again → `12/12 in 1 requests`, grid filled, **no pull-to-refresh
+needed**. A failed *page* keeps the decks already on screen and puts the error under them, since
+that is a footer that could not load rather than a strip that could not load.
+
+**The offline copy needed one more fix to be right.** Browse first reported "Something went wrong"
+where the strip above it said "You're offline". `isNetworkFailure()` matched the Rust FFI's wording
+only; Android's `UnknownHostException` reads `Unable to resolve host "…": No address associated with
+hostname`, which matched none of its phrases. The platform HTTP wordings (Android's, and iOS's two
+`NSError` strings) are now in the list, verbatim from the device.
+
+Indexer reads also retry once or twice with jittered backoff on a 5xx or a 429. **Offline and 4xx are
+deliberately not retried** — a device with no route answers the same way in 250ms and in 2s, so
+backing off only delays the error block that tells the reader to check their connection.
+
+### Not verified here
+
+- **The tablet row is partial.** `Pixel_Tablet` confirmed the 4-column page size (`0/24`) from the
+  log, but `user_rotation` would not take and its network came up late, so the wide two-pane browse
+  grid was never seen full of decks. Re-run 04 on a tablet in both orientations before trusting the
+  expanded layout.
+- **iOS is reasoned, not run.** This box is Linux, so `xcodebuildmcp` cannot build or drive a
+  simulator. `DiscoverView`/`DiscoverScreen`/`TagBrowseScreen` carry the same sentinel-footer,
+  error-and-retry and `onGridColumnsChanged` wiring, and the ViewModels are shared, but nothing was
+  driven. Drive Discover and a tag chip on a simulator — one iPhone, one iPad — before trusting the
+  iOS row.

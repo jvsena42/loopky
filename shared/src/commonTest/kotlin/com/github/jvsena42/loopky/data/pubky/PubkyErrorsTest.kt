@@ -30,6 +30,23 @@ class PubkyErrorsTest {
     }
 
     @Test
+    fun classifiesThePlatformHttpStacksOfflineWordings() {
+        // Verbatim from a device with wifi and data off (#321). None of these come through the FFI,
+        // so none of them matched until the indexer's failures started reaching the UI: Discover
+        // said "Something went wrong" while the strip above it said "You're offline" about the same
+        // dead connection.
+        val android = RuntimeException(
+            """Unable to resolve host "nexus.staging.pubky.app": No address associated with hostname""",
+        )
+        val iosNoHost = RuntimeException("A server with the specified hostname could not be found.")
+        val iosOffline = RuntimeException("The Internet connection appears to be offline.")
+
+        assertEquals(ErrorReason.Offline, android.toErrorReason())
+        assertEquals(ErrorReason.Offline, iosNoHost.toErrorReason())
+        assertEquals(ErrorReason.Offline, iosOffline.toErrorReason())
+    }
+
+    @Test
     fun classifiesAMissingRecordAsNotFound() {
         assertEquals(ErrorReason.NotFound, PubkyError("not found: pubky://x/pub/loopky").toErrorReason())
     }

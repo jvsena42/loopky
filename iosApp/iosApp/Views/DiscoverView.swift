@@ -25,10 +25,18 @@ struct DiscoverDeckData: Identifiable {
 }
 
 /// One independently-loading strip, mirroring the shared `SectionState`.
+///
+/// `isLoadingMore` is separate from `isLoading` on purpose: a first load is a strip that is not
+/// there yet, a page load is a footer under one the reader is already looking at. Collapsing them
+/// replaces the whole grid with a spinner on every "load more".
 struct DiscoverSection<Item> {
     var items: [Item] = []
     var isLoading: Bool = false
     var errorMessage: String?
+    var hasMore: Bool = false
+    var isLoadingMore: Bool = false
+    /// A failed *page*, shown under the items rather than instead of them.
+    var pageErrorMessage: String?
 
     var isEmpty: Bool { items.isEmpty && !isLoading && errorMessage == nil }
 }
@@ -53,10 +61,18 @@ struct DiscoverView: View {
     var onFollowTap: (String) -> Void = { _ in }
     var onDeckTap: (String, String) -> Void = { _, _ in }
     var onRetryFollowing: () -> Void = {}
+    var onBrowseEndReached: () -> Void = {}
+    var onPeopleEndReached: () -> Void = {}
+    var onRetryBrowse: () -> Void = {}
+    var onRetryBrowsePage: () -> Void = {}
+    var onGridColumnsChanged: (Int) -> Void = { _ in }
     var isGuest: Bool = false
     var onSignIn: () -> Void = {}
 
     @Environment(\.loopkyWidthClass) private var widthClass
+
+    /// How close to the end of the people row asking for the next page starts.
+    private let peoplePrefetchDistance = 2
 
     var body: some View {
         ScrollView {
@@ -86,6 +102,11 @@ struct DiscoverView: View {
             .contentPane(PaneWidth.wide)
         }
         .background(LoopkyColor.surfacePrimary)
+        // A page is counted in rows, so the ViewModel has to know how wide the grid is: twelve
+        // tiles is six rows on an iPhone and three on an iPad. Reported rather than read, because
+        // the size class is a SwiftUI concern and it changes on rotation and in Split View.
+        .onAppear { onGridColumnsChanged(deckGridColumns(widthClass)) }
+        .onChange(of: widthClass) { _, new in onGridColumnsChanged(deckGridColumns(new)) }
     }
 
     /// What replaces the three tabs a guest does not have: a way *in*, not a wall.
@@ -158,8 +179,19 @@ struct DiscoverView: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-                        ForEach(state.people.items) { person in
+                        ForEach(Array(state.people.items.enumerated()), id: \.element.id) { index, person in
                             personTile(person)
+                                // A row has no footer to hang a sentinel off, so the trigger rides
+                                // the tiles: ask once the reader is within a tile of the end, early
+                                // enough that the page lands before the row runs out.
+                                .onAppear {
+                                    if index >= state.people.items.count - peoplePrefetchDistance {
+                                        onPeopleEndReached()
+                                    }
+                                }
+                        }
+                        if state.people.isLoadingMore {
+                            ProgressView().frame(width: 60)
                         }
                     }
                 }
@@ -225,12 +257,54 @@ struct DiscoverView: View {
             }
             if state.browse.isLoading {
                 ProgressView().frame(maxWidth: .infinity)
+            } else if let message = state.browse.errorMessage {
+                // Never the empty block: "Nothing published here yet" is a claim about the network,
+                // and a device that could not reach the indexer has not earned it (#321).
+                retryBlock(message: message, onRetry: onRetryBrowse)
+                    .accessibilityIdentifier("discover_browse_error")
             } else if state.browse.isEmpty {
                 browseEmpty
             } else {
                 deckGrid(state.browse.items)
+                if let message = state.browse.pageErrorMessage {
+                    retryBlock(message: message, onRetry: onRetryBrowsePage)
+                        .accessibilityIdentifier("discover_browse_page_error")
+                } else if state.browse.hasMore {
+                    loadMoreFooter(isLoading: state.browse.isLoadingMore, onLoadMore: onBrowseEndReached)
+                }
             }
         }
+    }
+
+    /// What a strip shows when the indexer did not answer: what happened, and a way to ask again.
+    private func retryBlock(message: String, onRetry: @escaping () -> Void) -> some View {
+        VStack(spacing: 8) {
+            Text(verbatim: message)
+                .font(.system(size: 13))
+                .foregroundColor(LoopkyColor.foregroundMuted)
+                .multilineTextAlignment(.center)
+            Button("home_retry", action: onRetry)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(LoopkyColor.accentPrimary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+    }
+
+    /// The sentinel at the foot of the grid: asks for the next page as it scrolls into view.
+    ///
+    /// `onAppear` inside a `LazyVGrid`'s enclosing `ScrollView` fires when the row reaches the
+    /// viewport, so *appearing* already means the reader has reached the end. It fires once per
+    /// appearance and the ViewModel guards the rest — see `SectionState.canLoadMore`.
+    private func loadMoreFooter(isLoading: Bool, onLoadMore: @escaping () -> Void) -> some View {
+        HStack {
+            Spacer()
+            if isLoading { ProgressView() }
+            Spacer()
+        }
+        .frame(height: 44)
+        .onAppear(perform: onLoadMore)
+        .accessibilityIdentifier("load_more_footer")
     }
 
     private var browseEmpty: some View {

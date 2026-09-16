@@ -53,6 +53,7 @@ import com.github.jvsena42.loopky.presentation.discover.DiscoverUiState
 import com.github.jvsena42.loopky.presentation.discover.DiscoverViewModel
 import com.github.jvsena42.loopky.presentation.discover.SectionState
 import com.github.jvsena42.loopky.ui.components.GuestSignInBanner
+import com.github.jvsena42.loopky.ui.components.LoadMoreFooter
 import com.github.jvsena42.loopky.ui.components.LoopkyErrorBlock
 import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
 import com.github.jvsena42.loopky.ui.components.errorMessage
@@ -140,6 +141,11 @@ fun DiscoverRoute(
         onFollowToggle = viewModel::onFollowToggle,
         onRefresh = viewModel::onRefresh,
         onRetryFollowing = viewModel::onRetryFollowing,
+        onBrowseEndReached = viewModel::onBrowseEndReached,
+        onPeopleEndReached = viewModel::onPeopleEndReached,
+        onGridColumnsChanged = viewModel::onGridColumnsChanged,
+        onRetryBrowse = viewModel::onRetryBrowse,
+        onRetryBrowsePage = viewModel::onRetryBrowsePage,
     )
 }
 
@@ -157,6 +163,11 @@ private fun DiscoverScreen(
     onFollowToggle: (String) -> Unit,
     onRefresh: () -> Unit,
     onRetryFollowing: () -> Unit,
+    onBrowseEndReached: () -> Unit,
+    onPeopleEndReached: () -> Unit,
+    onGridColumnsChanged: (Int) -> Unit,
+    onRetryBrowse: () -> Unit,
+    onRetryBrowsePage: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -176,6 +187,18 @@ private fun DiscoverScreen(
             // composables, so they cannot read the window themselves and take the count instead.
             val deckColumns = deckGridColumns()
             val tileActions = DeckTileActions(onOpenDeck = onOpenDeck, onOpenAuthor = onOpenAuthor)
+            val browseActions = BrowseActions(
+                onTagSelected = onTagSelected,
+                onSearch = onSearch,
+                onEndReached = onBrowseEndReached,
+                onRetry = onRetryBrowse,
+                onRetryPage = onRetryBrowsePage,
+            )
+            // A page is counted in rows, so the ViewModel has to know how wide the grid is: twelve
+            // tiles is six rows on a phone and three on a tablet. Reported rather than read, because
+            // the width class is an Android concern and it changes on rotation and split-screen.
+            val reportColumns by rememberUpdatedState(onGridColumnsChanged)
+            LaunchedEffect(deckColumns) { reportColumns(deckColumns) }
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -206,12 +229,12 @@ private fun DiscoverScreen(
                 // is the fallback firehose and sits under the people and decks you chose — which
                 // costs a new account nothing, because the followed strip hides itself when empty.
                 if (state.selectedTag != null) {
-                    browseSection(state, deckColumns, onTagSelected, tileActions, onSearch)
+                    browseSection(state, deckColumns, tileActions, browseActions)
                 }
-                peopleSection(state, onOpenAuthor, onFollowToggle)
+                peopleSection(state, onOpenAuthor, onFollowToggle, onPeopleEndReached)
                 followingSection(state, deckColumns, tileActions, onRetryFollowing)
                 if (state.selectedTag == null) {
-                    browseSection(state, deckColumns, onTagSelected, tileActions, onSearch)
+                    browseSection(state, deckColumns, tileActions, browseActions)
                 }
             }
         }
@@ -250,6 +273,7 @@ private fun LazyListScope.peopleSection(
     state: DiscoverUiState,
     onOpenAuthor: (String) -> Unit,
     onFollowToggle: (String) -> Unit,
+    onEndReached: () -> Unit,
 ) {
     // Hidden entirely once it settles empty: an empty people strip on a young network is not
     // information, and the browse strip below is the better thing to be looking at.
@@ -282,6 +306,12 @@ private fun LazyListScope.peopleSection(
             itemSpacing = 12.dp,
         ) { index ->
             val person = state.people.items[index]
+            // A carousel has no footer to hang a sentinel off, so the trigger rides the tiles: ask
+            // once the reader is within a tile of the end, which is early enough that the next page
+            // lands before the row runs out under their finger.
+            if (index >= state.people.items.lastIndex - PEOPLE_PREFETCH_DISTANCE) {
+                LaunchedEffect(index, state.people.cursor) { onEndReached() }
+            }
             PersonTile(
                 person = person,
                 onOpenProfile = { onOpenAuthor(person.identity.pubky) },
@@ -292,18 +322,29 @@ private fun LazyListScope.peopleSection(
     }
 }
 
+/** How close to the end of the people row asking for the next page starts. */
+private const val PEOPLE_PREFETCH_DISTANCE = 1
+
 /** [PersonTile]'s own width — the carousel gives each slot exactly the tile it holds. */
 private val PERSON_TILE_WIDTH = 148.dp
 
 /** Avatar, name, pubky and the follow pill, plus the tile's own padding. */
 private val PERSON_TILE_HEIGHT = 186.dp
 
+/** Browse's own callbacks, kept together so the section takes one parameter for the three. */
+private data class BrowseActions(
+    val onTagSelected: (Tag?) -> Unit,
+    val onSearch: () -> Unit,
+    val onEndReached: () -> Unit,
+    val onRetry: () -> Unit,
+    val onRetryPage: () -> Unit,
+)
+
 private fun LazyListScope.browseSection(
     state: DiscoverUiState,
     columns: Int,
-    onTagSelected: (Tag?) -> Unit,
-    actions: DeckTileActions,
-    onSearch: () -> Unit,
+    tiles: DeckTileActions,
+    browseActions: BrowseActions,
 ) {
     // Everything browse found is already in the follow strip below, so this section has nothing
     // left to show — and "No decks tagged X yet" is a claim about the world that is false while
@@ -320,16 +361,28 @@ private fun LazyListScope.browseSection(
             text = state.selectedTag
                 ?.let { stringResource(R.string.discover_browse_tag_title, it.value) }
                 ?: stringResource(R.string.discover_browse_title),
-            trailing = state.selectedTag?.let { { ClearTagButton(onClick = { onTagSelected(null) }) } },
+            trailing = state.selectedTag?.let { { ClearTagButton(onClick = { browseActions.onTagSelected(null) }) } },
         )
     }
     val browse = state.browseExcludingFollowed
     if (browse.isLoading) {
         item(key = "browse_loading") { SectionSpinner(modifier = Modifier.testTag("discover_browse_loading")) }
     }
+    // Ahead of the empty block, and the reason `isEmpty` requires `error == null`: "Nothing
+    // published here yet" is a claim about the network, and a device that could not reach the
+    // indexer has not earned the right to make it (#321).
+    browse.error?.let { reason ->
+        item(key = "browse_error") {
+            LoopkyErrorBlock(
+                reason = reason,
+                onRetry = browseActions.onRetry,
+                modifier = Modifier.testTag("discover_browse_error"),
+            )
+        }
+    }
     if (browse.isEmpty && !coveredByFollowed) {
         item(key = "browse_empty") {
-            BrowseEmptyBlock(selectedTag = state.selectedTag, onSearch = onSearch)
+            BrowseEmptyBlock(selectedTag = state.selectedTag, onSearch = browseActions.onSearch)
         }
     }
     deckRows(
@@ -337,8 +390,23 @@ private fun LazyListScope.browseSection(
         columns = columns,
         keyPrefix = "browse",
         tileTestTag = "discover_deck_tile",
-        actions = actions,
+        actions = tiles,
     )
+    // A failed page keeps the decks above it and offers the retry in their place.
+    browse.pageError?.let { reason ->
+        item(key = "browse_page_error") {
+            LoopkyErrorBlock(
+                reason = reason,
+                onRetry = browseActions.onRetryPage,
+                modifier = Modifier.testTag("discover_browse_page_error"),
+            )
+        }
+    }
+    if (browse.hasMore && browse.pageError == null) {
+        item(key = "browse_more") {
+            LoadMoreFooter(isLoading = browse.isLoadingMore, onLoadMore = browseActions.onEndReached)
+        }
+    }
 }
 
 private fun LazyListScope.followingSection(
@@ -464,6 +532,11 @@ private fun DiscoverScreenPreview() {
             onFollowToggle = {},
             onRefresh = {},
             onRetryFollowing = {},
+            onBrowseEndReached = {},
+            onPeopleEndReached = {},
+            onGridColumnsChanged = {},
+            onRetryBrowse = {},
+            onRetryBrowsePage = {},
         )
     }
 }
@@ -485,6 +558,11 @@ private fun DiscoverScreenEmptyBrowsePreview() {
             onFollowToggle = {},
             onRefresh = {},
             onRetryFollowing = {},
+            onBrowseEndReached = {},
+            onPeopleEndReached = {},
+            onGridColumnsChanged = {},
+            onRetryBrowse = {},
+            onRetryBrowsePage = {},
         )
     }
 }
@@ -512,6 +590,11 @@ private fun DiscoverScreenGuestPreview() {
             onFollowToggle = {},
             onRefresh = {},
             onRetryFollowing = {},
+            onBrowseEndReached = {},
+            onPeopleEndReached = {},
+            onGridColumnsChanged = {},
+            onRetryBrowse = {},
+            onRetryBrowsePage = {},
         )
     }
 }

@@ -384,7 +384,7 @@ Reads in use today:
 | Call | Endpoint | Used for |
 |---|---|---|
 | `searchTagsByPrefix` | `/v0/search/tags/by_prefix/{prefix}` | tag autocomplete (no caller yet — but it *does* reach deck labels, unlike the hot list) |
-| `resourcesByTag` | `/v0/stream/resources?app=loopky&tags=…&sorting=taggers_count` | global deck browse **and** client-side deck-tag topics |
+| `resourcesByTag` | `/v0/stream/resources?app=loopky&tags=…&sorting=…&skip=…` | global deck browse (paged, `timeline`) **and** client-side deck-tag topics (`taggers_count`) |
 | `resourceByUri` | `/v0/resource/by-uri` | per-deck tagger counts ("N followers") |
 | `usersByProfileTag` | `/v0/search/users/by_tags?tags=…` | the `loopky-user` directory — **404 on prod until it redeploys, see §7.7 point 9** |
 | `postAuthorsByTag` | `/v0/search/posts/by_tag/{label}` | deck-announcement authors, the directory's second source |
@@ -409,6 +409,49 @@ Everything read back is **untrusted** — anyone can write any label on any URI 
 its tagger must be its author, and the manifest must actually fetch; a user must have
 self-tagged and have a resolvable profile. Counts come from `taggers_count` (distinct
 taggers) and are approximate: fine to display, never to gate on.
+
+#### 7.6.1 Paging global browse (#321)
+
+Discover used to show one fixed window of the network and no way past it. Three things made that
+window smaller than it looked, and all three are fixed together.
+
+**`limit` was spent at the indexer and the verification drops came off the top.** A 12-deck ask
+returned whatever survived being your own deck, a URI that is not a manifest, or a manifest that
+would not fetch. Measured on staging: 11 tiles for an ordinary account, and **5** for the account
+that had published 30 of the network's 71 decks. `decksByTagGlobalPage` now reads further windows
+until it has `limit` verified decks, the indexer runs out, or it hits `MAX_REFILL_REQUESTS` — a
+budget, so a corpus where nothing verifies cannot walk the whole tag index.
+
+**`sorting=taggers_count` froze the window.** The resource-level count sums distinct taggers over
+*every* label, so a deck whose author typed five topics outranks one four people follow; it is
+deterministic, so the same 12 decks appeared forever and 11 staging decks at count 1 were
+unreachable by any route. Browse now asks for `timeline` (`indexed_at` descending). That is also
+the only order a cursor survives: `taggers_count` re-ranks whenever anyone tags anything, so a
+`skip`-based page 2 would repeat entries and skip others.
+
+**`skip` indexes the indexer's raw sorted set, not the entries that come back.** Nexus drops a
+resource whose details no longer resolve, so a page is routinely short with more behind it —
+`limit=100&skip=0` returned 69 of 71 on staging while `skip=40` surfaced two the first page had
+never shown. Two consequences the code depends on: the cursor advances by the window *asked for*,
+never by the arrival count (advancing by arrivals re-reads the same positions forever), and a short
+page is never the end — only an **empty** one is, which is why `DeckPage.hasMore` comes from the
+repository rather than `decks.size == limit`.
+
+A page is counted in **rows**, not tiles. Twelve tiles is six rows on a phone and three on a
+4-column tablet, so `DiscoverViewModel.onGridColumnsChanged` takes the grid's column count from
+whichever platform is drawing it and sizes the page at `columns × BROWSE_ROWS`. The width class
+itself stays in the platform layer — it is a UI concern that changes on rotation and split-screen
+(§9.5) — and only pages loaded after the change use the new size, so turning the device never
+re-fetches what is already on screen.
+
+The people carousel pages on the same contract, but its cursor indexes **candidates** rather than
+people: the union of the three directory reads (§7.7 point 9) costs three requests once per
+session, while each candidate then costs a self-tag check plus a profile fetch. So the roll is built
+once, appended to as browse turns up more deck authors, and never reordered — a cursor into a list
+that reorders itself is not a cursor. The roll records *how* each candidate got on it, because a
+directory entry is only someone's claim and has to prove itself with a self-tag, while an author
+whose manifest has already fetched and parsed has proved it by publishing. Holding the second kind
+to the self-tag as well drops exactly the people the seed exists to reach.
 
 ### 7.7 Tag indexing: what Nexus does and does not index
 

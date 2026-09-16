@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.data.repository
 import com.github.jvsena42.loopky.data.anki.BulkNote
 import com.github.jvsena42.loopky.data.homegate.LnInvoice
 import com.github.jvsena42.loopky.data.homegate.MethodAvailability
+import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.storage.PendingSignup
 import com.github.jvsena42.loopky.data.storage.SignupTokenStore
 import com.github.jvsena42.loopky.domain.model.BackupMethod
@@ -713,13 +714,28 @@ interface TagRepository {
     ): List<Tag>
 
     /**
-     * Loopky subjects carrying [tag] network-wide, most-tagged first — the read that makes a deck
-     * findable by someone who follows nobody.
+     * Loopky subjects carrying [tag] network-wide — the read that makes a deck findable by someone
+     * who follows nobody.
+     *
+     * [skip] is an offset into the indexer's raw sorted set, so a page routinely comes back shorter
+     * than [limit] with more behind it; only an *empty* page means the end. Paging requires
+     * [NexusResourceSorting.Timeline] — see that enum for why.
+     *
+     * **Throws when the indexer is unreachable**, like [usersTagged] and for the same reason: "the
+     * indexer did not answer" and "nobody carries this label" are different facts, and swallowing
+     * the first rendered an offline device as "Nothing published here yet" — a claim about the
+     * world, stated confidently, with no way to retry (#321). Callers that genuinely have no error
+     * state to show must swallow it themselves, visibly.
      *
      * Untrusted: anyone can tag any URI. Callers must verify a subject resolves to what the label
      * claims — see [DiscoveryRepository.decksByTagGlobal].
      */
-    suspend fun taggedSubjects(tag: Tag, limit: Int = DEFAULT_TAGGED_LIMIT): List<TaggedSubject>
+    suspend fun taggedSubjects(
+        tag: Tag,
+        limit: Int = DEFAULT_TAGGED_LIMIT,
+        skip: Int = 0,
+        sorting: NexusResourceSorting = NexusResourceSorting.TaggersCount,
+    ): List<TaggedSubject>
 
     /**
      * Pubkys whose **profile** carries [tag]; for [ReservedTags.USER] this is the account directory.
@@ -771,6 +787,38 @@ data class TaggedSubject(
     val taggers: List<String>,
     val taggersCount: Int,
 )
+
+/**
+ * One page of a global browse, with the cursor that resumes it.
+ *
+ * [hasMore] is not `decks.size == limit`: a full page can be the last one, and a short page can have
+ * plenty behind it — verification drops entries, and the indexer drops others of its own. Only the
+ * repository knows which, so it says so here rather than leaving callers to infer it.
+ *
+ * A plain `Int` cursor rather than a `value class` — one is erased to its underlying type at a
+ * parameter position but boxed inside a list, so it cannot make the round trip back through Swift.
+ */
+data class DeckPage(
+    val decks: List<Deck>,
+    val nextCursor: Int,
+    val hasMore: Boolean,
+) {
+    companion object {
+        /** The cursor a first page is asked for with. */
+        const val START = 0
+    }
+}
+
+/** One page of suggested people. [nextCursor] indexes candidates, not the people returned. */
+data class PeoplePage(
+    val people: List<PubkyIdentity>,
+    val nextCursor: Int,
+    val hasMore: Boolean,
+) {
+    companion object {
+        const val START = 0
+    }
+}
 
 /**
  * Social graph + discovery. Follows use the pubky.app native primitive; the repo owns follow/unfollow
@@ -836,7 +884,30 @@ interface DiscoveryRepository {
     suspend fun decksByTagGlobal(
         tag: Tag,
         limit: Int = TagRepository.DEFAULT_TAGGED_LIMIT,
-    ): List<Deck>
+    ): List<Deck> = decksByTagGlobalPage(tag, limit).decks
+
+    /**
+     * One page of [decksByTagGlobal], resumable via [DeckPage.nextCursor].
+     *
+     * **Fills the page.** Verification drops entries — your own decks, a URI that is not a manifest,
+     * a manifest that will not fetch — and spending [limit] at the indexer meant the screen showed
+     * whatever survived: measured at 11 tiles of a 12-deck ask on staging, and 5 for the account
+     * that had published 30 of the network's 71 decks. So this reads further pages from the indexer
+     * until it has [limit] verified decks, the indexer runs out, or it hits its own request ceiling
+     * (#321).
+     *
+     * Ordered newest-first ([NexusResourceSorting.Timeline]), which is the only order that survives
+     * a cursor. Pass [DeckPage.START] for the first page and the previous page's [DeckPage.nextCursor]
+     * after that.
+     *
+     * **Throws when the indexer is unreachable** — see [TagRepository.taggedSubjects]. An empty page
+     * means the network has nothing more to show; it never means the read failed.
+     */
+    suspend fun decksByTagGlobalPage(
+        tag: Tag,
+        limit: Int = TagRepository.DEFAULT_TAGGED_LIMIT,
+        cursor: Int = DeckPage.START,
+    ): DeckPage
 
     /**
      * Accounts that announced themselves as Loopky users, excluding the signed-in one — the
@@ -871,7 +942,8 @@ interface DiscoveryRepository {
      *
      * Nexus indexes deck *tags*, not titles — nothing crawls a manifest's contents — so this matches
      * against manifests the client has actually fetched: a sample of the network, not the whole of
-     * it. A deck outside that sample is not findable until something indexes titles. Never throws.
+     * it. A deck outside that sample is not findable until something indexes titles. Never throws —
+     * a search box has no error state, so an unreachable indexer degrades to the local sample.
      */
     suspend fun searchDecks(
         query: String,
@@ -891,7 +963,25 @@ interface DiscoveryRepository {
     suspend fun suggestedPeople(
         seedDecks: List<Deck>,
         limit: Int = DEFAULT_SUGGESTED_PEOPLE_LIMIT,
-    ): List<PubkyIdentity>
+    ): List<PubkyIdentity> = suggestedPeoplePage(seedDecks, limit).people
+
+    /**
+     * One page of [suggestedPeople], resumable via [PeoplePage.nextCursor].
+     *
+     * The cursor indexes the **candidate** list, not the people returned, because the candidates are
+     * cheap and the verification is not: the union of the three directory reads costs three requests
+     * once per session, while each candidate then costs a self-tag check plus a profile fetch. So the
+     * union is built once and cached, and a page walks further down it until [limit] accounts verify.
+     *
+     * [seedDecks] authors are appended to the candidate list the first time they are seen, so a page
+     * loaded after browse has fetched more decks can reach authors the directory reads never named.
+     * Never throws.
+     */
+    suspend fun suggestedPeoplePage(
+        seedDecks: List<Deck>,
+        limit: Int = DEFAULT_SUGGESTED_PEOPLE_LIMIT,
+        cursor: Int = PeoplePage.START,
+    ): PeoplePage
 
     companion object {
         /** A horizontal strip; enough to scroll, few enough to resolve quickly. */
@@ -917,6 +1007,15 @@ interface DiscoveryRepository {
          * collapses hard.
          */
         const val DIRECTORY_DECK_SAMPLE = 100
+
+        /**
+         * How many candidate pubkys the paged people strip builds its roll from.
+         *
+         * Wider than any one page, because the roll is built once per session and every page after
+         * the first is then free of indexer round-trips — only the per-candidate verification costs
+         * anything, and that is what the cursor exists to spread out.
+         */
+        const val DIRECTORY_CANDIDATE_LIMIT = 200
 
         /**
          * Every candidate costs an indexer round-trip to decide whether it is a Loopky account, and a
