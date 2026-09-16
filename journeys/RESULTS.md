@@ -3657,7 +3657,15 @@ storage for the 132 MB debug APK. The three-tag heading and Clear share the row 
 While checking this, the header `Text` turned out to have no weight, so a long enough title would
 have pushed Clear out of the row. It is weighted now.
 
+**The row animates as it narrows.** Chips fade in and out and slide into place (`LazyRow` +
+`animateItem`), and a change of selection scrolls the row back to its start, where the chosen chips
+lead. Checked frame by frame on `emulator-5554` with `animator_duration_scale 10` after tapping
+`#language`: `#stem` fades out while `#english` and `#airport` fade in, and the neighbouring chips
+slide over. The capture also caught a flicker, now fixed: tapping a tag that no deck on screen
+carries (`#bosnian` from the unfiltered page) collapsed the row to that one chip, then grew it back
+when the page landed. The row now stays as it is, with the chosen chips first, until the page lands.
+
 ### Not verified here
 
-iOS. The Swift changes (`selectedTags`, the joined heading and the new catalog keys) were written
-on Linux, where there is no simulator, and have not been compiled.
+iOS. The Swift changes (`selectedTags`, the joined heading, the new catalog keys and the chip-row
+transitions) were written on Linux, where there is no simulator, and have not been compiled.
