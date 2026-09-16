@@ -63,11 +63,13 @@ fun SectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Weighted, or a long multi-tag title takes the whole row and squeezes Clear out of it.
         Text(
             text = text,
             color = LoopkyTheme.colors.foregroundSecondary,
             fontSize = 13.sp,
             fontWeight = FontWeight.W700,
+            modifier = Modifier.weight(1f, fill = false),
         )
         trailing?.invoke()
     }
