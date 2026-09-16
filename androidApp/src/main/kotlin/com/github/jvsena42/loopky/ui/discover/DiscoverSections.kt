@@ -1,9 +1,8 @@
 package com.github.jvsena42.loopky.ui.discover
 
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -109,6 +111,10 @@ fun SectionHint(text: String, modifier: Modifier = Modifier) {
  *
  * Without the fade the row simply cut its trailing chip mid-word at the screen inset, which reads
  * as a clipping bug rather than as an invitation to scroll.
+ *
+ * Lazy so each chip can animate: a selection narrows the row to the tags that still match, and
+ * chips popping in and out with nothing moving reads as the row flickering rather than filtering.
+ * The chosen chips lead the row, so a change of selection scrolls back to the start to show them.
  */
 @Composable
 fun TopicRow(
@@ -117,22 +123,25 @@ fun TopicRow(
     onTagSelected: (Tag?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollState = rememberScrollState()
+    val listState = rememberLazyListState()
     val surface = LoopkyTheme.colors.surfacePrimary
-    Row(
+    LaunchedEffect(selectedTags) { listState.animateScrollToItem(0) }
+    LazyRow(
+        state = listState,
         modifier = modifier
             .fillMaxWidth()
             .testTag("discover_topic_row")
-            .scrollEdgeFade(scrollState, surface)
-            .horizontalScroll(scrollState),
+            .scrollEdgeFade(listState, surface),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        tags.forEach { tag ->
+        items(tags, key = { it.value }) { tag ->
             TagFilterChip(
                 tag = tag.value,
                 selected = tag in selectedTags,
                 onClick = { onTagSelected(tag) },
-                modifier = Modifier.testTag("discover_topic_chip"),
+                modifier = Modifier
+                    .animateItem()
+                    .testTag("discover_topic_chip"),
             )
         }
     }
@@ -320,13 +329,13 @@ private const val PENDING_ALPHA = 0.5f
  * Drawn rather than laid out, so it costs no space and never shifts the chips; and driven by the
  * live scroll position, so the leading fade only appears once there is something to scroll back to.
  */
-private fun Modifier.scrollEdgeFade(scrollState: ScrollState, surface: Color): Modifier =
+private fun Modifier.scrollEdgeFade(scrollState: ScrollableState, surface: Color): Modifier =
     this
         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithContent {
             drawContent()
             val width = EDGE_FADE_WIDTH.toPx()
-            if (scrollState.value > 0) {
+            if (scrollState.canScrollBackward) {
                 drawRect(
                     brush = Brush.horizontalGradient(
                         listOf(surface, Color.Transparent),
@@ -335,7 +344,7 @@ private fun Modifier.scrollEdgeFade(scrollState: ScrollState, surface: Color): M
                     size = Size(width, size.height),
                 )
             }
-            if (scrollState.value < scrollState.maxValue) {
+            if (scrollState.canScrollForward) {
                 drawRect(
                     brush = Brush.horizontalGradient(
                         listOf(Color.Transparent, surface),

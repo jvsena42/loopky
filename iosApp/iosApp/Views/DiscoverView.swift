@@ -71,6 +71,7 @@ struct DiscoverView: View {
     var onSignIn: () -> Void = {}
 
     @Environment(\.loopkyWidthClass) private var widthClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// How close to the end of the people row asking for the next page starts.
     private let peoplePrefetchDistance = 2
@@ -158,15 +159,29 @@ struct DiscoverView: View {
         }
     }
 
+    /// Animated because a selection narrows the row to the tags that still match: chips popping in
+    /// and out with nothing moving reads as a flicker rather than a filter. The chosen chips lead
+    /// the row, so a change of selection scrolls back to the start to show them.
     private var topicRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(state.topics, id: \.self) { topic in
-                    TagChipView(
-                        tag: topic,
-                        onTap: { onTagTap(topic) },
-                        isSelected: state.selectedTags.contains(topic)
-                    )
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(state.topics, id: \.self) { topic in
+                        TagChipView(
+                            tag: topic,
+                            onTap: { onTagTap(topic) },
+                            isSelected: state.selectedTags.contains(topic)
+                        )
+                        .id(topic)
+                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
+                }
+                .animation(reduceMotion ? nil : .snappy, value: state.topics)
+            }
+            .onChange(of: state.selectedTags) { _, _ in
+                guard let first = state.topics.first else { return }
+                withAnimation(reduceMotion ? nil : .snappy) {
+                    proxy.scrollTo(first, anchor: .leading)
                 }
             }
         }
