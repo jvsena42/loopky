@@ -55,15 +55,36 @@ internal fun Throwable.isNoHomeserverRecord(): Boolean =
  */
 internal fun Throwable.isNetworkFailure(): Boolean {
     val msg = message?.lowercase() ?: return false
-    return "transport" in msg ||
-        "error sending request" in msg ||
-        "timed out" in msg ||
-        "timeout" in msg ||
-        "dns" in msg ||
-        "connection refused" in msg ||
-        "failed to resolve" in msg ||
-        "network" in msg
+    return NETWORK_FAILURE_PHRASES.any { it in msg }
 }
+
+/**
+ * Wordings that mean the request never left the device, from all three stacks Loopky talks through.
+ *
+ * The first group is the Rust FFI's. The rest are the **platform HTTP clients**, which reach the UI
+ * now that indexer failures are reported rather than swallowed (#321): Android's
+ * `UnknownHostException` reads `Unable to resolve host "…": No address associated with hostname`,
+ * and iOS hands over `NSError.localizedDescription`, which is "A server with the specified hostname
+ * could not be found." or "The Internet connection appears to be offline.". None of them matched
+ * `failed to resolve`, so an offline Discover said "Something went wrong" while the strip above it —
+ * reading the same dead connection through the FFI — correctly said "You're offline".
+ */
+private val NETWORK_FAILURE_PHRASES = listOf(
+    "transport",
+    "error sending request",
+    "timed out",
+    "timeout",
+    "dns",
+    "connection refused",
+    "failed to resolve",
+    "network",
+    // Platform HTTP clients.
+    "unable to resolve",
+    "no address associated",
+    "hostname could not be found",
+    "connection appears to be offline",
+    "unable to connect",
+)
 
 /**
  * The FFI could not import the session secret at all — the wording every `*_with_session` entry point
