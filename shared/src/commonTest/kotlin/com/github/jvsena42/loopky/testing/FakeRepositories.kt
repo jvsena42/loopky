@@ -958,12 +958,26 @@ class FakeDiscoveryRepository : DiscoveryRepository {
     /** When set, the indexer read throws — the "unreachable", not "nothing published", case. */
     var globalError: Throwable? = null
 
-    override suspend fun decksByTagGlobalPage(tag: Tag, limit: Int, cursor: Int): DeckPage {
+    /** Answers every [decksByTagGlobalPage] as given — for page shapes [globalDecks] cannot produce. */
+    var globalPageOverride: ((tag: Tag, cursor: Int, alsoTagged: Set<Tag>) -> DeckPage)? = null
+
+    /** The [decksByTagGlobalPage] `alsoTagged` filter of each request, in step with [globalRequests]. */
+    val globalAlsoTagged = mutableListOf<Set<Tag>>()
+
+    override suspend fun decksByTagGlobalPage(
+        tag: Tag,
+        limit: Int,
+        cursor: Int,
+        alsoTagged: Set<Tag>,
+    ): DeckPage {
         globalRequests.add(tag to limit)
+        globalAlsoTagged.add(alsoTagged)
         globalGate?.await()
         globalError?.let { throw it }
+        globalPageOverride?.let { return it(tag, cursor, alsoTagged) }
         val all = globalDecksByTag?.get(tag).orEmpty()
             .ifEmpty { globalDecks.filter { tag in it.tags || tag == ReservedTags.DECK } }
+            .filter { it.tags.containsAll(alsoTagged) }
         val page = all.drop(cursor).take(limit)
         return DeckPage(
             decks = page,

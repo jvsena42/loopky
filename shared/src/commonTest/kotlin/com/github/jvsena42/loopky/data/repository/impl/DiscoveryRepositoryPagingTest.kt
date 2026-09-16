@@ -188,6 +188,47 @@ class DiscoveryRepositoryPagingTest {
     }
 
     @Test
+    fun globalBrowseKeepsOnlyDecksCarryingEveryExtraTag() = runTest {
+        putRemoteManifest("strangerpk", "both", updatedAt = 1L, tags = listOf(Tag("portuguese"), Tag("language")))
+        putRemoteManifest("strangerpk", "onlypt", updatedAt = 2L, tags = listOf(Tag("portuguese")))
+        tagRepo.subjectsByTag = mapOf(
+            Tag("portuguese") to listOf(
+                tagged(manifestUri("strangerpk", "both"), listOf("strangerpk")),
+                tagged(manifestUri("strangerpk", "onlypt"), listOf("strangerpk")),
+            ),
+        )
+
+        val page = repo.decksByTagGlobalPage(Tag("portuguese"), limit = 5, alsoTagged = setOf(Tag("language")))
+
+        assertEquals(listOf("both"), page.decks.map { it.id })
+    }
+
+    @Test
+    fun aFilteredBrowsePagesWithoutRepeatingOrSkippingAMatch() = runTest {
+        // The filter drops decks after the indexer read, so the cursor still indexes the tag's raw
+        // index: page two has to resume exactly where page one stopped reading, not where its last
+        // match sat.
+        repeat(7) { i ->
+            val tags = if (i % 2 == 0) listOf(Tag("even")) else emptyList()
+            putRemoteManifest("strangerpk", "deck$i", updatedAt = i.toLong(), tags = tags)
+        }
+        tagRepo.subjectsByTag = mapOf(
+            ReservedTags.DECK to (0 until 7).map { tagged(manifestUri("strangerpk", "deck$it"), listOf("strangerpk")) },
+        )
+        val even = setOf(Tag("even"))
+
+        val first = repo.decksByTagGlobalPage(ReservedTags.DECK, limit = 2, alsoTagged = even)
+        val second = repo.decksByTagGlobalPage(ReservedTags.DECK, limit = 2, first.nextCursor, even)
+        val third = repo.decksByTagGlobalPage(ReservedTags.DECK, limit = 2, second.nextCursor, even)
+
+        assertEquals(listOf("deck0", "deck2"), first.decks.map { it.id })
+        assertEquals(listOf("deck4", "deck6"), second.decks.map { it.id })
+        assertEquals(emptyList(), third.decks)
+        assertTrue(second.hasMore)
+        assertFalse(third.hasMore)
+    }
+
+    @Test
     fun suggestedPeoplePagesWithoutRepeatingAnyone() = runTest {
         val directory = (0 until 5).map { "userpk$it" }
         tagRepo.usersByTag = mapOf(ReservedTags.USER to directory)

@@ -264,7 +264,12 @@ class DiscoveryRepositoryImpl(
             .sortedByDescending { it.updatedAt }
     }
 
-    override suspend fun decksByTagGlobalPage(tag: Tag, limit: Int, cursor: Int): DeckPage {
+    override suspend fun decksByTagGlobalPage(
+        tag: Tag,
+        limit: Int,
+        cursor: Int,
+        alsoTagged: Set<Tag>,
+    ): DeckPage {
         val kept = mutableListOf<Deck>()
         // Author-scoped, not by deck id alone: two authors can publish the same deck id, and the
         // `distinctBy { it.id }` this replaced dropped the second one as a duplicate.
@@ -288,12 +293,15 @@ class DiscoveryRepositoryImpl(
             subjects
                 .mapConcurrently { subject -> verifiedDeck(subject) }
                 .filterNotNull()
+                // After verification, off the manifest: the indexer's tag list is cut at five.
+                .filter { deck -> deck.tags.containsAll(alsoTagged) }
                 .forEach { deck -> if (seen.add(deck.authorPubky + "/" + deck.id)) kept += deck }
         }
 
         Log.d(
             TAG,
-            "decksByTagGlobalPage('${tag.value}'): ${kept.size}/$limit in $requests requests, " +
+            "decksByTagGlobalPage('${tag.value}' + ${alsoTagged.map { it.value }}): " +
+                "${kept.size}/$limit in $requests requests, " +
                 "cursor $cursor -> $skip, hasMore=${!exhausted}",
         )
         return DeckPage(decks = kept, nextCursor = skip, hasMore = !exhausted)
