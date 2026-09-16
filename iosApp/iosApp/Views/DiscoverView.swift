@@ -46,7 +46,8 @@ struct DiscoverViewState {
     var people = DiscoverSection<DiscoverPersonData>()
     var browse = DiscoverSection<DiscoverDeckData>()
     var following = DiscoverSection<DiscoverDeckData>()
-    var selectedTag: String?
+    /// In the order they were chosen; several narrow browse to decks carrying all of them.
+    var selectedTags: [String] = []
 }
 
 /// Pure layout — state comes from the shared `DiscoverViewModel` via `DiscoverScreen`.
@@ -83,12 +84,12 @@ struct DiscoverView: View {
                 // Picking a topic is an explicit question, so its answer leads. Unfiltered, browse
                 // is the fallback firehose and sits under the people and decks you chose — which
                 // costs a new account nothing, because the followed strip hides itself when empty.
-                if state.selectedTag != nil { browseStrip }
+                if !state.selectedTags.isEmpty { browseStrip }
                 if !state.people.isEmpty { peopleStrip }
                 if !state.following.items.isEmpty || state.following.errorMessage != nil {
                     followingStrip
                 }
-                if state.selectedTag == nil { browseStrip }
+                if state.selectedTags.isEmpty { browseStrip }
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
@@ -164,7 +165,7 @@ struct DiscoverView: View {
                     TagChipView(
                         tag: topic,
                         onTap: { onTagTap(topic) },
-                        isSelected: state.selectedTag == topic
+                        isSelected: state.selectedTags.contains(topic)
                     )
                 }
             }
@@ -243,8 +244,8 @@ struct DiscoverView: View {
     private var browseStrip: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                if let tag = state.selectedTag {
-                    Text(String(format: NSLocalizedString("discover_browse_tag_title", comment: ""), tag))
+                if !state.selectedTags.isEmpty {
+                    Text(verbatim: browseTitle)
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(LoopkyColor.foregroundSecondary)
                     Spacer()
@@ -273,6 +274,30 @@ struct DiscoverView: View {
                     loadMoreFooter(isLoading: state.browse.isLoadingMore, onLoadMore: onBrowseEndReached)
                 }
             }
+        }
+    }
+
+    private var browseTitle: String {
+        guard state.selectedTags.count > 1 else {
+            return String(
+                format: NSLocalizedString("discover_browse_tag_title", comment: ""),
+                state.selectedTags.first ?? ""
+            )
+        }
+        let quoted = state.selectedTags.map {
+            String(format: NSLocalizedString("discover_tag_quoted", comment: ""), $0)
+        }
+        return String(
+            format: NSLocalizedString("discover_browse_tags_title", comment: ""),
+            quoted.joined(separator: NSLocalizedString("discover_tag_list_separator", comment: ""))
+        )
+    }
+
+    private var emptyTitleKey: LocalizedStringKey {
+        switch state.selectedTags.count {
+        case 0: "discover_browse_empty_title"
+        case 1: "discover_empty_tag_subtitle"
+        default: "discover_empty_tags_title"
         }
     }
 
@@ -309,8 +334,8 @@ struct DiscoverView: View {
 
     private var browseEmpty: some View {
         VStack(spacing: 8) {
-            Text(state.selectedTag == nil ? "🌱" : "🔍").font(.system(size: 36))
-            Text(state.selectedTag == nil ? "discover_browse_empty_title" : "discover_empty_tag_subtitle")
+            Text(state.selectedTags.isEmpty ? "🌱" : "🔍").font(.system(size: 36))
+            Text(emptyTitleKey)
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(LoopkyColor.foregroundPrimary)
             Text("discover_browse_empty_subtitle")

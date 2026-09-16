@@ -3508,6 +3508,23 @@
         }
       }
     },
+    "discover_browse_tags_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decks tagged %1$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baralhos com as tags %1$@"
+          }
+        }
+      }
+    },
     "discover_browse_title": {
       "extractionState": "manual",
       "localizations": {
@@ -3627,6 +3644,23 @@
         }
       }
     },
+    "discover_empty_tags_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No deck carries all of these tags yet"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum baralho tem todas essas tags ainda"
+          }
+        }
+      }
+    },
     "discover_empty_title": {
       "extractionState": "manual",
       "localizations": {
@@ -3742,6 +3776,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buscar pessoas e baralhos"
+          }
+        }
+      }
+    },
+    "discover_tag_list_separator": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " + "
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " + "
+          }
+        }
+      }
+    },
+    "discover_tag_quoted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”"
           }
         }
       }

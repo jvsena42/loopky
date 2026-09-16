@@ -239,7 +239,7 @@ class DiscoverViewModelTest {
         vm.onTagSelected(Tag("spanish"))
         advanceUntilIdle()
 
-        assertNull(vm.state.value.selectedTag)
+        assertEquals(emptyList(), vm.state.value.selectedTags)
         assertEquals(ReservedTags.DECK, discovery.globalRequests.last().first)
         assertEquals(listOf("spanish", "biology"), vm.state.value.following.items.map { it.id })
     }
@@ -281,13 +281,14 @@ class DiscoverViewModelTest {
         val gate = CompletableDeferred<Unit>()
         discovery.globalGate = gate
         vm.onTagSelected(Tag("chess"))
+        vm.onTagSelected(Tag("chess"))
         vm.onTagSelected(Tag("kanji"))
         gate.complete(Unit)
         advanceUntilIdle()
 
         // Cancelling the in-flight job can miss a suspension point, so the selection itself has to
         // be the token — otherwise chess's result lands on top of kanji's.
-        assertEquals(Tag("kanji"), vm.state.value.selectedTag)
+        assertEquals(listOf(Tag("kanji")), vm.state.value.selectedTags)
         assertEquals(listOf("kanjideck"), vm.state.value.browse.items.map { it.id })
     }
 

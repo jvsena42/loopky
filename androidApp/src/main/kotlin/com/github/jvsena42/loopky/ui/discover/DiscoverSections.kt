@@ -111,7 +111,7 @@ fun SectionHint(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun TopicRow(
     tags: List<Tag>,
-    selectedTag: Tag?,
+    selectedTags: List<Tag>,
     onTagSelected: (Tag?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -128,7 +128,7 @@ fun TopicRow(
         tags.forEach { tag ->
             TagFilterChip(
                 tag = tag.value,
-                selected = tag == selectedTag,
+                selected = tag in selectedTags,
                 onClick = { onTagSelected(tag) },
                 modifier = Modifier.testTag("discover_topic_chip"),
             )
@@ -248,7 +248,7 @@ fun PersonTile(
  */
 @Composable
 fun BrowseEmptyBlock(
-    selectedTag: Tag?,
+    selectedTags: List<Tag>,
     onSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -263,7 +263,7 @@ fun BrowseEmptyBlock(
     ) {
         Text(
             text = stringResource(
-                if (selectedTag == null) {
+                if (selectedTags.isEmpty()) {
                     R.string.discover_browse_empty_emoji
                 } else {
                     R.string.discover_empty_tag_emoji
@@ -273,21 +273,25 @@ fun BrowseEmptyBlock(
             lineHeight = 43.sp,
         )
         Text(
-            text = selectedTag
-                ?.let { stringResource(R.string.discover_empty_tag_title, it.value) }
-                ?: stringResource(R.string.discover_browse_empty_title),
+            text = when (selectedTags.size) {
+                0 -> stringResource(R.string.discover_browse_empty_title)
+                1 -> stringResource(R.string.discover_empty_tag_title, selectedTags.single().value)
+                else -> stringResource(R.string.discover_empty_tags_title)
+            },
             color = colors.foregroundPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = selectedTag
-                ?.let { stringResource(R.string.discover_empty_tag_subtitle) }
-                ?: stringResource(R.string.discover_browse_empty_subtitle),
+            text = when (selectedTags.size) {
+                0 -> stringResource(R.string.discover_browse_empty_subtitle)
+                1 -> stringResource(R.string.discover_empty_tag_subtitle)
+                else -> stringResource(R.string.discover_empty_tags_subtitle)
+            },
             color = colors.foregroundMuted,
             fontSize = 13.sp,
         )
-        if (selectedTag == null) {
+        if (selectedTags.isEmpty()) {
             Spacer(modifier = Modifier.size(4.dp))
             Text(
                 text = stringResource(R.string.discover_search_cta),

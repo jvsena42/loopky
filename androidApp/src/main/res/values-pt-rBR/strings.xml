@@ -150,6 +150,9 @@
     <string name="discover_people_title">Pessoas no Loopky</string>
     <string name="discover_browse_title">Descubra baralhos</string>
     <string name="discover_browse_tag_title">Baralhos com a tag “%1$s”</string>
+    <string name="discover_browse_tags_title">Baralhos com as tags %1$s</string>
+    <string name="discover_tag_quoted">“%1$s”</string>
+    <string name="discover_tag_list_separator">" + "</string>
     <string name="discover_clear_tag">Limpar</string>
     <string name="discover_following_title">De quem você segue</string>
     <string name="discover_browse_empty_emoji">🌱</string>
@@ -158,6 +161,8 @@
     <string name="discover_empty_tag_emoji">🔍</string>
     <string name="discover_empty_tag_title">Nenhum baralho com a tag “%1$s” ainda</string>
     <string name="discover_empty_tag_subtitle">Ninguém marcou um baralho com isso ainda. Toque na tag de novo para ver tudo.</string>
+    <string name="discover_empty_tags_title">Nenhum baralho tem todas essas tags ainda</string>
+    <string name="discover_empty_tags_subtitle">Toque em uma tag para tirá-la do filtro, ou em Limpar para ver tudo.</string>
 
     <!-- Tag browse -->
     <string name="discover_search_cta">Buscar pessoas e baralhos</string>
