@@ -28,7 +28,11 @@
     <action>Scroll to the end of the browse grid and verify the last row's title and "N cards · author" line clear the floating tab bar and can be read</action>
     <action>If a topic chip row is visible (resource-id: discover_topic_row), tap the first chip (resource-id: discover_topic_chip)</action>
     <action>Verify the browse heading changes to "Decks tagged “…”" and a "Clear" control appears (resource-id: discover_clear_tag). The deck list is re-queried from the indexer, so it may legitimately differ from the unfiltered list.</action>
-    <action>Tap the element with resource-id "discover_clear_tag" and verify the heading returns to "Browse decks"</action>
+    <action>Verify the chip row narrowed: the chosen chip leads, and every other chip is a tag some deck in the filtered grid also carries — a chip no such deck carries must be gone, since tapping it would find nothing</action>
+    <action>Tap a second chip (resource-id: discover_topic_chip) and verify BOTH stay selected, the heading reads "Decks tagged “first” + “second”", and every tile in the grid carries both tags — several topics are an AND, never an OR. Check one tile against `curl -s 'https://nexus.staging.pubky.app/v0/resource/by-uri?limit_tags=100&amp;limit_taggers=1&amp;uri=…'` rather than trusting the stream, which cuts each resource's tag list at five</action>
+    <action>Tap every remaining unselected chip in turn, tapping it again to drop it, and verify none of them lands on the "No deck carries all of these tags yet" block — that is the promise the narrowed row makes</action>
+    <action>Tap the FIRST chosen chip again and verify only that tag is dropped: the other stays selected and the heading returns to a single "Decks tagged “…”"</action>
+    <action>Tap the element with resource-id "discover_clear_tag" and verify every chip is deselected, the full topic row returns, and the heading reads "Browse decks"</action>
     <action>If a "People on Loopky" strip is visible (resource-id: discover_people_row), tap the Follow pill on the first person (resource-id: discover_follow) and verify it flips to "Following" immediately</action>
     <action>Pull to refresh and verify the followed person no longer appears in the People strip — suggestions exclude people you already follow</action>
     <action>Note: the People strip is legitimately absent when the only published decks are your own, since suggestions exclude yourself. That is a pass.</action>

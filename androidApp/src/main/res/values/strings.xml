@@ -154,6 +154,9 @@
     <string name="discover_people_title">People on Loopky</string>
     <string name="discover_browse_title">Discover decks</string>
     <string name="discover_browse_tag_title">Decks tagged “%1$s”</string>
+    <string name="discover_browse_tags_title">Decks tagged %1$s</string>
+    <string name="discover_tag_quoted">“%1$s”</string>
+    <string name="discover_tag_list_separator">" + "</string>
     <string name="discover_clear_tag">Clear</string>
     <string name="discover_following_title">From people you follow</string>
     <string name="discover_browse_empty_emoji">🌱</string>
@@ -162,6 +165,8 @@
     <string name="discover_empty_tag_emoji">🔍</string>
     <string name="discover_empty_tag_title">No decks tagged “%1$s” yet</string>
     <string name="discover_empty_tag_subtitle">Nobody has tagged a deck with this yet. Tap the tag again to see everything.</string>
+    <string name="discover_empty_tags_title">No deck carries all of these tags yet</string>
+    <string name="discover_empty_tags_subtitle">Tap a tag to drop it from the filter, or Clear to see everything.</string>
 
     <!-- Tag browse -->
     <string name="discover_search_cta">Search people &amp; decks</string>

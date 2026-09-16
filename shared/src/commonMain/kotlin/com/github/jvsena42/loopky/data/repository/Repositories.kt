@@ -902,11 +902,17 @@ interface DiscoveryRepository {
      *
      * **Throws when the indexer is unreachable** — see [TagRepository.taggedSubjects]. An empty page
      * means the network has nothing more to show; it never means the read failed.
+     *
+     * [alsoTagged] narrows the page to decks whose manifest carries every one of those tags as well
+     * (an AND). The indexer cannot do it: a comma list in `tags=` is a union, and each resource's
+     * tag list comes back cut at five. So the cursor still indexes [tag]'s own index, and a filtered
+     * page can be short or empty with [DeckPage.hasMore] still true — pass the narrowest tag as [tag].
      */
     suspend fun decksByTagGlobalPage(
         tag: Tag,
         limit: Int = TagRepository.DEFAULT_TAGGED_LIMIT,
         cursor: Int = DeckPage.START,
+        alsoTagged: Set<Tag> = emptySet(),
     ): DeckPage
 
     /**

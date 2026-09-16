@@ -228,12 +228,12 @@ private fun DiscoverScreen(
                 // Picking a topic is an explicit question, so its answer leads. Unfiltered, browse
                 // is the fallback firehose and sits under the people and decks you chose — which
                 // costs a new account nothing, because the followed strip hides itself when empty.
-                if (state.selectedTag != null) {
+                if (state.selectedTags.isNotEmpty()) {
                     browseSection(state, deckColumns, tileActions, browseActions)
                 }
                 peopleSection(state, onOpenAuthor, onFollowToggle, onPeopleEndReached)
                 followingSection(state, deckColumns, tileActions, onRetryFollowing)
-                if (state.selectedTag == null) {
+                if (state.selectedTags.isEmpty()) {
                     browseSection(state, deckColumns, tileActions, browseActions)
                 }
             }
@@ -258,11 +258,11 @@ private fun LazyListScope.topicsSection(
 ) {
     // No placeholder when there are no topics — an absent chip row reads as "nothing to filter by",
     // which is exactly right, and an empty-state block for it would be noise.
-    if (state.topics.items.isEmpty()) return
+    if (state.visibleTopics.isEmpty()) return
     item(key = "topics") {
         TopicRow(
-            tags = state.topics.items,
-            selectedTag = state.selectedTag,
+            tags = state.visibleTopics,
+            selectedTags = state.selectedTags,
             onTagSelected = onTagSelected,
         )
     }
@@ -354,14 +354,17 @@ private fun LazyListScope.browseSection(
     // it is worth a section of its own even with no rows under it. Unfiltered it is a bare label
     // over nothing, so the section goes entirely.
     val coveredByFollowed = state.browseFullyCoveredByFollowed
-    if (coveredByFollowed && state.selectedTag == null) return
+    val selectedTags = state.selectedTags
+    if (coveredByFollowed && selectedTags.isEmpty()) return
 
     item(key = "browse_header") {
         SectionHeader(
-            text = state.selectedTag
-                ?.let { stringResource(R.string.discover_browse_tag_title, it.value) }
-                ?: stringResource(R.string.discover_browse_title),
-            trailing = state.selectedTag?.let { { ClearTagButton(onClick = { browseActions.onTagSelected(null) }) } },
+            text = browseTitle(selectedTags),
+            trailing = if (selectedTags.isEmpty()) {
+                null
+            } else {
+                { ClearTagButton(onClick = { browseActions.onTagSelected(null) }) }
+            },
         )
     }
     val browse = state.browseExcludingFollowed
@@ -382,7 +385,7 @@ private fun LazyListScope.browseSection(
     }
     if (browse.isEmpty && !coveredByFollowed) {
         item(key = "browse_empty") {
-            BrowseEmptyBlock(selectedTag = state.selectedTag, onSearch = browseActions.onSearch)
+            BrowseEmptyBlock(selectedTags = selectedTags, onSearch = browseActions.onSearch)
         }
     }
     deckRows(
@@ -407,6 +410,17 @@ private fun LazyListScope.browseSection(
             LoadMoreFooter(isLoading = browse.isLoadingMore, onLoadMore = browseActions.onEndReached)
         }
     }
+}
+
+@Composable
+private fun browseTitle(tags: List<Tag>): String = when (tags.size) {
+    0 -> stringResource(R.string.discover_browse_title)
+    1 -> stringResource(R.string.discover_browse_tag_title, tags.single().value)
+    else -> stringResource(
+        R.string.discover_browse_tags_title,
+        tags.map { stringResource(R.string.discover_tag_quoted, it.value) }
+            .joinToString(stringResource(R.string.discover_tag_list_separator)),
+    )
 }
 
 private fun LazyListScope.followingSection(

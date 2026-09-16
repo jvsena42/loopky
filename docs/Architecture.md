@@ -453,6 +453,30 @@ directory entry is only someone's claim and has to prove itself with a self-tag,
 whose manifest has already fetched and parsed has proved it by publishing. Holding the second kind
 to the self-tag as well drops exactly the people the seed exists to reach.
 
+#### 7.6.2 Several topics: an AND the indexer cannot do
+
+Discover's topic chips multi-select, and several of them mean decks carrying **all** of them. Nexus
+cannot answer that: `tags=a,b` on `/v0/stream/resources` is a union, a repeated `tags=` is a 400,
+and each resource's tag list comes back cut at **five** (hard-coded; `limit_tags` is ignored there —
+39 of 67 staging decks arrived with exactly five, against 6–10 from `/v0/resource/by-uri`). So the
+stream cannot even be intersected client-side (pubky/pubky-nexus#1072).
+
+`decksByTagGlobalPage(tag, …, alsoTagged)` therefore reads **one** tag's index and drops, after
+verification, any deck whose *manifest* lacks the rest. Three things follow. The cursor still
+indexes that one tag's raw index and advances by the window asked for, exactly as §7.6.1 — so the
+tag it reads must not change between pages of one browse, which is why `DiscoverViewModel` picks it
+from the selection alone (the last tag chosen, usually the narrowest when drilling down) and never
+from anything that reloads, like the trending order. A filtered page can be empty with `hasMore`, and
+neither platform's footer asks again while it stays on screen, so the ViewModel follows an empty
+*filtered* page straight on, a bounded number of times; unfiltered browse keeps one read per page.
+And the refill ceiling still applies per page.
+
+With a selection the chip row is **narrowed** to tags carried by decks on screen that match it all,
+so no chip leads to an empty browse. Nexus has no co-occurrence read to do this completely
+(pubky/pubky-nexus#1073), so the row is only as complete as the pages loaded — measured on staging,
+the first page of `language` shows 36 of the 43 labels that co-occur with it, `english` and
+`portuguese` all of theirs.
+
 ### 7.7 Tag indexing: what Nexus does and does not index
 
 Non-obvious and invisible from Loopky's side — a rejected tag produces no error anywhere,

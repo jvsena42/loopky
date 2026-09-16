@@ -65,7 +65,7 @@ struct DiscoverScreen: View {
     private var viewState: DiscoverViewState {
         guard let state = uiState else { return DiscoverViewState() }
         return DiscoverViewState(
-            topics: state.topics.items.map { KotlinInterop.tagLabel($0) },
+            topics: state.visibleTopics.map { KotlinInterop.tagLabel($0) },
             people: section(state.people) { person in
                 let identity = IdentityData(person.identity)
                 return DiscoverPersonData(
@@ -80,7 +80,7 @@ struct DiscoverScreen: View {
             },
             browse: section(state.browse, transform: deckData),
             following: section(state.following, transform: deckData),
-            selectedTag: state.selectedTag.map { KotlinInterop.tagLabel($0) }
+            selectedTags: state.selectedTags.map { KotlinInterop.tagLabel($0) }
         )
     }
 

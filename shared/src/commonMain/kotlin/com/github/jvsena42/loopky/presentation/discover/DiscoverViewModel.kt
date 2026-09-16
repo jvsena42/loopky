@@ -101,7 +101,7 @@ class DiscoverViewModel(
     private fun load(isRefresh: Boolean = false) {
         if (loadJob?.isActive == true) return
         loadJob = viewModelScope.launch {
-            val tag = _state.value.selectedTag
+            val tags = _state.value.selectedTags
             // Discover is the one screen a signed-out visitor gets in full, so the session is
             // resolved here rather than assumed: everything below reads public records, and the
             // only thing an account changes is whether the followed strip and the follow pills
@@ -115,6 +115,7 @@ class DiscoverViewModel(
                     topics = it.topics.loading(),
                     people = it.people.loading(),
                     browse = it.browse.loading(),
+                    pendingTopics = it.visibleTopics,
                     // Not "loading" for a guest: there is no follow graph to read, and a spinner
                     // that can only ever settle empty is a strip promising something it has none of.
                     following = if (isSignedIn) it.following.loading() else it.following.loaded(emptyList()),
@@ -126,7 +127,7 @@ class DiscoverViewModel(
                 launch { loadTopics() }
                 // People is seeded from what browse found, so it chains off it rather than
                 // racing it. Everything else runs alongside.
-                launch { loadPeople(seed = loadBrowse(tag)) }
+                launch { loadPeople(seed = loadBrowse(tags)) }
             }
             _state.update { it.copy(isRefreshing = false) }
         }
@@ -143,7 +144,7 @@ class DiscoverViewModel(
                 feed = decks
                 _state.update {
                     it.copy(
-                        following = it.following.loaded(decks.filterByTag(it.selectedTag).toCards(authors)),
+                        following = it.following.loaded(decks.filterByTags(it.selectedTags).toCards(authors)),
                         topics = it.topics.copy(items = mergedTopics(globalTopics, feed)),
                     )
                 }
@@ -157,24 +158,23 @@ class DiscoverViewModel(
     }
 
     /**
-     * Global browse. A null [tag] browses every published deck via [ReservedTags.DECK]; otherwise
-     * it asks the indexer for that topic rather than filtering what is already on screen, because
-     * a network-wide topic almost never matches the handful of decks in the followed feed.
+     * Global browse. No [tags] browses every published deck via [ReservedTags.DECK]; otherwise it
+     * asks the indexer for decks carrying all of them rather than filtering what is already on
+     * screen, because a network-wide topic almost never matches the handful of decks in the
+     * followed feed.
      */
-    private suspend fun loadBrowse(tag: Tag?): List<Deck> {
-        val label = tag ?: ReservedTags.DECK
-        val result = runSuspendCatching {
-            discoveryRepository.decksByTagGlobalPage(label, browsePageSize, DeckPage.START)
-        }
+    private suspend fun loadBrowse(tags: List<Tag>): List<Deck> {
+        val label = tags.describe()
+        val result = runSuspendCatching { fetchBrowsePage(tags, DeckPage.START) }
 
         val error = result.exceptionOrNull()
         if (error != null) {
             // The strip reports it rather than settling empty. An unreachable indexer used to render
             // as "Nothing published here yet" — a confident claim about the world, made by a device
             // that had not heard from it, with no retry offered (#321).
-            Log.e(TAG, "loadBrowse('${label.value}'): FAILED — ${error.message}", error)
+            Log.e(TAG, "loadBrowse('$label'): FAILED — ${error.message}", error)
             _state.update { current ->
-                if (current.selectedTag != tag) {
+                if (current.selectedTags != tags) {
                     current
                 } else {
                     current.copy(browse = current.browse.failed(error.toErrorReason()))
@@ -187,7 +187,7 @@ class DiscoverViewModel(
         _state.update { current ->
             // A newer selection may have landed while this was in flight; cancelling the job can
             // miss a suspension point, so the selection itself is the token.
-            if (current.selectedTag != tag) {
+            if (current.selectedTags != tags) {
                 current
             } else {
                 current.copy(
@@ -199,7 +199,7 @@ class DiscoverViewModel(
                 )
             }
         }
-        Log.d(TAG, "loadBrowse('${label.value}'): ${page.decks.size} decks, hasMore=${page.hasMore}")
+        Log.d(TAG, "loadBrowse('$label'): ${page.decks.size} decks, hasMore=${page.hasMore}")
         loadAuthorProfiles(page.decks)
         return page.decks
     }
@@ -219,9 +219,9 @@ class DiscoverViewModel(
         if (_state.value.browse.isLoading) return
         browseJob?.cancel()
         browseMoreJob?.cancel()
-        val tag = _state.value.selectedTag
-        _state.update { it.copy(browse = it.browse.loading()) }
-        browseJob = viewModelScope.launch { loadBrowse(tag) }
+        val tags = _state.value.selectedTags
+        _state.update { it.copy(browse = it.browse.loading(), pendingTopics = it.visibleTopics) }
+        browseJob = viewModelScope.launch { loadBrowse(tags) }
     }
 
     /**
@@ -234,23 +234,21 @@ class DiscoverViewModel(
      */
     fun onBrowseEndReached() {
         if (!_state.value.browse.canLoadMore || browseMoreJob?.isActive == true) return
-        val tag = _state.value.selectedTag
-        val label = tag ?: ReservedTags.DECK
+        val tags = _state.value.selectedTags
+        val label = tags.describe()
         val cursor = _state.value.browse.cursor
         _state.update { it.copy(browse = it.browse.copy(isLoadingMore = true)) }
 
         browseMoreJob = viewModelScope.launch {
-            val page = runSuspendCatching {
-                discoveryRepository.decksByTagGlobalPage(label, browsePageSize, cursor)
-            }
-                .onFailure { Log.e(TAG, "onBrowseEndReached('${label.value}'): FAILED — ${it.message}", it) }
+            val page = runSuspendCatching { fetchBrowsePage(tags, cursor) }
+                .onFailure { Log.e(TAG, "onBrowseEndReached('$label'): FAILED — ${it.message}", it) }
 
             page.exceptionOrNull()?.let { err ->
                 // A failed *page* keeps the decks already on screen and puts the error under them:
                 // this is a footer that could not load, not a strip that could not load. Clearing
                 // `isLoadingMore` matters most — without it the footer spins forever.
                 _state.update { current ->
-                    if (current.selectedTag != tag) {
+                    if (current.selectedTags != tags) {
                         current
                     } else {
                         current.copy(browse = current.browse.pageFailed(err.toErrorReason()))
@@ -262,7 +260,7 @@ class DiscoverViewModel(
             _state.update { current ->
                 // Same token as the first page: a topic chosen mid-flight makes this page answer a
                 // question nobody is asking any more, and appending it would mix two browses.
-                if (current.selectedTag != tag) {
+                if (current.selectedTags != tags) {
                     current
                 } else {
                     current.copy(
@@ -275,12 +273,40 @@ class DiscoverViewModel(
                 }
             }
             val decks = page.getOrThrow().decks
-            Log.d(TAG, "onBrowseEndReached('${label.value}'): +${decks.size}")
+            Log.d(TAG, "onBrowseEndReached('$label'): +${decks.size}")
             loadAuthorProfiles(decks)
             // Browse is also where the people strip gets its seed authors, so a new page of decks
             // widens the candidate roll the next page of people walks.
             browsedDecks = browsedDecks + decks
         }
+    }
+
+    /**
+     * One page of browse for [tags], from [cursor].
+     *
+     * The indexer is asked for the *last* tag chosen and the rest are checked against each manifest
+     * (see [DiscoveryRepository.decksByTagGlobalPage]): drilling down usually picks the narrow tag
+     * last, and the choice depends on the selection alone, so every page of one browse walks the
+     * same index — a cursor into one tag's index is meaningless in another's.
+     *
+     * A filtered page can come back empty with more behind it, and neither platform's footer asks
+     * again while it stays on screen, so an empty filtered page is followed straight on — up to
+     * [MAX_EMPTY_FILTERED_PAGES] times. Unfiltered browse keeps its single read per page.
+     */
+    private suspend fun fetchBrowsePage(tags: List<Tag>, cursor: Int): DeckPage {
+        val alsoTagged = tags.dropLast(1).toSet()
+        var page = discoveryRepository.decksByTagGlobalPage(tags.browseTag(), browsePageSize, cursor, alsoTagged)
+        if (alsoTagged.isEmpty()) return page
+        repeat(MAX_EMPTY_FILTERED_PAGES) {
+            if (page.decks.isNotEmpty() || !page.hasMore) return page
+            page = discoveryRepository.decksByTagGlobalPage(
+                tags.browseTag(),
+                browsePageSize,
+                page.nextCursor,
+                alsoTagged,
+            )
+        }
+        return page
     }
 
     /**
@@ -382,8 +408,29 @@ class DiscoverViewModel(
      */
     fun onTagLabelSelected(label: String?) = onTagSelected(label?.let(::Tag))
 
+    /**
+     * Toggles [tag] in the selection; null clears it. Several tags narrow browse and the followed
+     * strip to decks carrying **all** of them.
+     */
     fun onTagSelected(tag: Tag?) {
-        val next = if (tag == _state.value.selectedTag) null else tag
+        val current = _state.value.selectedTags
+        val next = when (tag) {
+            null -> emptyList()
+            in current -> current - tag
+            else -> current + tag
+        }
+        val before = _state.value
+        val chosen = next.mapTo(mutableSetOf()) { it.value }
+        val matchingOnScreen = (before.browse.items + before.following.items).filter { it.tags.containsAll(chosen) }
+        // Until the new page lands, the row is narrowed from the decks on screen that already match
+        // — a subset of the answer, so every chip it keeps is right. With none of them matching
+        // that would collapse the row to the chosen chips and grow it back a moment later, so the
+        // row stays as it was, chosen chips first, and narrows once the page lands.
+        val pending = if (matchingOnScreen.isNotEmpty()) {
+            before.copy(selectedTags = next).narrowedTopics(matchingOnScreen)
+        } else {
+            next + (before.visibleTopics - next.toSet())
+        }
         browseJob?.cancel()
         // A page in flight for the previous topic would append someone else's decks under this
         // one's header. The selection token in [onBrowseEndReached] catches it too; cancelling
@@ -391,9 +438,10 @@ class DiscoverViewModel(
         browseMoreJob?.cancel()
         _state.update {
             it.copy(
-                selectedTag = next,
+                selectedTags = next,
+                pendingTopics = pending,
                 browse = SectionState(isLoading = true),
-                following = it.following.copy(items = feed.filterByTag(next).toCards(authors)),
+                following = it.following.copy(items = feed.filterByTags(next).toCards(authors)),
             )
         }
         browseJob = viewModelScope.launch { loadBrowse(next) }
@@ -483,6 +531,13 @@ class DiscoverViewModel(
          * directory read to twenty. Ten keeps the strip inside five waves.
          */
         internal const val PEOPLE_LIMIT = 10
+
+        /**
+         * How many further pages one filtered browse page may read past an empty one. Each is up to
+         * four indexer reads plus a manifest fetch per candidate, so this bounds a filter nothing
+         * matches at a dozen or so reads rather than the whole tag index.
+         */
+        internal const val MAX_EMPTY_FILTERED_PAGES = 2
     }
 }
 
@@ -524,8 +579,13 @@ private fun mergedTopics(globalTopics: List<Tag>, feed: List<Deck>): List<Tag> =
         .filterNot { ReservedTags.isReserved(it) }
         .distinct()
 
-private fun List<Deck>.filterByTag(tag: Tag?): List<Deck> =
-    if (tag == null) this else filter { tag in it.tags }
+private fun List<Deck>.filterByTags(tags: List<Tag>): List<Deck> =
+    if (tags.isEmpty()) this else filter { it.tags.containsAll(tags) }
+
+/** The tag browse asks the indexer for — see `fetchBrowsePage` for why the last one. */
+private fun List<Tag>.browseTag(): Tag = lastOrNull() ?: ReservedTags.DECK
+
+private fun List<Tag>.describe(): String = ifEmpty { listOf(ReservedTags.DECK) }.joinToString(" + ") { it.value }
 
 internal fun List<Deck>.toCards(authors: Map<String, PubkyIdentity>): List<DiscoverDeck> = map { deck ->
     DiscoverDeck(
@@ -556,9 +616,41 @@ data class DiscoverUiState(
     val people: SectionState<DiscoverPerson> = SectionState(),
     val browse: SectionState<DiscoverDeck> = SectionState(),
     val following: SectionState<DiscoverDeck> = SectionState(),
-    val selectedTag: Tag? = null,
+    /** In the order they were chosen. Empty means unfiltered. */
+    val selectedTags: List<Tag> = emptyList(),
+    /** The topic row while a filtered browse is loading or failed — see [visibleTopics]. */
+    val pendingTopics: List<Tag> = emptyList(),
     val isRefreshing: Boolean = false,
 ) {
+    /**
+     * The topic chips to draw. Unfiltered, every topic. With a selection, only the chosen tags and
+     * the tags carried by decks on screen that match all of them — so no chip leads to an empty
+     * browse. Nexus cannot answer "which labels co-occur with these" (pubky/pubky-nexus#1073), so
+     * the row is only as complete as the pages loaded, and grows as more land.
+     */
+    val visibleTopics: List<Tag>
+        get() = when {
+            selectedTags.isEmpty() -> topics.items
+            browse.isLoading || browse.error != null -> pendingTopics
+            else -> narrowedTopics(browse.items + following.items)
+        }
+
+    /**
+     * Chosen tags first, then co-occurring ones in trending order — stable as pages land, where a
+     * per-page count would reshuffle the row under the reader's finger — then the rest by label.
+     */
+    internal fun narrowedTopics(decks: List<DiscoverDeck>): List<Tag> {
+        val chosen = selectedTags.mapTo(mutableSetOf()) { it.value }
+        val present = decks
+            .filter { deck -> deck.tags.containsAll(chosen) }
+            .flatMapTo(mutableSetOf()) { it.tags }
+            .filterNot { it in chosen || ReservedTags.isReserved(it) }
+            .toSet()
+        val ranked = topics.items.filter { it.value in present }
+        val rankedLabels = ranked.mapTo(mutableSetOf()) { it.value }
+        return selectedTags + ranked + present.filterNot { it in rankedLabels }.sorted().map(::Tag)
+    }
+
     /**
      * Global browse minus whatever the follow strip is already showing.
      *
