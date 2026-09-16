@@ -3618,3 +3618,46 @@ backing off only delays the error block that tells the reader to check their con
   error-and-retry and `onGridColumnsChanged` wiring, and the ViewModels are shared, but nothing was
   driven. Drive Discover and a tag chip on a simulator — one iPhone, one iPad — before trusting the
   iOS row.
+
+## 04 — Discover with several topics: an AND filter, and a chip row that only offers what matches — ✅ PASS (2026-09-16, `emulator-5554`, signed in as `pk:kfezy1…ccpqf4y`)
+
+Topic chips multi-select now, and several mean decks carrying **all** of them. Nexus cannot do the
+AND itself — `tags=a,b` is a union (`portuguese,stem` → 24, the sum), a repeated `tags=` is a 400,
+and `stream/resources` cuts each resource's tag list at five — so the repository reads one tag's
+index and checks the rest against each manifest (Architecture.md §7.6.2; upstream
+pubky/pubky-nexus#1072, #1073).
+
+| Selection | Result on device | Checked against `by-uri?limit_tags=100` |
+| --- | --- | --- |
+| `language` → `portuguese` | 12 decks, heading "Decks tagged “language” + “portuguese”" | all 12 `portuguese` decks carry `language` |
+| `portuguese` + `stem` | "No deck carries all of these tags yet" | 0 `stem` decks carry `portuguese` |
+| `language` + `english` + `spanish` | 1 deck ("Spray test") | — |
+
+**Paging under a filter stays on one index.** `portuguese` + `language` (queried as `language`,
+the last chosen) filled page one with 11 of 12 at the refill ceiling, and scrolling fetched page two
+from exactly where page one stopped reading:
+
+```
+decksByTagGlobalPage('language' + [portuguese]): 11/12 in 4 requests, cursor 0 -> 19, hasMore=true
+decksByTagGlobalPage('language' + [portuguese]):  1/12 in 2 requests, cursor 19 -> 42, hasMore=false
+```
+
+12 distinct decks in total, which is the full `portuguese` set, with no repeats.
+
+**The chip row narrows to what the selection can still match.** Before: `#language #portuguese #stem
+#bosnian …`. After tapping `#language`: `#language #portuguese #english #beginner …`, and `#stem` is
+gone because no `language` deck carries it. Every chip then offered under `language` + `english` was
+tapped and none landed on the empty block. The row is built from the decks already loaded, so it is
+only as complete as those pages: on staging the first page of `language` shows 36 of the 43 tags
+that appear alongside it.
+
+**Tablet.** Checked at expanded (2560×1600 landscape, nav rail) and medium (1600×2560 portrait)
+width with `wm size` on the phone emulator, because the `Pixel_Tablet` AVD had too little free
+storage for the 132 MB debug APK. The three-tag heading and Clear share the row at both widths.
+While checking this, the header `Text` turned out to have no weight, so a long enough title would
+have pushed Clear out of the row. It is weighted now.
+
+### Not verified here
+
+iOS. The Swift changes (`selectedTags`, the joined heading and the new catalog keys) were written
+on Linux, where there is no simulator, and have not been compiled.
