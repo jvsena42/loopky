@@ -689,14 +689,9 @@
             "state": "translated",
             "value": "Learn anything,\nremember everything."
           }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aprenda qualquer coisa,\nlembre de tudo."
-          }
         }
-      }
+      },
+      "shouldTranslate": false
     },
     "bulk_cancel": {
       "extractionState": "manual",

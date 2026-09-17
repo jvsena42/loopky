@@ -327,8 +327,9 @@
     <string name="listen_voice_unavailable">No voice installed for this deck’s language. Add it in your device’s text-to-speech settings.</string>
 
     <!-- Onboarding -->
-    <!-- The Loopky slogan. Shown on the splash and as the onboarding hero. -->
-    <string name="brand_tagline">Learn anything,\nremember everything.</string>
+    <!-- The Loopky slogan. Shown on the splash and as the onboarding hero. English in every
+         language: it is the brand line, not copy, so it is never translated. -->
+    <string name="brand_tagline" translatable="false">Learn anything,\nremember everything.</string>
     <string name="onboarding_hero_subtitle">Spaced repetition that feels like a game. Decks you make, share, and learn from friends.</string>
     <string name="onboarding_brand_name">Loopky</string>
     <string name="onboarding_signin_waiting">Waiting for Pubky Ring…</string>
