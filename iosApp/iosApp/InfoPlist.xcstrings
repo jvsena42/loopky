@@ -4,6 +4,12 @@
     "NSCameraUsageDescription": {
       "extractionState": "manual",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky nutzt die Kamera, um einen QR-Code mit dem pubky einer Person zu lesen, damit du sie ohne Tippen findest."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -21,6 +27,12 @@
     "NSMicrophoneUsageDescription": {
       "extractionState": "manual",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky hört zu, während du übst, eine Karte laut auszusprechen, und hört auf, sobald du geantwortet hast."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -38,6 +50,12 @@
     "NSSpeechRecognitionUsageDescription": {
       "extractionState": "manual",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky wandelt, was du sagst, in Text um, um deine Aussprache mit der Karte abzugleichen. Es wird nichts gespeichert."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
