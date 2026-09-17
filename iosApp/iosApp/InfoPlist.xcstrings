@@ -22,6 +22,12 @@
             "value": "Loopky usa la cámara para leer un código QR con el pubky de alguien, para que puedas encontrar a esa persona sin escribirlo."
           }
         },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky utilise l’appareil photo pour lire un code QR contenant le pubky de quelqu’un, pour que tu le trouves sans avoir à le saisir."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -51,6 +57,12 @@
             "value": "Loopky te escucha mientras practicas decir una tarjeta en voz alta, y se detiene en cuanto respondes."
           }
         },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky écoute pendant que tu t’entraînes à dire une carte à voix haute, et s’arrête dès que tu as répondu."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -78,6 +90,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loopky convierte lo que dices en texto para comparar tu pronunciación con la tarjeta. No se guarda nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky transforme ce que tu dis en texte pour comparer ta prononciation à la carte. Rien n’est conservé."
           }
         },
         "pt-BR": {
