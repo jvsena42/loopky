@@ -528,13 +528,19 @@ The same rules apply to Swift.
 
 ### Strings (all languages)
 
-**Loopky ships in English and Brazilian Portuguese, and a new string is not done until both
-catalogs have it.** There are four files and every one of them has to be touched together:
-`androidApp/src/main/res/values/strings.xml` and `values-pt-rBR/strings.xml` on Android,
-and the `en` **and** `pt-BR` localizations of `iosApp/iosApp/Localizable.xcstrings` on iOS. A
-missing `pt-BR` entry does not fail any build, any lint or any test — it falls back to English at
-render time, so a half-translated screen looks perfectly healthy from a green CI run and only a
-device set to Portuguese ever shows it.
+**Loopky ships in English, Brazilian Portuguese, German, Spanish, French and Italian, and a new
+string is not done until every language has it.** On Android that is `values/strings.xml` plus
+`values-{pt-rBR,de,es,fr,it}/strings.xml` (and `plurals.xml`); on iOS it is all six localizations
+of the key in `iosApp/iosApp/Localizable.xcstrings`. A missing translation does not fail any build,
+any lint or any test — it falls back to English at render time, so a half-translated screen looks
+perfectly healthy from a green CI run and only a device set to that language ever shows it. Adding
+a language means `AppLocale.SUPPORTED`, `res/xml/locales_config.xml` and the Xcode project's
+`knownRegions` as well; nothing checks the three against each other.
+
+**The slogan is never translated.** `brand_tagline` ("Learn anything, remember everything.") is
+`translatable="false"` on Android and `shouldTranslate: false` in the catalog — it is the brand
+line, not copy. es, fr and it take CLDR `many` besides `one`/`other`, so their plurals carry all
+three.
 
 Two things that go with it. Never hardcode a user-facing string in a Composable or a SwiftUI
 view; and a string ported between platforms needs its format specifiers converted (`%1$s` →
