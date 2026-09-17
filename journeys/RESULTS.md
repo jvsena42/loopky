@@ -3669,3 +3669,40 @@ when the page landed. The row now stays as it is, with the chosen chips first, u
 
 iOS. The Swift changes (`selectedTags`, the joined heading, the new catalog keys and the chip-row
 transitions) were written on Linux, where there is no simulator, and have not been compiled.
+
+## German, Spanish, French and Italian, and an English-only slogan — 2026-09-17, `Medium_Phone` (staging)
+
+Android on `emulator-5554`, signed in as `pk:kfezy1…ccpqf4y`. Like the pt-BR run, this touches every
+screen's copy rather than one flow, so it was checked on the screens the journeys pass through.
+
+| Step | Result |
+| --- | --- |
+| Settings → Language dropdown | ✅ PASS — "Par défaut du système", then Deutsch, English, Español, Français, Italiano, Português (Brasil) |
+| Pick Español in the dropdown | ✅ PASS — `cmd locale get-app-locales` → `[es]`, Settings recomposed as "Configuración · IDENTIDAD · COMPARTIR · IDIOMA" |
+| Home, es | ✅ PASS — "PARA HOY · 21 tarjetas por repasar", "10 por repasar · 11 tarjetas", tabs "Hoy / Mazos / Descubrir / Perfil" |
+| Home, fr | ✅ PASS — "POUR AUJOURD’HUI", "0 sur 21 faites · continue comme ça !", tabs "Aujourd’hui / Paquets / Découvrir / Profil" |
+| Home, de | ✅ PASS — "HEUTE FÄLLIG · 21 Karten zu wiederholen", "Jetzt lernen", nothing clipped |
+| Home, it | ✅ PASS — "DA RIPASSARE OGGI", "10 da ripassare · 11 carte", tabs "Oggi / Mazzi / Scopri / Profilo" |
+| Study, de and fr | ✅ PASS — "1 von 229" / "1 sur 229", "Tippe auf die Karte für die Antwort", grades "À revoir / Difficile / Correct / Facile" fit the row |
+| Slogan stays English | ✅ PASS — `aapt2 dump resources` lists `brand_tagline` under the default configuration only |
+| `assembleDebug`, `detektAll`, `checkStringPlurals` | ✅ PASS |
+
+### Worth knowing
+
+**The grade intervals ("<10m", "1d", "3d") are still English in every language.** Shared code
+formats them into finished strings, as the pt-BR run noted.
+
+**A count a language cannot agree with is reworded, not inflected.** Android's
+`home_deck_new_cards` pluralizes on the card total, so "1 nouvelles" and "1 nuove" had no correct
+plural to use. French reads "N à découvrir", Italian "N da imparare", and Spanish "Nuevas: N",
+which are correct at any count.
+
+**On iOS, `home_caught_up_next_due` is "Next review %1$@." with no preposition.**
+`RelativeDateTimeFormatter` returns "in 3 days" (or "in 3 Tagen", "dentro de 3 días"), so the
+catalog's own "in" had been rendering "Next review in in 3 days" in English and "em em" in pt-BR.
+
+### Not verified here
+
+iOS. The catalog additions, `knownRegions` and the `home_caught_up_next_due` fix were made on Linux,
+where there is no simulator. `-AppleLanguages "(es)"` (etc.) on the next Mac run is the check. The
+tablet was not re-run, because no layout changed.

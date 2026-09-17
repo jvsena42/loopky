@@ -26,12 +26,13 @@ import java.util.Locale
 object AppLocale {
 
     /**
-     * The BCP-47 tags Loopky ships translations for, in the order the picker lists them.
+     * The BCP-47 tags Loopky ships translations for, in the order the picker lists them —
+     * alphabetical by each language's own name (Deutsch, English, Español, …).
      *
      * Must stay in step with the `res/values-…` directories and with `res/xml/locales_config.xml`,
      * which is what the system Settings screen reads. Nothing checks the three against each other.
      */
-    val SUPPORTED = listOf("en", "pt-BR")
+    val SUPPORTED = listOf("de", "en", "es", "fr", "it", "pt-BR")
 
     private const val PREFS = "loopky.locale"
     private const val KEY_TAG = "app_locale_tag"

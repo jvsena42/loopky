@@ -320,7 +320,6 @@
     <string name="listen_voice_unavailable">Nenhuma voz instalada para o idioma deste baralho. Adicione nas configurações de conversão de texto em fala do aparelho.</string>
 
     <!-- Onboarding -->
-    <string name="brand_tagline">Aprenda qualquer coisa,\nlembre de tudo.</string>
     <string name="onboarding_hero_subtitle">Repetição espaçada com cara de jogo. Baralhos que você cria, compartilha e aprende com amigos.</string>
     <string name="onboarding_brand_name">Loopky</string>
     <string name="onboarding_signin_waiting">Aguardando o Pubky Ring…</string>

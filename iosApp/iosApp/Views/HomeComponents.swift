@@ -345,6 +345,8 @@ struct CaughtUpCard: View {
             for: Date(timeIntervalSince1970: Double(millis) / 1000),
             relativeTo: Date()
         )
+        // `relative` already carries its preposition ("in 3 days", "dans 3 jours", "in 3 Tagen"),
+        // so the catalog value must not add one — unlike Android's `home_caught_up_next_due`.
         return String(format: NSLocalizedString("home_caught_up_next_due", comment: ""), relative)
     }
 }
