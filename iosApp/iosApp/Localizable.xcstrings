@@ -11446,31 +11446,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Next review in %1$@."
+            "value": "Next review %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Próximo repaso en %1$@."
+            "value": "Próximo repaso %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prochaine révision dans %1$@."
+            "value": "Prochaine révision %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prossimo ripasso tra %1$@."
+            "value": "Prossimo ripasso %1$@."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Próxima revisão em %1$@."
+            "value": "Próxima revisão %1$@."
           }
         }
       }
