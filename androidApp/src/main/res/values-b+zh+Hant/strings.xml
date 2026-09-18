@@ -1,0 +1,936 @@
+<resources>
+    <string name="app_name">Loopky</string>
+
+    <!-- Shared text controls -->
+    <string name="read_more">顯示更多</string>
+    <string name="read_less">收合</string>
+    <string name="char_counter">%1$d/%2$d</string>
+
+    <!-- Home -->
+    <string name="home_greeting_hello">嗨，</string>
+    <string name="home_greeting_name">%1$s 👋</string>
+    <string name="home_error_title">出了點問題</string>
+    <string name="home_retry">重試</string>
+    <string name="home_loading">準備中…</string>
+    <string name="home_due_today">今日待複習</string>
+    <string name="home_cards">張卡片</string>
+    <string name="home_to_review">待複習</string>
+    <string name="home_progress_done">已完成 %1$d/%2$d 張 · 繼續加油！</string>
+    <string name="home_new_cards_goal">今天的新卡片：%1$d/%2$d 張</string>
+    <string name="home_new_cards_goal_reached">已達成每日目標 · %1$d 張新卡片 🎉</string>
+    <string name="home_start_studying">開始學習</string>
+    <string name="home_todays_decks">今天的牌組</string>
+    <string name="home_see_all">查看全部</string>
+    <string name="home_deck_due">%1$d 張待複習</string>
+    <string name="home_deck_new">%1$d 張新卡片</string>
+    <string name="home_deck_caught_up">已完成</string>
+    <!-- The hero while the cached library is on screen and the review state has not answered. -->
+    <string name="home_checking_due">正在確認待複習的卡片…</string>
+    <string name="home_empty_title">還沒有牌組</string>
+    <string name="home_empty_subtitle">貼上清單、匯入檔案，或從零開始。</string>
+    <string name="home_create_first_deck">建立你的第一個牌組</string>
+    <string name="home_browse_examples">瀏覽範例</string>
+
+    <!-- Decks library -->
+    <string name="decks_title">你的牌組</string>
+    <string name="decks_search">搜尋</string>
+    <string name="decks_paste_cta_title">貼上即可匯入</string>
+    <string name="decks_paste_cta_subtitle">把任何清單變成牌組</string>
+    <string name="decks_paste_cta_go">開始</string>
+    <string name="decks_import_file_cta">從 Anki 或檔案匯入</string>
+    <string name="decks_library_count">牌組庫 · %1$d</string>
+    <string name="decks_recent">最近</string>
+    <string name="decks_empty_title">還沒有牌組</string>
+    <string name="decks_empty_subtitle">貼上清單，或從零建立你的第一個牌組。</string>
+    <string name="decks_empty_create">建立牌組</string>
+    <string name="decks_error_title">出了點問題</string>
+    <string name="decks_loading">正在洗牌…</string>
+    <string name="decks_retry">重試</string>
+
+    <!-- Deck tile -->
+    <string name="deck_tile_cloned_badge">複本</string>
+
+    <!-- Deck detail -->
+    <string name="deck_detail_error_title">出了點問題</string>
+    <string name="deck_detail_retry">重試</string>
+    <string name="deck_detail_loading">正在開啟牌組…</string>
+    <string name="deck_detail_deleting">正在刪除牌組…</string>
+    <string name="deck_detail_start_studying">開始學習 · %1$s 張待複習</string>
+    <string name="deck_detail_start_studying_new">開始學習 · %1$d 張新卡片</string>
+    <string name="deck_detail_study_this_deck">學習這個牌組</string>
+    <string name="deck_detail_back">返回</string>
+    <string name="deck_detail_back_to_decks">返回牌組</string>
+    <string name="deck_detail_edit">編輯牌組</string>
+    <string name="deck_detail_delete">刪除牌組</string>
+    <string name="deck_detail_share">分享</string>
+    <string name="deck_detail_more_actions">更多動作</string>
+    <string name="deck_detail_delete_dialog_title">要刪除牌組嗎？</string>
+    <string name="deck_detail_delete_dialog_message">「%1$s」以及你從中學到的一切都會被刪除。此動作無法復原。</string>
+    <string name="deck_detail_delete_confirm">刪除</string>
+    <string name="deck_detail_delete_cancel">取消</string>
+    <string name="deck_detail_in_your_library">已在你的牌組庫中</string>
+    <string name="deck_detail_follow">追蹤牌組</string>
+    <string name="deck_detail_following">追蹤中</string>
+    <string name="deck_detail_cloning">正在複製牌組…</string>
+    <string name="deck_detail_clone_dialog_title">要建立你自己的複本嗎？</string>
+    <string name="deck_detail_clone_name_label">為你的複本命名</string>
+    <string name="deck_detail_clone_name_same">請取一個和原本不同的名稱。</string>
+    <string name="deck_detail_clone_confirm">複製</string>
+    <string name="deck_detail_clone_cancel">取消</string>
+    <string name="deck_detail_cloned_from">複製自 %1$s</string>
+    <string name="deck_detail_followers">%1$d 人追蹤</string>
+    <string name="deck_detail_dismiss_error">關閉</string>
+    <string name="deck_detail_cards_heading">卡片</string>
+    <string name="deck_detail_cards_empty_owned">還沒有卡片。點「編輯」新增第一張。</string>
+    <string name="deck_detail_cards_empty_foreign">這個牌組還沒有任何卡片。</string>
+
+    <!-- Deck editor -->
+    <string name="deck_editor_title_new">新牌組</string>
+    <string name="deck_editor_title_edit">編輯牌組</string>
+    <string name="deck_editor_close">關閉</string>
+    <string name="deck_editor_save">儲存</string>
+    <string name="deck_editor_cover">封面</string>
+    <string name="deck_editor_label_title">牌組名稱</string>
+    <string name="deck_editor_title_placeholder">輸入牌組名稱…</string>
+    <string name="deck_editor_label_description">說明</string>
+    <string name="deck_editor_description_placeholder">新增說明…</string>
+    <string name="deck_editor_label_tags">標籤（PUBKY）</string>
+    <string name="deck_editor_add_tag">+ 新增</string>
+    <string name="deck_editor_cards_count">卡片（%1$d）</string>
+    <!-- The consequence, then the cause. Composed from the shared ErrorReason copy the same way
+         publish_error_* is, so the editor cannot word a session failure differently from the rest
+         of the app — and so the FFI's own message never reaches this row again (#165). -->
+    <string name="deck_editor_error_cards">無法載入這個牌組的卡片。牌組資訊的變更仍會儲存。%1$s</string>
+    <string name="deck_editor_error_move">無法移動這張卡片。%1$s</string>
+    <string name="deck_editor_error_save">無法儲存這個牌組。%1$s</string>
+    <string name="deck_editor_add_card">新增卡片</string>
+    <string name="deck_editor_reorder">重新排序</string>
+    <string name="deck_editor_card_front_placeholder">正面</string>
+    <string name="deck_editor_card_back_placeholder">背面</string>
+    <string name="deck_editor_has_image">含圖片</string>
+    <string name="deck_editor_has_audio">含音訊</string>
+
+    <!-- Edit card -->
+    <string name="edit_card_title">編輯卡片</string>
+    <string name="edit_card_cancel">取消</string>
+    <string name="edit_card_save">儲存</string>
+    <string name="edit_card_context">第 %1$d 張，共 %2$d 張 · %3$s</string>
+    <string name="edit_card_label_front">正面</string>
+    <string name="edit_card_front_placeholder">輸入正面文字…</string>
+    <string name="edit_card_label_back">背面</string>
+    <string name="edit_card_back_placeholder">輸入背面文字…</string>
+    <string name="edit_card_add_image">新增圖片</string>
+    <string name="edit_card_image">圖片</string>
+    <string name="edit_card_add_audio">新增音訊</string>
+    <string name="edit_card_audio">音訊</string>
+    <string name="edit_card_delete">刪除卡片</string>
+    <string name="edit_card_speak">朗讀</string>
+
+    <!-- Study session -->
+    <string name="study_error_title">出了點問題</string>
+    <string name="study_close">關閉</string>
+    <string name="study_loading">正在發牌…</string>
+    <string name="study_empty_title">全部複習完了 🎉</string>
+    <string name="study_empty_subtitle">目前沒有待複習的卡片。</string>
+    <string name="study_empty_subtitle_deck">「%1$s」目前沒有待複習的卡片。</string>
+    <string name="study_done">完成</string>
+    <string name="study_complete_title">全部完成！🎊</string>
+    <string name="study_back">返回</string>
+    <string name="study_position_of_total">%1$d/%2$d</string>
+    <string name="study_flip_hint">點一下卡片顯示答案</string>
+    <string name="study_listen">聆聽</string>
+    <string name="study_speak">口說</string>
+    <string name="study_type_placeholder">輸入答案</string>
+    <string name="study_type_check">檢查</string>
+    <string name="study_type_give_up">放棄 · 看答案</string>
+    <string name="study_type_correct">答對了！</string>
+    <string name="study_type_near_miss">差一點。檢查一下重音符號</string>
+    <string name="study_type_wrong">不太對。再試一次</string>
+
+    <!-- Discover -->
+    <string name="discover_title">探索</string>
+    <string name="discover_search">搜尋</string>
+    <string name="discover_topics_title">主題</string>
+    <string name="discover_people_title">Loopky 上的使用者</string>
+    <string name="discover_browse_title">探索牌組</string>
+    <string name="discover_browse_tag_title">標記為「%1$s」的牌組</string>
+    <string name="discover_browse_tags_title">標記為 %1$s 的牌組</string>
+    <string name="discover_tag_quoted">「%1$s」</string>
+    <string name="discover_tag_list_separator">" + "</string>
+    <string name="discover_clear_tag">清除</string>
+    <string name="discover_following_title">來自你追蹤的人</string>
+    <string name="discover_browse_empty_emoji">🌱</string>
+    <string name="discover_browse_empty_title">這裡還沒有發布任何內容</string>
+    <string name="discover_browse_empty_subtitle">Loopky 的公開索引才剛起步。發布一個牌組，所有人都能在這裡看到它。</string>
+    <string name="discover_empty_tag_emoji">🔍</string>
+    <string name="discover_empty_tag_title">還沒有標記為「%1$s」的牌組</string>
+    <string name="discover_empty_tag_subtitle">還沒有人用這個標籤標記牌組。再點一次標籤即可查看全部。</string>
+    <string name="discover_empty_tags_title">還沒有牌組同時帶有這些標籤</string>
+    <string name="discover_empty_tags_subtitle">點一下標籤即可從篩選中移除，或點「清除」查看全部。</string>
+
+    <!-- Tag browse -->
+    <string name="discover_search_cta">搜尋使用者與牌組</string>
+
+    <!-- Search -->
+    <string name="search_back">返回</string>
+    <string name="search_placeholder">搜尋或貼上 pubky</string>
+    <string name="search_clear">清除</string>
+    <string name="search_scan_qr">掃描 QR 碼</string>
+    <string name="search_hint">以名稱搜尋，或貼上 pubky、分享連結，或掃描 QR 碼。</string>
+    <string name="search_people_title">使用者</string>
+    <string name="search_decks_title">牌組</string>
+    <string name="search_open_profile">開啟這個個人檔案</string>
+    <string name="search_open_deck">開啟這個牌組</string>
+    <string name="search_empty_emoji">🔍</string>
+    <string name="search_empty_title">找不到「%1$s」的結果</string>
+    <string name="search_empty_subtitle">試試其他名稱，或貼上對方的 pubky 直接開啟。</string>
+
+    <string name="tag_browse_title">#%1$s</string>
+    <string name="tag_browse_back">返回</string>
+    <string name="tag_browse_empty_title">還沒有標記為「%1$s」的牌組</string>
+    <string name="tag_browse_empty_subtitle">Loopky 上還沒有人使用這個標籤。用它發布一個牌組，就會出現在這裡。</string>
+
+    <!-- Paste import -->
+    <string name="paste_title">貼上卡片</string>
+    <string name="paste_cancel">取消</string>
+    <string name="paste_next">下一步</string>
+    <string name="paste_input_placeholder_title">在這裡貼上你的清單</string>
+    <string name="paste_input_placeholder_subtitle">每行一張卡片</string>
+    <string name="paste_detected_separator">偵測到：%1$s</string>
+    <string name="paste_preview_label">預覽</string>
+    <string name="paste_try_pasting_label">試著貼上像這樣的內容</string>
+    <string name="paste_public_notice">這個牌組會公開在你的個人檔案上</string>
+    <string name="paste_chip_no_pattern">未偵測到格式</string>
+    <string name="paste_card_index">%1$d/%2$d</string>
+    <string name="paste_blank_placeholder">—</string>
+    <string name="paste_separator_tab">Tab</string>
+    <string name="paste_separator_semicolon">分號</string>
+    <string name="paste_separator_pipe">豎線</string>
+    <string name="paste_separator_dash">破折號</string>
+    <string name="paste_separator_colon">冒號</string>
+    <string name="paste_separator_comma">逗號</string>
+    <string name="paste_separator_blank_lines">空白行</string>
+    <string name="paste_separator_markdown">Markdown</string>
+    <string name="paste_separator_single_column">單欄</string>
+    <string name="paste_separator_auto">自動</string>
+
+    <!-- Publish deck -->
+    <string name="publish_back">返回</string>
+    <string name="publish_title">新牌組</string>
+    <string name="publish_cover_label">封面</string>
+    <string name="publish_cover_change">更換</string>
+    <string name="publish_title_label">名稱</string>
+    <string name="publish_title_placeholder">牌組名稱</string>
+    <string name="publish_description_label">說明</string>
+    <string name="publish_description_placeholder">新增簡短說明…</string>
+    <string name="publish_tags_label">標籤</string>
+    <string name="publish_add_tag">新增標籤</string>
+    <string name="publish_add">新增</string>
+    <string name="publish_public_title">公開在你的個人檔案上</string>
+    <string name="publish_public_subtitle">任何人都能在「探索」找到這個牌組。</string>
+    <string name="publish_button">發布牌組</string>
+    <string name="publish_cancel">取消匯入</string>
+    <string name="publish_cancelling">正在清理…</string>
+    <string name="publish_cancel_title">要取消這次匯入嗎？</string>
+    <string name="publish_cancel_message">目前已上傳的卡片會被移除。你的牌組資訊會保留，可以再次發布。</string>
+    <string name="publish_cancel_confirm">取消匯入</string>
+    <string name="publish_cancel_keep">繼續發布</string>
+    <string name="publish_published_icon_desc">已發布</string>
+    <string name="publish_published_title">牌組已發布！</string>
+    <string name="publish_done">完成</string>
+    <string name="publish_undo">復原（%1$d 秒）</string>
+    <string name="publish_card_options_label">卡片選項</string>
+    <string name="publish_listen_title">聆聽</string>
+    <string name="publish_listen_subtitle">在卡片背面播放發音</string>
+    <string name="publish_speak_title">口說</string>
+    <string name="publish_speak_subtitle">測試你的發音</string>
+    <string name="publish_type_title">輸入答案</string>
+    <string name="publish_type_subtitle">寫出答案，而不只是看答案</string>
+    <string name="publish_reverse_title">雙向</string>
+    <string name="publish_reverse_subtitle">每張卡片也會反過來，從背面問到正面</string>
+    <string name="study_reversed_badge">反向</string>
+    <string name="deck_languages_hint">設定朗讀每一面時使用的語音。</string>
+    <string name="deck_front_language_label">正面語言</string>
+    <string name="deck_back_language_label">背面語言</string>
+    <string name="deck_language_unset">選擇語言</string>
+    <string name="deck_languages_required">選擇正面和背面的語言，才能使用「聆聽」或「口說」。</string>
+    <string name="publish_cover_sheet_title">封面圖片</string>
+
+    <!-- Triage / Review cards -->
+    <string name="triage_title">檢視卡片</string>
+    <string name="triage_approve_all">全部保留</string>
+    <string name="triage_progress">%1$d/%2$d</string>
+    <string name="triage_stats">保留 %1$d 張 · 捨棄 %2$d 張</string>
+    <string name="triage_front_label">正面</string>
+    <string name="triage_back_label">背面</string>
+    <string name="triage_discard">捨棄</string>
+    <string name="triage_edit">編輯</string>
+    <string name="triage_keep">保留</string>
+
+    <!-- Image picker sheet -->
+    <string name="image_sheet_front_title">正面圖片</string>
+    <string name="image_sheet_front_subtitle">為卡片正面選擇一張圖片</string>
+    <string name="image_sheet_back_title">背面圖片</string>
+    <string name="image_sheet_back_subtitle">為卡片背面選擇一張圖片</string>
+    <string name="image_sheet_done">完成</string>
+    <string name="image_sheet_search_placeholder">搜尋圖片，或貼上連結…</string>
+    <string name="image_sheet_from_gallery">從相簿選取</string>
+    <string name="image_sheet_paste">貼上</string>
+    <!-- Pasting: the field takes an address, the Paste button also takes a copied image itself. -->
+    <string name="image_sheet_paste_empty">沒有可貼上的內容。請先複製圖片網址。</string>
+    <string name="image_sheet_paste_image_clip">這是複製的圖片本身。請改貼上它的網址，或從相簿中選取。</string>
+    <string name="image_sheet_image_unreadable">無法讀取這張圖片。試試別張。</string>
+    <string name="image_sheet_link_preview">貼上的圖片</string>
+    <string name="image_sheet_link_clear">清除連結</string>
+    <string name="image_sheet_link_failed">這個連結無法載入為圖片。請複製圖片本身，或複製圖片的網址，而不是網頁的網址。</string>
+    <string name="image_sheet_no_results">找不到圖片</string>
+    <!-- Web-search failures. The first three are fixed by setting a key; the last one is not. -->
+    <string name="image_sheet_error_missing_key">網路圖片搜尋需要 Unsplash API 金鑰。免費取得，大約只要兩分鐘。</string>
+    <string name="image_sheet_error_invalid_key">Unsplash 拒絕了這個金鑰。請到「設定」中檢查。</string>
+    <string name="image_sheet_error_rate_limited">Unsplash 每小時的額度已用完。使用你自己的金鑰，就有你自己的額度。</string>
+    <string name="image_sheet_error_unavailable">無法連線到 Unsplash。請檢查網路連線，或從相簿中選取。</string>
+    <string name="image_sheet_get_key">取得金鑰</string>
+    <string name="image_sheet_add_key">新增金鑰</string>
+    <string name="image_sheet_remove">移除圖片</string>
+    <string name="image_sheet_photo">照片</string>
+    <!-- Attribution required by the Unsplash API guidelines: photographer + platform, both linked. -->
+    <string name="image_sheet_credit">攝影：%1$s，來自 %2$s</string>
+    <string name="image_sheet_credit_platform">照片來自 %1$s</string>
+    <string name="image_sheet_credit_unsplash">Unsplash</string>
+    <string name="image_sheet_credit_unknown_author">一位 Unsplash 攝影師</string>
+
+    <!-- Speak (study) -->
+    <string name="speak_listening_prompt">說出這個字</string>
+    <string name="speak_listening_hint">點一下即可取消</string>
+    <string name="speak_correct_title">完美！</string>
+    <string name="speak_you_said_label">你說的是</string>
+    <string name="speak_continue">繼續</string>
+    <string name="speak_wrong_title">不太對</string>
+    <string name="speak_you_said">你說的是</string>
+    <string name="speak_correct_label">正確答案</string>
+    <string name="speak_try_again">再試一次</string>
+    <string name="speak_permission_denied">需要麥克風權限才能練習口說。</string>
+    <string name="speak_unavailable">這部裝置無法使用語音辨識。</string>
+    <string name="speak_failed_no_match_title">沒聽清楚</string>
+    <string name="speak_failed_no_match_message">沒有辨識到任何內容。靠近麥克風一點再試一次。</string>
+    <string name="speak_failed_network_title">語音辨識離線中</string>
+    <string name="speak_failed_network_message">語音辨識目前需要網路連線。請檢查連線後再試一次。</string>
+    <string name="speak_failed_busy_title">仍在聆聽</string>
+    <string name="speak_failed_busy_message">上一次嘗試還沒結束。稍等一下再試一次。</string>
+    <string name="speak_failed_language_title">未安裝語言</string>
+    <string name="speak_failed_language_message">這部裝置沒有這個牌組語言的語音模型。請到裝置的語音輸入設定中新增。</string>
+    <string name="speak_failed_permission_title">麥克風已關閉</string>
+    <string name="speak_failed_unavailable_title">無法使用口說</string>
+    <string name="speak_failed_unknown_title">出了點問題</string>
+    <string name="speak_failed_unknown_message">語音辨識沒有傳回答案。再試一次。</string>
+    <string name="speak_close">關閉</string>
+    <string name="listen_voice_unavailable">沒有安裝這個牌組語言的語音。請到裝置的文字轉語音設定中新增。</string>
+
+    <!-- Onboarding -->
+    <!-- The Loopky slogan. Shown on the splash and as the onboarding hero. English in every
+         language: it is the brand line, not copy, so it is never translated. -->
+    <string name="onboarding_hero_subtitle">像遊戲一樣的間隔重複。自己製作、分享牌組，也向朋友的牌組學習。</string>
+    <string name="onboarding_brand_name">Loopky</string>
+    <string name="onboarding_signin_waiting">正在等待 Pubky Ring…</string>
+    <string name="onboarding_signin_verifying">正在登入…</string>
+    <string name="onboarding_signin_default">使用 Pubky Ring 登入</string>
+    <string name="onboarding_no_email_notice">不用電子郵件，不用密碼。你的金鑰，就是你的帳號。</string>
+    <string name="onboarding_get_ring">還沒有 Pubky Ring？下載 App</string>
+    <!-- Consent gate on both account entry points. The two document names are located inside the
+         sentence at runtime and turned into links, so a translation may place them anywhere. -->
+    <string name="onboarding_policy_consent">我已閱讀並同意%1$s與%2$s。</string>
+    <string name="onboarding_policy_privacy">隱私權政策</string>
+    <string name="onboarding_policy_license">授權條款</string>
+    <string name="onboarding_qr_title">使用 Pubky Ring 掃描</string>
+    <string name="onboarding_qr_body">在手機上開啟 Pubky Ring，點「授權」，然後掃描這個 QR 碼。</string>
+    <string name="onboarding_qr_content_description">包含此登入請求的 QR 碼</string>
+    <string name="onboarding_qr_waiting">正在等待你在 Pubky Ring 中核准…</string>
+    <string name="onboarding_still_waiting">仍在等待。如果 Pubky Ring 沒有顯示請求，請取消後再試一次。</string>
+    <string name="onboarding_qr_open_here">我在這部裝置上有 Pubky Ring</string>
+    <string name="onboarding_qr_cancel">取消</string>
+    <string name="onboarding_qr_copy">複製登入連結</string>
+    <string name="onboarding_qr_copied">已複製登入連結</string>
+    <string name="onboarding_qr_sheet_body">這部裝置上沒有 Pubky Ring。請在存有你金鑰的手機上開啟它，點「授權」，然後掃描這個 QR 碼。</string>
+    <string name="onboarding_app_version">版本 %1$s</string>
+
+    <!-- pubky.app — the web client the same account already exists on. -->
+    <string name="pubky_app_open_profile">在 pubky.app 上開啟</string>
+    <string name="pubky_app_cta_title">你在 pubky.app 上也有帳號</string>
+    <!-- Says what the account is, not that decks appear there — they don\'t. -->
+    <string name="pubky_app_cta_body">你登入時使用的金鑰就是一個 Pubky 帳號。在網頁上查看你的個人檔案和貼文。</string>
+
+    <!-- Profile -->
+    <string name="profile_title">個人檔案</string>
+    <string name="profile_loading">正在載入個人檔案…</string>
+    <string name="profile_settings_content_description">設定</string>
+    <string name="profile_edit_profile">編輯個人檔案</string>
+    <string name="profile_share_content_description">分享</string>
+    <string name="profile_stat_decks">牌組</string>
+    <string name="profile_stat_cards">卡片</string>
+    <string name="profile_stat_due">待複習</string>
+    <string name="profile_stat_following">追蹤中</string>
+    <string name="profile_stat_followers">追蹤者</string>
+    <!-- Shown in a stat column whose count has not resolved yet. -->
+    <string name="profile_stat_pending">—</string>
+    <string name="profile_sign_out">登出</string>
+    <string name="profile_dismiss">關閉</string>
+    <string name="profile_edit_profile_sheet_title">編輯個人檔案</string>
+    <string name="profile_edit_name_label">名稱</string>
+    <string name="profile_edit_name_placeholder">你的名稱</string>
+    <string name="profile_edit_bio_label">自我介紹</string>
+    <string name="profile_edit_bio_placeholder">介紹一下你自己…</string>
+    <string name="profile_save">儲存</string>
+    <!-- The one-time invitation to name a nameless profile. Warm and short by design: it asks
+         for something optional, and "Not now" is remembered so it is never asked twice. -->
+    <string name="profile_name_nudge_title">我們該怎麼稱呼你？</string>
+    <string name="profile_name_nudge_body">加上名稱，讓大家知道這些是誰的牌組。</string>
+    <string name="profile_name_nudge_action">新增名稱</string>
+    <string name="profile_name_nudge_dismiss">以後再說</string>
+
+    <!-- The photo prompt. Loopky cannot set one at all, so both the card and the dialog say where
+         it is done and that the key is the same. Kept to one line: a paragraph here is skipped.
+         The card invites and the dialog answers a tap, so they say it in different registers. -->
+    <string name="profile_avatar_nudge_title">要不要加張照片？</string>
+    <string name="profile_avatar_nudge_body">用你在這裡使用的同一把金鑰，到 pubky.app 上新增。</string>
+    <string name="profile_avatar_hint">照片要在 pubky.app 上設定。請用同一把金鑰在那裡登入。</string>
+    <string name="profile_avatar_dialog_title">更換你的照片</string>
+    <string name="profile_avatar_open_pubky_app">開啟 pubky.app</string>
+    <string name="profile_avatar_not_now">以後再說</string>
+    <string name="profile_edit_avatar_content_description">更換個人檔案照片</string>
+
+    <!-- Friend profile -->
+    <string name="friend_profile_back_content_description">返回</string>
+    <string name="friend_profile_copy_pubky">複製 pubky</string>
+    <string name="friend_profile_no_decks">還沒有牌組。</string>
+    <string name="friend_profile_share">分享個人檔案</string>
+
+    <!-- Follow lists -->
+    <string name="follow_list_following_title">追蹤中</string>
+    <string name="follow_list_followers_title">追蹤者</string>
+    <string name="follow_list_back_content_description">返回</string>
+    <string name="follow_list_loading">正在載入使用者…</string>
+    <string name="follow_list_empty_following">目前還沒有人。你追蹤的人之中，有使用 Loopky 的會出現在這裡。</string>
+    <string name="follow_list_empty_followers">目前還沒有人。追蹤你的 Loopky 使用者會出現在這裡。</string>
+    <string name="follow_list_empty_following_other">目前還沒有人。對方追蹤的人之中，有使用 Loopky 的會出現在這裡。</string>
+    <string name="follow_list_empty_followers_other">目前還沒有人。追蹤對方的 Loopky 使用者會出現在這裡。</string>
+    <!-- Explains why the list is shorter than the follow count another Pubky app would show. -->
+    <string name="follow_list_loopky_only">只會列出有 Loopky 帳號的人。</string>
+
+    <!-- Settings -->
+    <string name="settings_back_content_description">返回</string>
+    <string name="settings_title">設定</string>
+    <string name="settings_loading">正在載入設定…</string>
+    <string name="settings_section_identity">身分</string>
+    <string name="settings_pubky_label">Pubky</string>
+    <string name="settings_not_signed_in">尚未登入</string>
+    <string name="settings_copy">複製</string>
+    <string name="settings_homeserver_label">Homeserver</string>
+    <string name="settings_homeserver_unknown">未知</string>
+    <string name="settings_section_sharing">分享</string>
+    <string name="settings_share_on_pubky_label">發文前先詢問</string>
+    <!-- Must not read as a privacy control: published decks are public either way (spec 11). -->
+    <string name="settings_share_on_pubky_description">在你建立、追蹤或複製牌組時，詢問是否要發文。無論如何，你的牌組都是公開的。</string>
+    <!-- Image search (Unsplash API key). Never renders a key: the built-in one is not shown at
+         all, and the user's own is reduced to its last four characters. -->
+    <string name="settings_section_studying">學習</string>
+    <string name="settings_new_cards_goal_label">每日新卡片數</string>
+    <string name="settings_new_cards_goal_description">這是目標，不是上限。你隨時都可以繼續學。</string>
+    <string name="settings_interval_hard_label">「困難」間隔（天）</string>
+    <string name="settings_interval_good_label">「良好」間隔（天）</string>
+    <string name="settings_interval_easy_label">「簡單」間隔（天）</string>
+    <string name="settings_interval_description">卡片多久之後會再出現。</string>
+    <string name="settings_interval_mastery_note">卡片到達你最長的間隔時，就算是已熟記。</string>
+    <string name="settings_study_unavailable">無法載入你的學習設定。在設定載入前無法編輯，以免覆蓋任何資料。</string>
+    <string name="settings_study_save_failed">無法儲存你的學習設定。</string>
+    <string name="settings_section_image_search">圖片搜尋</string>
+    <string name="settings_unsplash_key_label">Unsplash 存取金鑰</string>
+    <string name="settings_unsplash_key_not_set">未設定。網路圖片搜尋已關閉</string>
+    <string name="settings_unsplash_key_built_in">使用 Loopky 的共用金鑰（有限額）</string>
+    <string name="settings_unsplash_key_user_set">已設定金鑰 · ••••%1$s</string>
+    <string name="settings_unsplash_key_set">設定</string>
+    <string name="settings_unsplash_key_replace">更換</string>
+    <string name="settings_unsplash_key_remove">移除</string>
+    <string name="settings_unsplash_key_save">儲存</string>
+    <string name="settings_unsplash_key_cancel">取消</string>
+    <string name="settings_unsplash_key_placeholder">貼上你的 Access Key</string>
+    <string name="settings_unsplash_key_hint">可從 Unsplash 免費取得：在開發者主控台建立一個應用程式，然後複製它的 Access Key，而不是 Secret key。</string>
+    <string name="settings_unsplash_key_get">取得金鑰</string>
+    <string name="settings_unsplash_key_error_invalid">Unsplash 拒絕了這個金鑰。請確認你完整複製了 Access Key。</string>
+    <string name="settings_unsplash_key_error_missing">請先輸入金鑰。</string>
+    <string name="settings_unsplash_key_error_rate_limited">這個金鑰已達每小時上限。請稍後再試。</string>
+    <string name="settings_unsplash_key_error_unavailable">無法連線到 Unsplash 來檢查金鑰。</string>
+    <string name="settings_section_about">關於</string>
+    <string name="settings_app_version_label">App 版本</string>
+    <string name="settings_app_version_unknown">—</string>
+    <string name="settings_privacy_policy">隱私權政策</string>
+    <string name="settings_license">授權條款</string>
+
+    <!-- Delete account. Plain punctuation and one idea per line: this is the only copy in Loopky
+         that precedes an irreversible action, so it has to be read rather than skimmed. The
+         identity line is load-bearing, not a footnote — Loopky cannot delete the Pubky account and
+         must not imply that it has. -->
+    <string name="settings_delete_account">刪除帳號</string>
+    <string name="settings_delete_account_dialog_title">要刪除帳號嗎？</string>
+    <string name="settings_delete_account_dialog_body">你的牌組、卡片、圖片和學習進度都會被永久刪除，你的個人檔案也會從 Loopky 移除。</string>
+    <string name="settings_delete_account_dialog_irreversible">此動作無法復原。</string>
+    <string name="settings_delete_account_dialog_identity">你的 Pubky 身分仍會保留在 Pubky Ring 中。</string>
+    <string name="settings_delete_account_confirm">刪除帳號</string>
+    <string name="settings_delete_account_confirm_countdown">刪除帳號（%1$d）</string>
+    <string name="settings_delete_account_progress_title">正在刪除</string>
+    <string name="settings_delete_account_progress_starting">正在開始</string>
+    <string name="settings_delete_account_progress_count">已移除 %1$d/%2$d</string>
+    <string name="settings_delete_account_failed">無法刪除所有內容。你仍處於登入狀態，可以再試一次。</string>
+    <string name="settings_sign_out">登出</string>
+    <string name="settings_sign_out_dialog_title">要登出嗎？</string>
+    <string name="settings_sign_out_dialog_message">你的牌組會留在你的帳號中。重新登入即可恢復一切。</string>
+    <string name="settings_cancel">取消</string>
+
+    <!-- Share-on-Pubky consent prompt (#39), shown after create / follow / clone -->
+    <string name="share_prompt_title_created">要發文分享這個牌組嗎？</string>
+    <string name="share_prompt_title_followed">要發文分享這次追蹤嗎？</string>
+    <string name="share_prompt_title_cloned">要發文分享這個複本嗎？</string>
+    <string name="share_prompt_body">你的追蹤者會看到這則貼文。無論如何，這個牌組都是公開的。</string>
+    <string name="share_prompt_confirm">發文</string>
+    <string name="share_prompt_dismiss">以後再說</string>
+    <string name="share_prompt_never">不要再問</string>
+    <string name="share_prompt_failed">無法發文。牌組不受影響。</string>
+    <string name="share_prompt_posted">已發文</string>
+
+    <!-- Identity — one presentation of a pubky user, shared by every screen -->
+    <string name="identity_pubky_short">%1$s</string>
+    <string name="identity_pubky_truncated">%1$s…%2$s</string>
+    <string name="identity_you_badge">你</string>
+    <string name="identity_unknown_person">朋友</string>
+
+    <!-- Shared components -->
+    <string name="component_author_row_following">追蹤中</string>
+    <string name="component_author_row_follow">追蹤</string>
+    <string name="component_stats_bar_total">總數</string>
+    <string name="component_stats_bar_due">待複習</string>
+    <string name="component_stats_bar_new">新卡片</string>
+    <string name="component_stats_bar_mastered">已熟記</string>
+    <string name="component_tag_chip_label">#%1$s</string>
+    <string name="component_tag_chip_remove">移除標籤</string>
+
+    <!-- Navigation / tabs -->
+    <string name="nav_tab_study">今天</string>
+    <string name="nav_tab_decks">牌組</string>
+    <string name="nav_tab_discover">探索</string>
+    <string name="nav_tab_profile">個人檔案</string>
+
+
+    <!-- Signup: obtaining a homeserver account. Errors are flow-local, not ErrorReason. -->
+    <string name="signup_start_title">證明你不是機器人。</string>
+    <string name="signup_start_subtitle">不需要電子郵件。用簡訊或一筆小額付款驗證，或使用邀請碼。</string>
+    <string name="signup_sms_card_title">簡訊驗證</string>
+    <string name="signup_sms_card_price">免費</string>
+    <string name="signup_sms_card_note">使用你的手機號碼</string>
+    <string name="signup_lightning_card_title">比特幣付款</string>
+    <string name="signup_lightning_card_note">不需要手機號碼</string>
+    <string name="signup_lightning_card_price">一次性支付 ₿ %1$d</string>
+    <string name="signup_lightning_card_price_unknown">一次性付款</string>
+    <string name="signup_card_unavailable">你所在的國家或地區無法使用</string>
+    <string name="signup_invite_link">有邀請碼嗎？</string>
+
+    <string name="signup_invite_title">輸入你的邀請碼。</string>
+    <string name="signup_invite_subtitle">向 Pubky 團隊索取邀請碼來建立帳號。</string>
+    <string name="signup_invite_label">邀請碼</string>
+    <string name="signup_invite_placeholder">XXXX-XXXX-XXXX</string>
+    <string name="signup_invite_submit">繼續</string>
+
+    <string name="signup_phone_title">驗證你的手機。</string>
+    <string name="signup_phone_subtitle">我們會傳簡訊驗證碼給你。</string>
+    <string name="signup_phone_label">手機號碼</string>
+    <string name="signup_phone_placeholder">+8869XXXXXXXX</string>
+    <string name="signup_phone_hint">請包含國碼（例如台灣是 +886）。</string>
+    <string name="signup_phone_send">傳送驗證碼</string>
+    <string name="signup_code_title">輸入驗證碼。</string>
+    <string name="signup_code_subtitle">我們已將 6 位數驗證碼傳送到 %1$s。</string>
+    <string name="signup_code_label">驗證碼</string>
+    <string name="signup_code_verify">驗證</string>
+    <string name="signup_code_resend">重新傳送驗證碼</string>
+    <string name="signup_code_resend_in">%1$d 秒後可重新傳送</string>
+    <string name="signup_code_change_number">變更號碼</string>
+
+    <string name="signup_lightning_title">掃描或點一下即可付款。</string>
+    <string name="signup_lightning_amount">支付 ₿ %1$d 以繼續。</string>
+    <string name="signup_lightning_qr_content_description">包含此閃電網路發票的 QR 碼</string>
+    <!-- Shown when Loopky comes back to an invoice it issued before being killed, which may
+         already have been paid. There is nothing left to show or pay, so the copy stops asking. -->
+    <string name="signup_lightning_resumed_title">正在確認你先前的付款。</string>
+    <string name="signup_lightning_resumed_subtitle">你可能已經支付了 ₿ %1$d。我們正在確認，請稍候，不要重複付款。</string>
+    <string name="signup_lightning_resumed_subtitle_fiat">你可能已經支付了 ₿ %1$d（%2$s）。我們正在確認，請稍候，不要重複付款。</string>
+    <string name="signup_lightning_resumed_waiting">正在與伺服器確認…</string>
+    <string name="signup_lightning_open_wallet">在錢包中開啟</string>
+    <string name="signup_lightning_copy">複製發票</string>
+    <string name="signup_lightning_copied">已複製發票</string>
+    <string name="signup_lightning_no_wallet">找不到閃電網路錢包。已改為複製發票</string>
+    <string name="signup_lightning_waiting">正在等待付款…</string>
+    <string name="signup_lightning_new_invoice">新發票</string>
+
+    <string name="signup_error_geoblocked_title">此地區無法使用</string>
+    <string name="signup_error_geoblocked_message">你所在的國家或地區不提供這個方式。試試其他方式，或使用邀請碼。</string>
+    <string name="signup_error_phone_blocked_title">無法使用這個號碼</string>
+    <string name="signup_error_phone_blocked_message">這個手機號碼無法用於驗證。試試其他號碼，或使用邀請碼。</string>
+    <string name="signup_error_rate_limited_title">嘗試次數過多</string>
+    <string name="signup_error_rate_limited_message">請等幾分鐘後再試一次。</string>
+    <string name="signup_error_rate_limited_weekly_title">已達每週上限</string>
+    <string name="signup_error_rate_limited_weekly_message">這個號碼本週的驗證次數已用完。改用付款或邀請碼吧。</string>
+    <string name="signup_error_rate_limited_yearly_title">已達每年上限</string>
+    <string name="signup_error_rate_limited_yearly_message">這個號碼今年的驗證次數已用完。改用付款或邀請碼吧。</string>
+    <string name="signup_error_code_incorrect_title">這個驗證碼無效</string>
+    <string name="signup_error_code_incorrect_message">請檢查後再試一次。</string>
+    <string name="signup_error_invoice_expired_title">發票已過期</string>
+    <string name="signup_error_invoice_expired_message">這張發票在付款前就已逾時。請申請一張新的。</string>
+    <string name="signup_error_verification_lost_title">我們重新開始吧</string>
+    <string name="signup_error_verification_lost_message">我們遺失了這次驗證的進度。重新開始是安全的。</string>
+    <string name="signup_error_unavailable_title">無法連線到服務</string>
+    <string name="signup_error_unavailable_message">請檢查網路連線後再試一次。</string>
+
+    <string name="onboarding_ring_icon_description">Pubky Ring</string>
+    <string name="onboarding_recovery_icon_description">復原短語或檔案</string>
+    <string name="onboarding_create_pubky">還沒有 Pubky？建立帳號</string>
+
+    <!-- Error states. Reason-based copy; the raw FFI message stays in logcat. -->
+    <string name="error_offline_title">你目前離線</string>
+    <string name="error_offline_message">請檢查網路連線後再試一次。你的牌組很安全。</string>
+    <string name="error_session_expired_title">登入已過期</string>
+    <string name="error_session_expired_message">請再次使用 Pubky Ring 登入，回到你的牌組。</string>
+    <!-- Deliberately not the offline copy (#165). The homeserver session round trip is what
+         failed; the device's connection was measurably fine every time this was seen, so sending
+         the user to check it points at the one thing that is working — hence naming the
+         connection only to rule it out. Says nothing about what was lost (the sentence it is
+         appended to already does) and does not mention signing in (the button below it is the
+         offer); every screen showing this composes it after a consequence, so length here is
+         paid twice. -->
+    <string name="error_session_unreachable_title">無法重新連線</string>
+    <string name="error_session_unreachable_message">Loopky 無法恢復你的登入狀態。這不是你的網路問題，請再試一次。</string>
+    <string name="error_sign_in_again">重新登入</string>
+    <string name="error_not_found_title">找不到</string>
+    <string name="error_not_found_message">這個牌組已不存在，可能已被刪除。</string>
+    <string name="error_no_account_title">你的帳號尚未設定</string>
+    <!-- Deliberately does NOT send the user back to Pubky Ring. Creating the account needs a
+         signup token, tokens come from Homegate, and Homegate lives in Loopky — Ring's only route
+         is its Edit-pubky sheet, which wants a homeserver z32 and a token the user does not have.
+         Pointing at Ring here points at the one app that cannot help. -->
+    <string name="error_no_account_message">這把金鑰還沒有帳號，所以沒有地方存放你的牌組。設定只需要一分鐘。</string>
+    <string name="error_not_signed_in_title">尚未登入</string>
+    <string name="error_not_signed_in_message">使用 Pubky Ring 登入以繼續。</string>
+    <string name="error_ring_not_installed_title">找不到 Pubky Ring</string>
+    <string name="error_ring_not_installed_message">Loopky 透過 Pubky Ring 讓你登入。請安裝它以繼續。</string>
+    <string name="error_auth_failed_title">登入未完成</string>
+    <string name="error_auth_failed_message">Loopky 無法確認登入。請檢查網路連線後再試一次。</string>
+    <string name="error_auth_relay_title">登入無法連線</string>
+    <string name="error_auth_relay_message">登入服務沒有回應。請稍後再試。</string>
+    <string name="study_sync_error_title">你的複習紀錄沒有儲存</string>
+    <string name="study_sync_error_dismiss">知道了</string>
+    <string name="study_goal_reached_title">已達成每日目標！</string>
+    <string name="study_goal_reached_body">這是你今天的目標。沒有任何東西被鎖住，如果學得正起勁，就繼續吧。</string>
+    <string name="study_goal_keep_studying">繼續學習</string>
+    <string name="study_goal_done">返回首頁</string>
+    <string name="publish_error_no_draft">沒有可發布的內容。請返回並重新貼上你的清單。</string>
+    <string name="publish_error_publish">無法發布這個牌組。%1$s</string>
+    <string name="publish_error_cancel">無法移除已取消的牌組，部分內容仍已儲存。%1$s</string>
+    <string name="publish_error_undo">無法復原。這個牌組仍是已發布狀態。%1$s</string>
+    <string name="error_server_busy_title">伺服器忙碌中</string>
+    <string name="error_server_busy_message">同時有太多請求，因此無法完成這個動作。這不是你的網路問題。請稍候再試一次。</string>
+    <string name="error_storage_full_title">你的儲存空間已滿</string>
+    <string name="error_storage_full_message">你的帳號已沒有剩餘空間。刪除一個不再學習的牌組來釋出空間，或升級你的儲存方案。</string>
+    <!-- Restore (#147): the door for someone who has a pubky but no working Pubky Ring. -->
+    <string name="onboarding_restore">使用復原短語或檔案</string>
+    <string name="restore_start_title">還原你的帳號</string>
+    <string name="restore_start_subtitle">使用你建立 pubky 時所做的備份。</string>
+    <string name="restore_method_phrase">復原短語</string>
+    <string name="restore_method_phrase_detail">你抄寫下來的十二個單字。</string>
+    <string name="restore_phrase_title">輸入你的復原短語</string>
+    <string name="restore_phrase_subtitle">十二個單字，依序輸入，以空格分隔。</string>
+    <string name="restore_phrase_label">復原短語</string>
+    <string name="restore_phrase_placeholder">單字一 單字二 單字三…</string>
+    <string name="restore_phrase_submit">還原帳號</string>
+    <string name="restore_phrase_checking">正在檢查…</string>
+    <!-- Permanent and inline, never a toast or a dismissible popover. A Bitcoin seed and a Pubky
+         seed are the same twelve BIP-39 words and there is no way to tell them apart, so warning
+         is the only protection available — and a warning you can dismiss is one that gets
+         dismissed. Deliberately no heuristic detection: a false negative would read as an
+         all-clear, which is worse than saying nothing. -->
+    <string name="restore_seed_warning">絕對不要在這裡輸入比特幣或其他加密貨幣錢包的復原短語。</string>
+    <!-- Local key creation + backup (#147). -->
+    <!-- Separate strings rather than appending "(≈ US$0.85)" onto a translated sentence: the
+         parenthetical belongs in a different place in half the languages we will ship. -->
+    <string name="signup_lightning_card_price_fiat">一次性支付 ₿ %1$d（%2$s）</string>
+    <string name="signup_lightning_amount_fiat">支付 ₿ %1$d（%2$s）以繼續。</string>
+    <!-- Terminal: retrying re-sends the same dead token. The copy has to send the user back to
+         get a new one rather than at a button that cannot work. -->
+    <string name="signup_error_token_rejected_title">這個註冊碼被拒絕了</string>
+    <string name="signup_error_token_rejected_message">這個代碼被拒絕了，可能已經使用過。請重新開始以取得新的代碼。</string>
+    <string name="signup_start_over">重新開始</string>
+    <string name="signup_local_title">正在建立你的帳號</string>
+    <string name="signup_local_subtitle">正在產生並註冊你的金鑰，請稍候。</string>
+    <string name="signup_local_retry">再試一次</string>
+    <string name="signup_ring_recommended_title">Pubky Ring 是存放金鑰最安全的地方</string>
+    <string name="signup_ring_recommended_body">Pubky Ring 將你的金鑰存放在獨立的 App 中，所以登入時永遠不會暴露金鑰。安裝它，或改在 Loopky 中建立金鑰。</string>
+    <string name="backup_start_title">備份你的帳號</string>
+    <string name="backup_start_subtitle">你的金鑰只存在這部裝置上。把它存放在即使手機遺失也能取得的地方。</string>
+    <!-- For a key restored from a phrase or file: it IS already backed up, so telling the user to
+         back it up would be describing a risk they do not have. What is still on offer is Pubky
+         Ring, which is a custody change rather than a backup. -->
+    <string name="backup_start_subtitle_backed_up">你已經有這把金鑰的副本。Pubky Ring 會將它存放在獨立的 App 中，更加安全；你也可以在這裡再新增一份備份。</string>
+    <string name="backup_method_ring_missing">尚未安裝。我們會帶你前往下載。</string>
+    <string name="backup_later">我晚點再做</string>
+    <string name="backup_done_label">完成</string>
+    <string name="backup_method_password_manager">密碼管理工具</string>
+    <string name="backup_method_password_manager_detail">將短語儲存到 Google 密碼管理工具，或你使用的任何密碼管理工具。</string>
+    <string name="backup_phrase_save_to_manager">儲存到密碼管理工具</string>
+    <string name="backup_phrase_saved_to_manager">已儲存並檢查。你的密碼管理工具中已有這組短語。</string>
+    <string name="backup_phrase_save_failed">沒有儲存任何內容。可能是你的密碼管理工具拒絕了，或你取消了。</string>
+    <string name="backup_quiz_saved_title">檢查已儲存的短語</string>
+    <string name="backup_quiz_saved_subtitle">你已將這組短語儲存到密碼管理工具，所以不必憑記憶作答。我們會讀取它，確認它還在。</string>
+    <string name="backup_quiz_saved_check">檢查已儲存的短語</string>
+    <string name="backup_quiz_saved_wrong">內容不符。請開啟你的密碼管理工具，檢查這個帳號的項目，然後再試一次。</string>
+    <string name="backup_method_phrase">復原短語</string>
+    <string name="backup_method_phrase_detail">抄寫下十二個單字並確認。</string>
+    <string name="backup_method_file">加密檔案</string>
+    <string name="backup_method_file_detail">將受密碼短語保護的檔案儲存到 Drive 或「檔案」。</string>
+    <string name="backup_method_ring">匯出到 Pubky Ring</string>
+    <string name="backup_method_ring_detail">將你的金鑰複製到 Pubky Ring。Loopky 也會保留它的副本。</string>
+    <string name="backup_phrase_title">你的復原短語</string>
+    <string name="backup_phrase_subtitle">依序抄寫下這十二個單字，並存放在安全的地方。</string>
+    <string name="backup_phrase_reveal">點一下即可顯示</string>
+    <string name="backup_phrase_continue">我已經抄寫好了</string>
+    <!-- The inverted seed warning: prevents someone sending sats to a Pubky account. -->
+    <string name="backup_phrase_warning">這組短語僅供你的帳號使用。它不是比特幣錢包，也沒有存放任何資金。</string>
+    <string name="backup_quiz_title">確認你的短語</string>
+    <string name="backup_quiz_subtitle">為每個位置選出正確的單字。</string>
+    <string name="backup_quiz_position">第 %1$d 個單字</string>
+    <string name="backup_quiz_submit">確認</string>
+    <string name="backup_quiz_wrong">不太對。請核對你抄寫的副本，然後再試一次。</string>
+    <string name="backup_file_title">加密復原檔案</string>
+    <string name="backup_file_subtitle">設定一組密碼短語。還原時需要它和這個檔案。</string>
+    <string name="backup_file_passphrase">密碼短語</string>
+    <string name="passphrase_reveal">顯示密碼短語</string>
+    <string name="passphrase_hide">隱藏密碼短語</string>
+    <string name="backup_file_create">建立並儲存檔案</string>
+    <string name="backup_file_failed">無法建立檔案。請再試一次。</string>
+    <string name="backup_strength_too_short">太短</string>
+    <string name="backup_strength_weak">弱。16 個字元以上會安全得多</string>
+    <string name="backup_strength_fair">普通。16 個字元以上會安全得多</string>
+    <string name="backup_strength_strong">強</string>
+    <string name="backup_ring_title">匯出到 Pubky Ring</string>
+    <!-- Never implies the key moved. Ring imports it; Loopky keeps its copy and its session, and
+         the words the user wrote down are still valid. -->
+    <string name="backup_ring_subtitle">這會將你的金鑰複製到 Pubky Ring。Loopky 會保留自己的副本，你的復原短語也仍然有效。</string>
+    <string name="backup_ring_open">開啟 Pubky Ring</string>
+    <string name="backup_ring_missing">這部裝置上沒有安裝 Pubky Ring。</string>
+    <string name="backup_ring_install">安裝 Pubky Ring</string>
+    <string name="backup_ring_confirm">我已匯入 Pubky Ring</string>
+    <string name="settings_back_up_account">備份你的帳號</string>
+    <string name="backup_nag_title">備份你的帳號</string>
+    <string name="backup_nag_body">你的金鑰只存在這部裝置上。如果裝置遺失，你的牌組也會跟著消失。</string>
+    <string name="backup_nag_action">立即備份</string>
+    <string name="settings_signout_unbacked_title">登出將會清除你的金鑰</string>
+    <string name="settings_signout_unbacked_body">Loopky 保存著 %1$s 金鑰的唯一副本，而你還沒有備份。登出後它將被永久刪除。</string>
+    <string name="settings_signout_unbacked_confirm">登出並清除</string>
+    <string name="settings_signout_unbacked_backup">先備份</string>
+    <string name="unregistered_title">這把金鑰還沒有帳號</string>
+    <string name="unregistered_subtitle">金鑰是有效的，只是還沒有為它註冊帳號。</string>
+    <string name="unregistered_pubky_label">你提供的金鑰：</string>
+    <string name="unregistered_check_phrase">再次檢查我的復原短語</string>
+    <string name="unregistered_check_hint">只要有一個單字打錯或順序錯了，仍會通過檢查，並解鎖另一個帳號。</string>
+    <string name="unregistered_register">註冊這把金鑰</string>
+    <!-- Says plainly what the button does, because it publishes a record to the DHT. -->
+    <string name="unregistered_register_hint">為上方的金鑰建立帳號並發布。需要簡單驗證一下。</string>
+    <string name="unregistered_register_confirm_title">要註冊這把金鑰嗎？</string>
+    <string name="unregistered_register_confirm_body">這會將 %1$s 發布為公開身分。絕對不要用比特幣或加密貨幣錢包的復原短語這麼做。</string>
+    <string name="unregistered_register_confirm_yes">註冊</string>
+    <string name="unregistered_register_confirm_cancel">取消</string>
+    <string name="unregistered_ring_title">這把金鑰由 Pubky Ring 保管</string>
+    <string name="unregistered_ring_body">這把金鑰由 Pubky Ring 保管，所以 Loopky 無法為它建立帳號。有兩種方式可以保留它：在這裡取得邀請碼，然後使用 Ring 的「Edit pubky」畫面；或在 Ring 中顯示復原短語，然後在這裡還原。</string>
+    <string name="unregistered_ring_import">用我的復原短語還原</string>
+    <string name="restore_method_file">加密復原檔案</string>
+    <string name="restore_method_file_detail">一個 recovery.pkarr 檔案及其密碼短語。</string>
+    <string name="restore_file_title">開啟你的復原檔案</string>
+    <string name="restore_file_subtitle">選擇你儲存的檔案，然後輸入它的密碼短語。</string>
+    <string name="restore_file_choose">選擇檔案</string>
+    <string name="restore_file_change">選擇其他檔案</string>
+    <string name="restore_file_passphrase_label">密碼短語</string>
+    <string name="restore_file_passphrase_placeholder">你設定的密碼短語</string>
+    <string name="restore_file_submit">還原帳號</string>
+    <string name="restore_error_passphrase_title">無法開啟這個檔案</string>
+    <string name="restore_error_passphrase_message">請檢查密碼短語，並確認這是你要還原的帳號的復原檔案。</string>
+    <string name="restore_error_unreadable_title">無法讀取這個檔案</string>
+    <string name="restore_error_unreadable_message">Loopky 無法開啟你選擇的檔案。請再選擇一次。</string>
+    <string name="restore_error_invalid_title">這不是有效的復原短語</string>
+    <string name="restore_error_invalid_message">請確認十二個單字都拼寫正確，且順序正確。</string>
+    <!-- Never "invalid": the phrase is valid, it just is not this account\'s. Showing the pubky is
+         the fastest diagnosis available and the only one the user can make. -->
+    <string name="restore_error_no_account_title">這組短語沒有對應的帳號</string>
+    <string name="restore_error_no_account_message">這組短語有效，但還沒有為它建立帳號。請檢查是否有單字打錯或順序錯誤。比特幣或加密貨幣錢包的短語在這裡無法使用。</string>
+    <string name="restore_error_no_account_pubky">它解鎖的是這個 pubky：</string>
+    <string name="restore_retry">再試一次</string>
+    <!-- The pkarr/DHT lookup that decides whether a pubky has an account did not answer.
+         Never a verdict on what was looked up: it must always read as "we don't know yet". -->
+    <string name="error_lookup_failed_title">無法確認</string>
+    <string name="error_lookup_failed_message">有些網路會封鎖 Loopky 需要的連線。請再試一次，或在 Wi-Fi 和行動數據之間切換。</string>
+    <string name="error_generic_title">出了點問題</string>
+    <string name="error_generic_message">出了點問題，請再試一次。</string>
+    <string name="home_caught_up_title">全部複習完了</string>
+    <string name="home_caught_up_next_due">下次複習在 %1$s 後。</string>
+    <string name="home_caught_up_no_next_due">目前還沒有排定任何複習。可以從任何牌組提前學習。</string>
+    <string name="share_deck_chooser_title">分享牌組</string>
+    <string name="share_profile_chooser_title">分享個人檔案</string>
+    <string name="share_deck_body">Loopky 上的 %1$s\n%2$s</string>
+    <string name="share_profile_body">Loopky 上的 %1$s\n%2$s</string>
+    <string name="deeplink_no_link_in_shared_text">這段文字中沒有 Loopky 連結。請分享包含 pubky:// 位址的訊息。</string>
+    <string name="deck_editor_move_up">將卡片上移</string>
+    <string name="deck_editor_move_down">將卡片下移</string>
+    <string name="deck_editor_move_to">移到指定位置</string>
+    <string name="deck_editor_move_to_title">移動卡片</string>
+    <string name="deck_editor_move_to_label">位置（1–%1$d）</string>
+    <string name="deck_editor_move_to_confirm">移動</string>
+    <string name="deck_editor_move_to_cancel">取消</string>
+    <string name="deck_editor_card_position">第 %1$d 張卡片</string>
+    <string name="deck_editor_loading_cards">正在載入更多卡片…</string>
+    <string name="edit_card_title_new">新卡片</string>
+    <string name="decks_sort_recent">最近</string>
+    <string name="decks_sort_alphabetical">A–Z</string>
+    <string name="decks_sort_cards">卡片最多</string>
+    <string name="decks_search_placeholder">搜尋你的牌組</string>
+    <string name="decks_search_no_results">沒有符合「%1$s」的牌組。</string>
+    <string name="paste_separator_sheet_title">卡片分隔方式</string>
+    <string name="form_title_required">為你的牌組取個名稱才能發布。</string>
+    <string name="form_title_too_long">名稱不得超過 120 個字元。</string>
+    <string name="form_description_too_long">說明不得超過 500 個字元。</string>
+    <string name="form_card_side_required">請在這一面加上文字或圖片。</string>
+    <string name="form_card_text_too_long">卡片文字不得超過 2000 個字元。</string>
+    <string name="paste_validation_empty">請先貼上或輸入你的清單。</string>
+    <string name="paste_validation_no_cards">還沒找到卡片。請檢查分隔符號，或加上正面和背面。</string>
+    <string name="permission_mic_title">練習你的發音</string>
+    <string name="permission_mic_rationale">「口說」會在你說出單字時聆聽，並告訴你說得有多接近。音訊絕不會離開你的裝置。</string>
+    <string name="permission_mic_denied_title">麥克風已關閉</string>
+    <string name="permission_mic_denied_message">「口說」需要麥克風權限，而 Android 不會再詢問。你可以在「設定」中開啟。</string>
+    <string name="permission_continue">繼續</string>
+    <string name="permission_not_now">以後再說</string>
+    <string name="permission_open_settings">開啟設定</string>
+    <string name="triage_undo">復原上一張卡片</string>
+
+    <!-- Bulk file import -->
+    <string name="bulk_title">匯入檔案</string>
+    <string name="bulk_cancel">取消</string>
+    <string name="bulk_pick_file">選擇檔案</string>
+    <string name="bulk_idle_title">把你的牌組搬過來</string>
+    <string name="bulk_idle_subtitle">從 Anki 匯入，或匯入你現有的任何雙欄清單。</string>
+    <string name="bulk_formats_label">支援的格式</string>
+    <string name="bulk_format_apkg_ext">.apkg</string>
+    <string name="bulk_format_apkg_title">Anki 牌組匯出檔</string>
+    <string name="bulk_format_apkg_detail">你的卡片、牌組名稱和圖片都會一起匯入。音訊不會，所以那些卡片會以純文字匯入。</string>
+    <string name="bulk_format_text_ext">.txt · .csv</string>
+    <string name="bulk_format_text_title">純文字匯出檔</string>
+    <string name="bulk_format_text_detail">在 Anki 中：檔案 → 匯出 → 「純文字筆記」（Notes in Plain Text）。任何以 Tab 或逗號分隔的清單也可以。</string>
+    <string name="bulk_idle_limit">檔案上限 %1$d MB</string>
+    <string name="bulk_cli_title">🤖 或讓你的 AI 代理來建立</string>
+    <string name="bulk_cli_body">Loopky 有終端機用戶端。複製提示詞，貼到你的程式開發代理中，就能看著牌組出現在你的帳號裡。</string>
+    <string name="bulk_cli_copy">複製提示詞</string>
+    <string name="bulk_cli_copied">已複製</string>
+    <string name="bulk_cli_prompt">安裝 loopky CLI，並用它幫我建立一個抽認卡牌組。\n\n1. 在做任何事之前，先提醒我在手機上安裝 Pubky Ring，並把我的 Loopky 復原短語存進去。我的金鑰存放在那裡，而 CLI 會向 Ring 請求權限來登入。\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login（會出現一個 QR 碼；我用 Pubky Ring 掃描）\n4. loopky commands --json，讀取完整的指令介面\n5. 問我這個牌組要關於什麼主題，自己把卡片寫進一個 TSV 檔，然後用這個指令發布：loopky deck create --title \"My deck\" --from-file cards.tsv</string>
+    <string name="bulk_reading">正在讀取你的檔案…</string>
+    <string name="bulk_parsing">正在讀取 %1$s…</string>
+    <string name="bulk_summary_heading">準備匯入</string>
+    <string name="bulk_detected_separator">分隔符號：%1$s</string>
+    <string name="bulk_fields">欄位：%1$s → %2$s</string>
+    <string name="bulk_fields_changeable">欄位：%1$s → %2$s · 點一下即可變更</string>
+    <string name="bulk_fields_unnamed">欄位 %1$d</string>
+    <string name="bulk_fields_sheet_front">哪個欄位是正面？</string>
+    <string name="bulk_fields_sheet_back">哪個欄位是背面？</string>
+    <string name="bulk_fields_sheet_hint">Anki 牌組常常以 ID 或排名欄位開頭。選出你想學習的兩個欄位。</string>
+    <string name="bulk_fields_sheet_step">第 %1$d 步，共 2 步</string>
+    <string name="bulk_fields_sheet_cancel">取消</string>
+    <string name="bulk_sample_label">範例</string>
+    <string name="bulk_import_button">匯入 %1$s</string>
+    <string name="bulk_pick_another">選擇其他檔案</string>
+
+    <!-- Failure modes, kept distinct: picking the wrong file used to surface a parser message. -->
+    <string name="bulk_error_unreadable_title">無法開啟這個檔案</string>
+    <string name="bulk_error_unreadable_message">Loopky 無法讀取它。請再選一次，或先把它複製到其他地方。</string>
+    <string name="bulk_error_too_large_title">這個檔案太大了</string>
+    <string name="bulk_error_too_large_message">Loopky 可以匯入最大 %1$d MB 的檔案。這比 AnkiWeb 上任何牌組都大，所以這很可能不是 Anki 匯出檔。</string>
+    <string name="bulk_error_not_text_title">這不是文字檔</string>
+    <string name="bulk_error_not_text_message">請選擇 Anki .apkg，或以純文字匯出的牌組。照片和 PDF 無法變成卡片。</string>
+    <string name="bulk_error_unsupported_apkg_title">Loopky 無法開啟這個 .apkg</string>
+    <string name="bulk_error_unsupported_apkg_message">較新的 Anki 牌組使用 Loopky 還無法讀取的格式。請在 Anki 中改將牌組匯出為「純文字筆記」（Notes in Plain Text）。</string>
+    <string name="bulk_error_legacy_stub_title">這個牌組需要較新版的 Anki</string>
+    <string name="bulk_error_legacy_stub_message">這個檔案只包含 Anki 的相容性預留內容。請從 Anki 2.1.50 或更新版本重新匯出牌組。</string>
+    <string name="bulk_error_no_cards_title">這個檔案裡沒有卡片</string>
+    <string name="bulk_error_no_cards_message">Loopky 讀取了檔案，但找不到任何像卡片的內容。每一行都需要正面和背面。</string>
+    <string name="bulk_error_unknown_title">匯入失敗</string>
+    <string name="bulk_error_unknown_message">讀取這個檔案時出了點問題。試試其他檔案。</string>
+    <string name="bulk_sample_picture">圖片</string>
+    <string name="bulk_skipped">略過 %1$d 張（缺少正面或背面）</string>
+    <string name="deck_incomplete_warning">這個牌組沒有上傳完成，所以缺少部分卡片。請再次匯入以完成，或將它刪除。</string>
+    <!-- Add-tag sheet, shared by the publish flow and the deck editor -->
+    <string name="tag_sheet_title">新增標籤</string>
+    <string name="tag_sheet_input_placeholder">輸入標籤…</string>
+    <string name="tag_sheet_suggested_label">建議</string>
+    <string name="tag_sheet_current_label">目前的標籤</string>
+    <string name="tag_sheet_add_button">新增標籤</string>
+
+    <!--
+      Browsing without an account (#150).
+
+      Loopky is readable signed out: Discover, deck detail, profiles and a sample of any deck's
+      cards are all public records, so a signed-out launch lands in the browsing shell rather than
+      on the sign-in screen. These strings cover the two places that changes what is on screen —
+      the banner offering the way in, and the prompt raised by an action that writes.
+    -->
+    <string name="guest_banner_title">只是隨便看看</string>
+    <string name="guest_banner_body">保存牌組、記錄學習進度。</string>
+    <string name="guest_banner_cta">開始使用</string>
+
+    <string name="sign_in_prompt_cta">建立帳號或登入</string>
+    <string name="sign_in_prompt_dismiss">以後再說</string>
+    <string name="sign_in_prompt_follow_deck_title">保存這個牌組</string>
+    <string name="sign_in_prompt_follow_deck_body">追蹤會把牌組加入你的牌組庫、讓它保持最新，並記住你學過的內容。這需要一個帳號，但不需要電子郵件。</string>
+    <string name="sign_in_prompt_clone_deck_title">變成你自己的</string>
+    <string name="sign_in_prompt_clone_deck_body">複本是你自己的副本，以你的金鑰發布，由你自由編輯。這需要一個帳號，但不需要電子郵件。</string>
+    <string name="sign_in_prompt_follow_person_title">追蹤使用者</string>
+    <string name="sign_in_prompt_follow_person_body">追蹤後，對方發布的牌組會出現在你的「探索」中。這需要一個帳號，但不需要電子郵件。</string>
+
+    <!--
+      Previewing a deck nobody has kept: a fixed handful of cards, graded and stored nowhere.
+      The badge is on screen the whole time because "nothing is being saved" is the one thing a
+      preview must never let someone find out afterwards.
+    -->
+    <string name="deck_detail_try_cards">試試這些卡片</string>
+    <string name="study_preview_badge">預覽 · 不會儲存進度</string>
+    <string name="study_preview_next">下一張卡片</string>
+    <string name="study_preview_complete_title">預覽到此結束 👋</string>
+    <string name="study_preview_guest_detail">建立帳號後，這個牌組會記住你答對了哪些，並在你快要忘記之前再問你一次。</string>
+    <string name="study_preview_member_detail">追蹤或複製這個牌組，就能保存你的學習進度。</string>
+    <string name="study_preview_action_guest">建立帳號</string>
+    <string name="study_preview_back">返回牌組</string>
+
+    <!-- App language (#device-level per-app language). The description differs by platform
+         version because only one of the two sentences is true on each: below API 33 Loopky keeps
+         the choice itself, and it appears in no system screen. -->
+    <string name="settings_section_language">語言</string>
+    <string name="settings_language_label">App 語言</string>
+    <string name="settings_language_system">系統預設</string>
+    <string name="settings_language_description_system">Android 會將此設定與你其他 App 的語言設定一起保存。</string>
+    <string name="settings_language_description_app">僅適用於 Loopky。你的裝置語言不會改變。</string>
+
+    <!-- Appearance. "System default" is worded like the language picker's on purpose: it is the
+         same promise — Loopky follows the device until you say otherwise. -->
+    <string name="settings_section_appearance">外觀</string>
+    <string name="settings_theme_label">主題</string>
+    <string name="settings_theme_description">僅適用於此裝置上的 Loopky。「自動」會在 %1$s 到 %2$s 之間切換為深色。</string>
+    <string name="settings_theme_system">系統</string>
+    <string name="settings_theme_auto">自動</string>
+    <string name="settings_theme_light">淺色</string>
+    <string name="settings_theme_dark">深色</string>
+
+    <!-- The four SRS grades, as the study screen's buttons. Were `SrsGrade.name` until pt-BR
+         landed, which put the raw Kotlin enum on screen in every language. -->
+    <string name="srs_grade_again">重來</string>
+    <string name="srs_grade_hard">困難</string>
+    <string name="srs_grade_good">良好</string>
+    <string name="srs_grade_easy">簡單</string>
+</resources>
