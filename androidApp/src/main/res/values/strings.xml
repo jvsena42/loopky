@@ -542,8 +542,12 @@
     <string name="signup_phone_title">Proof of phone.</string>
     <string name="signup_phone_subtitle">We\'ll text you a verification code.</string>
     <string name="signup_phone_label">Phone number</string>
-    <string name="signup_phone_placeholder">+316XXXXXXXX</string>
-    <string name="signup_phone_hint">Include your country code (for example +1 for the US).</string>
+    <string name="signup_phone_hint">Choose your country, then enter your number.</string>
+    <string name="signup_phone_country_empty">No matching countries</string>
+    <string name="signup_phone_country_search">Search countries</string>
+    <string name="signup_phone_country_button">Country: %1$s, %2$s</string>
+    <string name="signup_phone_country">Country</string>
+    <string name="signup_phone_sending_to">We\'ll text %1$s.</string>
     <string name="signup_phone_send">Send code</string>
     <string name="signup_code_title">Enter the code.</string>
     <string name="signup_code_subtitle">We sent a 6-digit code to %1$s.</string>

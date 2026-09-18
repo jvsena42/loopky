@@ -524,8 +524,12 @@
     <string name="signup_phone_title">휴대폰 인증.</string>
     <string name="signup_phone_subtitle">인증 코드를 문자로 보내 드릴게요.</string>
     <string name="signup_phone_label">휴대폰 번호</string>
-    <string name="signup_phone_placeholder">+316XXXXXXXX</string>
-    <string name="signup_phone_hint">국가 번호를 포함하세요 (예: 한국은 +82).</string>
+    <string name="signup_phone_hint">국가를 선택한 뒤 번호를 입력하세요.</string>
+    <string name="signup_phone_country_empty">일치하는 국가가 없습니다</string>
+    <string name="signup_phone_country_search">국가 검색</string>
+    <string name="signup_phone_country_button">국가: %1$s, %2$s</string>
+    <string name="signup_phone_country">국가</string>
+    <string name="signup_phone_sending_to">%1$s(으)로 문자를 보냅니다.</string>
     <string name="signup_phone_send">코드 보내기</string>
     <string name="signup_code_title">코드를 입력하세요.</string>
     <string name="signup_code_subtitle">%1$s(으)로 6자리 코드를 보냈어요.</string>

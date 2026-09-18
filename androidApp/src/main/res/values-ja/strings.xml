@@ -536,8 +536,12 @@
     <string name="signup_phone_title">電話番号の確認。</string>
     <string name="signup_phone_subtitle">SMS で確認コードをお送りします。</string>
     <string name="signup_phone_label">電話番号</string>
-    <string name="signup_phone_placeholder">+8190XXXXXXXX</string>
-    <string name="signup_phone_hint">国番号を含めてください（例：日本は +81）。</string>
+    <string name="signup_phone_hint">国・地域を選んでから番号を入力してください。</string>
+    <string name="signup_phone_country_empty">該当する国・地域はありません</string>
+    <string name="signup_phone_country_search">国・地域を検索</string>
+    <string name="signup_phone_country_button">国・地域：%1$s、%2$s</string>
+    <string name="signup_phone_country">国・地域</string>
+    <string name="signup_phone_sending_to">%1$s に SMS を送ります。</string>
     <string name="signup_phone_send">コードを送信</string>
     <string name="signup_code_title">コードを入力してください。</string>
     <string name="signup_code_subtitle">%1$s に6桁のコードを送信しました。</string>
