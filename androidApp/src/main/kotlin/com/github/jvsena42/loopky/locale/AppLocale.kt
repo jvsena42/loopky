@@ -27,15 +27,17 @@ object AppLocale {
 
     /**
      * The BCP-47 tags Loopky ships translations for, in the order the picker lists them —
-     * alphabetical by each language's own name (Deutsch, English, Español, …).
+     * alphabetical by each language's own name (Deutsch, English, Español, …), Latin scripts
+     * first, then 日本語, 한국어 and the two Chinese scripts.
      *
      * Must stay in step with the `res/values-…` directories and with `res/xml/locales_config.xml`,
      * which is what the system Settings screen reads. Nothing checks the three against each other.
      */
-    val SUPPORTED = listOf("de", "en", "es", "fr", "it", "pt-BR")
+    val SUPPORTED = listOf("de", "en", "es", "fr", "it", "pt-BR", "vi", "ja", "ko", "zh-Hans", "zh-Hant")
 
     private const val PREFS = "loopky.locale"
     private const val KEY_TAG = "app_locale_tag"
+    private val TRADITIONAL_CHINESE_REGIONS = setOf("TW", "HK", "MO")
 
     /** The chosen tag, or `null` when Loopky is following the device language. */
     fun current(context: Context): String? {
@@ -102,11 +104,26 @@ object AppLocale {
      * Matched on the language subtag as well as the whole tag, because the system hands back what
      * it resolved rather than what was asked for — a device set to `pt-PT` or a bare `pt` both
      * have to land on the one Portuguese translation Loopky ships, not on nothing.
+     *
+     * Chinese is matched on the script too, since the two translations share a language subtag:
+     * `zh-TW` must land on Traditional, not on whichever `zh` entry comes first.
      */
     private fun match(tag: String): String? {
         SUPPORTED.firstOrNull { it.equals(tag, ignoreCase = true) }?.let { return it }
-        val language = Locale.forLanguageTag(tag).language
-        return SUPPORTED.firstOrNull { Locale.forLanguageTag(it).language == language }
+        val locale = Locale.forLanguageTag(tag)
+        return SUPPORTED.firstOrNull { supported ->
+            val candidate = Locale.forLanguageTag(supported)
+            candidate.language == locale.language &&
+                (candidate.script.isEmpty() || candidate.script == scriptOf(locale))
+        }
+    }
+
+    /** The locale's script, inferred for a bare `zh-TW`/`zh-HK`/`zh-MO` the way CLDR does. */
+    private fun scriptOf(locale: Locale): String = when {
+        locale.script.isNotEmpty() -> locale.script
+        locale.language != "zh" -> ""
+        locale.country in TRADITIONAL_CHINESE_REGIONS -> "Hant"
+        else -> "Hans"
     }
 
     /** The language's own name for itself — "English", "Português (Brasil)". */
