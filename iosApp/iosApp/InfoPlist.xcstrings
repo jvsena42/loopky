@@ -34,6 +34,12 @@
             "value": "Loopky usa la fotocamera per leggere un codice QR con il pubky di qualcuno, così puoi trovare quella persona senza doverlo digitare."
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky は、相手の pubky が入った QR コードを読み取るためにカメラを使います。入力しなくても相手を見つけられます。"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -81,6 +87,12 @@
             "value": "Loopky ti ascolta mentre ti eserciti a pronunciare una carta ad alta voce, e si ferma appena hai risposto."
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky は、カードを声に出して練習している間だけ聞き取り、答え終わるとすぐに停止します。"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -126,6 +138,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loopky trasforma quello che dici in testo per confrontare la tua pronuncia con la carta. Non viene salvato nulla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky は、話した内容をテキストに変換してカードと照らし合わせ、発音をチェックします。何も保存されません。"
           }
         },
         "pt-BR": {
