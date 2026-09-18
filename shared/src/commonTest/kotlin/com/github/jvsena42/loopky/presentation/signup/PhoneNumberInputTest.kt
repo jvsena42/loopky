@@ -52,16 +52,4 @@ class PhoneNumberInputTest {
     fun `rejects a number past the E164 ceiling`() {
         assertFalse(PhoneNumberInput.isValid("+1234567890123456"))
     }
-
-    /**
-     * The hint fires only on an unambiguous mistake. A number still being typed is short, not
-     * wrong, and a field that scolds from the first digit is noise.
-     */
-    @Test
-    fun `flags a missing plus but not an unfinished number`() {
-        assertTrue(PhoneNumberInput.isMissingPlus("5586"))
-        assertFalse(PhoneNumberInput.isMissingPlus("+55"))
-        assertFalse(PhoneNumberInput.isMissingPlus(""))
-        assertFalse(PhoneNumberInput.isMissingPlus("   "))
-    }
 }

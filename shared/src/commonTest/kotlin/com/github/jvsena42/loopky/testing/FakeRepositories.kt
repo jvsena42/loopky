@@ -1480,7 +1480,13 @@ class FakeSignupRepository(pending: PendingSignup? = null) : SignupRepository {
         return availabilityError?.let { throw it } ?: availability
     }
 
-    override suspend fun sendSmsCode(phoneNumber: String): Result<Unit> = sendSmsResult
+    /** Every number an SMS was requested for, as it would reach Homegate. */
+    val sentSmsNumbers = mutableListOf<String>()
+
+    override suspend fun sendSmsCode(phoneNumber: String): Result<Unit> {
+        sentSmsNumbers += phoneNumber
+        return sendSmsResult
+    }
 
     override suspend fun redeemSmsCode(phoneNumber: String, code: String): Result<PendingSignup.Redeemable> = mint()
 
