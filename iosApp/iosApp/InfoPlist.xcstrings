@@ -40,6 +40,12 @@
             "value": "Loopky は、相手の pubky が入った QR コードを読み取るためにカメラを使います。入力しなくても相手を見つけられます。"
           }
         },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky는 카메라로 다른 사람의 pubky가 담긴 QR 코드를 읽어, 직접 입력하지 않고도 그 사람을 찾을 수 있게 해요."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -93,6 +99,12 @@
             "value": "Loopky は、カードを声に出して練習している間だけ聞き取り、答え終わるとすぐに停止します。"
           }
         },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky는 카드를 소리 내어 말하는 연습을 하는 동안 듣고, 답하는 즉시 듣기를 멈춰요."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -144,6 +156,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loopky は、話した内容をテキストに変換してカードと照らし合わせ、発音をチェックします。何も保存されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky는 말한 내용을 텍스트로 바꿔 카드와 비교해 발음을 확인해요. 아무것도 저장하지 않아요."
           }
         },
         "pt-BR": {
