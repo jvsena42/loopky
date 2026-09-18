@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -178,6 +179,9 @@ private fun SrsButton(
                 translationY = (1f - enter) * 20.dp.toPx()
             },
         shape = RoundedCornerShape(20.dp),
+        // Material's 24dp sides leave a quarter-width button ~42dp of label: four CJK characters
+        // ("もう一度") clip even at the autosize floor.
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = color,
             contentColor = Color.White,
