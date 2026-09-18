@@ -39,6 +39,12 @@
             "state": "translated",
             "value": "O Loopky usa a câmera para ler um código QR com o pubky de alguém, para você encontrar essa pessoa sem digitar nada."
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky dùng camera để đọc mã QR chứa pubky của một người, để bạn tìm họ mà không cần gõ."
+          }
         }
       }
     },
@@ -80,6 +86,12 @@
             "state": "translated",
             "value": "O Loopky escuta enquanto você pratica dizer uma carta em voz alta, e para assim que você responde."
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky nghe khi bạn luyện đọc to một thẻ, và dừng ngay khi bạn trả lời xong."
+          }
         }
       }
     },
@@ -120,6 +132,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "O Loopky transforma o que você diz em texto para conferir sua pronúncia com a carta. Nada é armazenado."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky chuyển lời bạn nói thành văn bản để so phát âm của bạn với thẻ. Không có gì được lưu lại."
           }
         }
       }

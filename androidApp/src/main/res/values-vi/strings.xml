@@ -1,0 +1,936 @@
+<resources>
+    <string name="app_name">Loopky</string>
+
+    <!-- Shared text controls -->
+    <string name="read_more">Xem thêm</string>
+    <string name="read_less">Thu gọn</string>
+    <string name="char_counter">%1$d/%2$d</string>
+
+    <!-- Home -->
+    <string name="home_greeting_hello">Xin chào,</string>
+    <string name="home_greeting_name">%1$s 👋</string>
+    <string name="home_error_title">Đã xảy ra lỗi</string>
+    <string name="home_retry">Thử lại</string>
+    <string name="home_loading">Đang khởi động…</string>
+    <string name="home_due_today">CẦN ÔN HÔM NAY</string>
+    <string name="home_cards">thẻ</string>
+    <string name="home_to_review">cần ôn tập</string>
+    <string name="home_progress_done">Đã xong %1$d/%2$d · cố lên nhé!</string>
+    <string name="home_new_cards_goal">%1$d/%2$d thẻ mới hôm nay</string>
+    <string name="home_new_cards_goal_reached">Đã đạt mục tiêu hằng ngày · %1$d thẻ mới 🎉</string>
+    <string name="home_start_studying">Bắt đầu học</string>
+    <string name="home_todays_decks">Bộ thẻ hôm nay</string>
+    <string name="home_see_all">Xem tất cả</string>
+    <string name="home_deck_due">%1$d cần ôn</string>
+    <string name="home_deck_new">%1$d mới</string>
+    <string name="home_deck_caught_up">Đã ôn xong</string>
+    <!-- The hero while the cached library is on screen and the review state has not answered. -->
+    <string name="home_checking_due">Đang kiểm tra thẻ cần ôn…</string>
+    <string name="home_empty_title">Chưa có bộ thẻ nào</string>
+    <string name="home_empty_subtitle">Dán một danh sách, nhập từ tệp hoặc bắt đầu từ đầu.</string>
+    <string name="home_create_first_deck">Tạo bộ thẻ đầu tiên</string>
+    <string name="home_browse_examples">Xem ví dụ</string>
+
+    <!-- Decks library -->
+    <string name="decks_title">Bộ thẻ của bạn</string>
+    <string name="decks_search">Tìm kiếm</string>
+    <string name="decks_paste_cta_title">Dán để nhập</string>
+    <string name="decks_paste_cta_subtitle">Biến mọi danh sách thành bộ thẻ</string>
+    <string name="decks_paste_cta_go">Bắt đầu</string>
+    <string name="decks_import_file_cta">Nhập từ Anki hoặc từ tệp</string>
+    <string name="decks_library_count">Thư viện · %1$d</string>
+    <string name="decks_recent">Gần đây</string>
+    <string name="decks_empty_title">Chưa có bộ thẻ nào</string>
+    <string name="decks_empty_subtitle">Dán một danh sách hoặc tự tạo bộ thẻ đầu tiên từ đầu.</string>
+    <string name="decks_empty_create">Tạo bộ thẻ</string>
+    <string name="decks_error_title">Đã xảy ra lỗi</string>
+    <string name="decks_loading">Đang xếp các bộ thẻ của bạn…</string>
+    <string name="decks_retry">Thử lại</string>
+
+    <!-- Deck tile -->
+    <string name="deck_tile_cloned_badge">BẢN SAO</string>
+
+    <!-- Deck detail -->
+    <string name="deck_detail_error_title">Đã xảy ra lỗi</string>
+    <string name="deck_detail_retry">Thử lại</string>
+    <string name="deck_detail_loading">Đang mở bộ thẻ…</string>
+    <string name="deck_detail_deleting">Đang xóa bộ thẻ…</string>
+    <string name="deck_detail_start_studying">Bắt đầu học · %1$s cần ôn</string>
+    <string name="deck_detail_start_studying_new">Bắt đầu học · %1$d mới</string>
+    <string name="deck_detail_study_this_deck">Học bộ thẻ này</string>
+    <string name="deck_detail_back">Quay lại</string>
+    <string name="deck_detail_back_to_decks">Quay lại danh sách bộ thẻ</string>
+    <string name="deck_detail_edit">Sửa bộ thẻ</string>
+    <string name="deck_detail_delete">Xóa bộ thẻ</string>
+    <string name="deck_detail_share">Chia sẻ</string>
+    <string name="deck_detail_more_actions">Thao tác khác</string>
+    <string name="deck_detail_delete_dialog_title">Xóa bộ thẻ?</string>
+    <string name="deck_detail_delete_dialog_message">“%1$s” cùng mọi thứ bạn đã học từ bộ thẻ này sẽ bị xóa. Không thể hoàn tác.</string>
+    <string name="deck_detail_delete_confirm">Xóa</string>
+    <string name="deck_detail_delete_cancel">Hủy</string>
+    <string name="deck_detail_in_your_library">TRONG THƯ VIỆN CỦA BẠN</string>
+    <string name="deck_detail_follow">Theo dõi bộ thẻ</string>
+    <string name="deck_detail_following">Đang theo dõi</string>
+    <string name="deck_detail_cloning">Đang sao chép bộ thẻ…</string>
+    <string name="deck_detail_clone_dialog_title">Tạo bản sao của riêng bạn?</string>
+    <string name="deck_detail_clone_name_label">Đặt tên cho bản sao</string>
+    <string name="deck_detail_clone_name_same">Hãy chọn tên khác với bản gốc.</string>
+    <string name="deck_detail_clone_confirm">Sao chép</string>
+    <string name="deck_detail_clone_cancel">Hủy</string>
+    <string name="deck_detail_cloned_from">Sao chép từ %1$s</string>
+    <string name="deck_detail_followers">%1$d người theo dõi</string>
+    <string name="deck_detail_dismiss_error">Đóng</string>
+    <string name="deck_detail_cards_heading">Thẻ</string>
+    <string name="deck_detail_cards_empty_owned">Chưa có thẻ nào. Nhấn Sửa để thêm thẻ đầu tiên.</string>
+    <string name="deck_detail_cards_empty_foreign">Bộ thẻ này chưa có thẻ nào.</string>
+
+    <!-- Deck editor -->
+    <string name="deck_editor_title_new">Bộ thẻ mới</string>
+    <string name="deck_editor_title_edit">Sửa bộ thẻ</string>
+    <string name="deck_editor_close">Đóng</string>
+    <string name="deck_editor_save">Lưu</string>
+    <string name="deck_editor_cover">Ảnh bìa</string>
+    <string name="deck_editor_label_title">TÊN BỘ THẺ</string>
+    <string name="deck_editor_title_placeholder">Nhập tên bộ thẻ...</string>
+    <string name="deck_editor_label_description">MÔ TẢ</string>
+    <string name="deck_editor_description_placeholder">Thêm mô tả...</string>
+    <string name="deck_editor_label_tags">NHÃN (PUBKY)</string>
+    <string name="deck_editor_add_tag">+ Thêm</string>
+    <string name="deck_editor_cards_count">Thẻ (%1$d)</string>
+    <!-- The consequence, then the cause. Composed from the shared ErrorReason copy the same way
+         publish_error_* is, so the editor cannot word a session failure differently from the rest
+         of the app — and so the FFI's own message never reaches this row again (#165). -->
+    <string name="deck_editor_error_cards">Không tải được các thẻ của bộ thẻ này. Thay đổi thông tin bộ thẻ vẫn sẽ được lưu. %1$s</string>
+    <string name="deck_editor_error_move">Không di chuyển được thẻ đó. %1$s</string>
+    <string name="deck_editor_error_save">Không lưu được bộ thẻ này. %1$s</string>
+    <string name="deck_editor_add_card">Thêm thẻ</string>
+    <string name="deck_editor_reorder">Sắp xếp lại</string>
+    <string name="deck_editor_card_front_placeholder">Mặt trước</string>
+    <string name="deck_editor_card_back_placeholder">Mặt sau</string>
+    <string name="deck_editor_has_image">Có hình ảnh</string>
+    <string name="deck_editor_has_audio">Có âm thanh</string>
+
+    <!-- Edit card -->
+    <string name="edit_card_title">Sửa thẻ</string>
+    <string name="edit_card_cancel">Hủy</string>
+    <string name="edit_card_save">Lưu</string>
+    <string name="edit_card_context">Thẻ %1$d/%2$d · %3$s</string>
+    <string name="edit_card_label_front">MẶT TRƯỚC</string>
+    <string name="edit_card_front_placeholder">Nhập nội dung mặt trước...</string>
+    <string name="edit_card_label_back">MẶT SAU</string>
+    <string name="edit_card_back_placeholder">Nhập nội dung mặt sau...</string>
+    <string name="edit_card_add_image">Thêm hình ảnh</string>
+    <string name="edit_card_image">Hình ảnh</string>
+    <string name="edit_card_add_audio">Thêm âm thanh</string>
+    <string name="edit_card_audio">Âm thanh</string>
+    <string name="edit_card_delete">Xóa thẻ</string>
+    <string name="edit_card_speak">Đọc to</string>
+
+    <!-- Study session -->
+    <string name="study_error_title">Đã xảy ra lỗi</string>
+    <string name="study_close">Đóng</string>
+    <string name="study_loading">Đang chia thẻ…</string>
+    <string name="study_empty_title">Bạn đã ôn xong hết 🎉</string>
+    <string name="study_empty_subtitle">Hiện không có thẻ nào cần ôn.</string>
+    <string name="study_empty_subtitle_deck">Hiện không có thẻ nào cần ôn trong %1$s.</string>
+    <string name="study_done">Xong</string>
+    <string name="study_complete_title">Xong hết rồi! 🎊</string>
+    <string name="study_back">Quay lại</string>
+    <string name="study_position_of_total">%1$d/%2$d</string>
+    <string name="study_flip_hint">Nhấn vào thẻ để xem đáp án</string>
+    <string name="study_listen">Nghe</string>
+    <string name="study_speak">Nói</string>
+    <string name="study_type_placeholder">Gõ đáp án</string>
+    <string name="study_type_check">Kiểm tra</string>
+    <string name="study_type_give_up">Chịu thua · cho tôi xem</string>
+    <string name="study_type_correct">Chính xác!</string>
+    <string name="study_type_near_miss">Gần đúng rồi. Kiểm tra lại dấu</string>
+    <string name="study_type_wrong">Chưa đúng. Thử lại nhé</string>
+
+    <!-- Discover -->
+    <string name="discover_title">Khám phá</string>
+    <string name="discover_search">Tìm kiếm</string>
+    <string name="discover_topics_title">Chủ đề</string>
+    <string name="discover_people_title">Mọi người trên Loopky</string>
+    <string name="discover_browse_title">Khám phá bộ thẻ</string>
+    <string name="discover_browse_tag_title">Bộ thẻ có nhãn “%1$s”</string>
+    <string name="discover_browse_tags_title">Bộ thẻ có nhãn %1$s</string>
+    <string name="discover_tag_quoted">“%1$s”</string>
+    <string name="discover_tag_list_separator">" + "</string>
+    <string name="discover_clear_tag">Xóa lọc</string>
+    <string name="discover_following_title">Từ những người bạn theo dõi</string>
+    <string name="discover_browse_empty_emoji">🌱</string>
+    <string name="discover_browse_empty_title">Chưa có gì được xuất bản ở đây</string>
+    <string name="discover_browse_empty_subtitle">Chỉ mục công khai của Loopky còn mới. Hãy xuất bản một bộ thẻ và mọi người sẽ thấy nó ở đây.</string>
+    <string name="discover_empty_tag_emoji">🔍</string>
+    <string name="discover_empty_tag_title">Chưa có bộ thẻ nào có nhãn “%1$s”</string>
+    <string name="discover_empty_tag_subtitle">Chưa ai gắn nhãn này cho bộ thẻ nào. Nhấn lại vào nhãn để xem tất cả.</string>
+    <string name="discover_empty_tags_title">Chưa có bộ thẻ nào mang đủ các nhãn này</string>
+    <string name="discover_empty_tags_subtitle">Nhấn vào một nhãn để bỏ khỏi bộ lọc, hoặc nhấn Xóa lọc để xem tất cả.</string>
+
+    <!-- Tag browse -->
+    <string name="discover_search_cta">Tìm người &amp; bộ thẻ</string>
+
+    <!-- Search -->
+    <string name="search_back">Quay lại</string>
+    <string name="search_placeholder">Tìm kiếm hoặc dán một pubky</string>
+    <string name="search_clear">Xóa</string>
+    <string name="search_scan_qr">Quét mã QR</string>
+    <string name="search_hint">Tìm theo tên, hoặc dán một pubky, một liên kết được chia sẻ, hoặc quét mã QR.</string>
+    <string name="search_people_title">Mọi người</string>
+    <string name="search_decks_title">Bộ thẻ</string>
+    <string name="search_open_profile">Mở hồ sơ này</string>
+    <string name="search_open_deck">Mở bộ thẻ này</string>
+    <string name="search_empty_emoji">🔍</string>
+    <string name="search_empty_title">Không tìm thấy kết quả cho “%1$s”</string>
+    <string name="search_empty_subtitle">Thử một tên khác, hoặc dán pubky của họ để mở trực tiếp.</string>
+
+    <string name="tag_browse_title">#%1$s</string>
+    <string name="tag_browse_back">Quay lại</string>
+    <string name="tag_browse_empty_title">Chưa có bộ thẻ nào có nhãn “%1$s”</string>
+    <string name="tag_browse_empty_subtitle">Chưa ai trên Loopky dùng nhãn này. Hãy xuất bản một bộ thẻ với nhãn này và nó sẽ hiện ở đây.</string>
+
+    <!-- Paste import -->
+    <string name="paste_title">Dán thẻ</string>
+    <string name="paste_cancel">Hủy</string>
+    <string name="paste_next">Tiếp</string>
+    <string name="paste_input_placeholder_title">Dán danh sách của bạn vào đây</string>
+    <string name="paste_input_placeholder_subtitle">mỗi dòng một thẻ</string>
+    <string name="paste_detected_separator">Đã nhận diện: %1$s</string>
+    <string name="paste_preview_label">XEM TRƯỚC</string>
+    <string name="paste_try_pasting_label">THỬ DÁN NỘI DUNG KIỂU NHƯ</string>
+    <string name="paste_public_notice">Bộ thẻ này sẽ công khai trên hồ sơ của bạn</string>
+    <string name="paste_chip_no_pattern">Không nhận diện được mẫu</string>
+    <string name="paste_card_index">%1$d/%2$d</string>
+    <string name="paste_blank_placeholder">—</string>
+    <string name="paste_separator_tab">tab</string>
+    <string name="paste_separator_semicolon">dấu chấm phẩy</string>
+    <string name="paste_separator_pipe">dấu gạch đứng</string>
+    <string name="paste_separator_dash">dấu gạch ngang</string>
+    <string name="paste_separator_colon">dấu hai chấm</string>
+    <string name="paste_separator_comma">dấu phẩy</string>
+    <string name="paste_separator_blank_lines">dòng trống</string>
+    <string name="paste_separator_markdown">markdown</string>
+    <string name="paste_separator_single_column">một cột</string>
+    <string name="paste_separator_auto">tự động</string>
+
+    <!-- Publish deck -->
+    <string name="publish_back">Quay lại</string>
+    <string name="publish_title">Bộ thẻ mới</string>
+    <string name="publish_cover_label">ẢNH BÌA</string>
+    <string name="publish_cover_change">Đổi</string>
+    <string name="publish_title_label">TÊN</string>
+    <string name="publish_title_placeholder">Tên bộ thẻ</string>
+    <string name="publish_description_label">MÔ TẢ</string>
+    <string name="publish_description_placeholder">Thêm mô tả ngắn...</string>
+    <string name="publish_tags_label">NHÃN</string>
+    <string name="publish_add_tag">Thêm nhãn</string>
+    <string name="publish_add">Thêm</string>
+    <string name="publish_public_title">Công khai trên hồ sơ của bạn</string>
+    <string name="publish_public_subtitle">Bất kỳ ai cũng có thể tìm thấy bộ thẻ này trong Khám phá.</string>
+    <string name="publish_button">Xuất bản bộ thẻ</string>
+    <string name="publish_cancel">Hủy nhập</string>
+    <string name="publish_cancelling">Đang dọn dẹp…</string>
+    <string name="publish_cancel_title">Hủy lần nhập này?</string>
+    <string name="publish_cancel_message">Các thẻ đã tải lên sẽ bị xóa. Thông tin bộ thẻ vẫn được giữ lại để bạn có thể xuất bản lại.</string>
+    <string name="publish_cancel_confirm">Hủy nhập</string>
+    <string name="publish_cancel_keep">Tiếp tục xuất bản</string>
+    <string name="publish_published_icon_desc">Đã xuất bản</string>
+    <string name="publish_published_title">Đã xuất bản bộ thẻ!</string>
+    <string name="publish_done">Xong</string>
+    <string name="publish_undo">Hoàn tác (%1$ds)</string>
+    <string name="publish_card_options_label">TÙY CHỌN THẺ</string>
+    <string name="publish_listen_title">Nghe</string>
+    <string name="publish_listen_subtitle">Phát âm thanh phát âm ở mặt sau thẻ</string>
+    <string name="publish_speak_title">Nói</string>
+    <string name="publish_speak_subtitle">Kiểm tra phát âm của bạn</string>
+    <string name="publish_type_title">Gõ đáp án</string>
+    <string name="publish_type_subtitle">Viết đáp án thay vì chỉ đọc</string>
+    <string name="publish_reverse_title">Cả hai chiều</string>
+    <string name="publish_reverse_subtitle">Hỏi thêm mỗi thẻ theo chiều từ sau ra trước</string>
+    <string name="study_reversed_badge">Đảo chiều</string>
+    <string name="deck_languages_hint">Chọn giọng đọc to từng mặt thẻ.</string>
+    <string name="deck_front_language_label">Ngôn ngữ mặt trước</string>
+    <string name="deck_back_language_label">Ngôn ngữ mặt sau</string>
+    <string name="deck_language_unset">Chọn ngôn ngữ</string>
+    <string name="deck_languages_required">Hãy chọn ngôn ngữ mặt trước và mặt sau để dùng Nghe hoặc Nói.</string>
+    <string name="publish_cover_sheet_title">Ảnh bìa</string>
+
+    <!-- Triage / Review cards -->
+    <string name="triage_title">Duyệt thẻ</string>
+    <string name="triage_approve_all">Duyệt tất cả</string>
+    <string name="triage_progress">%1$d/%2$d</string>
+    <string name="triage_stats">Giữ %1$d · bỏ %2$d</string>
+    <string name="triage_front_label">MẶT TRƯỚC</string>
+    <string name="triage_back_label">MẶT SAU</string>
+    <string name="triage_discard">Bỏ</string>
+    <string name="triage_edit">Sửa</string>
+    <string name="triage_keep">Giữ</string>
+
+    <!-- Image picker sheet -->
+    <string name="image_sheet_front_title">Hình mặt trước</string>
+    <string name="image_sheet_front_subtitle">Chọn hình cho mặt trước của thẻ</string>
+    <string name="image_sheet_back_title">Hình mặt sau</string>
+    <string name="image_sheet_back_subtitle">Chọn hình cho mặt sau của thẻ</string>
+    <string name="image_sheet_done">Xong</string>
+    <string name="image_sheet_search_placeholder">Tìm hình ảnh hoặc dán liên kết…</string>
+    <string name="image_sheet_from_gallery">Từ thư viện ảnh</string>
+    <string name="image_sheet_paste">Dán</string>
+    <!-- Pasting: the field takes an address, the Paste button also takes a copied image itself. -->
+    <string name="image_sheet_paste_empty">Không có gì để dán. Hãy sao chép địa chỉ hình ảnh trước.</string>
+    <string name="image_sheet_paste_image_clip">Đó là một hình ảnh đã sao chép. Hãy dán địa chỉ của nó, hoặc chọn từ thư viện ảnh.</string>
+    <string name="image_sheet_image_unreadable">Không đọc được hình ảnh đó. Hãy thử hình khác.</string>
+    <string name="image_sheet_link_preview">Hình ảnh đã dán</string>
+    <string name="image_sheet_link_clear">Xóa liên kết</string>
+    <string name="image_sheet_link_failed">Liên kết đó không tải được thành hình ảnh. Hãy sao chép chính hình ảnh, hoặc địa chỉ của hình ảnh thay vì địa chỉ trang.</string>
+    <string name="image_sheet_no_results">Không tìm thấy hình ảnh</string>
+    <!-- Web-search failures. The first three are fixed by setting a key; the last one is not. -->
+    <string name="image_sheet_error_missing_key">Tìm hình ảnh trên web cần khóa API Unsplash. Miễn phí và chỉ mất khoảng hai phút.</string>
+    <string name="image_sheet_error_invalid_key">Unsplash đã từ chối khóa đó. Hãy kiểm tra trong Cài đặt.</string>
+    <string name="image_sheet_error_rate_limited">Đã hết giới hạn theo giờ của Unsplash. Khóa riêng sẽ cho bạn giới hạn riêng.</string>
+    <string name="image_sheet_error_unavailable">Không kết nối được Unsplash. Hãy kiểm tra kết nối, hoặc chọn từ thư viện ảnh.</string>
+    <string name="image_sheet_get_key">Lấy khóa</string>
+    <string name="image_sheet_add_key">Thêm khóa</string>
+    <string name="image_sheet_remove">Xóa hình ảnh</string>
+    <string name="image_sheet_photo">Ảnh</string>
+    <!-- Attribution required by the Unsplash API guidelines: photographer + platform, both linked. -->
+    <string name="image_sheet_credit">Ảnh của %1$s trên %2$s</string>
+    <string name="image_sheet_credit_platform">Ảnh từ %1$s</string>
+    <string name="image_sheet_credit_unsplash">Unsplash</string>
+    <string name="image_sheet_credit_unknown_author">một nhiếp ảnh gia Unsplash</string>
+
+    <!-- Speak (study) -->
+    <string name="speak_listening_prompt">Hãy nói từ này</string>
+    <string name="speak_listening_hint">Nhấn để hủy</string>
+    <string name="speak_correct_title">Hoàn hảo!</string>
+    <string name="speak_you_said_label">BẠN ĐÃ NÓI</string>
+    <string name="speak_continue">Tiếp tục</string>
+    <string name="speak_wrong_title">Chưa đúng lắm</string>
+    <string name="speak_you_said">Bạn đã nói</string>
+    <string name="speak_correct_label">Đáp án đúng</string>
+    <string name="speak_try_again">Thử lại</string>
+    <string name="speak_permission_denied">Cần quyền micrô để luyện nói.</string>
+    <string name="speak_unavailable">Nhận dạng giọng nói không khả dụng trên thiết bị này.</string>
+    <string name="speak_failed_no_match_title">Chưa nghe rõ</string>
+    <string name="speak_failed_no_match_message">Không nhận dạng được gì. Hãy thử lại, nói gần micrô hơn một chút.</string>
+    <string name="speak_failed_network_title">Nhận dạng đang ngoại tuyến</string>
+    <string name="speak_failed_network_message">Lúc này nhận dạng giọng nói cần có kết nối mạng. Hãy kiểm tra kết nối rồi thử lại.</string>
+    <string name="speak_failed_busy_title">Vẫn đang nghe</string>
+    <string name="speak_failed_busy_message">Lần thử trước chưa xong. Đợi một chút rồi thử lại.</string>
+    <string name="speak_failed_language_title">Chưa cài ngôn ngữ</string>
+    <string name="speak_failed_language_message">Thiết bị này không có mô hình giọng nói cho ngôn ngữ của bộ thẻ. Hãy thêm trong cài đặt nhập liệu bằng giọng nói của thiết bị.</string>
+    <string name="speak_failed_permission_title">Micrô đang tắt</string>
+    <string name="speak_failed_unavailable_title">Không dùng được Nói</string>
+    <string name="speak_failed_unknown_title">Đã xảy ra lỗi</string>
+    <string name="speak_failed_unknown_message">Nhận dạng không trả về kết quả. Hãy thử lại.</string>
+    <string name="speak_close">Đóng</string>
+    <string name="listen_voice_unavailable">Chưa cài giọng đọc cho ngôn ngữ của bộ thẻ này. Hãy thêm trong cài đặt chuyển văn bản thành giọng nói của thiết bị.</string>
+
+    <!-- Onboarding -->
+    <!-- The Loopky slogan. Shown on the splash and as the onboarding hero. English in every
+         language: it is the brand line, not copy, so it is never translated. -->
+    <string name="onboarding_hero_subtitle">Lặp lại ngắt quãng mà vui như chơi game. Bộ thẻ do bạn tạo, chia sẻ và học cùng bạn bè.</string>
+    <string name="onboarding_brand_name">Loopky</string>
+    <string name="onboarding_signin_waiting">Đang chờ Pubky Ring…</string>
+    <string name="onboarding_signin_verifying">Đang đăng nhập…</string>
+    <string name="onboarding_signin_default">Đăng nhập bằng Pubky Ring</string>
+    <string name="onboarding_no_email_notice">Không email. Không mật khẩu. Khóa của bạn, tài khoản của bạn.</string>
+    <string name="onboarding_get_ring">Chưa có Pubky Ring? Tải ứng dụng</string>
+    <!-- Consent gate on both account entry points. The two document names are located inside the
+         sentence at runtime and turned into links, so a translation may place them anywhere. -->
+    <string name="onboarding_policy_consent">Tôi đã đọc và đồng ý với %1$s và %2$s.</string>
+    <string name="onboarding_policy_privacy">Chính sách quyền riêng tư</string>
+    <string name="onboarding_policy_license">Giấy phép</string>
+    <string name="onboarding_qr_title">Quét bằng Pubky Ring</string>
+    <string name="onboarding_qr_body">Mở Pubky Ring trên điện thoại, nhấn Authorize rồi quét mã này.</string>
+    <string name="onboarding_qr_content_description">Mã QR chứa yêu cầu đăng nhập này</string>
+    <string name="onboarding_qr_waiting">Đang chờ bạn phê duyệt trong Pubky Ring…</string>
+    <string name="onboarding_still_waiting">Vẫn đang chờ. Nếu Pubky Ring không hiện yêu cầu, hãy hủy và thử lại.</string>
+    <string name="onboarding_qr_open_here">Tôi có Pubky Ring trên thiết bị này</string>
+    <string name="onboarding_qr_cancel">Hủy</string>
+    <string name="onboarding_qr_copy">Sao chép liên kết đăng nhập</string>
+    <string name="onboarding_qr_copied">Đã sao chép liên kết đăng nhập</string>
+    <string name="onboarding_qr_sheet_body">Thiết bị này không có Pubky Ring. Hãy mở ứng dụng trên điện thoại đang giữ khóa của bạn, nhấn Authorize rồi quét mã này.</string>
+    <string name="onboarding_app_version">Phiên bản %1$s</string>
+
+    <!-- pubky.app — the web client the same account already exists on. -->
+    <string name="pubky_app_open_profile">Mở trên pubky.app</string>
+    <string name="pubky_app_cta_title">Bạn cũng có mặt trên pubky.app</string>
+    <!-- Says what the account is, not that decks appear there — they don\'t. -->
+    <string name="pubky_app_cta_body">Khóa bạn dùng để đăng nhập là một tài khoản Pubky. Xem hồ sơ và bài đăng của bạn trên web.</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Hồ sơ</string>
+    <string name="profile_loading">Đang tải hồ sơ…</string>
+    <string name="profile_settings_content_description">Cài đặt</string>
+    <string name="profile_edit_profile">Sửa hồ sơ</string>
+    <string name="profile_share_content_description">Chia sẻ</string>
+    <string name="profile_stat_decks">Bộ thẻ</string>
+    <string name="profile_stat_cards">Thẻ</string>
+    <string name="profile_stat_due">Cần ôn</string>
+    <string name="profile_stat_following">Đang theo dõi</string>
+    <string name="profile_stat_followers">Người theo dõi</string>
+    <!-- Shown in a stat column whose count has not resolved yet. -->
+    <string name="profile_stat_pending">—</string>
+    <string name="profile_sign_out">Đăng xuất</string>
+    <string name="profile_dismiss">Đóng</string>
+    <string name="profile_edit_profile_sheet_title">Sửa hồ sơ</string>
+    <string name="profile_edit_name_label">TÊN</string>
+    <string name="profile_edit_name_placeholder">Tên của bạn</string>
+    <string name="profile_edit_bio_label">GIỚI THIỆU</string>
+    <string name="profile_edit_bio_placeholder">Kể một chút về bạn...</string>
+    <string name="profile_save">Lưu</string>
+    <!-- The one-time invitation to name a nameless profile. Warm and short by design: it asks
+         for something optional, and "Not now" is remembered so it is never asked twice. -->
+    <string name="profile_name_nudge_title">Chúng tôi nên gọi bạn là gì?</string>
+    <string name="profile_name_nudge_body">Thêm tên để mọi người biết các bộ thẻ này là của ai.</string>
+    <string name="profile_name_nudge_action">Thêm tên</string>
+    <string name="profile_name_nudge_dismiss">Để sau</string>
+
+    <!-- The photo prompt. Loopky cannot set one at all, so both the card and the dialog say where
+         it is done and that the key is the same. Kept to one line: a paragraph here is skipped.
+         The card invites and the dialog answers a tap, so they say it in different registers. -->
+    <string name="profile_avatar_nudge_title">Thêm một tấm ảnh nhé?</string>
+    <string name="profile_avatar_nudge_body">Thêm ảnh trên pubky.app, bằng chính khóa bạn dùng ở đây.</string>
+    <string name="profile_avatar_hint">Ảnh được đặt trên pubky.app. Đăng nhập ở đó bằng cùng một khóa.</string>
+    <string name="profile_avatar_dialog_title">Đổi ảnh của bạn</string>
+    <string name="profile_avatar_open_pubky_app">Mở pubky.app</string>
+    <string name="profile_avatar_not_now">Để sau</string>
+    <string name="profile_edit_avatar_content_description">Đổi ảnh hồ sơ</string>
+
+    <!-- Friend profile -->
+    <string name="friend_profile_back_content_description">Quay lại</string>
+    <string name="friend_profile_copy_pubky">Sao chép pubky</string>
+    <string name="friend_profile_no_decks">Chưa có bộ thẻ nào.</string>
+    <string name="friend_profile_share">Chia sẻ hồ sơ</string>
+
+    <!-- Follow lists -->
+    <string name="follow_list_following_title">Đang theo dõi</string>
+    <string name="follow_list_followers_title">Người theo dõi</string>
+    <string name="follow_list_back_content_description">Quay lại</string>
+    <string name="follow_list_loading">Đang tải danh sách…</string>
+    <string name="follow_list_empty_following">Chưa có ai. Những người bạn theo dõi có dùng Loopky sẽ hiện ở đây.</string>
+    <string name="follow_list_empty_followers">Chưa có ai. Những người dùng Loopky theo dõi bạn sẽ hiện ở đây.</string>
+    <string name="follow_list_empty_following_other">Chưa có ai. Những người họ theo dõi có dùng Loopky sẽ hiện ở đây.</string>
+    <string name="follow_list_empty_followers_other">Chưa có ai. Những người dùng Loopky theo dõi họ sẽ hiện ở đây.</string>
+    <!-- Explains why the list is shorter than the follow count another Pubky app would show. -->
+    <string name="follow_list_loopky_only">Chỉ những người có tài khoản Loopky mới được liệt kê.</string>
+
+    <!-- Settings -->
+    <string name="settings_back_content_description">Quay lại</string>
+    <string name="settings_title">Cài đặt</string>
+    <string name="settings_loading">Đang tải cài đặt…</string>
+    <string name="settings_section_identity">DANH TÍNH</string>
+    <string name="settings_pubky_label">Pubky</string>
+    <string name="settings_not_signed_in">Chưa đăng nhập</string>
+    <string name="settings_copy">Sao chép</string>
+    <string name="settings_homeserver_label">Homeserver</string>
+    <string name="settings_homeserver_unknown">Không rõ</string>
+    <string name="settings_section_sharing">CHIA SẺ</string>
+    <string name="settings_share_on_pubky_label">Hỏi trước khi đăng</string>
+    <!-- Must not read as a privacy control: published decks are public either way (spec 11). -->
+    <string name="settings_share_on_pubky_description">Đề nghị đăng bài khi bạn tạo, theo dõi hoặc sao chép một bộ thẻ. Dù thế nào, bộ thẻ của bạn vẫn công khai.</string>
+    <!-- Image search (Unsplash API key). Never renders a key: the built-in one is not shown at
+         all, and the user's own is reduced to its last four characters. -->
+    <string name="settings_section_studying">HỌC TẬP</string>
+    <string name="settings_new_cards_goal_label">Số thẻ mới mỗi ngày</string>
+    <string name="settings_new_cards_goal_description">Đây là mục tiêu, không phải giới hạn. Bạn luôn có thể học tiếp.</string>
+    <string name="settings_interval_hard_label">Khoảng cách Khó (ngày)</string>
+    <string name="settings_interval_good_label">Khoảng cách Tốt (ngày)</string>
+    <string name="settings_interval_easy_label">Khoảng cách Dễ (ngày)</string>
+    <string name="settings_interval_description">Bao lâu thì thẻ quay lại.</string>
+    <string name="settings_interval_mastery_note">Khi thẻ đạt khoảng cách dài nhất của bạn, thẻ được tính là đã thành thạo.</string>
+    <string name="settings_study_unavailable">Không tải được cài đặt học tập. Tạm thời không thể chỉnh sửa cho đến khi tải xong, để không ghi đè dữ liệu.</string>
+    <string name="settings_study_save_failed">Không lưu được cài đặt học tập.</string>
+    <string name="settings_section_image_search">TÌM HÌNH ẢNH</string>
+    <string name="settings_unsplash_key_label">Khóa truy cập Unsplash</string>
+    <string name="settings_unsplash_key_not_set">Chưa đặt. Tìm hình ảnh trên web đang tắt</string>
+    <string name="settings_unsplash_key_built_in">Đang dùng khóa chung của Loopky (có giới hạn)</string>
+    <string name="settings_unsplash_key_user_set">Đã đặt khóa · ••••%1$s</string>
+    <string name="settings_unsplash_key_set">Đặt</string>
+    <string name="settings_unsplash_key_replace">Thay thế</string>
+    <string name="settings_unsplash_key_remove">Xóa</string>
+    <string name="settings_unsplash_key_save">Lưu</string>
+    <string name="settings_unsplash_key_cancel">Hủy</string>
+    <string name="settings_unsplash_key_placeholder">Dán Access Key của bạn</string>
+    <string name="settings_unsplash_key_hint">Miễn phí từ Unsplash: tạo một ứng dụng trong bảng điều khiển dành cho nhà phát triển, rồi sao chép Access Key của ứng dụng đó, không phải Secret key.</string>
+    <string name="settings_unsplash_key_get">Lấy khóa</string>
+    <string name="settings_unsplash_key_error_invalid">Unsplash đã từ chối khóa đó. Hãy kiểm tra xem bạn đã sao chép đầy đủ Access Key chưa.</string>
+    <string name="settings_unsplash_key_error_missing">Hãy nhập khóa trước.</string>
+    <string name="settings_unsplash_key_error_rate_limited">Khóa đó đã chạm giới hạn theo giờ. Hãy thử lại sau.</string>
+    <string name="settings_unsplash_key_error_unavailable">Không kết nối được Unsplash để kiểm tra khóa.</string>
+    <string name="settings_section_about">GIỚI THIỆU</string>
+    <string name="settings_app_version_label">Phiên bản ứng dụng</string>
+    <string name="settings_app_version_unknown">—</string>
+    <string name="settings_privacy_policy">Chính sách quyền riêng tư</string>
+    <string name="settings_license">Giấy phép</string>
+
+    <!-- Delete account. Plain punctuation and one idea per line: this is the only copy in Loopky
+         that precedes an irreversible action, so it has to be read rather than skimmed. The
+         identity line is load-bearing, not a footnote — Loopky cannot delete the Pubky account and
+         must not imply that it has. -->
+    <string name="settings_delete_account">Xóa tài khoản</string>
+    <string name="settings_delete_account_dialog_title">Xóa tài khoản?</string>
+    <string name="settings_delete_account_dialog_body">Bộ thẻ, thẻ, hình ảnh và tiến độ học của bạn sẽ bị xóa vĩnh viễn, và hồ sơ của bạn sẽ bị gỡ khỏi Loopky.</string>
+    <string name="settings_delete_account_dialog_irreversible">Không thể hoàn tác.</string>
+    <string name="settings_delete_account_dialog_identity">Danh tính Pubky của bạn vẫn nằm trong Pubky Ring.</string>
+    <string name="settings_delete_account_confirm">Xóa tài khoản</string>
+    <string name="settings_delete_account_confirm_countdown">Xóa tài khoản (%1$d)</string>
+    <string name="settings_delete_account_progress_title">Đang xóa</string>
+    <string name="settings_delete_account_progress_starting">Đang bắt đầu</string>
+    <string name="settings_delete_account_progress_count">Đã xóa %1$d/%2$d</string>
+    <string name="settings_delete_account_failed">Không xóa được hết. Bạn vẫn đang đăng nhập nên có thể thử lại.</string>
+    <string name="settings_sign_out">Đăng xuất</string>
+    <string name="settings_sign_out_dialog_title">Đăng xuất?</string>
+    <string name="settings_sign_out_dialog_message">Bộ thẻ của bạn vẫn ở trong tài khoản. Đăng nhập lại sẽ khôi phục mọi thứ.</string>
+    <string name="settings_cancel">Hủy</string>
+
+    <!-- Share-on-Pubky consent prompt (#39), shown after create / follow / clone -->
+    <string name="share_prompt_title_created">Đăng bài về bộ thẻ này?</string>
+    <string name="share_prompt_title_followed">Đăng bài về lượt theo dõi này?</string>
+    <string name="share_prompt_title_cloned">Đăng bài về bản sao này?</string>
+    <string name="share_prompt_body">Người theo dõi bạn sẽ thấy bài đăng. Dù thế nào, bộ thẻ vẫn công khai.</string>
+    <string name="share_prompt_confirm">Đăng</string>
+    <string name="share_prompt_dismiss">Để sau</string>
+    <string name="share_prompt_never">Không hỏi lại</string>
+    <string name="share_prompt_failed">Không đăng được. Bộ thẻ không bị ảnh hưởng.</string>
+    <string name="share_prompt_posted">Đã đăng</string>
+
+    <!-- Identity — one presentation of a pubky user, shared by every screen -->
+    <string name="identity_pubky_short">%1$s</string>
+    <string name="identity_pubky_truncated">%1$s…%2$s</string>
+    <string name="identity_you_badge">Bạn</string>
+    <string name="identity_unknown_person">bạn</string>
+
+    <!-- Shared components -->
+    <string name="component_author_row_following">Đang theo dõi</string>
+    <string name="component_author_row_follow">Theo dõi</string>
+    <string name="component_stats_bar_total">Tổng</string>
+    <string name="component_stats_bar_due">Cần ôn</string>
+    <string name="component_stats_bar_new">Mới</string>
+    <string name="component_stats_bar_mastered">Thành thạo</string>
+    <string name="component_tag_chip_label">#%1$s</string>
+    <string name="component_tag_chip_remove">Xóa nhãn</string>
+
+    <!-- Navigation / tabs -->
+    <string name="nav_tab_study">Hôm nay</string>
+    <string name="nav_tab_decks">Bộ thẻ</string>
+    <string name="nav_tab_discover">Khám phá</string>
+    <string name="nav_tab_profile">Hồ sơ</string>
+
+
+    <!-- Signup: obtaining a homeserver account. Errors are flow-local, not ErrorReason. -->
+    <string name="signup_start_title">Chứng minh bạn không phải robot.</string>
+    <string name="signup_start_subtitle">Không cần email. Xác minh bằng tin nhắn hoặc một khoản thanh toán nhỏ, hoặc dùng mã mời.</string>
+    <string name="signup_sms_card_title">Xác minh qua SMS</string>
+    <string name="signup_sms_card_price">Miễn phí</string>
+    <string name="signup_sms_card_note">Dùng số điện thoại của bạn</string>
+    <string name="signup_lightning_card_title">Thanh toán bằng Bitcoin</string>
+    <string name="signup_lightning_card_note">Không cần số điện thoại</string>
+    <string name="signup_lightning_card_price">Trả ₿ %1$d một lần</string>
+    <string name="signup_lightning_card_price_unknown">Trả một lần</string>
+    <string name="signup_card_unavailable">Không khả dụng ở quốc gia của bạn</string>
+    <string name="signup_invite_link">Bạn có mã mời?</string>
+
+    <string name="signup_invite_title">Nhập mã mời của bạn.</string>
+    <string name="signup_invite_subtitle">Hãy xin đội ngũ Pubky một mã để tạo tài khoản.</string>
+    <string name="signup_invite_label">Mã mời</string>
+    <string name="signup_invite_placeholder">XXXX-XXXX-XXXX</string>
+    <string name="signup_invite_submit">Tiếp tục</string>
+
+    <string name="signup_phone_title">Xác minh số điện thoại.</string>
+    <string name="signup_phone_subtitle">Chúng tôi sẽ nhắn cho bạn một mã xác minh.</string>
+    <string name="signup_phone_label">Số điện thoại</string>
+    <string name="signup_phone_placeholder">+849XXXXXXXX</string>
+    <string name="signup_phone_hint">Kèm mã quốc gia (ví dụ +84 cho Việt Nam).</string>
+    <string name="signup_phone_send">Gửi mã</string>
+    <string name="signup_code_title">Nhập mã.</string>
+    <string name="signup_code_subtitle">Chúng tôi đã gửi mã 6 chữ số đến %1$s.</string>
+    <string name="signup_code_label">Mã xác minh</string>
+    <string name="signup_code_verify">Xác minh</string>
+    <string name="signup_code_resend">Gửi lại mã</string>
+    <string name="signup_code_resend_in">Gửi lại sau %1$ds</string>
+    <string name="signup_code_change_number">Đổi số</string>
+
+    <string name="signup_lightning_title">Quét hoặc nhấn để thanh toán.</string>
+    <string name="signup_lightning_amount">Trả ₿ %1$d để tiếp tục.</string>
+    <string name="signup_lightning_qr_content_description">Mã QR chứa hóa đơn Lightning này</string>
+    <!-- Shown when Loopky comes back to an invoice it issued before being killed, which may
+         already have been paid. There is nothing left to show or pay, so the copy stops asking. -->
+    <string name="signup_lightning_resumed_title">Đang kiểm tra khoản thanh toán trước đó.</string>
+    <string name="signup_lightning_resumed_subtitle">Có thể bạn đã trả ₿ %1$d. Vui lòng chờ chúng tôi xác nhận và đừng trả lại lần nữa.</string>
+    <string name="signup_lightning_resumed_subtitle_fiat">Có thể bạn đã trả ₿ %1$d (%2$s). Vui lòng chờ chúng tôi xác nhận và đừng trả lại lần nữa.</string>
+    <string name="signup_lightning_resumed_waiting">Đang xác nhận với máy chủ…</string>
+    <string name="signup_lightning_open_wallet">Mở trong ví</string>
+    <string name="signup_lightning_copy">Sao chép hóa đơn</string>
+    <string name="signup_lightning_copied">Đã sao chép hóa đơn</string>
+    <string name="signup_lightning_no_wallet">Không tìm thấy ví Lightning. Đã sao chép hóa đơn thay thế</string>
+    <string name="signup_lightning_waiting">Đang chờ thanh toán…</string>
+    <string name="signup_lightning_new_invoice">Hóa đơn mới</string>
+
+    <string name="signup_error_geoblocked_title">Không khả dụng ở đây</string>
+    <string name="signup_error_geoblocked_message">Phương thức này không được cung cấp ở quốc gia của bạn. Hãy thử cách khác, hoặc dùng mã mời.</string>
+    <string name="signup_error_phone_blocked_title">Không thể dùng số này</string>
+    <string name="signup_error_phone_blocked_message">Không thể dùng số điện thoại này để xác minh. Hãy thử số khác, hoặc dùng mã mời.</string>
+    <string name="signup_error_rate_limited_title">Quá nhiều lần thử</string>
+    <string name="signup_error_rate_limited_message">Đợi vài phút rồi thử lại.</string>
+    <string name="signup_error_rate_limited_weekly_title">Đã đạt giới hạn tuần</string>
+    <string name="signup_error_rate_limited_weekly_message">Số này đã dùng hết lượt xác minh trong tuần. Hãy thử thanh toán hoặc dùng mã mời.</string>
+    <string name="signup_error_rate_limited_yearly_title">Đã đạt giới hạn năm</string>
+    <string name="signup_error_rate_limited_yearly_message">Số này đã dùng hết lượt xác minh trong năm. Hãy thử thanh toán hoặc dùng mã mời.</string>
+    <string name="signup_error_code_incorrect_title">Mã đó không đúng</string>
+    <string name="signup_error_code_incorrect_message">Hãy kiểm tra lại rồi thử lại.</string>
+    <string name="signup_error_invoice_expired_title">Hóa đơn đã hết hạn</string>
+    <string name="signup_error_invoice_expired_message">Hóa đơn đó đã hết hạn trước khi được thanh toán. Hãy yêu cầu hóa đơn mới.</string>
+    <string name="signup_error_verification_lost_title">Hãy bắt đầu lại</string>
+    <string name="signup_error_verification_lost_message">Chúng tôi đã mất dấu lần xác minh này. Bắt đầu lại là an toàn.</string>
+    <string name="signup_error_unavailable_title">Không kết nối được dịch vụ</string>
+    <string name="signup_error_unavailable_message">Hãy kiểm tra kết nối rồi thử lại.</string>
+
+    <string name="onboarding_ring_icon_description">Pubky Ring</string>
+    <string name="onboarding_recovery_icon_description">Cụm từ khôi phục hoặc tệp</string>
+    <string name="onboarding_create_pubky">Chưa có Pubky? Tạo tài khoản</string>
+
+    <!-- Error states. Reason-based copy; the raw FFI message stays in logcat. -->
+    <string name="error_offline_title">Bạn đang ngoại tuyến</string>
+    <string name="error_offline_message">Hãy kiểm tra kết nối rồi thử lại. Bộ thẻ của bạn vẫn an toàn.</string>
+    <string name="error_session_expired_title">Phiên đã hết hạn</string>
+    <string name="error_session_expired_message">Hãy đăng nhập lại bằng Pubky Ring để quay lại với bộ thẻ của bạn.</string>
+    <!-- Deliberately not the offline copy (#165). The homeserver session round trip is what
+         failed; the device's connection was measurably fine every time this was seen, so sending
+         the user to check it points at the one thing that is working — hence naming the
+         connection only to rule it out. Says nothing about what was lost (the sentence it is
+         appended to already does) and does not mention signing in (the button below it is the
+         offer); every screen showing this composes it after a consequence, so length here is
+         paid twice. -->
+    <string name="error_session_unreachable_title">Không kết nối lại được</string>
+    <string name="error_session_unreachable_message">Loopky không khôi phục được phiên đăng nhập. Không phải do kết nối của bạn, hãy thử lại.</string>
+    <string name="error_sign_in_again">Đăng nhập lại</string>
+    <string name="error_not_found_title">Không tìm thấy</string>
+    <string name="error_not_found_message">Bộ thẻ này không còn tồn tại. Có thể nó đã bị xóa.</string>
+    <string name="error_no_account_title">Tài khoản của bạn chưa được thiết lập</string>
+    <!-- Deliberately does NOT send the user back to Pubky Ring. Creating the account needs a
+         signup token, tokens come from Homegate, and Homegate lives in Loopky — Ring's only route
+         is its Edit-pubky sheet, which wants a homeserver z32 and a token the user does not have.
+         Pointing at Ring here points at the one app that cannot help. -->
+    <string name="error_no_account_message">Khóa này chưa có tài khoản, nên chưa có nơi lưu bộ thẻ của bạn. Thiết lập chỉ mất một phút.</string>
+    <string name="error_not_signed_in_title">Chưa đăng nhập</string>
+    <string name="error_not_signed_in_message">Hãy đăng nhập bằng Pubky Ring để tiếp tục.</string>
+    <string name="error_ring_not_installed_title">Không tìm thấy Pubky Ring</string>
+    <string name="error_ring_not_installed_message">Loopky đăng nhập cho bạn qua Pubky Ring. Hãy cài đặt ứng dụng này để tiếp tục.</string>
+    <string name="error_auth_failed_title">Đăng nhập chưa hoàn tất</string>
+    <string name="error_auth_failed_message">Loopky không xác nhận được việc đăng nhập. Hãy kiểm tra kết nối rồi thử lại.</string>
+    <string name="error_auth_relay_title">Không kết nối được để đăng nhập</string>
+    <string name="error_auth_relay_message">Dịch vụ đăng nhập không phản hồi. Hãy thử lại sau giây lát.</string>
+    <string name="study_sync_error_title">Lượt ôn tập của bạn chưa được lưu</string>
+    <string name="study_sync_error_dismiss">Đã hiểu</string>
+    <string name="study_goal_reached_title">Đã đạt mục tiêu hằng ngày!</string>
+    <string name="study_goal_reached_body">Bạn đã đạt chỉ tiêu hôm nay. Không có gì bị khóa cả, cứ học tiếp nếu bạn đang hăng say.</string>
+    <string name="study_goal_keep_studying">Học tiếp</string>
+    <string name="study_goal_done">Về trang chủ</string>
+    <string name="publish_error_no_draft">Không có gì để xuất bản. Hãy quay lại và dán lại danh sách.</string>
+    <string name="publish_error_publish">Không xuất bản được bộ thẻ này. %1$s</string>
+    <string name="publish_error_cancel">Không xóa được bộ thẻ đã hủy. Một phần vẫn còn được lưu. %1$s</string>
+    <string name="publish_error_undo">Không hoàn tác được. Bộ thẻ vẫn đang được xuất bản. %1$s</string>
+    <string name="error_server_busy_title">Máy chủ đang bận</string>
+    <string name="error_server_busy_message">Có quá nhiều yêu cầu cùng lúc nên thao tác này chưa hoàn tất. Không phải do kết nối của bạn. Đợi một chút rồi thử lại.</string>
+    <string name="error_storage_full_title">Bộ nhớ của bạn đã đầy</string>
+    <string name="error_storage_full_message">Tài khoản của bạn đã hết dung lượng. Hãy xóa một bộ thẻ bạn không còn học để giải phóng dung lượng, hoặc nâng cấp gói lưu trữ.</string>
+    <!-- Restore (#147): the door for someone who has a pubky but no working Pubky Ring. -->
+    <string name="onboarding_restore">Dùng cụm từ khôi phục hoặc tệp</string>
+    <string name="restore_start_title">Khôi phục tài khoản</string>
+    <string name="restore_start_subtitle">Dùng bản sao lưu bạn đã tạo khi pubky của bạn được tạo.</string>
+    <string name="restore_method_phrase">Cụm từ khôi phục</string>
+    <string name="restore_method_phrase_detail">Mười hai từ bạn đã ghi lại.</string>
+    <string name="restore_phrase_title">Nhập cụm từ khôi phục</string>
+    <string name="restore_phrase_subtitle">Mười hai từ, đúng thứ tự, cách nhau bằng dấu cách.</string>
+    <string name="restore_phrase_label">Cụm từ khôi phục</string>
+    <string name="restore_phrase_placeholder">từ một từ hai từ ba…</string>
+    <string name="restore_phrase_submit">Khôi phục tài khoản</string>
+    <string name="restore_phrase_checking">Đang kiểm tra…</string>
+    <!-- Permanent and inline, never a toast or a dismissible popover. A Bitcoin seed and a Pubky
+         seed are the same twelve BIP-39 words and there is no way to tell them apart, so warning
+         is the only protection available — and a warning you can dismiss is one that gets
+         dismissed. Deliberately no heuristic detection: a false negative would read as an
+         all-clear, which is worse than saying nothing. -->
+    <string name="restore_seed_warning">Tuyệt đối không nhập cụm từ khôi phục của ví Bitcoin hay ví tiền mã hóa khác vào đây.</string>
+    <!-- Local key creation + backup (#147). -->
+    <!-- Separate strings rather than appending "(≈ US$0.85)" onto a translated sentence: the
+         parenthetical belongs in a different place in half the languages we will ship. -->
+    <string name="signup_lightning_card_price_fiat">Trả ₿ %1$d (%2$s) một lần</string>
+    <string name="signup_lightning_amount_fiat">Trả ₿ %1$d (%2$s) để tiếp tục.</string>
+    <!-- Terminal: retrying re-sends the same dead token. The copy has to send the user back to
+         get a new one rather than at a button that cannot work. -->
+    <string name="signup_error_token_rejected_title">Mã đăng ký đó đã bị từ chối</string>
+    <string name="signup_error_token_rejected_message">Mã này đã bị từ chối. Có thể nó đã được dùng rồi. Hãy bắt đầu lại để nhận mã mới.</string>
+    <string name="signup_start_over">Bắt đầu lại</string>
+    <string name="signup_local_title">Đang tạo tài khoản của bạn</string>
+    <string name="signup_local_subtitle">Đang tạo khóa và đăng ký. Việc này mất một chút thời gian.</string>
+    <string name="signup_local_retry">Thử lại</string>
+    <string name="signup_ring_recommended_title">Pubky Ring là nơi an toàn nhất cho khóa của bạn</string>
+    <string name="signup_ring_recommended_body">Pubky Ring giữ khóa của bạn trong một ứng dụng riêng, nên việc đăng nhập không bao giờ làm lộ khóa. Hãy cài đặt ứng dụng này, hoặc tạo khóa ngay trong Loopky.</string>
+    <string name="backup_start_title">Sao lưu tài khoản</string>
+    <string name="backup_start_subtitle">Khóa của bạn chỉ nằm trên thiết bị này. Hãy lưu nó ở nơi bạn vẫn truy cập được nếu mất điện thoại.</string>
+    <!-- For a key restored from a phrase or file: it IS already backed up, so telling the user to
+         back it up would be describing a risk they do not have. What is still on offer is Pubky
+         Ring, which is a custody change rather than a backup. -->
+    <string name="backup_start_subtitle_backed_up">Bạn đã có một bản sao của khóa này. Pubky Ring giữ khóa trong một ứng dụng riêng, còn an toàn hơn nữa, hoặc bạn có thể thêm một bản sao lưu khác ở đây.</string>
+    <string name="backup_method_ring_missing">Chưa cài đặt. Chúng tôi sẽ đưa bạn đến đó.</string>
+    <string name="backup_later">Để sau</string>
+    <string name="backup_done_label">Xong</string>
+    <string name="backup_method_password_manager">Trình quản lý mật khẩu</string>
+    <string name="backup_method_password_manager_detail">Lưu cụm từ vào Trình quản lý mật khẩu của Google hoặc trình quản lý bạn đang dùng.</string>
+    <string name="backup_phrase_save_to_manager">Lưu vào trình quản lý mật khẩu</string>
+    <string name="backup_phrase_saved_to_manager">Đã lưu và kiểm tra. Trình quản lý mật khẩu của bạn đã có cụm từ này.</string>
+    <string name="backup_phrase_save_failed">Chưa có gì được lưu. Có thể trình quản lý mật khẩu đã từ chối, hoặc bạn đã hủy.</string>
+    <string name="backup_quiz_saved_title">Kiểm tra cụm từ đã lưu</string>
+    <string name="backup_quiz_saved_subtitle">Bạn đã lưu cụm từ này vào trình quản lý mật khẩu, nên không cần nhớ lại. Chúng tôi sẽ đọc lại để kiểm tra nó vẫn còn đó.</string>
+    <string name="backup_quiz_saved_check">Kiểm tra cụm từ đã lưu</string>
+    <string name="backup_quiz_saved_wrong">Không khớp. Hãy mở trình quản lý mật khẩu và kiểm tra mục của tài khoản này, rồi thử lại.</string>
+    <string name="backup_method_phrase">Cụm từ khôi phục</string>
+    <string name="backup_method_phrase_detail">Ghi lại mười hai từ và xác nhận chúng.</string>
+    <string name="backup_method_file">Tệp mã hóa</string>
+    <string name="backup_method_file_detail">Lưu tệp được bảo vệ bằng cụm mật khẩu vào Drive hoặc Files.</string>
+    <string name="backup_method_ring">Xuất sang Pubky Ring</string>
+    <string name="backup_method_ring_detail">Sao chép khóa của bạn vào Pubky Ring. Loopky vẫn giữ bản sao của mình.</string>
+    <string name="backup_phrase_title">Cụm từ khôi phục của bạn</string>
+    <string name="backup_phrase_subtitle">Hãy ghi lại mười hai từ này theo đúng thứ tự và cất ở nơi an toàn.</string>
+    <string name="backup_phrase_reveal">Nhấn để hiện</string>
+    <string name="backup_phrase_continue">Tôi đã ghi lại</string>
+    <!-- The inverted seed warning: prevents someone sending sats to a Pubky account. -->
+    <string name="backup_phrase_warning">Cụm từ này chỉ dành cho tài khoản của bạn. Đây không phải ví Bitcoin và không chứa tiền.</string>
+    <string name="backup_quiz_title">Xác nhận cụm từ</string>
+    <string name="backup_quiz_subtitle">Chọn từ đúng cho từng vị trí.</string>
+    <string name="backup_quiz_position">Từ thứ %1$d</string>
+    <string name="backup_quiz_submit">Xác nhận</string>
+    <string name="backup_quiz_wrong">Chưa đúng. Hãy kiểm tra bản bạn đã ghi rồi thử lại.</string>
+    <string name="backup_file_title">Tệp khôi phục mã hóa</string>
+    <string name="backup_file_subtitle">Chọn một cụm mật khẩu. Bạn sẽ cần nó, cùng với tệp, để khôi phục.</string>
+    <string name="backup_file_passphrase">Cụm mật khẩu</string>
+    <string name="passphrase_reveal">Hiện cụm mật khẩu</string>
+    <string name="passphrase_hide">Ẩn cụm mật khẩu</string>
+    <string name="backup_file_create">Tạo và lưu tệp</string>
+    <string name="backup_file_failed">Không tạo được tệp. Vui lòng thử lại.</string>
+    <string name="backup_strength_too_short">Quá ngắn</string>
+    <string name="backup_strength_weak">Yếu. Từ 16 ký tự trở lên sẽ mạnh hơn nhiều</string>
+    <string name="backup_strength_fair">Tạm được. Từ 16 ký tự trở lên sẽ mạnh hơn nhiều</string>
+    <string name="backup_strength_strong">Mạnh</string>
+    <string name="backup_ring_title">Xuất sang Pubky Ring</string>
+    <!-- Never implies the key moved. Ring imports it; Loopky keeps its copy and its session, and
+         the words the user wrote down are still valid. -->
+    <string name="backup_ring_subtitle">Thao tác này sao chép khóa của bạn vào Pubky Ring. Loopky vẫn giữ bản sao của mình, và cụm từ khôi phục của bạn vẫn dùng được.</string>
+    <string name="backup_ring_open">Mở Pubky Ring</string>
+    <string name="backup_ring_missing">Pubky Ring chưa được cài đặt trên thiết bị này.</string>
+    <string name="backup_ring_install">Cài đặt Pubky Ring</string>
+    <string name="backup_ring_confirm">Tôi đã nhập vào Pubky Ring</string>
+    <string name="settings_back_up_account">Sao lưu tài khoản</string>
+    <string name="backup_nag_title">Sao lưu tài khoản</string>
+    <string name="backup_nag_body">Khóa của bạn chỉ nằm trên thiết bị này. Nếu mất nó, bạn cũng mất luôn các bộ thẻ.</string>
+    <string name="backup_nag_action">Sao lưu ngay</string>
+    <string name="settings_signout_unbacked_title">Đăng xuất sẽ xóa khóa của bạn</string>
+    <string name="settings_signout_unbacked_body">Loopky đang giữ bản sao duy nhất của khóa cho %1$s, và bạn chưa sao lưu nó. Đăng xuất sẽ xóa khóa vĩnh viễn.</string>
+    <string name="settings_signout_unbacked_confirm">Đăng xuất và xóa</string>
+    <string name="settings_signout_unbacked_backup">Sao lưu trước</string>
+    <string name="unregistered_title">Khóa này chưa có tài khoản</string>
+    <string name="unregistered_subtitle">Khóa hợp lệ. Chỉ là chưa có tài khoản nào được đăng ký cho nó.</string>
+    <string name="unregistered_pubky_label">Khóa bạn đã cung cấp:</string>
+    <string name="unregistered_check_phrase">Kiểm tra lại cụm từ khôi phục</string>
+    <string name="unregistered_check_hint">Chỉ cần gõ sai hoặc đảo thứ tự một từ, cụm từ vẫn qua được bước kiểm tra nhưng sẽ mở một tài khoản khác.</string>
+    <string name="unregistered_register">Đăng ký khóa này</string>
+    <!-- Says plainly what the button does, because it publishes a record to the DHT. -->
+    <string name="unregistered_register_hint">Tạo tài khoản cho khóa ở trên và công bố nó. Cần một bước xác minh nhanh.</string>
+    <string name="unregistered_register_confirm_title">Đăng ký khóa này?</string>
+    <string name="unregistered_register_confirm_body">Thao tác này công bố %1$s như một danh tính công khai. Tuyệt đối đừng làm vậy với cụm từ khôi phục của ví Bitcoin hay ví tiền mã hóa.</string>
+    <string name="unregistered_register_confirm_yes">Đăng ký</string>
+    <string name="unregistered_register_confirm_cancel">Hủy</string>
+    <string name="unregistered_ring_title">Pubky Ring đang giữ khóa này</string>
+    <string name="unregistered_ring_body">Pubky Ring đang giữ khóa này nên Loopky không thể tạo tài khoản cho nó. Có hai cách để giữ khóa: lấy mã mời ở đây rồi dùng mục Edit pubky trong Ring, hoặc hiện cụm từ khôi phục trong Ring rồi khôi phục ở đây.</string>
+    <string name="unregistered_ring_import">Khôi phục bằng cụm từ khôi phục</string>
+    <string name="restore_method_file">Tệp khôi phục mã hóa</string>
+    <string name="restore_method_file_detail">Một tệp recovery.pkarr và cụm mật khẩu của nó.</string>
+    <string name="restore_file_title">Mở tệp khôi phục</string>
+    <string name="restore_file_subtitle">Chọn tệp bạn đã lưu, rồi nhập cụm mật khẩu của tệp.</string>
+    <string name="restore_file_choose">Chọn tệp</string>
+    <string name="restore_file_change">Chọn tệp khác</string>
+    <string name="restore_file_passphrase_label">Cụm mật khẩu</string>
+    <string name="restore_file_passphrase_placeholder">Cụm mật khẩu bạn đã đặt</string>
+    <string name="restore_file_submit">Khôi phục tài khoản</string>
+    <string name="restore_error_passphrase_title">Không mở được tệp</string>
+    <string name="restore_error_passphrase_message">Hãy kiểm tra cụm mật khẩu, và chắc chắn đây là tệp khôi phục của tài khoản bạn muốn.</string>
+    <string name="restore_error_unreadable_title">Không đọc được tệp đó</string>
+    <string name="restore_error_unreadable_message">Loopky không mở được tệp bạn đã chọn. Hãy thử chọn lại.</string>
+    <string name="restore_error_invalid_title">Đó không phải cụm từ khôi phục hợp lệ</string>
+    <string name="restore_error_invalid_message">Hãy kiểm tra cả mười hai từ đều viết đúng chính tả và đúng thứ tự.</string>
+    <!-- Never "invalid": the phrase is valid, it just is not this account\'s. Showing the pubky is
+         the fastest diagnosis available and the only one the user can make. -->
+    <string name="restore_error_no_account_title">Cụm từ đó không khớp với tài khoản nào</string>
+    <string name="restore_error_no_account_message">Cụm từ này hợp lệ, nhưng chưa có tài khoản nào được tạo cho nó. Hãy kiểm tra xem có từ nào gõ sai hoặc sai thứ tự không. Cụm từ của ví Bitcoin hay ví tiền mã hóa sẽ không dùng được ở đây.</string>
+    <string name="restore_error_no_account_pubky">Nó mở pubky này:</string>
+    <string name="restore_retry">Thử lại</string>
+    <!-- The pkarr/DHT lookup that decides whether a pubky has an account did not answer.
+         Never a verdict on what was looked up: it must always read as "we don't know yet". -->
+    <string name="error_lookup_failed_title">Không kiểm tra được</string>
+    <string name="error_lookup_failed_message">Một số mạng chặn kết nối mà Loopky cần. Hãy thử lại, hoặc chuyển giữa Wi-Fi và dữ liệu di động.</string>
+    <string name="error_generic_title">Đã xảy ra lỗi</string>
+    <string name="error_generic_message">Đã xảy ra lỗi. Vui lòng thử lại.</string>
+    <string name="home_caught_up_title">Bạn đã ôn xong hết</string>
+    <string name="home_caught_up_next_due">Lượt ôn tiếp theo sau %1$s.</string>
+    <string name="home_caught_up_no_next_due">Chưa có lịch ôn nào. Hãy học trước từ bất kỳ bộ thẻ nào.</string>
+    <string name="share_deck_chooser_title">Chia sẻ bộ thẻ</string>
+    <string name="share_profile_chooser_title">Chia sẻ hồ sơ</string>
+    <string name="share_deck_body">%1$s trên Loopky\n%2$s</string>
+    <string name="share_profile_body">%1$s trên Loopky\n%2$s</string>
+    <string name="deeplink_no_link_in_shared_text">Không có liên kết Loopky nào trong văn bản đó. Hãy chia sẻ một tin nhắn chứa địa chỉ pubky://.</string>
+    <string name="deck_editor_move_up">Di chuyển thẻ lên</string>
+    <string name="deck_editor_move_down">Di chuyển thẻ xuống</string>
+    <string name="deck_editor_move_to">Di chuyển đến vị trí</string>
+    <string name="deck_editor_move_to_title">Di chuyển thẻ</string>
+    <string name="deck_editor_move_to_label">Vị trí (1–%1$d)</string>
+    <string name="deck_editor_move_to_confirm">Di chuyển</string>
+    <string name="deck_editor_move_to_cancel">Hủy</string>
+    <string name="deck_editor_card_position">Thẻ %1$d</string>
+    <string name="deck_editor_loading_cards">Đang tải thêm thẻ…</string>
+    <string name="edit_card_title_new">Thẻ mới</string>
+    <string name="decks_sort_recent">Gần đây</string>
+    <string name="decks_sort_alphabetical">A–Z</string>
+    <string name="decks_sort_cards">Nhiều thẻ nhất</string>
+    <string name="decks_search_placeholder">Tìm trong bộ thẻ của bạn</string>
+    <string name="decks_search_no_results">Không có bộ thẻ nào khớp với “%1$s”.</string>
+    <string name="paste_separator_sheet_title">Tách thẻ theo</string>
+    <string name="form_title_required">Hãy đặt tên cho bộ thẻ để xuất bản.</string>
+    <string name="form_title_too_long">Tên không được dài quá 120 ký tự.</string>
+    <string name="form_description_too_long">Mô tả không được dài quá 500 ký tự.</string>
+    <string name="form_card_side_required">Hãy thêm chữ hoặc hình ảnh cho mặt này.</string>
+    <string name="form_card_text_too_long">Nội dung thẻ không được dài quá 2000 ký tự.</string>
+    <string name="paste_validation_empty">Hãy dán hoặc gõ danh sách của bạn trước.</string>
+    <string name="paste_validation_no_cards">Chưa tìm thấy thẻ nào. Hãy kiểm tra dấu phân tách, hoặc thêm mặt trước và mặt sau.</string>
+    <string name="permission_mic_title">Luyện phát âm</string>
+    <string name="permission_mic_rationale">Nói sẽ nghe khi bạn đọc từ và cho biết bạn đã phát âm gần đúng đến đâu. Âm thanh không bao giờ rời khỏi thiết bị của bạn.</string>
+    <string name="permission_mic_denied_title">Micrô đang tắt</string>
+    <string name="permission_mic_denied_message">Nói cần quyền truy cập micrô, và Android sẽ không hỏi lại. Bạn có thể bật trong Cài đặt.</string>
+    <string name="permission_continue">Tiếp tục</string>
+    <string name="permission_not_now">Để sau</string>
+    <string name="permission_open_settings">Mở cài đặt</string>
+    <string name="triage_undo">Hoàn tác thẻ vừa rồi</string>
+
+    <!-- Bulk file import -->
+    <string name="bulk_title">Nhập tệp</string>
+    <string name="bulk_cancel">Hủy</string>
+    <string name="bulk_pick_file">Chọn tệp</string>
+    <string name="bulk_idle_title">Mang bộ thẻ của bạn sang đây</string>
+    <string name="bulk_idle_subtitle">Nhập từ Anki, hoặc từ bất kỳ danh sách hai cột nào bạn đang có.</string>
+    <string name="bulk_formats_label">ĐỊNH DẠNG ĐƯỢC HỖ TRỢ</string>
+    <string name="bulk_format_apkg_ext">.apkg</string>
+    <string name="bulk_format_apkg_title">Bộ thẻ xuất từ Anki</string>
+    <string name="bulk_format_apkg_detail">Thẻ, tên bộ thẻ và hình ảnh đều được chuyển sang. Âm thanh thì không, nên các thẻ đó được nhập dưới dạng văn bản.</string>
+    <string name="bulk_format_text_ext">.txt · .csv</string>
+    <string name="bulk_format_text_title">Tệp văn bản thuần</string>
+    <string name="bulk_format_text_detail">Trong Anki: File → Export → “Notes in Plain Text”. Mọi danh sách phân tách bằng tab hoặc dấu phẩy cũng đều dùng được.</string>
+    <string name="bulk_idle_limit">Tệp tối đa %1$d MB</string>
+    <string name="bulk_cli_title">🤖 Hoặc để agent của bạn tạo</string>
+    <string name="bulk_cli_body">Loopky có một ứng dụng dòng lệnh. Sao chép lời nhắc, dán vào agent lập trình của bạn và xem bộ thẻ xuất hiện trong tài khoản.</string>
+    <string name="bulk_cli_copy">Sao chép lời nhắc</string>
+    <string name="bulk_cli_copied">Đã sao chép</string>
+    <string name="bulk_cli_prompt">Hãy cài đặt loopky CLI và dùng nó để tạo cho tôi một bộ flashcard.\n\n1. Trước hết, hãy nhắc tôi cài Pubky Ring trên điện thoại và lưu cụm từ khôi phục Loopky của tôi vào đó. Khóa của tôi nằm ở đó, và CLI đăng nhập bằng cách xin phép Ring.\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login (một mã QR sẽ hiện ra; tôi quét nó bằng Pubky Ring)\n4. loopky commands --json để đọc toàn bộ các lệnh có sẵn\n5. Hỏi tôi bộ thẻ nên nói về chủ đề gì, tự viết các thẻ vào một tệp TSV, rồi xuất bản bằng: loopky deck create --title \"My deck\" --from-file cards.tsv</string>
+    <string name="bulk_reading">Đang đọc tệp của bạn…</string>
+    <string name="bulk_parsing">Đang đọc %1$s…</string>
+    <string name="bulk_summary_heading">Sẵn sàng nhập</string>
+    <string name="bulk_detected_separator">Dấu phân tách: %1$s</string>
+    <string name="bulk_fields">Trường: %1$s → %2$s</string>
+    <string name="bulk_fields_changeable">Trường: %1$s → %2$s · nhấn để đổi</string>
+    <string name="bulk_fields_unnamed">Trường %1$d</string>
+    <string name="bulk_fields_sheet_front">Trường nào là mặt trước?</string>
+    <string name="bulk_fields_sheet_back">Trường nào là mặt sau?</string>
+    <string name="bulk_fields_sheet_hint">Bộ thẻ Anki thường bắt đầu bằng các trường mã số hoặc thứ hạng. Hãy chọn hai trường bạn muốn học.</string>
+    <string name="bulk_fields_sheet_step">Bước %1$d/2</string>
+    <string name="bulk_fields_sheet_cancel">Hủy</string>
+    <string name="bulk_sample_label">MẪU</string>
+    <string name="bulk_import_button">Nhập %1$s</string>
+    <string name="bulk_pick_another">Chọn tệp khác</string>
+
+    <!-- Failure modes, kept distinct: picking the wrong file used to surface a parser message. -->
+    <string name="bulk_error_unreadable_title">Không mở được tệp đó</string>
+    <string name="bulk_error_unreadable_message">Loopky không đọc được tệp. Hãy thử chọn lại, hoặc sao chép tệp sang nơi khác trước.</string>
+    <string name="bulk_error_too_large_title">Tệp đó quá lớn</string>
+    <string name="bulk_error_too_large_message">Loopky có thể nhập tệp tối đa %1$d MB. Tệp này lớn hơn mọi bộ thẻ trên AnkiWeb, nên có lẽ đây không phải tệp xuất từ Anki.</string>
+    <string name="bulk_error_not_text_title">Đó không phải tệp văn bản</string>
+    <string name="bulk_error_not_text_message">Hãy chọn một tệp .apkg của Anki, hoặc bộ thẻ xuất ra dạng văn bản thuần. Ảnh và PDF không thể trở thành thẻ.</string>
+    <string name="bulk_error_unsupported_apkg_title">Loopky không mở được tệp .apkg này</string>
+    <string name="bulk_error_unsupported_apkg_message">Các bộ thẻ Anki mới hơn dùng định dạng mà Loopky chưa đọc được. Trong Anki, hãy xuất bộ thẻ dưới dạng “Notes in Plain Text”.</string>
+    <string name="bulk_error_legacy_stub_title">Bộ thẻ này cần Anki mới hơn</string>
+    <string name="bulk_error_legacy_stub_message">Tệp chỉ chứa phần giữ chỗ tương thích của Anki. Hãy xuất lại bộ thẻ từ Anki 2.1.50 trở lên.</string>
+    <string name="bulk_error_no_cards_title">Tệp đó không có thẻ nào</string>
+    <string name="bulk_error_no_cards_message">Loopky đã đọc tệp nhưng không tìm thấy nội dung nào có dạng thẻ. Mỗi dòng cần có mặt trước và mặt sau.</string>
+    <string name="bulk_error_unknown_title">Nhập tệp không thành công</string>
+    <string name="bulk_error_unknown_message">Đã xảy ra lỗi khi đọc tệp đó. Hãy thử tệp khác.</string>
+    <string name="bulk_sample_picture">Hình ảnh</string>
+    <string name="bulk_skipped">Bỏ qua %1$d (thiếu mặt trước hoặc mặt sau)</string>
+    <string name="deck_incomplete_warning">Bộ thẻ này chưa tải lên xong nên còn thiếu một số thẻ. Hãy nhập lại để hoàn tất, hoặc xóa nó.</string>
+    <!-- Add-tag sheet, shared by the publish flow and the deck editor -->
+    <string name="tag_sheet_title">Thêm nhãn</string>
+    <string name="tag_sheet_input_placeholder">Gõ một nhãn…</string>
+    <string name="tag_sheet_suggested_label">GỢI Ý</string>
+    <string name="tag_sheet_current_label">NHÃN HIỆN TẠI</string>
+    <string name="tag_sheet_add_button">Thêm nhãn</string>
+
+    <!--
+      Browsing without an account (#150).
+
+      Loopky is readable signed out: Discover, deck detail, profiles and a sample of any deck's
+      cards are all public records, so a signed-out launch lands in the browsing shell rather than
+      on the sign-in screen. These strings cover the two places that changes what is on screen —
+      the banner offering the way in, and the prompt raised by an action that writes.
+    -->
+    <string name="guest_banner_title">Chỉ đang xem qua</string>
+    <string name="guest_banner_body">Lưu bộ thẻ và theo dõi tiến độ.</string>
+    <string name="guest_banner_cta">Bắt đầu</string>
+
+    <string name="sign_in_prompt_cta">Tạo tài khoản hoặc đăng nhập</string>
+    <string name="sign_in_prompt_dismiss">Để sau</string>
+    <string name="sign_in_prompt_follow_deck_title">Giữ bộ thẻ này</string>
+    <string name="sign_in_prompt_follow_deck_body">Theo dõi sẽ lưu bộ thẻ vào thư viện của bạn, luôn cập nhật nó và ghi nhớ những gì bạn đã học. Cần có tài khoản, nhưng không cần email.</string>
+    <string name="sign_in_prompt_clone_deck_title">Biến nó thành của bạn</string>
+    <string name="sign_in_prompt_clone_deck_body">Bản sao là bản của riêng bạn, được xuất bản dưới khóa của bạn và bạn có thể tự sửa. Cần có tài khoản, nhưng không cần email.</string>
+    <string name="sign_in_prompt_follow_person_title">Theo dõi mọi người</string>
+    <string name="sign_in_prompt_follow_person_body">Theo dõi sẽ đưa các bộ thẻ mọi người xuất bản vào mục Khám phá của bạn. Cần có tài khoản, nhưng không cần email.</string>
+
+    <!--
+      Previewing a deck nobody has kept: a fixed handful of cards, graded and stored nowhere.
+      The badge is on screen the whole time because "nothing is being saved" is the one thing a
+      preview must never let someone find out afterwards.
+    -->
+    <string name="deck_detail_try_cards">Thử các thẻ này</string>
+    <string name="study_preview_badge">Xem thử · tiến độ không được lưu</string>
+    <string name="study_preview_next">Thẻ tiếp theo</string>
+    <string name="study_preview_complete_title">Hết phần xem thử rồi 👋</string>
+    <string name="study_preview_guest_detail">Tạo tài khoản để bộ thẻ này ghi nhớ những gì bạn trả lời đúng, và hỏi lại ngay trước khi bạn kịp quên.</string>
+    <string name="study_preview_member_detail">Theo dõi hoặc sao chép bộ thẻ này để lưu tiến độ học.</string>
+    <string name="study_preview_action_guest">Tạo tài khoản</string>
+    <string name="study_preview_back">Quay lại bộ thẻ</string>
+
+    <!-- App language (#device-level per-app language). The description differs by platform
+         version because only one of the two sentences is true on each: below API 33 Loopky keeps
+         the choice itself, and it appears in no system screen. -->
+    <string name="settings_section_language">NGÔN NGỮ</string>
+    <string name="settings_language_label">Ngôn ngữ ứng dụng</string>
+    <string name="settings_language_system">Mặc định của hệ thống</string>
+    <string name="settings_language_description_system">Android lưu lựa chọn này cùng các cài đặt ngôn ngữ riêng cho từng ứng dụng khác.</string>
+    <string name="settings_language_description_app">Chỉ áp dụng cho Loopky. Ngôn ngữ của thiết bị không thay đổi.</string>
+
+    <!-- Appearance. "System default" is worded like the language picker's on purpose: it is the
+         same promise — Loopky follows the device until you say otherwise. -->
+    <string name="settings_section_appearance">GIAO DIỆN</string>
+    <string name="settings_theme_label">Chủ đề</string>
+    <string name="settings_theme_description">Chỉ áp dụng cho Loopky trên thiết bị này. Tự động chuyển sang tối từ %1$s đến %2$s.</string>
+    <string name="settings_theme_system">Hệ thống</string>
+    <string name="settings_theme_auto">Tự động</string>
+    <string name="settings_theme_light">Sáng</string>
+    <string name="settings_theme_dark">Tối</string>
+
+    <!-- The four SRS grades, as the study screen's buttons. Were `SrsGrade.name` until pt-BR
+         landed, which put the raw Kotlin enum on screen in every language. -->
+    <string name="srs_grade_again">Lại</string>
+    <string name="srs_grade_hard">Khó</string>
+    <string name="srs_grade_good">Tốt</string>
+    <string name="srs_grade_easy">Dễ</string>
+</resources>
