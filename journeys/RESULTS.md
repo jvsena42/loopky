@@ -674,6 +674,34 @@ expanded width class on this AVD.
 nothing in this change touches it.
 
 
+## 27 — Phone country picker — ✅ PASS on Android (2026-09-18, `Pixel_Tablet`, staging); iOS not run
+
+New journey for the signup phone field's country picker. Driven on the `Pixel_Tablet` in landscape
+(expanded) and portrait (medium); stopped before "Send code", which would spend a real SMS attempt.
+
+| Step | Result |
+| --- | --- |
+| Field opens on the device region | PASSED — 🇺🇸 +1 inside the field, hint "Choose your country, then enter your number." |
+| Sheet lists every country, localized and sorted | PASSED — Afghanistan, Åland Islands, Albania… each with its code; full height in both orientations |
+| Search "bra" / "+49" / "zzq" | PASSED — Brazil, Congo - Brazzaville, Gibraltar / Germany alone / "No matching countries". The sheet keeps its height as the list shrinks |
+| Pick Brazil, type 86998006407 | PASSED — 🇧🇷 +55, hint "We'll text +55 86998006407.", Send code enabled |
+| Enter +447700900123 | PASSED — button moves to 🇬🇧 +44, field keeps 7700900123 |
+| Enter 07700900123 | PASSED — hint "We'll text +44 7700900123." (trunk 0 dropped) |
+
+**Found on the device, fixed before this entry:** the sheet sized itself to its content, so it
+shrank as the filter narrowed and the search field rode down the screen under the finger. It now
+fills the height it opens at.
+
+**The emulators are nearly full.** Neither `Medium_Phone` nor `Pixel_Tablet` would take the 134 MB
+debug APK (~500 MB free of 5.8 GB, under the low-storage threshold). It installed after
+`settings put global sys_storage_threshold_percentage 2` and
+`sys_storage_threshold_max_bytes 104857600` on the tablet. The AVDs' data partitions want wiping or
+enlarging.
+
+**iOS is written but not driven:** this run was on Linux, where neither Kotlin/Native for iOS nor
+Swift builds. `CountryPickerSheet.swift` and `Region.ios.kt` have not been compiled.
+
+
 # iOS
 
 First iOS runs ever recorded. Driven on the **iPhone 17 simulator (iOS 26.5)** via
