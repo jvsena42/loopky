@@ -57,6 +57,12 @@
             "state": "translated",
             "value": "Loopky dùng camera để đọc mã QR chứa pubky của một người, để bạn tìm họ mà không cần gõ."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky 使用相机读取包含他人 pubky 的二维码，这样你无需手动输入就能找到对方。"
+          }
         }
       }
     },
@@ -116,6 +122,12 @@
             "state": "translated",
             "value": "Loopky nghe khi bạn luyện đọc to một thẻ, và dừng ngay khi bạn trả lời xong."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你大声说出卡片内容进行练习时，Loopky 会聆听，并在你回答后立即停止。"
+          }
         }
       }
     },
@@ -174,6 +186,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loopky chuyển lời bạn nói thành văn bản để so phát âm của bạn với thẻ. Không có gì được lưu lại."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky 会将你说的话转为文字，用来对照卡片检查你的发音。不会存储任何内容。"
           }
         }
       }
