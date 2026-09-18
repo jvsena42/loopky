@@ -1,0 +1,866 @@
+<resources>
+    <string name="app_name">Loopky</string>
+
+    <!-- Shared text controls -->
+    <string name="read_more">展开</string>
+    <string name="read_less">收起</string>
+    <string name="char_counter">%1$d/%2$d</string>
+
+    <!-- Home -->
+    <string name="home_greeting_hello">你好，</string>
+    <string name="home_greeting_name">%1$s 👋</string>
+    <string name="home_error_title">出了点问题</string>
+    <string name="home_retry">重试</string>
+    <string name="home_loading">准备中…</string>
+    <string name="home_due_today">今日待复习</string>
+    <string name="home_cards">张卡片</string>
+    <string name="home_to_review">待复习</string>
+    <string name="home_progress_done">已完成 %1$d / %2$d · 继续加油！</string>
+    <string name="home_new_cards_goal">今天新卡片 %1$d / %2$d 张</string>
+    <string name="home_new_cards_goal_reached">每日目标已达成 · %1$d 张新卡片 🎉</string>
+    <string name="home_start_studying">开始学习</string>
+    <string name="home_todays_decks">今日卡组</string>
+    <string name="home_see_all">查看全部</string>
+    <string name="home_deck_due">%1$d 张待复习</string>
+    <string name="home_deck_new">%1$d 张新卡片</string>
+    <string name="home_deck_caught_up">已全部完成</string>
+    <!-- The hero while the cached library is on screen and the review state has not answered. -->
+    <string name="home_checking_due">正在查看待复习的卡片…</string>
+    <string name="home_empty_title">还没有卡组</string>
+    <string name="home_empty_subtitle">粘贴一份列表、导入文件，或者从零开始。</string>
+    <string name="home_create_first_deck">创建你的第一个卡组</string>
+    <string name="home_browse_examples">浏览示例</string>
+
+    <!-- Decks library -->
+    <string name="decks_title">你的卡组</string>
+    <string name="decks_search">搜索</string>
+    <string name="decks_paste_cta_title">粘贴导入</string>
+    <string name="decks_paste_cta_subtitle">把任何列表变成卡组</string>
+    <string name="decks_paste_cta_go">开始</string>
+    <string name="decks_import_file_cta">从 Anki 或文件导入</string>
+    <string name="decks_library_count">卡组库 · %1$d</string>
+    <string name="decks_recent">最近</string>
+    <string name="decks_empty_title">还没有卡组</string>
+    <string name="decks_empty_subtitle">粘贴一份列表，或从零开始创建你的第一个卡组。</string>
+    <string name="decks_empty_create">创建卡组</string>
+    <string name="decks_error_title">出了点问题</string>
+    <string name="decks_loading">正在整理你的卡组…</string>
+    <string name="decks_retry">重试</string>
+
+    <!-- Deck tile -->
+    <string name="deck_tile_cloned_badge">副本</string>
+
+    <!-- Deck detail -->
+    <string name="deck_detail_error_title">出了点问题</string>
+    <string name="deck_detail_retry">重试</string>
+    <string name="deck_detail_loading">正在打开卡组…</string>
+    <string name="deck_detail_deleting">正在删除卡组…</string>
+    <string name="deck_detail_start_studying">开始学习 · %1$s 张待复习</string>
+    <string name="deck_detail_start_studying_new">开始学习 · %1$d 张新卡片</string>
+    <string name="deck_detail_study_this_deck">学习这个卡组</string>
+    <string name="deck_detail_back">返回</string>
+    <string name="deck_detail_back_to_decks">返回卡组</string>
+    <string name="deck_detail_edit">编辑卡组</string>
+    <string name="deck_detail_delete">删除卡组</string>
+    <string name="deck_detail_share">分享</string>
+    <string name="deck_detail_more_actions">更多操作</string>
+    <string name="deck_detail_delete_dialog_title">删除卡组？</string>
+    <string name="deck_detail_delete_dialog_message">“%1$s”以及你从中学到的一切都将被删除。此操作无法撤销。</string>
+    <string name="deck_detail_delete_confirm">删除</string>
+    <string name="deck_detail_delete_cancel">取消</string>
+    <string name="deck_detail_in_your_library">已在你的卡组库中</string>
+    <string name="deck_detail_follow">关注卡组</string>
+    <string name="deck_detail_following">已关注</string>
+    <string name="deck_detail_cloning">正在复制卡组…</string>
+    <string name="deck_detail_clone_dialog_title">创建你自己的副本？</string>
+    <string name="deck_detail_clone_name_label">给副本起个名字</string>
+    <string name="deck_detail_clone_name_same">请取一个和原卡组不同的名字。</string>
+    <string name="deck_detail_clone_confirm">复制</string>
+    <string name="deck_detail_clone_cancel">取消</string>
+    <string name="deck_detail_cloned_from">复制自 %1$s</string>
+    <string name="deck_detail_followers">%1$d 人关注</string>
+    <string name="deck_detail_dismiss_error">关闭</string>
+    <string name="deck_detail_cards_heading">卡片</string>
+    <string name="deck_detail_cards_empty_owned">还没有卡片。点按“编辑”添加第一张。</string>
+    <string name="deck_detail_cards_empty_foreign">这个卡组还没有卡片。</string>
+
+    <!-- Deck editor -->
+    <string name="deck_editor_title_new">新建卡组</string>
+    <string name="deck_editor_title_edit">编辑卡组</string>
+    <string name="deck_editor_close">关闭</string>
+    <string name="deck_editor_save">保存</string>
+    <string name="deck_editor_cover">封面</string>
+    <string name="deck_editor_label_title">卡组标题</string>
+    <string name="deck_editor_title_placeholder">输入卡组标题…</string>
+    <string name="deck_editor_label_description">简介</string>
+    <string name="deck_editor_description_placeholder">添加简介…</string>
+    <string name="deck_editor_label_tags">标签（PUBKY）</string>
+    <string name="deck_editor_add_tag">+ 添加</string>
+    <string name="deck_editor_cards_count">卡片（%1$d）</string>
+    <string name="deck_editor_error_cards">无法加载这个卡组的卡片。对卡组信息的修改仍会保存。%1$s</string>
+    <string name="deck_editor_error_move">无法移动这张卡片。%1$s</string>
+    <string name="deck_editor_error_save">无法保存这个卡组。%1$s</string>
+    <string name="deck_editor_add_card">添加卡片</string>
+    <string name="deck_editor_reorder">调整顺序</string>
+    <string name="deck_editor_card_front_placeholder">正面</string>
+    <string name="deck_editor_card_back_placeholder">背面</string>
+    <string name="deck_editor_has_image">含图片</string>
+    <string name="deck_editor_has_audio">含音频</string>
+
+    <!-- Edit card -->
+    <string name="edit_card_title">编辑卡片</string>
+    <string name="edit_card_cancel">取消</string>
+    <string name="edit_card_save">保存</string>
+    <string name="edit_card_context">第 %1$d 张，共 %2$d 张 · %3$s</string>
+    <string name="edit_card_label_front">正面</string>
+    <string name="edit_card_front_placeholder">输入正面内容…</string>
+    <string name="edit_card_label_back">背面</string>
+    <string name="edit_card_back_placeholder">输入背面内容…</string>
+    <string name="edit_card_add_image">添加图片</string>
+    <string name="edit_card_image">图片</string>
+    <string name="edit_card_add_audio">添加音频</string>
+    <string name="edit_card_audio">音频</string>
+    <string name="edit_card_delete">删除卡片</string>
+    <string name="edit_card_speak">跟读</string>
+
+    <!-- Study session -->
+    <string name="study_error_title">出了点问题</string>
+    <string name="study_close">关闭</string>
+    <string name="study_loading">正在发牌…</string>
+    <string name="study_empty_title">全部完成啦 🎉</string>
+    <string name="study_empty_subtitle">现在没有待复习的卡片。</string>
+    <string name="study_empty_subtitle_deck">%1$s 现在没有待复习的卡片。</string>
+    <string name="study_done">完成</string>
+    <string name="study_complete_title">全部完成！🎊</string>
+    <string name="study_back">返回</string>
+    <string name="study_position_of_total">%1$d / %2$d</string>
+    <string name="study_flip_hint">点按卡片查看答案</string>
+    <string name="study_listen">朗读</string>
+    <string name="study_speak">跟读</string>
+    <string name="study_type_placeholder">输入答案</string>
+    <string name="study_type_check">检查</string>
+    <string name="study_type_give_up">放弃 · 显示答案</string>
+    <string name="study_type_correct">正确！</string>
+    <string name="study_type_near_miss">差一点。检查一下重音符号</string>
+    <string name="study_type_wrong">不太对。再试一次</string>
+
+    <!-- Discover -->
+    <string name="discover_title">发现</string>
+    <string name="discover_search">搜索</string>
+    <string name="discover_topics_title">话题</string>
+    <string name="discover_people_title">Loopky 上的用户</string>
+    <string name="discover_browse_title">发现卡组</string>
+    <string name="discover_browse_tag_title">标签为“%1$s”的卡组</string>
+    <string name="discover_browse_tags_title">标签为 %1$s 的卡组</string>
+    <string name="discover_tag_quoted">“%1$s”</string>
+    <string name="discover_tag_list_separator">" + "</string>
+    <string name="discover_clear_tag">清除</string>
+    <string name="discover_following_title">来自你关注的人</string>
+    <string name="discover_browse_empty_emoji">🌱</string>
+    <string name="discover_browse_empty_title">这里还没有发布任何内容</string>
+    <string name="discover_browse_empty_subtitle">Loopky 的公开索引刚刚起步。发布一个卡组，所有人都能在这里看到它。</string>
+    <string name="discover_empty_tag_emoji">🔍</string>
+    <string name="discover_empty_tag_title">还没有标签为“%1$s”的卡组</string>
+    <string name="discover_empty_tag_subtitle">还没有人用这个标签标记卡组。再点一次该标签即可查看全部。</string>
+    <string name="discover_empty_tags_title">还没有同时带有这些标签的卡组</string>
+    <string name="discover_empty_tags_subtitle">点按某个标签将其从筛选中移除，或点按“清除”查看全部。</string>
+
+    <!-- Tag browse -->
+    <string name="discover_search_cta">搜索用户和卡组</string>
+
+    <!-- Search -->
+    <string name="search_back">返回</string>
+    <string name="search_placeholder">搜索或粘贴 pubky</string>
+    <string name="search_clear">清除</string>
+    <string name="search_scan_qr">扫描二维码</string>
+    <string name="search_hint">按名字搜索，或粘贴 pubky、分享链接，也可以扫描二维码。</string>
+    <string name="search_people_title">用户</string>
+    <string name="search_decks_title">卡组</string>
+    <string name="search_open_profile">打开此个人主页</string>
+    <string name="search_open_deck">打开此卡组</string>
+    <string name="search_empty_emoji">🔍</string>
+    <string name="search_empty_title">没有找到“%1$s”的相关结果</string>
+    <string name="search_empty_subtitle">换个名字试试，或者粘贴对方的 pubky 直接打开。</string>
+
+    <string name="tag_browse_title">#%1$s</string>
+    <string name="tag_browse_back">返回</string>
+    <string name="tag_browse_empty_title">还没有标签为“%1$s”的卡组</string>
+    <string name="tag_browse_empty_subtitle">Loopky 上还没有人用过这个标签。发布一个带这个标签的卡组，它就会出现在这里。</string>
+
+    <!-- Paste import -->
+    <string name="paste_title">粘贴卡片</string>
+    <string name="paste_cancel">取消</string>
+    <string name="paste_next">下一步</string>
+    <string name="paste_input_placeholder_title">在这里粘贴你的列表</string>
+    <string name="paste_input_placeholder_subtitle">每行一张卡片</string>
+    <string name="paste_detected_separator">已识别：%1$s</string>
+    <string name="paste_preview_label">预览</string>
+    <string name="paste_try_pasting_label">试着粘贴类似这样的内容</string>
+    <string name="paste_public_notice">这个卡组将在你的个人主页上公开</string>
+    <string name="paste_chip_no_pattern">未识别出格式</string>
+    <string name="paste_card_index">%1$d/%2$d</string>
+    <string name="paste_blank_placeholder">—</string>
+    <string name="paste_separator_tab">制表符</string>
+    <string name="paste_separator_semicolon">分号</string>
+    <string name="paste_separator_pipe">竖线</string>
+    <string name="paste_separator_dash">破折号</string>
+    <string name="paste_separator_colon">冒号</string>
+    <string name="paste_separator_comma">逗号</string>
+    <string name="paste_separator_blank_lines">空行</string>
+    <string name="paste_separator_markdown">Markdown</string>
+    <string name="paste_separator_single_column">单列</string>
+    <string name="paste_separator_auto">自动</string>
+
+    <!-- Publish deck -->
+    <string name="publish_back">返回</string>
+    <string name="publish_title">新建卡组</string>
+    <string name="publish_cover_label">封面</string>
+    <string name="publish_cover_change">更换</string>
+    <string name="publish_title_label">标题</string>
+    <string name="publish_title_placeholder">卡组标题</string>
+    <string name="publish_description_label">简介</string>
+    <string name="publish_description_placeholder">添加一段简短的介绍…</string>
+    <string name="publish_tags_label">标签</string>
+    <string name="publish_add_tag">添加标签</string>
+    <string name="publish_add">添加</string>
+    <string name="publish_public_title">在你的个人主页上公开</string>
+    <string name="publish_public_subtitle">任何人都能在“发现”中找到这个卡组。</string>
+    <string name="publish_button">发布卡组</string>
+    <string name="publish_cancel">取消导入</string>
+    <string name="publish_cancelling">正在清理…</string>
+    <string name="publish_cancel_title">取消这次导入？</string>
+    <string name="publish_cancel_message">已上传的卡片将被移除。卡组信息会保留，你可以再次发布。</string>
+    <string name="publish_cancel_confirm">取消导入</string>
+    <string name="publish_cancel_keep">继续发布</string>
+    <string name="publish_published_icon_desc">已发布</string>
+    <string name="publish_published_title">卡组已发布！</string>
+    <string name="publish_done">完成</string>
+    <string name="publish_undo">撤销（%1$d 秒）</string>
+    <string name="publish_card_options_label">卡片选项</string>
+    <string name="publish_listen_title">朗读</string>
+    <string name="publish_listen_subtitle">在卡片背面播放发音</string>
+    <string name="publish_speak_title">跟读</string>
+    <string name="publish_speak_subtitle">测试你的发音</string>
+    <string name="publish_type_title">输入答案</string>
+    <string name="publish_type_subtitle">写出答案，而不只是看答案</string>
+    <string name="publish_reverse_title">双向学习</string>
+    <string name="publish_reverse_subtitle">每张卡片也会从背面到正面再问一遍</string>
+    <string name="study_reversed_badge">反向</string>
+    <string name="deck_languages_hint">设置朗读每一面时使用的语音。</string>
+    <string name="deck_front_language_label">正面语言</string>
+    <string name="deck_back_language_label">背面语言</string>
+    <string name="deck_language_unset">选择语言</string>
+    <string name="deck_languages_required">选择正面和背面的语言后才能使用朗读或跟读。</string>
+    <string name="publish_cover_sheet_title">封面图片</string>
+
+    <!-- Triage / Review cards -->
+    <string name="triage_title">检查卡片</string>
+    <string name="triage_approve_all">全部保留</string>
+    <string name="triage_progress">%1$d / %2$d</string>
+    <string name="triage_stats">保留 %1$d 张 · 舍弃 %2$d 张</string>
+    <string name="triage_front_label">正面</string>
+    <string name="triage_back_label">背面</string>
+    <string name="triage_discard">舍弃</string>
+    <string name="triage_edit">编辑</string>
+    <string name="triage_keep">保留</string>
+
+    <!-- Image picker sheet -->
+    <string name="image_sheet_front_title">正面图片</string>
+    <string name="image_sheet_front_subtitle">为卡片正面选择一张图片</string>
+    <string name="image_sheet_back_title">背面图片</string>
+    <string name="image_sheet_back_subtitle">为卡片背面选择一张图片</string>
+    <string name="image_sheet_done">完成</string>
+    <string name="image_sheet_search_placeholder">搜索图片，或粘贴链接…</string>
+    <string name="image_sheet_from_gallery">从相册选择</string>
+    <string name="image_sheet_paste">粘贴</string>
+    <!-- Pasting: the field takes an address, the Paste button also takes a copied image itself. -->
+    <string name="image_sheet_paste_empty">没有可粘贴的内容。请先复制图片地址。</string>
+    <string name="image_sheet_paste_image_clip">你复制的是图片本身。请粘贴它的地址，或从相册中选择。</string>
+    <string name="image_sheet_image_unreadable">无法读取这张图片。换一张试试。</string>
+    <string name="image_sheet_link_preview">已粘贴的图片</string>
+    <string name="image_sheet_link_clear">清除链接</string>
+    <string name="image_sheet_link_failed">这个链接无法作为图片加载。请复制图片本身，或复制图片地址而不是网页地址。</string>
+    <string name="image_sheet_no_results">没有找到图片</string>
+    <!-- Web-search failures. The first three are fixed by setting a key; the last one is not. -->
+    <string name="image_sheet_error_missing_key">网络图片搜索需要 Unsplash API 密钥。免费获取，大约只需两分钟。</string>
+    <string name="image_sheet_error_invalid_key">Unsplash 拒绝了这个密钥。请在设置中检查。</string>
+    <string name="image_sheet_error_rate_limited">Unsplash 的每小时额度已用完。使用你自己的密钥即可获得单独的额度。</string>
+    <string name="image_sheet_error_unavailable">无法连接 Unsplash。请检查网络连接，或从相册中选择。</string>
+    <string name="image_sheet_get_key">获取密钥</string>
+    <string name="image_sheet_add_key">添加密钥</string>
+    <string name="image_sheet_remove">移除图片</string>
+    <string name="image_sheet_photo">照片</string>
+    <!-- Attribution required by the Unsplash API guidelines: photographer + platform, both linked. -->
+    <string name="image_sheet_credit">照片作者：%1$s，来自 %2$s</string>
+    <string name="image_sheet_credit_platform">照片来自 %1$s</string>
+    <string name="image_sheet_credit_unsplash">Unsplash</string>
+    <string name="image_sheet_credit_unknown_author">一位 Unsplash 摄影师</string>
+
+    <!-- Speak (study) -->
+    <string name="speak_listening_prompt">说出这个词</string>
+    <string name="speak_listening_hint">点按取消</string>
+    <string name="speak_correct_title">完美！</string>
+    <string name="speak_you_said_label">你说的是</string>
+    <string name="speak_continue">继续</string>
+    <string name="speak_wrong_title">不太对</string>
+    <string name="speak_you_said">你说的是</string>
+    <string name="speak_correct_label">正确答案</string>
+    <string name="speak_try_again">再试一次</string>
+    <string name="speak_permission_denied">需要麦克风权限才能练习口语。</string>
+    <string name="speak_unavailable">此设备不支持语音识别。</string>
+    <string name="speak_failed_no_match_title">没听清</string>
+    <string name="speak_failed_no_match_message">没有识别到任何内容。离麦克风近一点，再试一次。</string>
+    <string name="speak_failed_network_title">语音识别处于离线状态</string>
+    <string name="speak_failed_network_message">语音识别目前需要联网。请检查网络连接后再试。</string>
+    <string name="speak_failed_busy_title">仍在聆听</string>
+    <string name="speak_failed_busy_message">上一次尝试还没结束。稍等片刻再试。</string>
+    <string name="speak_failed_language_title">未安装该语言</string>
+    <string name="speak_failed_language_message">此设备没有这个卡组语言的语音模型。请在设备的语音输入设置中添加。</string>
+    <string name="speak_failed_permission_title">麦克风已关闭</string>
+    <string name="speak_failed_unavailable_title">跟读不可用</string>
+    <string name="speak_failed_unknown_title">出了点问题</string>
+    <string name="speak_failed_unknown_message">语音识别没有返回结果。请再试一次。</string>
+    <string name="speak_close">关闭</string>
+    <string name="listen_voice_unavailable">没有安装这个卡组语言的语音。请在设备的文字转语音设置中添加。</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_hero_subtitle">像玩游戏一样的间隔重复。自己制作卡组、分享卡组，也能用朋友的卡组学习。</string>
+    <string name="onboarding_brand_name">Loopky</string>
+    <string name="onboarding_signin_waiting">正在等待 Pubky Ring…</string>
+    <string name="onboarding_signin_verifying">正在登录…</string>
+    <string name="onboarding_signin_default">使用 Pubky Ring 登录</string>
+    <string name="onboarding_no_email_notice">无需邮箱，无需密码。你的密钥，就是你的账号。</string>
+    <string name="onboarding_get_ring">没有 Pubky Ring？获取应用</string>
+    <string name="onboarding_policy_consent">我已阅读并同意%1$s和%2$s。</string>
+    <string name="onboarding_policy_privacy">《隐私政策》</string>
+    <string name="onboarding_policy_license">《许可协议》</string>
+    <string name="onboarding_qr_title">用 Pubky Ring 扫码</string>
+    <string name="onboarding_qr_body">在手机上打开 Pubky Ring，点按“授权”，然后扫描这个二维码。</string>
+    <string name="onboarding_qr_content_description">包含此登录请求的二维码</string>
+    <string name="onboarding_qr_waiting">正在等待你在 Pubky Ring 中确认…</string>
+    <string name="onboarding_still_waiting">仍在等待。如果 Pubky Ring 没有弹出请求，请取消后重试。</string>
+    <string name="onboarding_qr_open_here">这台设备上装有 Pubky Ring</string>
+    <string name="onboarding_qr_cancel">取消</string>
+    <string name="onboarding_qr_copy">复制登录链接</string>
+    <string name="onboarding_qr_copied">登录链接已复制</string>
+    <string name="onboarding_qr_sheet_body">这台设备上没有 Pubky Ring。请在保存你密钥的手机上打开它，点按“授权”，然后扫描这个二维码。</string>
+    <string name="onboarding_app_version">版本 %1$s</string>
+
+    <!-- pubky.app — the web client the same account already exists on. -->
+    <string name="pubky_app_open_profile">在 pubky.app 上打开</string>
+    <string name="pubky_app_cta_title">你在 pubky.app 上也有账号</string>
+    <!-- Says what the account is, not that decks appear there — they don\'t. -->
+    <string name="pubky_app_cta_body">你登录所用的密钥就是一个 Pubky 账号。可以在网页上查看你的个人主页和帖子。</string>
+
+    <!-- Profile -->
+    <string name="profile_title">我的</string>
+    <string name="profile_loading">正在加载个人主页…</string>
+    <string name="profile_settings_content_description">设置</string>
+    <string name="profile_edit_profile">编辑个人资料</string>
+    <string name="profile_share_content_description">分享</string>
+    <string name="profile_stat_decks">卡组</string>
+    <string name="profile_stat_cards">卡片</string>
+    <string name="profile_stat_due">待复习</string>
+    <string name="profile_stat_following">关注</string>
+    <string name="profile_stat_followers">粉丝</string>
+    <!-- Shown in a stat column whose count has not resolved yet. -->
+    <string name="profile_stat_pending">—</string>
+    <string name="profile_sign_out">退出登录</string>
+    <string name="profile_dismiss">关闭</string>
+    <string name="profile_edit_profile_sheet_title">编辑个人资料</string>
+    <string name="profile_edit_name_label">名字</string>
+    <string name="profile_edit_name_placeholder">你的名字</string>
+    <string name="profile_edit_bio_label">简介</string>
+    <string name="profile_edit_bio_placeholder">介绍一下你自己…</string>
+    <string name="profile_save">保存</string>
+    <string name="profile_name_nudge_title">我们该怎么称呼你？</string>
+    <string name="profile_name_nudge_body">加个名字，大家就知道这些卡组是谁的了。</string>
+    <string name="profile_name_nudge_action">添加名字</string>
+    <string name="profile_name_nudge_dismiss">以后再说</string>
+
+    <string name="profile_avatar_nudge_title">加张头像吧？</string>
+    <string name="profile_avatar_nudge_body">在 pubky.app 上添加，用你在这里使用的同一个密钥。</string>
+    <string name="profile_avatar_hint">头像需在 pubky.app 上设置。用同一个密钥在那里登录即可。</string>
+    <string name="profile_avatar_dialog_title">更换头像</string>
+    <string name="profile_avatar_open_pubky_app">打开 pubky.app</string>
+    <string name="profile_avatar_not_now">以后再说</string>
+    <string name="profile_edit_avatar_content_description">更换头像</string>
+
+    <!-- Friend profile -->
+    <string name="friend_profile_back_content_description">返回</string>
+    <string name="friend_profile_copy_pubky">复制 pubky</string>
+    <string name="friend_profile_no_decks">还没有卡组。</string>
+    <string name="friend_profile_share">分享个人主页</string>
+
+    <!-- Follow lists -->
+    <string name="follow_list_following_title">关注</string>
+    <string name="follow_list_followers_title">粉丝</string>
+    <string name="follow_list_back_content_description">返回</string>
+    <string name="follow_list_loading">正在加载用户…</string>
+    <string name="follow_list_empty_following">还没有人。你关注的人中也在用 Loopky 的会显示在这里。</string>
+    <string name="follow_list_empty_followers">还没有人。关注你的 Loopky 用户会显示在这里。</string>
+    <string name="follow_list_empty_following_other">还没有人。对方关注的人中也在用 Loopky 的会显示在这里。</string>
+    <string name="follow_list_empty_followers_other">还没有人。关注对方的 Loopky 用户会显示在这里。</string>
+    <!-- Explains why the list is shorter than the follow count another Pubky app would show. -->
+    <string name="follow_list_loopky_only">仅列出拥有 Loopky 账号的用户。</string>
+
+    <!-- Settings -->
+    <string name="settings_back_content_description">返回</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_loading">正在加载设置…</string>
+    <string name="settings_section_identity">身份</string>
+    <string name="settings_pubky_label">Pubky</string>
+    <string name="settings_not_signed_in">未登录</string>
+    <string name="settings_copy">复制</string>
+    <string name="settings_homeserver_label">Homeserver</string>
+    <string name="settings_homeserver_unknown">未知</string>
+    <string name="settings_section_sharing">分享</string>
+    <string name="settings_share_on_pubky_label">发帖前先询问</string>
+    <!-- Must not read as a privacy control: published decks are public either way (spec 11). -->
+    <string name="settings_share_on_pubky_description">在你创建、关注或复制卡组时，询问是否发帖。无论如何，你的卡组都是公开的。</string>
+    <string name="settings_section_studying">学习</string>
+    <string name="settings_new_cards_goal_label">每天新卡片数</string>
+    <string name="settings_new_cards_goal_description">这是目标，不是上限。你随时可以继续学。</string>
+    <string name="settings_interval_hard_label">困难间隔（天）</string>
+    <string name="settings_interval_good_label">良好间隔（天）</string>
+    <string name="settings_interval_easy_label">简单间隔（天）</string>
+    <string name="settings_interval_description">卡片多久后再次出现。</string>
+    <string name="settings_interval_mastery_note">达到你设置的最长间隔时，卡片即算作已掌握。</string>
+    <string name="settings_study_unavailable">无法加载你的学习设置。在加载完成前暂不能编辑，以免覆盖任何内容。</string>
+    <string name="settings_study_save_failed">无法保存你的学习设置。</string>
+    <string name="settings_section_image_search">图片搜索</string>
+    <string name="settings_unsplash_key_label">Unsplash Access Key</string>
+    <string name="settings_unsplash_key_not_set">未设置。网络图片搜索已关闭</string>
+    <string name="settings_unsplash_key_built_in">正在使用 Loopky 的共享密钥（有限额）</string>
+    <string name="settings_unsplash_key_user_set">已设置密钥 · ••••%1$s</string>
+    <string name="settings_unsplash_key_set">设置</string>
+    <string name="settings_unsplash_key_replace">替换</string>
+    <string name="settings_unsplash_key_remove">移除</string>
+    <string name="settings_unsplash_key_save">保存</string>
+    <string name="settings_unsplash_key_cancel">取消</string>
+    <string name="settings_unsplash_key_placeholder">粘贴你的 Access Key</string>
+    <string name="settings_unsplash_key_hint">可从 Unsplash 免费获取：在开发者后台创建一个应用，然后复制它的 Access Key，而不是 Secret key。</string>
+    <string name="settings_unsplash_key_get">获取密钥</string>
+    <string name="settings_unsplash_key_error_invalid">Unsplash 拒绝了这个密钥。请确认你完整复制了 Access Key。</string>
+    <string name="settings_unsplash_key_error_missing">请先输入密钥。</string>
+    <string name="settings_unsplash_key_error_rate_limited">这个密钥已达到每小时上限。请稍后再试。</string>
+    <string name="settings_unsplash_key_error_unavailable">无法连接 Unsplash 来验证密钥。</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_app_version_label">应用版本</string>
+    <string name="settings_app_version_unknown">—</string>
+    <string name="settings_privacy_policy">隐私政策</string>
+    <string name="settings_license">许可协议</string>
+
+    <string name="settings_delete_account">删除账号</string>
+    <string name="settings_delete_account_dialog_title">删除账号？</string>
+    <string name="settings_delete_account_dialog_body">你的卡组、卡片、图片和学习进度将被永久删除，你的个人主页也将从 Loopky 中移除。</string>
+    <string name="settings_delete_account_dialog_irreversible">此操作无法撤销。</string>
+    <string name="settings_delete_account_dialog_identity">你的 Pubky 身份仍保留在 Pubky Ring 中。</string>
+    <string name="settings_delete_account_confirm">删除账号</string>
+    <string name="settings_delete_account_confirm_countdown">删除账号（%1$d）</string>
+    <string name="settings_delete_account_progress_title">正在删除</string>
+    <string name="settings_delete_account_progress_starting">正在开始</string>
+    <string name="settings_delete_account_progress_count">已移除 %1$d / %2$d</string>
+    <string name="settings_delete_account_failed">未能全部删除。你仍处于登录状态，可以再试一次。</string>
+    <string name="settings_sign_out">退出登录</string>
+    <string name="settings_sign_out_dialog_title">退出登录？</string>
+    <string name="settings_sign_out_dialog_message">你的卡组会保留在账号中。重新登录即可恢复一切。</string>
+    <string name="settings_cancel">取消</string>
+
+    <!-- Share-on-Pubky consent prompt (#39), shown after create / follow / clone -->
+    <string name="share_prompt_title_created">为这个卡组发帖？</string>
+    <string name="share_prompt_title_followed">为这次关注发帖？</string>
+    <string name="share_prompt_title_cloned">为这个副本发帖？</string>
+    <string name="share_prompt_body">你的粉丝会看到这条帖子。无论如何，这个卡组都是公开的。</string>
+    <string name="share_prompt_confirm">发帖</string>
+    <string name="share_prompt_dismiss">以后再说</string>
+    <string name="share_prompt_never">不再询问</string>
+    <string name="share_prompt_failed">发帖失败。卡组不受影响。</string>
+    <string name="share_prompt_posted">已发帖</string>
+
+    <!-- Identity — one presentation of a pubky user, shared by every screen -->
+    <string name="identity_pubky_short">%1$s</string>
+    <string name="identity_pubky_truncated">%1$s…%2$s</string>
+    <string name="identity_you_badge">你</string>
+    <string name="identity_unknown_person">朋友</string>
+
+    <!-- Shared components -->
+    <string name="component_author_row_following">已关注</string>
+    <string name="component_author_row_follow">关注</string>
+    <string name="component_stats_bar_total">总数</string>
+    <string name="component_stats_bar_due">待复习</string>
+    <string name="component_stats_bar_new">新卡片</string>
+    <string name="component_stats_bar_mastered">已掌握</string>
+    <string name="component_tag_chip_label">#%1$s</string>
+    <string name="component_tag_chip_remove">移除标签</string>
+
+    <!-- Navigation / tabs -->
+    <string name="nav_tab_study">今天</string>
+    <string name="nav_tab_decks">卡组</string>
+    <string name="nav_tab_discover">发现</string>
+    <string name="nav_tab_profile">我的</string>
+
+    <!-- Signup: obtaining a homeserver account. Errors are flow-local, not ErrorReason. -->
+    <string name="signup_start_title">证明你不是机器人。</string>
+    <string name="signup_start_subtitle">无需邮箱。通过短信或一笔小额付款验证，或者使用邀请码。</string>
+    <string name="signup_sms_card_title">短信验证</string>
+    <string name="signup_sms_card_price">免费</string>
+    <string name="signup_sms_card_note">使用你的手机号</string>
+    <string name="signup_lightning_card_title">比特币付款</string>
+    <string name="signup_lightning_card_note">无需手机号</string>
+    <string name="signup_lightning_card_price">一次性支付 ₿ %1$d</string>
+    <string name="signup_lightning_card_price_unknown">一次性付款</string>
+    <string name="signup_card_unavailable">在你所在的国家/地区不可用</string>
+    <string name="signup_invite_link">有邀请码？</string>
+
+    <string name="signup_invite_title">输入你的邀请码。</string>
+    <string name="signup_invite_subtitle">向 Pubky 团队索取邀请码来创建账号。</string>
+    <string name="signup_invite_label">邀请码</string>
+    <string name="signup_invite_placeholder">XXXX-XXXX-XXXX</string>
+    <string name="signup_invite_submit">继续</string>
+
+    <string name="signup_phone_title">验证手机号。</string>
+    <string name="signup_phone_subtitle">我们会通过短信发送验证码给你。</string>
+    <string name="signup_phone_label">手机号</string>
+    <string name="signup_phone_placeholder">+316XXXXXXXX</string>
+    <string name="signup_phone_hint">请包含国家/地区代码（例如中国大陆为 +86）。</string>
+    <string name="signup_phone_send">发送验证码</string>
+    <string name="signup_code_title">输入验证码。</string>
+    <string name="signup_code_subtitle">我们已向 %1$s 发送了 6 位验证码。</string>
+    <string name="signup_code_label">验证码</string>
+    <string name="signup_code_verify">验证</string>
+    <string name="signup_code_resend">重新发送</string>
+    <string name="signup_code_resend_in">%1$d 秒后重新发送</string>
+    <string name="signup_code_change_number">更换手机号</string>
+
+    <string name="signup_lightning_title">扫码或点按付款。</string>
+    <string name="signup_lightning_amount">支付 ₿ %1$d 以继续。</string>
+    <string name="signup_lightning_qr_content_description">包含此闪电网络发票的二维码</string>
+    <string name="signup_lightning_resumed_title">正在核实你之前的付款。</string>
+    <string name="signup_lightning_resumed_subtitle">你可能已经支付了 ₿ %1$d。请稍候，我们正在确认，请不要重复付款。</string>
+    <string name="signup_lightning_resumed_subtitle_fiat">你可能已经支付了 ₿ %1$d（%2$s）。请稍候，我们正在确认，请不要重复付款。</string>
+    <string name="signup_lightning_resumed_waiting">正在与服务器确认…</string>
+    <string name="signup_lightning_open_wallet">在钱包中打开</string>
+    <string name="signup_lightning_copy">复制发票</string>
+    <string name="signup_lightning_copied">发票已复制</string>
+    <string name="signup_lightning_no_wallet">未找到闪电网络钱包。已改为复制发票</string>
+    <string name="signup_lightning_waiting">正在等待付款…</string>
+    <string name="signup_lightning_new_invoice">新发票</string>
+
+    <string name="signup_error_geoblocked_title">此地区不可用</string>
+    <string name="signup_error_geoblocked_message">你所在的国家/地区不提供这种方式。换一种试试，或使用邀请码。</string>
+    <string name="signup_error_phone_blocked_title">无法使用此号码</string>
+    <string name="signup_error_phone_blocked_message">这个手机号不能用于验证。换一个号码试试，或使用邀请码。</string>
+    <string name="signup_error_rate_limited_title">尝试次数过多</string>
+    <string name="signup_error_rate_limited_message">请等几分钟后再试。</string>
+    <string name="signup_error_rate_limited_weekly_title">已达到每周上限</string>
+    <string name="signup_error_rate_limited_weekly_message">这个号码本周的验证次数已用完。请改用付款或邀请码。</string>
+    <string name="signup_error_rate_limited_yearly_title">已达到年度上限</string>
+    <string name="signup_error_rate_limited_yearly_message">这个号码今年的验证次数已用完。请改用付款或邀请码。</string>
+    <string name="signup_error_code_incorrect_title">验证码无效</string>
+    <string name="signup_error_code_incorrect_message">请检查后再试。</string>
+    <string name="signup_error_invoice_expired_title">发票已过期</string>
+    <string name="signup_error_invoice_expired_message">这张发票在付款前已超时。请重新获取一张。</string>
+    <string name="signup_error_verification_lost_title">我们重新开始吧</string>
+    <string name="signup_error_verification_lost_message">我们丢失了这次验证的进度。重新开始是安全的。</string>
+    <string name="signup_error_unavailable_title">无法连接服务</string>
+    <string name="signup_error_unavailable_message">请检查网络连接后再试。</string>
+
+    <string name="onboarding_ring_icon_description">Pubky Ring</string>
+    <string name="onboarding_recovery_icon_description">恢复短语或文件</string>
+    <string name="onboarding_create_pubky">还没有 Pubky？创建账号</string>
+
+    <!-- Error states. Reason-based copy; the raw FFI message stays in logcat. -->
+    <string name="error_offline_title">你已离线</string>
+    <string name="error_offline_message">请检查网络连接后再试。你的卡组很安全。</string>
+    <string name="error_session_expired_title">会话已过期</string>
+    <string name="error_session_expired_message">请再次使用 Pubky Ring 登录，回到你的卡组。</string>
+    <string name="error_session_unreachable_title">无法重新连接</string>
+    <string name="error_session_unreachable_message">Loopky 无法恢复你的登录状态。这不是你的网络问题，请再试一次。</string>
+    <string name="error_sign_in_again">重新登录</string>
+    <string name="error_not_found_title">未找到</string>
+    <string name="error_not_found_message">这个卡组已不存在，可能已被删除。</string>
+    <string name="error_no_account_title">你的账号尚未设置</string>
+    <string name="error_no_account_message">这个密钥还没有账号，所以没有地方保存你的卡组。设置一个只需一分钟。</string>
+    <string name="error_not_signed_in_title">未登录</string>
+    <string name="error_not_signed_in_message">请使用 Pubky Ring 登录以继续。</string>
+    <string name="error_ring_not_installed_title">未找到 Pubky Ring</string>
+    <string name="error_ring_not_installed_message">Loopky 通过 Pubky Ring 为你登录。请安装后继续。</string>
+    <string name="error_auth_failed_title">登录未完成</string>
+    <string name="error_auth_failed_message">Loopky 无法确认登录。请检查网络连接后再试。</string>
+    <string name="error_auth_relay_title">登录无法连接</string>
+    <string name="error_auth_relay_message">登录服务没有响应。请稍后再试。</string>
+    <string name="study_sync_error_title">你的复习记录没有保存</string>
+    <string name="study_sync_error_dismiss">知道了</string>
+    <string name="study_goal_reached_title">每日目标已达成！</string>
+    <string name="study_goal_reached_body">今天的目标完成了。没有任何限制，状态好的话就继续学吧。</string>
+    <string name="study_goal_keep_studying">继续学习</string>
+    <string name="study_goal_done">返回首页</string>
+    <string name="publish_error_no_draft">没有可发布的内容。请返回并重新粘贴你的列表。</string>
+    <string name="publish_error_publish">无法发布这个卡组。%1$s</string>
+    <string name="publish_error_cancel">无法移除已取消的卡组，部分内容仍然保存着。%1$s</string>
+    <string name="publish_error_undo">无法撤销。这个卡组仍处于发布状态。%1$s</string>
+    <string name="error_server_busy_title">服务器繁忙</string>
+    <string name="error_server_busy_message">同时请求过多，操作未能完成。这不是你的网络问题。请稍等片刻再试。</string>
+    <string name="error_storage_full_title">你的存储空间已满</string>
+    <string name="error_storage_full_message">你的账号已没有剩余空间。删除一个不再学习的卡组来释放空间，或升级你的存储方案。</string>
+    <!-- Restore (#147): the door for someone who has a pubky but no working Pubky Ring. -->
+    <string name="onboarding_restore">使用恢复短语或文件</string>
+    <string name="restore_start_title">恢复你的账号</string>
+    <string name="restore_start_subtitle">使用创建 pubky 时你所做的备份。</string>
+    <string name="restore_method_phrase">恢复短语</string>
+    <string name="restore_method_phrase_detail">你抄下来的十二个单词。</string>
+    <string name="restore_phrase_title">输入你的恢复短语</string>
+    <string name="restore_phrase_subtitle">十二个单词，按顺序排列，用空格分隔。</string>
+    <string name="restore_phrase_label">恢复短语</string>
+    <string name="restore_phrase_placeholder">单词一 单词二 单词三…</string>
+    <string name="restore_phrase_submit">恢复账号</string>
+    <string name="restore_phrase_checking">正在检查…</string>
+    <string name="restore_seed_warning">切勿在这里输入比特币或其他加密货币钱包的恢复短语（助记词）。</string>
+    <!-- Local key creation + backup (#147). -->
+    <string name="signup_lightning_card_price_fiat">一次性支付 ₿ %1$d（%2$s）</string>
+    <string name="signup_lightning_amount_fiat">支付 ₿ %1$d（%2$s）以继续。</string>
+    <string name="signup_error_token_rejected_title">注册码被拒绝</string>
+    <string name="signup_error_token_rejected_message">此注册码被拒绝，可能已经被使用过。请重新开始以获取新的注册码。</string>
+    <string name="signup_start_over">重新开始</string>
+    <string name="signup_local_title">正在创建你的账号</string>
+    <string name="signup_local_subtitle">正在生成并注册你的密钥，请稍候。</string>
+    <string name="signup_local_retry">再试一次</string>
+    <string name="signup_ring_recommended_title">Pubky Ring 是存放密钥最安全的地方</string>
+    <string name="signup_ring_recommended_body">Pubky Ring 将你的密钥保存在一个独立的应用中，登录时绝不会暴露它。安装它，或者改为在 Loopky 中创建密钥。</string>
+    <string name="backup_start_title">备份你的账号</string>
+    <string name="backup_start_subtitle">你的密钥只保存在这台设备上。把它存到一个即使手机丢了也能找到的地方。</string>
+    <string name="backup_start_subtitle_backed_up">你已经有这个密钥的副本了。Pubky Ring 把它保存在独立的应用中，更加安全；你也可以在这里再添加一份备份。</string>
+    <string name="backup_method_ring_missing">尚未安装。我们会带你去安装。</string>
+    <string name="backup_later">以后再说</string>
+    <string name="backup_done_label">完成</string>
+    <string name="backup_method_password_manager">密码管理器</string>
+    <string name="backup_method_password_manager_detail">将恢复短语保存到 Google 密码管理器或你使用的其他密码管理器。</string>
+    <string name="backup_phrase_save_to_manager">保存到密码管理器</string>
+    <string name="backup_phrase_saved_to_manager">已保存并核对。你的密码管理器中已有这个恢复短语。</string>
+    <string name="backup_phrase_save_failed">没有保存任何内容。可能是密码管理器拒绝了，或者你取消了操作。</string>
+    <string name="backup_quiz_saved_title">检查已保存的恢复短语</string>
+    <string name="backup_quiz_saved_subtitle">你已将恢复短语保存到密码管理器，所以不需要回忆。我们会读取它，确认它仍然在那里。</string>
+    <string name="backup_quiz_saved_check">检查已保存的恢复短语</string>
+    <string name="backup_quiz_saved_wrong">不匹配。请打开你的密码管理器，检查这个账号的条目，然后再试一次。</string>
+    <string name="backup_method_phrase">恢复短语</string>
+    <string name="backup_method_phrase_detail">抄下十二个单词并确认。</string>
+    <string name="backup_method_file">加密文件</string>
+    <string name="backup_method_file_detail">将受密码短语保护的文件保存到云端硬盘或“文件”。</string>
+    <string name="backup_method_ring">导出到 Pubky Ring</string>
+    <string name="backup_method_ring_detail">将你的密钥复制到 Pubky Ring。Loopky 也会保留一份。</string>
+    <string name="backup_phrase_title">你的恢复短语</string>
+    <string name="backup_phrase_subtitle">按顺序抄下这十二个单词，并妥善保管。</string>
+    <string name="backup_phrase_reveal">点按显示</string>
+    <string name="backup_phrase_continue">我已经抄好了</string>
+    <!-- The inverted seed warning: prevents someone sending sats to a Pubky account. -->
+    <string name="backup_phrase_warning">这个恢复短语仅用于你的账号。它不是比特币钱包，里面没有任何资金。</string>
+    <string name="backup_quiz_title">确认你的恢复短语</string>
+    <string name="backup_quiz_subtitle">为每个位置选出正确的单词。</string>
+    <string name="backup_quiz_position">第 %1$d 个单词</string>
+    <string name="backup_quiz_submit">确认</string>
+    <string name="backup_quiz_wrong">不太对。请核对你抄写的内容后再试一次。</string>
+    <string name="backup_file_title">加密恢复文件</string>
+    <string name="backup_file_subtitle">设置一个密码短语。恢复时你需要它和这个文件。</string>
+    <string name="backup_file_passphrase">密码短语</string>
+    <string name="passphrase_reveal">显示密码短语</string>
+    <string name="passphrase_hide">隐藏密码短语</string>
+    <string name="backup_file_create">创建并保存文件</string>
+    <string name="backup_file_failed">无法创建文件。请再试一次。</string>
+    <string name="backup_strength_too_short">太短</string>
+    <string name="backup_strength_weak">弱。16 个字符或以上会强很多</string>
+    <string name="backup_strength_fair">一般。16 个字符或以上会强很多</string>
+    <string name="backup_strength_strong">强</string>
+    <string name="backup_ring_title">导出到 Pubky Ring</string>
+    <string name="backup_ring_subtitle">这会把你的密钥复制到 Pubky Ring。Loopky 会保留自己的一份，你的恢复短语也仍然有效。</string>
+    <string name="backup_ring_open">打开 Pubky Ring</string>
+    <string name="backup_ring_missing">这台设备上没有安装 Pubky Ring。</string>
+    <string name="backup_ring_install">安装 Pubky Ring</string>
+    <string name="backup_ring_confirm">我已导入 Pubky Ring</string>
+    <string name="settings_back_up_account">备份你的账号</string>
+    <string name="backup_nag_title">备份你的账号</string>
+    <string name="backup_nag_body">你的密钥只保存在这台设备上。如果丢失了它，你的卡组也会随之丢失。</string>
+    <string name="backup_nag_action">立即备份</string>
+    <string name="settings_signout_unbacked_title">退出登录将清除你的密钥</string>
+    <string name="settings_signout_unbacked_body">Loopky 保存着 %1$s 密钥的唯一副本，而你还没有备份。退出登录会将其永久删除。</string>
+    <string name="settings_signout_unbacked_confirm">退出并清除</string>
+    <string name="settings_signout_unbacked_backup">先备份</string>
+    <string name="unregistered_title">这个密钥还没有账号</string>
+    <string name="unregistered_subtitle">密钥是有效的，只是还没有为它注册账号。</string>
+    <string name="unregistered_pubky_label">你提供的密钥：</string>
+    <string name="unregistered_check_phrase">重新检查我的恢复短语</string>
+    <string name="unregistered_check_hint">只要有一个单词输错或顺序不对，仍能通过校验，但会解锁另一个账号。</string>
+    <string name="unregistered_register">注册这个密钥</string>
+    <!-- Says plainly what the button does, because it publishes a record to the DHT. -->
+    <string name="unregistered_register_hint">为上面的密钥创建账号并发布。需要进行一次快速验证。</string>
+    <string name="unregistered_register_confirm_title">注册这个密钥？</string>
+    <string name="unregistered_register_confirm_body">这会将 %1$s 发布为公开身份。切勿对比特币或加密货币钱包的恢复短语这样做。</string>
+    <string name="unregistered_register_confirm_yes">注册</string>
+    <string name="unregistered_register_confirm_cancel">取消</string>
+    <string name="unregistered_ring_title">这个密钥由 Pubky Ring 保管</string>
+    <string name="unregistered_ring_body">这个密钥由 Pubky Ring 保管，因此 Loopky 无法为它创建账号。有两种方式保留它：在这里获取邀请码，然后使用 Ring 的“Edit pubky”页面；或者在 Ring 中显示恢复短语，然后在这里恢复。</string>
+    <string name="unregistered_ring_import">用我的恢复短语恢复</string>
+    <string name="restore_method_file">加密恢复文件</string>
+    <string name="restore_method_file_detail">一个 recovery.pkarr 文件及其密码短语。</string>
+    <string name="restore_file_title">打开你的恢复文件</string>
+    <string name="restore_file_subtitle">选择你保存的文件，然后输入它的密码短语。</string>
+    <string name="restore_file_choose">选择文件</string>
+    <string name="restore_file_change">选择其他文件</string>
+    <string name="restore_file_passphrase_label">密码短语</string>
+    <string name="restore_file_passphrase_placeholder">你设置的密码短语</string>
+    <string name="restore_file_submit">恢复账号</string>
+    <string name="restore_error_passphrase_title">无法打开这个文件</string>
+    <string name="restore_error_passphrase_message">请检查密码短语，并确认这是你想要的那个账号的恢复文件。</string>
+    <string name="restore_error_unreadable_title">无法读取这个文件</string>
+    <string name="restore_error_unreadable_message">Loopky 无法打开你选择的文件。请重新选择一次。</string>
+    <string name="restore_error_invalid_title">这不是有效的恢复短语</string>
+    <string name="restore_error_invalid_message">请检查十二个单词是否都拼写正确，并且顺序无误。</string>
+    <string name="restore_error_no_account_title">这个恢复短语没有对应的账号</string>
+    <string name="restore_error_no_account_message">这个恢复短语是有效的，但还没有为它创建账号。请检查是否有单词输错或顺序不对。比特币或加密货币钱包的恢复短语在这里无法使用。</string>
+    <string name="restore_error_no_account_pubky">它解锁的是这个 pubky：</string>
+    <string name="restore_retry">再试一次</string>
+    <string name="error_lookup_failed_title">无法查询</string>
+    <string name="error_lookup_failed_message">有些网络会拦截 Loopky 需要的连接。请再试一次，或在 Wi-Fi 和移动数据之间切换。</string>
+    <string name="error_generic_title">出了点问题</string>
+    <string name="error_generic_message">出了点问题。请再试一次。</string>
+    <string name="home_caught_up_title">全部完成啦</string>
+    <string name="home_caught_up_next_due">下次复习在 %1$s后。</string>
+    <string name="home_caught_up_no_next_due">暂无复习安排。可以从任意卡组提前学习。</string>
+    <string name="share_deck_chooser_title">分享卡组</string>
+    <string name="share_profile_chooser_title">分享个人主页</string>
+    <string name="share_deck_body">Loopky 上的 %1$s\n%2$s</string>
+    <string name="share_profile_body">Loopky 上的 %1$s\n%2$s</string>
+    <string name="deeplink_no_link_in_shared_text">这段文字中没有 Loopky 链接。请分享包含 pubky:// 地址的消息。</string>
+    <string name="deck_editor_move_up">上移卡片</string>
+    <string name="deck_editor_move_down">下移卡片</string>
+    <string name="deck_editor_move_to">移动到指定位置</string>
+    <string name="deck_editor_move_to_title">移动卡片</string>
+    <string name="deck_editor_move_to_label">位置（1–%1$d）</string>
+    <string name="deck_editor_move_to_confirm">移动</string>
+    <string name="deck_editor_move_to_cancel">取消</string>
+    <string name="deck_editor_card_position">第 %1$d 张</string>
+    <string name="deck_editor_loading_cards">正在加载更多卡片…</string>
+    <string name="edit_card_title_new">新卡片</string>
+    <string name="decks_sort_recent">最近</string>
+    <string name="decks_sort_alphabetical">A–Z</string>
+    <string name="decks_sort_cards">卡片最多</string>
+    <string name="decks_search_placeholder">搜索你的卡组</string>
+    <string name="decks_search_no_results">没有与“%1$s”匹配的卡组。</string>
+    <string name="paste_separator_sheet_title">卡片分隔方式</string>
+    <string name="form_title_required">给你的卡组起个标题才能发布。</string>
+    <string name="form_title_too_long">标题不能超过 120 个字符。</string>
+    <string name="form_description_too_long">简介不能超过 500 个字符。</string>
+    <string name="form_card_side_required">请为这一面添加文字或图片。</string>
+    <string name="form_card_text_too_long">卡片文字不能超过 2000 个字符。</string>
+    <string name="paste_validation_empty">请先粘贴或输入你的列表。</string>
+    <string name="paste_validation_no_cards">还没有找到卡片。请检查分隔符，或添加正面和背面。</string>
+    <string name="permission_mic_title">练习你的发音</string>
+    <string name="permission_mic_rationale">跟读会在你说出单词时聆听，并告诉你说得有多准。音频绝不会离开你的设备。</string>
+    <string name="permission_mic_denied_title">麦克风已关闭</string>
+    <string name="permission_mic_denied_message">跟读需要麦克风权限，而 Android 不会再次询问。你可以在设置中开启。</string>
+    <string name="permission_continue">继续</string>
+    <string name="permission_not_now">以后再说</string>
+    <string name="permission_open_settings">打开设置</string>
+    <string name="triage_undo">撤销上一张</string>
+
+    <!-- Bulk file import -->
+    <string name="bulk_title">导入文件</string>
+    <string name="bulk_cancel">取消</string>
+    <string name="bulk_pick_file">选择文件</string>
+    <string name="bulk_idle_title">把你的卡组搬过来</string>
+    <string name="bulk_idle_subtitle">从 Anki 导入，或导入你已有的任何两列列表。</string>
+    <string name="bulk_formats_label">支持的格式</string>
+    <string name="bulk_format_apkg_ext">.apkg</string>
+    <string name="bulk_format_apkg_title">Anki 卡组导出文件</string>
+    <string name="bulk_format_apkg_detail">你的卡片、卡组名称和图片都会导入。音频不会，因此这些卡片将以纯文本导入。</string>
+    <string name="bulk_format_text_ext">.txt · .csv</string>
+    <string name="bulk_format_text_title">纯文本导出文件</string>
+    <string name="bulk_format_text_detail">在 Anki 中：文件 → 导出 → “纯文本格式的笔记”。任何以制表符或逗号分隔的列表也可以。</string>
+    <string name="bulk_idle_limit">文件最大 %1$d MB</string>
+    <string name="bulk_cli_title">🤖 或者让你的智能体来构建</string>
+    <string name="bulk_cli_body">Loopky 有一个终端客户端。复制提示词，粘贴到你的编程智能体中，就能看到一个卡组出现在你的账号里。</string>
+    <string name="bulk_cli_copy">复制提示词</string>
+    <string name="bulk_cli_copied">已复制</string>
+    <string name="bulk_cli_prompt">安装 loopky CLI，并用它为我制作一个闪卡卡组。\n\n1. 首先，提醒我在手机上安装 Pubky Ring，并把我的 Loopky 恢复短语保存进去。我的密钥保存在那里，CLI 会通过向 Ring 请求授权来登录。\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login（会出现一个二维码，我用 Pubky Ring 扫描它）\n4. loopky commands --json，读取完整的命令列表\n5. 问我这个卡组要讲什么内容，由你自己把卡片写进一个 TSV 文件，然后用这条命令发布：loopky deck create --title \"我的卡组\" --from-file cards.tsv</string>
+    <string name="bulk_reading">正在读取你的文件…</string>
+    <string name="bulk_parsing">正在读取 %1$s…</string>
+    <string name="bulk_summary_heading">准备导入</string>
+    <string name="bulk_detected_separator">分隔符：%1$s</string>
+    <string name="bulk_fields">字段：%1$s → %2$s</string>
+    <string name="bulk_fields_changeable">字段：%1$s → %2$s · 点按更改</string>
+    <string name="bulk_fields_unnamed">字段 %1$d</string>
+    <string name="bulk_fields_sheet_front">哪个字段是正面？</string>
+    <string name="bulk_fields_sheet_back">哪个字段是背面？</string>
+    <string name="bulk_fields_sheet_hint">Anki 卡组通常以 ID 或排名字段开头。选出你想学习的两个字段。</string>
+    <string name="bulk_fields_sheet_step">第 %1$d 步，共 2 步</string>
+    <string name="bulk_fields_sheet_cancel">取消</string>
+    <string name="bulk_sample_label">示例</string>
+    <string name="bulk_import_button">导入 %1$s</string>
+    <string name="bulk_pick_another">选择其他文件</string>
+
+    <!-- Failure modes, kept distinct: picking the wrong file used to surface a parser message. -->
+    <string name="bulk_error_unreadable_title">无法打开这个文件</string>
+    <string name="bulk_error_unreadable_message">Loopky 无法读取它。请重新选择一次，或先把它复制到其他位置。</string>
+    <string name="bulk_error_too_large_title">文件太大了</string>
+    <string name="bulk_error_too_large_message">Loopky 可导入的文件最大为 %1$d MB。这比 AnkiWeb 上的任何卡组都大，所以它很可能不是 Anki 导出文件。</string>
+    <string name="bulk_error_not_text_title">这不是文本文件</string>
+    <string name="bulk_error_not_text_message">请选择 Anki 的 .apkg 文件，或导出为纯文本的卡组。照片和 PDF 无法变成卡片。</string>
+    <string name="bulk_error_unsupported_apkg_title">Loopky 无法打开这个 .apkg</string>
+    <string name="bulk_error_unsupported_apkg_message">较新的 Anki 卡组使用了 Loopky 暂不支持的格式。请在 Anki 中将卡组导出为“纯文本格式的笔记”。</string>
+    <string name="bulk_error_legacy_stub_title">这个卡组需要较新版本的 Anki</string>
+    <string name="bulk_error_legacy_stub_message">这个文件只包含 Anki 的兼容性占位内容。请用 Anki 2.1.50 或更新版本重新导出卡组。</string>
+    <string name="bulk_error_no_cards_title">文件中没有卡片</string>
+    <string name="bulk_error_no_cards_message">Loopky 读取了文件，但没有找到可以做成卡片的内容。每一行都需要有正面和背面。</string>
+    <string name="bulk_error_unknown_title">导入没有成功</string>
+    <string name="bulk_error_unknown_message">读取这个文件时出了点问题。换一个文件试试。</string>
+    <string name="bulk_sample_picture">图片</string>
+    <string name="bulk_skipped">已跳过 %1$d 张（缺少正面或背面）</string>
+    <string name="deck_incomplete_warning">这个卡组没有上传完成，部分卡片缺失。请重新导入以补全，或将其删除。</string>
+    <!-- Add-tag sheet, shared by the publish flow and the deck editor -->
+    <string name="tag_sheet_title">添加标签</string>
+    <string name="tag_sheet_input_placeholder">输入标签…</string>
+    <string name="tag_sheet_suggested_label">推荐</string>
+    <string name="tag_sheet_current_label">当前标签</string>
+    <string name="tag_sheet_add_button">添加标签</string>
+
+    <string name="guest_banner_title">随便看看</string>
+    <string name="guest_banner_body">保存卡组，记录学习进度。</string>
+    <string name="guest_banner_cta">开始使用</string>
+
+    <string name="sign_in_prompt_cta">创建账号或登录</string>
+    <string name="sign_in_prompt_dismiss">以后再说</string>
+    <string name="sign_in_prompt_follow_deck_title">保存这个卡组</string>
+    <string name="sign_in_prompt_follow_deck_body">关注后，卡组会保存到你的卡组库，保持最新，并记住你学过的内容。需要一个账号，但不需要邮箱。</string>
+    <string name="sign_in_prompt_clone_deck_title">变成你自己的</string>
+    <string name="sign_in_prompt_clone_deck_body">副本是你自己的一份拷贝，以你的密钥发布，可以随意编辑。需要一个账号，但不需要邮箱。</string>
+    <string name="sign_in_prompt_follow_person_title">关注用户</string>
+    <string name="sign_in_prompt_follow_person_body">关注后，对方发布的卡组会出现在你的“发现”中。需要一个账号，但不需要邮箱。</string>
+
+    <string name="deck_detail_try_cards">试试这些卡片</string>
+    <string name="study_preview_badge">预览 · 不保存进度</string>
+    <string name="study_preview_next">下一张</string>
+    <string name="study_preview_complete_title">预览到此结束 👋</string>
+    <string name="study_preview_guest_detail">创建账号后，这个卡组会记住你答对了哪些，并在你快要忘记之前再次提问。</string>
+    <string name="study_preview_member_detail">关注或复制这个卡组，即可保留你的学习进度。</string>
+    <string name="study_preview_action_guest">创建账号</string>
+    <string name="study_preview_back">返回卡组</string>
+
+    <string name="settings_section_language">语言</string>
+    <string name="settings_language_label">应用语言</string>
+    <string name="settings_language_system">跟随系统</string>
+    <string name="settings_language_description_system">Android 会将此项与其他应用的语言设置一起保存。</string>
+    <string name="settings_language_description_app">仅对 Loopky 生效，不会更改设备语言。</string>
+
+    <string name="settings_section_appearance">外观</string>
+    <string name="settings_theme_label">主题</string>
+    <string name="settings_theme_description">仅对本设备上的 Loopky 生效。“自动”会在 %1$s 至 %2$s 使用深色模式。</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_auto">自动</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+
+    <string name="srs_grade_again">重来</string>
+    <string name="srs_grade_hard">困难</string>
+    <string name="srs_grade_good">良好</string>
+    <string name="srs_grade_easy">简单</string>
+</resources>

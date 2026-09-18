@@ -34,10 +34,40 @@
             "value": "Loopky usa la fotocamera per leggere un codice QR con il pubky di qualcuno, così puoi trovare quella persona senza doverlo digitare."
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky は、相手の pubky が入った QR コードを読み取るためにカメラを使います。入力しなくても相手を見つけられます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky는 카메라로 다른 사람의 pubky가 담긴 QR 코드를 읽어, 직접 입력하지 않고도 그 사람을 찾을 수 있게 해요."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
             "value": "O Loopky usa a câmera para ler um código QR com o pubky de alguém, para você encontrar essa pessoa sem digitar nada."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky dùng camera để đọc mã QR chứa pubky của một người, để bạn tìm họ mà không cần gõ."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky 使用相机读取包含他人 pubky 的二维码，这样你无需手动输入就能找到对方。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky 會使用相機讀取含有他人 pubky 的 QR 碼，讓你不必手動輸入就能找到對方。"
           }
         }
       }
@@ -75,10 +105,40 @@
             "value": "Loopky ti ascolta mentre ti eserciti a pronunciare una carta ad alta voce, e si ferma appena hai risposto."
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky は、カードを声に出して練習している間だけ聞き取り、答え終わるとすぐに停止します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky는 카드를 소리 내어 말하는 연습을 하는 동안 듣고, 답하는 즉시 듣기를 멈춰요."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
             "value": "O Loopky escuta enquanto você pratica dizer uma carta em voz alta, e para assim que você responde."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky nghe khi bạn luyện đọc to một thẻ, và dừng ngay khi bạn trả lời xong."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你大声说出卡片内容进行练习时，Loopky 会聆听，并在你回答后立即停止。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "當你練習大聲說出卡片內容時，Loopky 會聆聽，並在你回答完畢後立即停止。"
           }
         }
       }
@@ -116,10 +176,40 @@
             "value": "Loopky trasforma quello che dici in testo per confrontare la tua pronuncia con la carta. Non viene salvato nulla."
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky は、話した内容をテキストに変換してカードと照らし合わせ、発音をチェックします。何も保存されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky는 말한 내용을 텍스트로 바꿔 카드와 비교해 발음을 확인해요. 아무것도 저장하지 않아요."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
             "value": "O Loopky transforma o que você diz em texto para conferir sua pronúncia com a carta. Nada é armazenado."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky chuyển lời bạn nói thành văn bản để so phát âm của bạn với thẻ. Không có gì được lưu lại."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky 会将你说的话转为文字，用来对照卡片检查你的发音。不会存储任何内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky 會將你說的話轉成文字，對照卡片檢查你的發音。不會儲存任何內容。"
           }
         }
       }

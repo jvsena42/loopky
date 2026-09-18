@@ -1,0 +1,916 @@
+<resources>
+    <string name="app_name">Loopky</string>
+
+    <!-- Shared text controls -->
+    <string name="read_more">続きを読む</string>
+    <string name="read_less">閉じる</string>
+    <string name="char_counter">%1$d/%2$d</string>
+
+    <!-- Home -->
+    <string name="home_greeting_hello">こんにちは、</string>
+    <string name="home_greeting_name">%1$s 👋</string>
+    <string name="home_error_title">問題が発生しました</string>
+    <string name="home_retry">再試行</string>
+    <string name="home_loading">準備中…</string>
+    <string name="home_due_today">今日の復習</string>
+    <string name="home_cards">枚</string>
+    <string name="home_to_review">復習待ち</string>
+    <string name="home_progress_done">%2$d 枚中 %1$d 枚完了 · その調子！</string>
+    <string name="home_new_cards_goal">今日の新規カード %1$d / %2$d 枚</string>
+    <string name="home_new_cards_goal_reached">1日の目標を達成 · 新規カード %1$d 枚 🎉</string>
+    <string name="home_start_studying">学習を始める</string>
+    <string name="home_todays_decks">今日のデッキ</string>
+    <string name="home_see_all">すべて表示</string>
+    <string name="home_deck_due">復習 %1$d</string>
+    <string name="home_deck_new">新規 %1$d</string>
+    <string name="home_deck_caught_up">完了</string>
+    <!-- The hero while the cached library is on screen and the review state has not answered. -->
+    <string name="home_checking_due">復習するカードを確認中…</string>
+    <string name="home_empty_title">まだデッキがありません</string>
+    <string name="home_empty_subtitle">リストを貼り付けるか、ファイルをインポートするか、ゼロから作りましょう。</string>
+    <string name="home_create_first_deck">最初のデッキを作成</string>
+    <string name="home_browse_examples">例を見る</string>
+
+    <!-- Decks library -->
+    <string name="decks_title">マイデッキ</string>
+    <string name="decks_search">検索</string>
+    <string name="decks_paste_cta_title">貼り付けてインポート</string>
+    <string name="decks_paste_cta_subtitle">どんなリストもデッキに変換</string>
+    <string name="decks_paste_cta_go">開始</string>
+    <string name="decks_import_file_cta">Anki やファイルからインポート</string>
+    <string name="decks_library_count">ライブラリ · %1$d</string>
+    <string name="decks_recent">最近</string>
+    <string name="decks_empty_title">まだデッキがありません</string>
+    <string name="decks_empty_subtitle">リストを貼り付けるか、最初のデッキをゼロから作りましょう。</string>
+    <string name="decks_empty_create">デッキを作成</string>
+    <string name="decks_error_title">問題が発生しました</string>
+    <string name="decks_loading">デッキをシャッフル中…</string>
+    <string name="decks_retry">再試行</string>
+
+    <!-- Deck tile -->
+    <string name="deck_tile_cloned_badge">コピー</string>
+
+    <!-- Deck detail -->
+    <string name="deck_detail_error_title">問題が発生しました</string>
+    <string name="deck_detail_retry">再試行</string>
+    <string name="deck_detail_loading">デッキを開いています…</string>
+    <string name="deck_detail_deleting">デッキを削除しています…</string>
+    <string name="deck_detail_start_studying">学習を始める · 復習 %1$s</string>
+    <string name="deck_detail_start_studying_new">学習を始める · 新規 %1$d</string>
+    <string name="deck_detail_study_this_deck">このデッキを学習</string>
+    <string name="deck_detail_back">戻る</string>
+    <string name="deck_detail_back_to_decks">デッキ一覧に戻る</string>
+    <string name="deck_detail_edit">デッキを編集</string>
+    <string name="deck_detail_delete">デッキを削除</string>
+    <string name="deck_detail_share">共有</string>
+    <string name="deck_detail_more_actions">その他の操作</string>
+    <string name="deck_detail_delete_dialog_title">デッキを削除しますか？</string>
+    <string name="deck_detail_delete_dialog_message">「%1$s」とその学習記録がすべて削除されます。この操作は取り消せません。</string>
+    <string name="deck_detail_delete_confirm">削除</string>
+    <string name="deck_detail_delete_cancel">キャンセル</string>
+    <string name="deck_detail_in_your_library">ライブラリに追加済み</string>
+    <string name="deck_detail_follow">デッキをフォロー</string>
+    <string name="deck_detail_following">フォロー中</string>
+    <string name="deck_detail_cloning">デッキをコピーしています…</string>
+    <string name="deck_detail_clone_dialog_title">自分用のコピーを作りますか？</string>
+    <string name="deck_detail_clone_name_label">コピーの名前</string>
+    <string name="deck_detail_clone_name_same">元のデッキとは別の名前にしてください。</string>
+    <string name="deck_detail_clone_confirm">コピー</string>
+    <string name="deck_detail_clone_cancel">キャンセル</string>
+    <string name="deck_detail_cloned_from">%1$s のデッキからコピー</string>
+    <string name="deck_detail_followers">%1$d 人がフォロー中</string>
+    <string name="deck_detail_dismiss_error">閉じる</string>
+    <string name="deck_detail_cards_heading">カード</string>
+    <string name="deck_detail_cards_empty_owned">まだカードがありません。「編集」をタップして最初のカードを追加しましょう。</string>
+    <string name="deck_detail_cards_empty_foreign">このデッキにはまだカードがありません。</string>
+
+    <!-- Deck editor -->
+    <string name="deck_editor_title_new">新しいデッキ</string>
+    <string name="deck_editor_title_edit">デッキを編集</string>
+    <string name="deck_editor_close">閉じる</string>
+    <string name="deck_editor_save">保存</string>
+    <string name="deck_editor_cover">カバー</string>
+    <string name="deck_editor_label_title">デッキのタイトル</string>
+    <string name="deck_editor_title_placeholder">デッキのタイトルを入力…</string>
+    <string name="deck_editor_label_description">説明</string>
+    <string name="deck_editor_description_placeholder">説明を追加…</string>
+    <string name="deck_editor_label_tags">タグ（PUBKY）</string>
+    <string name="deck_editor_add_tag">＋ 追加</string>
+    <string name="deck_editor_cards_count">カード（%1$d）</string>
+    <string name="deck_editor_error_cards">このデッキのカードを読み込めませんでした。デッキの詳細の変更は保存されます。%1$s</string>
+    <string name="deck_editor_error_move">カードを移動できませんでした。%1$s</string>
+    <string name="deck_editor_error_save">デッキを保存できませんでした。%1$s</string>
+    <string name="deck_editor_add_card">カードを追加</string>
+    <string name="deck_editor_reorder">並べ替え</string>
+    <string name="deck_editor_card_front_placeholder">表面</string>
+    <string name="deck_editor_card_back_placeholder">裏面</string>
+    <string name="deck_editor_has_image">画像あり</string>
+    <string name="deck_editor_has_audio">音声あり</string>
+
+    <!-- Edit card -->
+    <string name="edit_card_title">カードを編集</string>
+    <string name="edit_card_cancel">キャンセル</string>
+    <string name="edit_card_save">保存</string>
+    <string name="edit_card_context">カード %1$d / %2$d · %3$s</string>
+    <string name="edit_card_label_front">表面</string>
+    <string name="edit_card_front_placeholder">表面のテキストを入力…</string>
+    <string name="edit_card_label_back">裏面</string>
+    <string name="edit_card_back_placeholder">裏面のテキストを入力…</string>
+    <string name="edit_card_add_image">画像を追加</string>
+    <string name="edit_card_image">画像</string>
+    <string name="edit_card_add_audio">音声を追加</string>
+    <string name="edit_card_audio">音声</string>
+    <string name="edit_card_delete">カードを削除</string>
+    <string name="edit_card_speak">読み上げ</string>
+
+    <!-- Study session -->
+    <string name="study_error_title">問題が発生しました</string>
+    <string name="study_close">閉じる</string>
+    <string name="study_loading">カードを配っています…</string>
+    <string name="study_empty_title">すべて完了しました 🎉</string>
+    <string name="study_empty_subtitle">今は復習するカードがありません。</string>
+    <string name="study_empty_subtitle_deck">%1$s には今、復習するカードがありません。</string>
+    <string name="study_done">完了</string>
+    <string name="study_complete_title">お疲れさまでした！🎊</string>
+    <string name="study_back">戻る</string>
+    <string name="study_position_of_total">%1$d / %2$d</string>
+    <string name="study_flip_hint">カードをタップして答えを表示</string>
+    <string name="study_listen">聞く</string>
+    <string name="study_speak">話す</string>
+    <string name="study_type_placeholder">答えを入力</string>
+    <string name="study_type_check">確認</string>
+    <string name="study_type_give_up">あきらめる · 答えを見る</string>
+    <string name="study_type_correct">正解！</string>
+    <string name="study_type_near_miss">惜しい！アクセント記号を確認してください</string>
+    <string name="study_type_wrong">違います。もう一度どうぞ</string>
+
+    <!-- Discover -->
+    <string name="discover_title">見つける</string>
+    <string name="discover_search">検索</string>
+    <string name="discover_topics_title">トピック</string>
+    <string name="discover_people_title">Loopky のユーザー</string>
+    <string name="discover_browse_title">デッキを見つける</string>
+    <string name="discover_browse_tag_title">タグ「%1$s」のデッキ</string>
+    <string name="discover_browse_tags_title">タグ %1$s のデッキ</string>
+    <string name="discover_tag_quoted">「%1$s」</string>
+    <string name="discover_tag_list_separator">" + "</string>
+    <string name="discover_clear_tag">クリア</string>
+    <string name="discover_following_title">フォロー中のユーザーから</string>
+    <string name="discover_browse_empty_emoji">🌱</string>
+    <string name="discover_browse_empty_title">まだ何も公開されていません</string>
+    <string name="discover_browse_empty_subtitle">Loopky の公開インデックスはできたばかりです。デッキを公開すると、ここに表示されて誰でも見られるようになります。</string>
+    <string name="discover_empty_tag_emoji">🔍</string>
+    <string name="discover_empty_tag_title">タグ「%1$s」のデッキはまだありません</string>
+    <string name="discover_empty_tag_subtitle">このタグが付いたデッキはまだありません。タグをもう一度タップすると、すべて表示されます。</string>
+    <string name="discover_empty_tags_title">これらのタグがすべて付いたデッキはまだありません</string>
+    <string name="discover_empty_tags_subtitle">タグをタップして絞り込みから外すか、「クリア」ですべて表示します。</string>
+
+    <!-- Tag browse -->
+    <string name="discover_search_cta">ユーザーとデッキを検索</string>
+
+    <!-- Search -->
+    <string name="search_back">戻る</string>
+    <string name="search_placeholder">検索、または pubky を貼り付け</string>
+    <string name="search_clear">クリア</string>
+    <string name="search_scan_qr">QR コードをスキャン</string>
+    <string name="search_hint">名前で検索するか、pubky や共有リンクを貼り付けるか、QR コードをスキャンしてください。</string>
+    <string name="search_people_title">ユーザー</string>
+    <string name="search_decks_title">デッキ</string>
+    <string name="search_open_profile">このプロフィールを開く</string>
+    <string name="search_open_deck">このデッキを開く</string>
+    <string name="search_empty_emoji">🔍</string>
+    <string name="search_empty_title">「%1$s」に一致する結果はありません</string>
+    <string name="search_empty_subtitle">別の名前を試すか、相手の pubky を貼り付けて直接開いてください。</string>
+
+    <string name="tag_browse_title">#%1$s</string>
+    <string name="tag_browse_back">戻る</string>
+    <string name="tag_browse_empty_title">タグ「%1$s」のデッキはまだありません</string>
+    <string name="tag_browse_empty_subtitle">Loopky でこのタグを使った人はまだいません。このタグを付けてデッキを公開すると、ここに表示されます。</string>
+
+    <!-- Paste import -->
+    <string name="paste_title">カードを貼り付け</string>
+    <string name="paste_cancel">キャンセル</string>
+    <string name="paste_next">次へ</string>
+    <string name="paste_input_placeholder_title">ここにリストを貼り付け</string>
+    <string name="paste_input_placeholder_subtitle">1行につきカード1枚</string>
+    <string name="paste_detected_separator">検出：%1$s</string>
+    <string name="paste_preview_label">プレビュー</string>
+    <string name="paste_try_pasting_label">こんな形式で貼り付けてみましょう</string>
+    <string name="paste_public_notice">このデッキはプロフィールで公開されます</string>
+    <string name="paste_chip_no_pattern">パターンが検出されません</string>
+    <string name="paste_card_index">%1$d/%2$d</string>
+    <string name="paste_blank_placeholder">—</string>
+    <string name="paste_separator_tab">タブ</string>
+    <string name="paste_separator_semicolon">セミコロン</string>
+    <string name="paste_separator_pipe">パイプ</string>
+    <string name="paste_separator_dash">ダッシュ</string>
+    <string name="paste_separator_colon">コロン</string>
+    <string name="paste_separator_comma">カンマ</string>
+    <string name="paste_separator_blank_lines">空行</string>
+    <string name="paste_separator_markdown">Markdown</string>
+    <string name="paste_separator_single_column">1列</string>
+    <string name="paste_separator_auto">自動</string>
+
+    <!-- Publish deck -->
+    <string name="publish_back">戻る</string>
+    <string name="publish_title">新しいデッキ</string>
+    <string name="publish_cover_label">カバー</string>
+    <string name="publish_cover_change">変更</string>
+    <string name="publish_title_label">タイトル</string>
+    <string name="publish_title_placeholder">デッキのタイトル</string>
+    <string name="publish_description_label">説明</string>
+    <string name="publish_description_placeholder">短い説明を追加…</string>
+    <string name="publish_tags_label">タグ</string>
+    <string name="publish_add_tag">タグを追加</string>
+    <string name="publish_add">追加</string>
+    <string name="publish_public_title">プロフィールで公開</string>
+    <string name="publish_public_subtitle">「見つける」で誰でもこのデッキを見つけられます。</string>
+    <string name="publish_button">デッキを公開</string>
+    <string name="publish_cancel">インポートをキャンセル</string>
+    <string name="publish_cancelling">後片付け中…</string>
+    <string name="publish_cancel_title">このインポートをキャンセルしますか？</string>
+    <string name="publish_cancel_message">ここまでにアップロードしたカードは削除されます。デッキの詳細は残るので、もう一度公開できます。</string>
+    <string name="publish_cancel_confirm">インポートをキャンセル</string>
+    <string name="publish_cancel_keep">公開を続ける</string>
+    <string name="publish_published_icon_desc">公開済み</string>
+    <string name="publish_published_title">デッキを公開しました！</string>
+    <string name="publish_done">完了</string>
+    <string name="publish_undo">元に戻す（%1$d 秒）</string>
+    <string name="publish_card_options_label">カードのオプション</string>
+    <string name="publish_listen_title">聞く</string>
+    <string name="publish_listen_subtitle">カードの裏面で発音を再生</string>
+    <string name="publish_speak_title">話す</string>
+    <string name="publish_speak_subtitle">発音をチェック</string>
+    <string name="publish_type_title">答えを入力</string>
+    <string name="publish_type_subtitle">答えを読むだけでなく、書いて答える</string>
+    <string name="publish_reverse_title">両方向</string>
+    <string name="publish_reverse_subtitle">各カードを裏面から表面の向きでも出題</string>
+    <string name="study_reversed_badge">逆向き</string>
+    <string name="deck_languages_hint">各面の読み上げに使う音声を設定します。</string>
+    <string name="deck_front_language_label">表面の言語</string>
+    <string name="deck_back_language_label">裏面の言語</string>
+    <string name="deck_language_unset">言語を選択</string>
+    <string name="deck_languages_required">「聞く」や「話す」を使うには、表面と裏面の言語を選んでください。</string>
+    <string name="publish_cover_sheet_title">カバー画像</string>
+
+    <!-- Triage / Review cards -->
+    <string name="triage_title">カードの確認</string>
+    <string name="triage_approve_all">すべて承認</string>
+    <string name="triage_progress">%1$d / %2$d</string>
+    <string name="triage_stats">%1$d 枚を残す · %2$d 枚を破棄</string>
+    <string name="triage_front_label">表面</string>
+    <string name="triage_back_label">裏面</string>
+    <string name="triage_discard">破棄</string>
+    <string name="triage_edit">編集</string>
+    <string name="triage_keep">残す</string>
+
+    <!-- Image picker sheet -->
+    <string name="image_sheet_front_title">表面の画像</string>
+    <string name="image_sheet_front_subtitle">カードの表面に使う画像を選んでください</string>
+    <string name="image_sheet_back_title">裏面の画像</string>
+    <string name="image_sheet_back_subtitle">カードの裏面に使う画像を選んでください</string>
+    <string name="image_sheet_done">完了</string>
+    <string name="image_sheet_search_placeholder">画像を検索、またはリンクを貼り付け…</string>
+    <string name="image_sheet_from_gallery">ギャラリーから</string>
+    <string name="image_sheet_paste">貼り付け</string>
+    <!-- Pasting: the field takes an address, the Paste button also takes a copied image itself. -->
+    <string name="image_sheet_paste_empty">貼り付けるものがありません。先に画像のアドレスをコピーしてください。</string>
+    <string name="image_sheet_paste_image_clip">コピーされているのは画像そのものです。画像のアドレスを貼り付けるか、ギャラリーから選んでください。</string>
+    <string name="image_sheet_image_unreadable">この画像を読み込めませんでした。別の画像を試してください。</string>
+    <string name="image_sheet_link_preview">貼り付けた画像</string>
+    <string name="image_sheet_link_clear">リンクをクリア</string>
+    <string name="image_sheet_link_failed">このリンクは画像として読み込めませんでした。画像そのものか、ページではなく画像のアドレスをコピーしてください。</string>
+    <string name="image_sheet_no_results">画像が見つかりません</string>
+    <!-- Web-search failures. The first three are fixed by setting a key; the last one is not. -->
+    <string name="image_sheet_error_missing_key">ウェブ画像検索には Unsplash API キーが必要です。無料で、2分ほどで取得できます。</string>
+    <string name="image_sheet_error_invalid_key">Unsplash がこのキーを拒否しました。設定で確認してください。</string>
+    <string name="image_sheet_error_rate_limited">Unsplash の1時間あたりの上限に達しました。自分のキーを使えば、自分専用の上限になります。</string>
+    <string name="image_sheet_error_unavailable">Unsplash に接続できませんでした。接続を確認するか、ギャラリーから選んでください。</string>
+    <string name="image_sheet_get_key">キーを取得</string>
+    <string name="image_sheet_add_key">キーを追加</string>
+    <string name="image_sheet_remove">画像を削除</string>
+    <string name="image_sheet_photo">写真</string>
+    <!-- Attribution required by the Unsplash API guidelines: photographer + platform, both linked. -->
+    <string name="image_sheet_credit">写真：%1$s（%2$s）</string>
+    <string name="image_sheet_credit_platform">写真提供：%1$s</string>
+    <string name="image_sheet_credit_unsplash">Unsplash</string>
+    <string name="image_sheet_credit_unknown_author">Unsplash の写真家</string>
+
+    <!-- Speak (study) -->
+    <string name="speak_listening_prompt">単語を言ってください</string>
+    <string name="speak_listening_hint">タップしてキャンセル</string>
+    <string name="speak_correct_title">完璧です！</string>
+    <string name="speak_you_said_label">認識結果</string>
+    <string name="speak_continue">続ける</string>
+    <string name="speak_wrong_title">少し違います</string>
+    <string name="speak_you_said">聞き取った内容</string>
+    <string name="speak_correct_label">正解</string>
+    <string name="speak_try_again">もう一度</string>
+    <string name="speak_permission_denied">発音の練習にはマイクへのアクセス許可が必要です。</string>
+    <string name="speak_unavailable">このデバイスでは音声認識を利用できません。</string>
+    <string name="speak_failed_no_match_title">聞き取れませんでした</string>
+    <string name="speak_failed_no_match_message">何も認識されませんでした。マイクに少し近づいて、もう一度お試しください。</string>
+    <string name="speak_failed_network_title">音声認識がオフラインです</string>
+    <string name="speak_failed_network_message">現在、音声認識には接続が必要です。接続を確認して、もう一度お試しください。</string>
+    <string name="speak_failed_busy_title">まだ聞き取り中です</string>
+    <string name="speak_failed_busy_message">前回の試行がまだ終わっていません。少し待ってから、もう一度お試しください。</string>
+    <string name="speak_failed_language_title">言語がインストールされていません</string>
+    <string name="speak_failed_language_message">このデバイスには、このデッキの言語の音声モデルがありません。デバイスの音声入力設定で追加してください。</string>
+    <string name="speak_failed_permission_title">マイクがオフです</string>
+    <string name="speak_failed_unavailable_title">「話す」は利用できません</string>
+    <string name="speak_failed_unknown_title">問題が発生しました</string>
+    <string name="speak_failed_unknown_message">音声認識から結果が返ってきませんでした。もう一度お試しください。</string>
+    <string name="speak_close">閉じる</string>
+    <string name="listen_voice_unavailable">このデッキの言語の音声がインストールされていません。デバイスのテキスト読み上げ設定で追加してください。</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_hero_subtitle">ゲーム感覚で続けられる間隔反復。デッキを作って、共有して、友だちのデッキで学べます。</string>
+    <string name="onboarding_brand_name">Loopky</string>
+    <string name="onboarding_signin_waiting">Pubky Ring を待っています…</string>
+    <string name="onboarding_signin_verifying">サインインしています…</string>
+    <string name="onboarding_signin_default">Pubky Ring でサインイン</string>
+    <string name="onboarding_no_email_notice">メールもパスワードも不要。鍵がそのままアカウントになります。</string>
+    <string name="onboarding_get_ring">Pubky Ring をお持ちでない場合は、アプリを入手</string>
+    <!-- Consent gate on both account entry points. The two document names are located inside the
+         sentence at runtime and turned into links, so a translation may place them anywhere. -->
+    <string name="onboarding_policy_consent">%1$sと%2$sを読み、同意します。</string>
+    <string name="onboarding_policy_privacy">プライバシーポリシー</string>
+    <string name="onboarding_policy_license">ライセンス</string>
+    <string name="onboarding_qr_title">Pubky Ring でスキャン</string>
+    <string name="onboarding_qr_body">スマートフォンで Pubky Ring を開き、「Authorize」をタップして、このコードをスキャンしてください。</string>
+    <string name="onboarding_qr_content_description">このサインインリクエストを含む QR コード</string>
+    <string name="onboarding_qr_waiting">Pubky Ring での承認を待っています…</string>
+    <string name="onboarding_still_waiting">まだ待っています。Pubky Ring にリクエストが表示されない場合は、キャンセルしてもう一度お試しください。</string>
+    <string name="onboarding_qr_open_here">このデバイスに Pubky Ring があります</string>
+    <string name="onboarding_qr_cancel">キャンセル</string>
+    <string name="onboarding_qr_copy">サインインリンクをコピー</string>
+    <string name="onboarding_qr_copied">サインインリンクをコピーしました</string>
+    <string name="onboarding_qr_sheet_body">このデバイスには Pubky Ring がありません。鍵が入っているスマートフォンで Pubky Ring を開き、「Authorize」をタップして、このコードをスキャンしてください。</string>
+    <string name="onboarding_app_version">バージョン %1$s</string>
+
+    <!-- pubky.app — the web client the same account already exists on. -->
+    <string name="pubky_app_open_profile">pubky.app で開く</string>
+    <string name="pubky_app_cta_title">pubky.app でも使えます</string>
+    <!-- Says what the account is, not that decks appear there — they don\'t. -->
+    <string name="pubky_app_cta_body">サインインに使った鍵は Pubky アカウントです。ウェブでプロフィールや投稿を確認できます。</string>
+
+    <!-- Profile -->
+    <string name="profile_title">プロフィール</string>
+    <string name="profile_loading">プロフィールを読み込み中…</string>
+    <string name="profile_settings_content_description">設定</string>
+    <string name="profile_edit_profile">プロフィールを編集</string>
+    <string name="profile_share_content_description">共有</string>
+    <string name="profile_stat_decks">デッキ</string>
+    <string name="profile_stat_cards">カード</string>
+    <string name="profile_stat_due">復習</string>
+    <string name="profile_stat_following">フォロー中</string>
+    <string name="profile_stat_followers">フォロワー</string>
+    <!-- Shown in a stat column whose count has not resolved yet. -->
+    <string name="profile_stat_pending">—</string>
+    <string name="profile_sign_out">サインアウト</string>
+    <string name="profile_dismiss">閉じる</string>
+    <string name="profile_edit_profile_sheet_title">プロフィールを編集</string>
+    <string name="profile_edit_name_label">名前</string>
+    <string name="profile_edit_name_placeholder">名前</string>
+    <string name="profile_edit_bio_label">自己紹介</string>
+    <string name="profile_edit_bio_placeholder">自己紹介を書きましょう…</string>
+    <string name="profile_save">保存</string>
+    <!-- The one-time invitation to name a nameless profile. Warm and short by design: it asks
+         for something optional, and "Not now" is remembered so it is never asked twice. -->
+    <string name="profile_name_nudge_title">何とお呼びしましょう？</string>
+    <string name="profile_name_nudge_body">名前を追加すると、誰のデッキなのかがわかります。</string>
+    <string name="profile_name_nudge_action">名前を追加</string>
+    <string name="profile_name_nudge_dismiss">今はしない</string>
+
+    <!-- The photo prompt. Loopky cannot set one at all, so both the card and the dialog say where
+         it is done and that the key is the same. Kept to one line: a paragraph here is skipped.
+         The card invites and the dialog answers a tap, so they say it in different registers. -->
+    <string name="profile_avatar_nudge_title">写真を追加しませんか？</string>
+    <string name="profile_avatar_nudge_body">ここと同じ鍵で、pubky.app から追加できます。</string>
+    <string name="profile_avatar_hint">写真は pubky.app で設定します。同じ鍵でサインインしてください。</string>
+    <string name="profile_avatar_dialog_title">写真を変更</string>
+    <string name="profile_avatar_open_pubky_app">pubky.app を開く</string>
+    <string name="profile_avatar_not_now">今はしない</string>
+    <string name="profile_edit_avatar_content_description">プロフィール写真を変更</string>
+
+    <!-- Friend profile -->
+    <string name="friend_profile_back_content_description">戻る</string>
+    <string name="friend_profile_copy_pubky">pubky をコピー</string>
+    <string name="friend_profile_no_decks">まだデッキがありません。</string>
+    <string name="friend_profile_share">プロフィールを共有</string>
+
+    <!-- Follow lists -->
+    <string name="follow_list_following_title">フォロー中</string>
+    <string name="follow_list_followers_title">フォロワー</string>
+    <string name="follow_list_back_content_description">戻る</string>
+    <string name="follow_list_loading">ユーザーを読み込み中…</string>
+    <string name="follow_list_empty_following">まだ誰もいません。フォローしている人のうち、Loopky も使っている人がここに表示されます。</string>
+    <string name="follow_list_empty_followers">まだ誰もいません。Loopky を使っている人のうち、フォローしてくれている人がここに表示されます。</string>
+    <string name="follow_list_empty_following_other">まだ誰もいません。この人がフォローしている人のうち、Loopky も使っている人がここに表示されます。</string>
+    <string name="follow_list_empty_followers_other">まだ誰もいません。Loopky を使っている人のうち、この人をフォローしている人がここに表示されます。</string>
+    <!-- Explains why the list is shorter than the follow count another Pubky app would show. -->
+    <string name="follow_list_loopky_only">Loopky アカウントを持つ人だけが表示されます。</string>
+
+    <!-- Settings -->
+    <string name="settings_back_content_description">戻る</string>
+    <string name="settings_title">設定</string>
+    <string name="settings_loading">設定を読み込み中…</string>
+    <string name="settings_section_identity">ID</string>
+    <string name="settings_pubky_label">Pubky</string>
+    <string name="settings_not_signed_in">サインインしていません</string>
+    <string name="settings_copy">コピー</string>
+    <string name="settings_homeserver_label">Homeserver</string>
+    <string name="settings_homeserver_unknown">不明</string>
+    <string name="settings_section_sharing">共有</string>
+    <string name="settings_share_on_pubky_label">投稿前に確認する</string>
+    <!-- Must not read as a privacy control: published decks are public either way (spec 11). -->
+    <string name="settings_share_on_pubky_description">デッキを作成・フォロー・コピーしたときに、投稿するかどうかを尋ねます。デッキはどちらの場合も公開されています。</string>
+    <!-- Image search (Unsplash API key). Never renders a key: the built-in one is not shown at
+         all, and the user's own is reduced to its last four characters. -->
+    <string name="settings_section_studying">学習</string>
+    <string name="settings_new_cards_goal_label">1日の新規カード数</string>
+    <string name="settings_new_cards_goal_description">上限ではなく目標です。いつでも続けて学習できます。</string>
+    <string name="settings_interval_hard_label">「難しい」の間隔（日）</string>
+    <string name="settings_interval_good_label">「正解」の間隔（日）</string>
+    <string name="settings_interval_easy_label">「簡単」の間隔（日）</string>
+    <string name="settings_interval_description">カードが再び出題されるまでの期間です。</string>
+    <string name="settings_interval_mastery_note">最も長い間隔に達したカードが「習得済み」になります。</string>
+    <string name="settings_study_unavailable">学習設定を読み込めませんでした。上書きを防ぐため、読み込まれるまで編集できません。</string>
+    <string name="settings_study_save_failed">学習設定を保存できませんでした。</string>
+    <string name="settings_section_image_search">画像検索</string>
+    <string name="settings_unsplash_key_label">Unsplash アクセスキー</string>
+    <string name="settings_unsplash_key_not_set">未設定。ウェブ画像検索はオフです</string>
+    <string name="settings_unsplash_key_built_in">Loopky の共有キーを使用中（制限あり）</string>
+    <string name="settings_unsplash_key_user_set">キー設定済み · ••••%1$s</string>
+    <string name="settings_unsplash_key_set">設定</string>
+    <string name="settings_unsplash_key_replace">置き換え</string>
+    <string name="settings_unsplash_key_remove">削除</string>
+    <string name="settings_unsplash_key_save">保存</string>
+    <string name="settings_unsplash_key_cancel">キャンセル</string>
+    <string name="settings_unsplash_key_placeholder">Access Key を貼り付け</string>
+    <string name="settings_unsplash_key_hint">Unsplash で無料で取得できます。開発者ダッシュボードでアプリケーションを作成し、Secret key ではなく Access Key をコピーしてください。</string>
+    <string name="settings_unsplash_key_get">キーを取得</string>
+    <string name="settings_unsplash_key_error_invalid">Unsplash がこのキーを拒否しました。Access Key を全部コピーしたか確認してください。</string>
+    <string name="settings_unsplash_key_error_missing">先にキーを入力してください。</string>
+    <string name="settings_unsplash_key_error_rate_limited">このキーは1時間あたりの上限に達しました。しばらくしてからもう一度お試しください。</string>
+    <string name="settings_unsplash_key_error_unavailable">キーを確認するために Unsplash に接続できませんでした。</string>
+    <string name="settings_section_about">このアプリについて</string>
+    <string name="settings_app_version_label">アプリのバージョン</string>
+    <string name="settings_app_version_unknown">—</string>
+    <string name="settings_privacy_policy">プライバシーポリシー</string>
+    <string name="settings_license">ライセンス</string>
+
+    <!-- Delete account. Plain punctuation and one idea per line: this is the only copy in Loopky
+         that precedes an irreversible action, so it has to be read rather than skimmed. The
+         identity line is load-bearing, not a footnote — Loopky cannot delete the Pubky account and
+         must not imply that it has. -->
+    <string name="settings_delete_account">アカウントを削除</string>
+    <string name="settings_delete_account_dialog_title">アカウントを削除しますか？</string>
+    <string name="settings_delete_account_dialog_body">デッキ、カード、画像、学習の進捗は完全に削除され、プロフィールは Loopky から削除されます。</string>
+    <string name="settings_delete_account_dialog_irreversible">この操作は取り消せません。</string>
+    <string name="settings_delete_account_dialog_identity">Pubky の ID は Pubky Ring に残ります。</string>
+    <string name="settings_delete_account_confirm">アカウントを削除</string>
+    <string name="settings_delete_account_confirm_countdown">アカウントを削除（%1$d）</string>
+    <string name="settings_delete_account_progress_title">削除中</string>
+    <string name="settings_delete_account_progress_starting">開始しています</string>
+    <string name="settings_delete_account_progress_count">%2$d 件中 %1$d 件を削除</string>
+    <string name="settings_delete_account_failed">すべてを削除できませんでした。サインインしたままなので、もう一度お試しいただけます。</string>
+    <string name="settings_sign_out">サインアウト</string>
+    <string name="settings_sign_out_dialog_title">サインアウトしますか？</string>
+    <string name="settings_sign_out_dialog_message">デッキはアカウントに残ります。もう一度サインインすれば、すべて元に戻ります。</string>
+    <string name="settings_cancel">キャンセル</string>
+
+    <!-- Share-on-Pubky consent prompt (#39), shown after create / follow / clone -->
+    <string name="share_prompt_title_created">このデッキについて投稿しますか？</string>
+    <string name="share_prompt_title_followed">このフォローについて投稿しますか？</string>
+    <string name="share_prompt_title_cloned">このコピーについて投稿しますか？</string>
+    <string name="share_prompt_body">フォロワーに表示されます。デッキはどちらの場合も公開されています。</string>
+    <string name="share_prompt_confirm">投稿</string>
+    <string name="share_prompt_dismiss">今はしない</string>
+    <string name="share_prompt_never">今後は確認しない</string>
+    <string name="share_prompt_failed">投稿できませんでした。デッキには影響ありません。</string>
+    <string name="share_prompt_posted">投稿しました</string>
+
+    <!-- Identity — one presentation of a pubky user, shared by every screen -->
+    <string name="identity_pubky_short">%1$s</string>
+    <string name="identity_pubky_truncated">%1$s…%2$s</string>
+    <string name="identity_you_badge">自分</string>
+    <string name="identity_unknown_person">ゲストさん</string>
+
+    <!-- Shared components -->
+    <string name="component_author_row_following">フォロー中</string>
+    <string name="component_author_row_follow">フォロー</string>
+    <string name="component_stats_bar_total">合計</string>
+    <string name="component_stats_bar_due">復習</string>
+    <string name="component_stats_bar_new">新規</string>
+    <string name="component_stats_bar_mastered">習得済み</string>
+    <string name="component_tag_chip_label">#%1$s</string>
+    <string name="component_tag_chip_remove">タグを削除</string>
+
+    <!-- Navigation / tabs -->
+    <string name="nav_tab_study">今日</string>
+    <string name="nav_tab_decks">デッキ</string>
+    <string name="nav_tab_discover">見つける</string>
+    <string name="nav_tab_profile">プロフィール</string>
+
+
+    <!-- Signup: obtaining a homeserver account. Errors are flow-local, not ErrorReason. -->
+    <string name="signup_start_title">ロボットではないことを証明してください。</string>
+    <string name="signup_start_subtitle">メールは不要です。SMS か少額の支払いで確認するか、招待コードを使ってください。</string>
+    <string name="signup_sms_card_title">SMS 認証</string>
+    <string name="signup_sms_card_price">無料</string>
+    <string name="signup_sms_card_note">電話番号を使用します</string>
+    <string name="signup_lightning_card_title">ビットコイン支払い</string>
+    <string name="signup_lightning_card_note">電話番号は不要です</string>
+    <string name="signup_lightning_card_price">₿ %1$d を1回支払う</string>
+    <string name="signup_lightning_card_price_unknown">1回だけ支払う</string>
+    <string name="signup_card_unavailable">お住まいの国では利用できません</string>
+    <string name="signup_invite_link">招待コードをお持ちですか？</string>
+
+    <string name="signup_invite_title">招待コードを入力してください。</string>
+    <string name="signup_invite_subtitle">アカウントを作成するためのコードを Pubky チームに依頼してください。</string>
+    <string name="signup_invite_label">招待コード</string>
+    <string name="signup_invite_placeholder">XXXX-XXXX-XXXX</string>
+    <string name="signup_invite_submit">続ける</string>
+
+    <string name="signup_phone_title">電話番号の確認。</string>
+    <string name="signup_phone_subtitle">SMS で確認コードをお送りします。</string>
+    <string name="signup_phone_label">電話番号</string>
+    <string name="signup_phone_placeholder">+8190XXXXXXXX</string>
+    <string name="signup_phone_hint">国番号を含めてください（例：日本は +81）。</string>
+    <string name="signup_phone_send">コードを送信</string>
+    <string name="signup_code_title">コードを入力してください。</string>
+    <string name="signup_code_subtitle">%1$s に6桁のコードを送信しました。</string>
+    <string name="signup_code_label">確認コード</string>
+    <string name="signup_code_verify">確認</string>
+    <string name="signup_code_resend">コードを再送信</string>
+    <string name="signup_code_resend_in">%1$d 秒後に再送信</string>
+    <string name="signup_code_change_number">番号を変更</string>
+
+    <string name="signup_lightning_title">スキャンまたはタップして支払い。</string>
+    <string name="signup_lightning_amount">続けるには ₿ %1$d を支払ってください。</string>
+    <string name="signup_lightning_qr_content_description">この Lightning インボイスを含む QR コード</string>
+    <!-- Shown when Loopky comes back to an invoice it issued before being killed, which may
+         already have been paid. There is nothing left to show or pay, so the copy stops asking. -->
+    <string name="signup_lightning_resumed_title">以前の支払いを確認しています。</string>
+    <string name="signup_lightning_resumed_subtitle">₿ %1$d はすでに支払い済みかもしれません。確認が終わるまでお待ちください。もう一度支払わないでください。</string>
+    <string name="signup_lightning_resumed_subtitle_fiat">₿ %1$d（%2$s）はすでに支払い済みかもしれません。確認が終わるまでお待ちください。もう一度支払わないでください。</string>
+    <string name="signup_lightning_resumed_waiting">サーバーで確認しています…</string>
+    <string name="signup_lightning_open_wallet">ウォレットで開く</string>
+    <string name="signup_lightning_copy">インボイスをコピー</string>
+    <string name="signup_lightning_copied">インボイスをコピーしました</string>
+    <string name="signup_lightning_no_wallet">Lightning ウォレットが見つかりません。代わりにインボイスをコピーしました</string>
+    <string name="signup_lightning_waiting">支払いを待っています…</string>
+    <string name="signup_lightning_new_invoice">新しいインボイス</string>
+
+    <string name="signup_error_geoblocked_title">この地域では利用できません</string>
+    <string name="signup_error_geoblocked_message">この方法はお住まいの国では提供されていません。別の方法を試すか、招待コードを使ってください。</string>
+    <string name="signup_error_phone_blocked_title">この番号は使用できません</string>
+    <string name="signup_error_phone_blocked_message">この電話番号は認証に使用できません。別の番号を試すか、招待コードを使ってください。</string>
+    <string name="signup_error_rate_limited_title">試行回数が多すぎます</string>
+    <string name="signup_error_rate_limited_message">数分待ってから、もう一度お試しください。</string>
+    <string name="signup_error_rate_limited_weekly_title">週の上限に達しました</string>
+    <string name="signup_error_rate_limited_weekly_message">この番号は今週の認証回数をすべて使い切りました。代わりに支払いか招待コードをお試しください。</string>
+    <string name="signup_error_rate_limited_yearly_title">年間の上限に達しました</string>
+    <string name="signup_error_rate_limited_yearly_message">この番号は今年の認証回数をすべて使い切りました。代わりに支払いか招待コードをお試しください。</string>
+    <string name="signup_error_code_incorrect_title">このコードは使えませんでした</string>
+    <string name="signup_error_code_incorrect_message">確認して、もう一度お試しください。</string>
+    <string name="signup_error_invoice_expired_title">インボイスの期限切れ</string>
+    <string name="signup_error_invoice_expired_message">支払いが完了する前にインボイスの期限が切れました。新しいインボイスを発行してください。</string>
+    <string name="signup_error_verification_lost_title">最初からやり直しましょう</string>
+    <string name="signup_error_verification_lost_message">この認証の状態がわからなくなりました。最初からやり直しても問題ありません。</string>
+    <string name="signup_error_unavailable_title">サービスに接続できませんでした</string>
+    <string name="signup_error_unavailable_message">接続を確認して、もう一度お試しください。</string>
+
+    <string name="onboarding_ring_icon_description">Pubky Ring</string>
+    <string name="onboarding_recovery_icon_description">リカバリーフレーズまたはファイル</string>
+    <string name="onboarding_create_pubky">Pubky をお持ちでない場合は、アカウントを作成</string>
+
+    <!-- Error states. Reason-based copy; the raw FFI message stays in logcat. -->
+    <string name="error_offline_title">オフラインです</string>
+    <string name="error_offline_message">接続を確認して、もう一度お試しください。デッキは無事です。</string>
+    <string name="error_session_expired_title">セッションの期限切れ</string>
+    <string name="error_session_expired_message">デッキに戻るには、もう一度 Pubky Ring でサインインしてください。</string>
+    <!-- Deliberately not the offline copy (#165). The homeserver session round trip is what
+         failed; the device's connection was measurably fine every time this was seen, so sending
+         the user to check it points at the one thing that is working — hence naming the
+         connection only to rule it out. Says nothing about what was lost (the sentence it is
+         appended to already does) and does not mention signing in (the button below it is the
+         offer); every screen showing this composes it after a consequence, so length here is
+         paid twice. -->
+    <string name="error_session_unreachable_title">再接続できませんでした</string>
+    <string name="error_session_unreachable_message">Loopky がサインイン状態を復元できませんでした。接続の問題ではないので、もう一度お試しください。</string>
+    <string name="error_sign_in_again">もう一度サインイン</string>
+    <string name="error_not_found_title">見つかりません</string>
+    <string name="error_not_found_message">このデッキはもう存在しません。削除された可能性があります。</string>
+    <string name="error_no_account_title">アカウントがまだ設定されていません</string>
+    <!-- Deliberately does NOT send the user back to Pubky Ring. Creating the account needs a
+         signup token, tokens come from Homegate, and Homegate lives in Loopky — Ring's only route
+         is its Edit-pubky sheet, which wants a homeserver z32 and a token the user does not have.
+         Pointing at Ring here points at the one app that cannot help. -->
+    <string name="error_no_account_message">この鍵のアカウントがまだないため、デッキを保存する場所がありません。設定は1分ほどで終わります。</string>
+    <string name="error_not_signed_in_title">サインインしていません</string>
+    <string name="error_not_signed_in_message">続けるには Pubky Ring でサインインしてください。</string>
+    <string name="error_ring_not_installed_title">Pubky Ring が見つかりません</string>
+    <string name="error_ring_not_installed_message">Loopky は Pubky Ring を使ってサインインします。続けるにはインストールしてください。</string>
+    <string name="error_auth_failed_title">サインインが完了しませんでした</string>
+    <string name="error_auth_failed_message">Loopky がサインインを確認できませんでした。接続を確認して、もう一度お試しください。</string>
+    <string name="error_auth_relay_title">サインインで接続できませんでした</string>
+    <string name="error_auth_relay_message">サインインサービスが応答していません。少し待ってから、もう一度お試しください。</string>
+    <string name="study_sync_error_title">復習結果が保存されていません</string>
+    <string name="study_sync_error_dismiss">OK</string>
+    <string name="study_goal_reached_title">1日の目標を達成しました！</string>
+    <string name="study_goal_reached_body">今日の目標はクリアです。制限はないので、調子が良ければそのまま続けましょう。</string>
+    <string name="study_goal_keep_studying">学習を続ける</string>
+    <string name="study_goal_done">ホームに戻る</string>
+    <string name="publish_error_no_draft">公開するものがありません。前の画面に戻って、リストをもう一度貼り付けてください。</string>
+    <string name="publish_error_publish">このデッキを公開できませんでした。%1$s</string>
+    <string name="publish_error_cancel">キャンセルしたデッキを削除できませんでした。一部がまだ保存されています。%1$s</string>
+    <string name="publish_error_undo">元に戻せませんでした。デッキはまだ公開されています。%1$s</string>
+    <string name="error_server_busy_title">サーバーが混み合っています</string>
+    <string name="error_server_busy_message">リクエストが集中したため、完了できませんでした。接続の問題ではありません。少し待ってから、もう一度お試しください。</string>
+    <string name="error_storage_full_title">ストレージがいっぱいです</string>
+    <string name="error_storage_full_message">アカウントに空き容量がありません。もう学習していないデッキを削除して容量を空けるか、ストレージプランをアップグレードしてください。</string>
+    <!-- Restore (#147): the door for someone who has a pubky but no working Pubky Ring. -->
+    <string name="onboarding_restore">リカバリーフレーズまたはファイルを使う</string>
+    <string name="restore_start_title">アカウントを復元</string>
+    <string name="restore_start_subtitle">pubky を作成したときに作ったバックアップを使います。</string>
+    <string name="restore_method_phrase">リカバリーフレーズ</string>
+    <string name="restore_method_phrase_detail">書き留めた12個の単語です。</string>
+    <string name="restore_phrase_title">リカバリーフレーズを入力</string>
+    <string name="restore_phrase_subtitle">12個の単語を、順番どおりにスペースで区切って入力してください。</string>
+    <string name="restore_phrase_label">リカバリーフレーズ</string>
+    <string name="restore_phrase_placeholder">単語1 単語2 単語3…</string>
+    <string name="restore_phrase_submit">アカウントを復元</string>
+    <string name="restore_phrase_checking">確認しています…</string>
+    <!-- Permanent and inline, never a toast or a dismissible popover. A Bitcoin seed and a Pubky
+         seed are the same twelve BIP-39 words and there is no way to tell them apart, so warning
+         is the only protection available — and a warning you can dismiss is one that gets
+         dismissed. Deliberately no heuristic detection: a false negative would read as an
+         all-clear, which is worse than saying nothing. -->
+    <string name="restore_seed_warning">ビットコインなどの暗号資産ウォレットのリカバリーフレーズは、絶対にここに入力しないでください。</string>
+    <!-- Local key creation + backup (#147). -->
+    <!-- Separate strings rather than appending "(≈ US$0.85)" onto a translated sentence: the
+         parenthetical belongs in a different place in half the languages we will ship. -->
+    <string name="signup_lightning_card_price_fiat">₿ %1$d（%2$s）を1回支払う</string>
+    <string name="signup_lightning_amount_fiat">続けるには ₿ %1$d（%2$s）を支払ってください。</string>
+    <!-- Terminal: retrying re-sends the same dead token. The copy has to send the user back to
+         get a new one rather than at a button that cannot work. -->
+    <string name="signup_error_token_rejected_title">このサインアップコードは拒否されました</string>
+    <string name="signup_error_token_rejected_message">このコードは拒否されました。すでに使用済みの可能性があります。最初からやり直して、新しいコードを取得してください。</string>
+    <string name="signup_start_over">最初からやり直す</string>
+    <string name="signup_local_title">アカウントを作成しています</string>
+    <string name="signup_local_subtitle">鍵を作成して登録しています。少しお待ちください。</string>
+    <string name="signup_local_retry">もう一度</string>
+    <string name="signup_ring_recommended_title">鍵の保管には Pubky Ring が最も安全です</string>
+    <string name="signup_ring_recommended_body">Pubky Ring は鍵を別のアプリで保管するので、サインインで鍵が漏れることはありません。インストールするか、代わりに Loopky で鍵を作成してください。</string>
+    <string name="backup_start_title">アカウントをバックアップ</string>
+    <string name="backup_start_subtitle">鍵はこのデバイスにしかありません。スマートフォンをなくしても取り出せる場所に保存してください。</string>
+    <!-- For a key restored from a phrase or file: it IS already backed up, so telling the user to
+         back it up would be describing a risk they do not have. What is still on offer is Pubky
+         Ring, which is a custody change rather than a backup. -->
+    <string name="backup_start_subtitle_backed_up">この鍵のコピーはすでにお持ちです。Pubky Ring なら鍵を別のアプリで保管できるのでさらに安全です。ここで別のバックアップを追加することもできます。</string>
+    <string name="backup_method_ring_missing">インストールされていません。入手ページに移動します。</string>
+    <string name="backup_later">あとで行う</string>
+    <string name="backup_done_label">完了</string>
+    <string name="backup_method_password_manager">パスワードマネージャー</string>
+    <string name="backup_method_password_manager_detail">フレーズを Google パスワード マネージャーなど、お使いのマネージャーに保存します。</string>
+    <string name="backup_phrase_save_to_manager">パスワードマネージャーに保存</string>
+    <string name="backup_phrase_saved_to_manager">保存して確認しました。パスワードマネージャーにフレーズが保存されています。</string>
+    <string name="backup_phrase_save_failed">何も保存されませんでした。パスワードマネージャーが拒否したか、キャンセルされた可能性があります。</string>
+    <string name="backup_quiz_saved_title">保存したフレーズを確認</string>
+    <string name="backup_quiz_saved_subtitle">このフレーズはパスワードマネージャーに保存したので、思い出す必要はありません。まだ保存されているか読み取って確認します。</string>
+    <string name="backup_quiz_saved_check">保存したフレーズを確認</string>
+    <string name="backup_quiz_saved_wrong">一致しませんでした。パスワードマネージャーを開いてこのアカウントの項目を確認してから、もう一度お試しください。</string>
+    <string name="backup_method_phrase">リカバリーフレーズ</string>
+    <string name="backup_method_phrase_detail">12個の単語を書き留めて確認します。</string>
+    <string name="backup_method_file">暗号化ファイル</string>
+    <string name="backup_method_file_detail">パスフレーズで保護したファイルをドライブかファイルに保存します。</string>
+    <string name="backup_method_ring">Pubky Ring にエクスポート</string>
+    <string name="backup_method_ring_detail">鍵を Pubky Ring にコピーします。Loopky にもコピーが残ります。</string>
+    <string name="backup_phrase_title">リカバリーフレーズ</string>
+    <string name="backup_phrase_subtitle">この12個の単語を順番どおりに書き留めて、安全な場所に保管してください。</string>
+    <string name="backup_phrase_reveal">タップして表示</string>
+    <string name="backup_phrase_continue">書き留めました</string>
+    <!-- The inverted seed warning: prevents someone sending sats to a Pubky account. -->
+    <string name="backup_phrase_warning">このフレーズはアカウント専用です。ビットコインウォレットではなく、資金は保管されません。</string>
+    <string name="backup_quiz_title">フレーズを確認</string>
+    <string name="backup_quiz_subtitle">各位置の正しい単語を選んでください。</string>
+    <string name="backup_quiz_position">%1$d 番目の単語</string>
+    <string name="backup_quiz_submit">確認</string>
+    <string name="backup_quiz_wrong">正しくありません。書き留めたものを確認して、もう一度お試しください。</string>
+    <string name="backup_file_title">暗号化されたリカバリーファイル</string>
+    <string name="backup_file_subtitle">パスフレーズを決めてください。復元にはこのパスフレーズとファイルの両方が必要です。</string>
+    <string name="backup_file_passphrase">パスフレーズ</string>
+    <string name="passphrase_reveal">パスフレーズを表示</string>
+    <string name="passphrase_hide">パスフレーズを隠す</string>
+    <string name="backup_file_create">ファイルを作成して保存</string>
+    <string name="backup_file_failed">ファイルを作成できませんでした。もう一度お試しください。</string>
+    <string name="backup_strength_too_short">短すぎます</string>
+    <string name="backup_strength_weak">弱い。16文字以上にするとずっと強くなります</string>
+    <string name="backup_strength_fair">普通。16文字以上にするとずっと強くなります</string>
+    <string name="backup_strength_strong">強い</string>
+    <string name="backup_ring_title">Pubky Ring にエクスポート</string>
+    <!-- Never implies the key moved. Ring imports it; Loopky keeps its copy and its session, and
+         the words the user wrote down are still valid. -->
+    <string name="backup_ring_subtitle">鍵を Pubky Ring にコピーします。Loopky にもコピーが残り、リカバリーフレーズも引き続き使えます。</string>
+    <string name="backup_ring_open">Pubky Ring を開く</string>
+    <string name="backup_ring_missing">このデバイスには Pubky Ring がインストールされていません。</string>
+    <string name="backup_ring_install">Pubky Ring をインストール</string>
+    <string name="backup_ring_confirm">Pubky Ring に取り込みました</string>
+    <string name="settings_back_up_account">アカウントをバックアップ</string>
+    <string name="backup_nag_title">アカウントをバックアップ</string>
+    <string name="backup_nag_body">鍵はこのデバイスにしかありません。デバイスをなくすと、デッキも一緒に失われます。</string>
+    <string name="backup_nag_action">今すぐバックアップ</string>
+    <string name="settings_signout_unbacked_title">サインアウトすると鍵が消去されます</string>
+    <string name="settings_signout_unbacked_body">%1$s の鍵は Loopky にしかなく、まだバックアップされていません。サインアウトすると完全に削除されます。</string>
+    <string name="settings_signout_unbacked_confirm">サインアウトして消去</string>
+    <string name="settings_signout_unbacked_backup">先にバックアップ</string>
+    <string name="unregistered_title">この鍵にはまだアカウントがありません</string>
+    <string name="unregistered_subtitle">鍵は有効です。この鍵で登録されたアカウントがないだけです。</string>
+    <string name="unregistered_pubky_label">提示された鍵：</string>
+    <string name="unregistered_check_phrase">リカバリーフレーズをもう一度確認</string>
+    <string name="unregistered_check_hint">単語が1つ間違っていたり順番が違っていたりしても確認を通過し、別のアカウントが開かれてしまいます。</string>
+    <string name="unregistered_register">この鍵を登録</string>
+    <!-- Says plainly what the button does, because it publishes a record to the DHT. -->
+    <string name="unregistered_register_hint">上の鍵でアカウントを作成して公開します。簡単な認証が必要です。</string>
+    <string name="unregistered_register_confirm_title">この鍵を登録しますか？</string>
+    <string name="unregistered_register_confirm_body">%1$s を公開 ID として公開します。ビットコインなどの暗号資産ウォレットのリカバリーフレーズでは、絶対に行わないでください。</string>
+    <string name="unregistered_register_confirm_yes">登録する</string>
+    <string name="unregistered_register_confirm_cancel">キャンセル</string>
+    <string name="unregistered_ring_title">この鍵は Pubky Ring が保管しています</string>
+    <string name="unregistered_ring_body">この鍵は Pubky Ring が保管しているため、Loopky ではアカウントを作成できません。方法は2つあります。ここで招待コードを取得して Ring の「Edit pubky」シートで使うか、Ring でリカバリーフレーズを表示してここで復元してください。</string>
+    <string name="unregistered_ring_import">リカバリーフレーズで復元</string>
+    <string name="restore_method_file">暗号化されたリカバリーファイル</string>
+    <string name="restore_method_file_detail">recovery.pkarr ファイルとそのパスフレーズ。</string>
+    <string name="restore_file_title">リカバリーファイルを開く</string>
+    <string name="restore_file_subtitle">保存したファイルを選んで、パスフレーズを入力してください。</string>
+    <string name="restore_file_choose">ファイルを選択</string>
+    <string name="restore_file_change">別のファイルを選択</string>
+    <string name="restore_file_passphrase_label">パスフレーズ</string>
+    <string name="restore_file_passphrase_placeholder">設定したパスフレーズ</string>
+    <string name="restore_file_submit">アカウントを復元</string>
+    <string name="restore_error_passphrase_title">ファイルを開けませんでした</string>
+    <string name="restore_error_passphrase_message">パスフレーズと、目的のアカウントのリカバリーファイルかどうかを確認してください。</string>
+    <string name="restore_error_unreadable_title">ファイルを読み込めませんでした</string>
+    <string name="restore_error_unreadable_message">Loopky は選択されたファイルを開けませんでした。もう一度選び直してください。</string>
+    <string name="restore_error_invalid_title">有効なリカバリーフレーズではありません</string>
+    <string name="restore_error_invalid_message">12個の単語のつづりと順番がすべて正しいか確認してください。</string>
+    <!-- Never "invalid": the phrase is valid, it just is not this account\'s. Showing the pubky is
+         the fastest diagnosis available and the only one the user can make. -->
+    <string name="restore_error_no_account_title">このフレーズに一致するアカウントはありません</string>
+    <string name="restore_error_no_account_message">このフレーズは有効ですが、アカウントが作成されていません。単語のつづりや順番の間違いがないか確認してください。ビットコインなどの暗号資産ウォレットのフレーズはここでは使えません。</string>
+    <string name="restore_error_no_account_pubky">このフレーズで開く pubky：</string>
+    <string name="restore_retry">もう一度</string>
+    <!-- The pkarr/DHT lookup that decides whether a pubky has an account did not answer.
+         Never a verdict on what was looked up: it must always read as "we don't know yet". -->
+    <string name="error_lookup_failed_title">確認できませんでした</string>
+    <string name="error_lookup_failed_message">一部のネットワークでは Loopky に必要な接続がブロックされます。もう一度試すか、Wi-Fi とモバイルデータを切り替えてください。</string>
+    <string name="error_generic_title">問題が発生しました</string>
+    <string name="error_generic_message">問題が発生しました。もう一度お試しください。</string>
+    <string name="home_caught_up_title">すべて完了しました</string>
+    <string name="home_caught_up_next_due">次の復習は%1$s後です。</string>
+    <string name="home_caught_up_no_next_due">まだ予定はありません。どのデッキからでも先取りして学習できます。</string>
+    <string name="share_deck_chooser_title">デッキを共有</string>
+    <string name="share_profile_chooser_title">プロフィールを共有</string>
+    <string name="share_deck_body">Loopky の %1$s\n%2$s</string>
+    <string name="share_profile_body">Loopky の %1$s\n%2$s</string>
+    <string name="deeplink_no_link_in_shared_text">このテキストには Loopky のリンクがありません。pubky:// アドレスを含むメッセージを共有してください。</string>
+    <string name="deck_editor_move_up">カードを上に移動</string>
+    <string name="deck_editor_move_down">カードを下に移動</string>
+    <string name="deck_editor_move_to">指定の位置に移動</string>
+    <string name="deck_editor_move_to_title">カードを移動</string>
+    <string name="deck_editor_move_to_label">位置（1〜%1$d）</string>
+    <string name="deck_editor_move_to_confirm">移動</string>
+    <string name="deck_editor_move_to_cancel">キャンセル</string>
+    <string name="deck_editor_card_position">カード %1$d</string>
+    <string name="deck_editor_loading_cards">さらにカードを読み込み中…</string>
+    <string name="edit_card_title_new">新しいカード</string>
+    <string name="decks_sort_recent">最近</string>
+    <string name="decks_sort_alphabetical">A〜Z</string>
+    <string name="decks_sort_cards">カードが多い順</string>
+    <string name="decks_search_placeholder">デッキを検索</string>
+    <string name="decks_search_no_results">「%1$s」に一致するデッキはありません。</string>
+    <string name="paste_separator_sheet_title">カードの区切り</string>
+    <string name="form_title_required">公開するにはデッキにタイトルを付けてください。</string>
+    <string name="form_title_too_long">タイトルは120文字以内にしてください。</string>
+    <string name="form_description_too_long">説明は500文字以内にしてください。</string>
+    <string name="form_card_side_required">この面にテキストか画像を追加してください。</string>
+    <string name="form_card_text_too_long">カードのテキストは2000文字以内にしてください。</string>
+    <string name="paste_validation_empty">先にリストを貼り付けるか入力してください。</string>
+    <string name="paste_validation_no_cards">カードがまだ見つかりません。区切り文字を確認するか、表面と裏面を追加してください。</string>
+    <string name="permission_mic_title">発音を練習しましょう</string>
+    <string name="permission_mic_rationale">「話す」は単語を言っている間だけ聞き取り、どれくらい近かったかをお知らせします。音声がデバイスの外に送られることはありません。</string>
+    <string name="permission_mic_denied_title">マイクがオフです</string>
+    <string name="permission_mic_denied_message">「話す」にはマイクへのアクセスが必要ですが、Android はもう確認を表示しません。設定でオンにできます。</string>
+    <string name="permission_continue">続ける</string>
+    <string name="permission_not_now">今はしない</string>
+    <string name="permission_open_settings">設定を開く</string>
+    <string name="triage_undo">最後のカードを元に戻す</string>
+
+    <!-- Bulk file import -->
+    <string name="bulk_title">ファイルをインポート</string>
+    <string name="bulk_cancel">キャンセル</string>
+    <string name="bulk_pick_file">ファイルを選択</string>
+    <string name="bulk_idle_title">デッキを持ち込もう</string>
+    <string name="bulk_idle_subtitle">Anki から、またはお手持ちの2列のリストからインポートできます。</string>
+    <string name="bulk_formats_label">対応形式</string>
+    <string name="bulk_format_apkg_ext">.apkg</string>
+    <string name="bulk_format_apkg_title">Anki デッキのエクスポート</string>
+    <string name="bulk_format_apkg_detail">カード、デッキ名、画像が取り込まれます。音声は取り込まれないため、音声付きのカードはテキストとしてインポートされます。</string>
+    <string name="bulk_format_text_ext">.txt · .csv</string>
+    <string name="bulk_format_text_title">プレーンテキストのエクスポート</string>
+    <string name="bulk_format_text_detail">Anki で「ファイル」→「エクスポート」→「プレーンテキストのノート」を選びます。タブ区切りやカンマ区切りのリストでもインポートできます。</string>
+    <string name="bulk_idle_limit">%1$d MB までのファイル</string>
+    <string name="bulk_cli_title">🤖 エージェントに作ってもらう</string>
+    <string name="bulk_cli_body">Loopky にはターミナル用のクライアントがあります。プロンプトをコピーしてコーディングエージェントに貼り付ければ、アカウントにデッキが届きます。</string>
+    <string name="bulk_cli_copy">プロンプトをコピー</string>
+    <string name="bulk_cli_copied">コピーしました</string>
+    <string name="bulk_cli_prompt">loopky CLI をインストールして、それを使ってフラッシュカードのデッキを作ってください。\n\n1. 何よりも先に、スマートフォンに Pubky Ring をインストールし、Loopky のリカバリーフレーズをそこに保存するよう私に伝えてください。私の鍵はそこにあり、CLI は Ring に許可を求めてサインインします。\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login（QR コードが表示されるので、私が Pubky Ring でスキャンします）\n4. loopky commands --json でコマンドの全体像を確認してください\n5. デッキのテーマを私に尋ね、カードを自分で TSV ファイルに書いてから、次のコマンドで公開してください：loopky deck create --title \"My deck\" --from-file cards.tsv</string>
+    <string name="bulk_reading">ファイルを読み込んでいます…</string>
+    <string name="bulk_parsing">%1$s を読み込んでいます…</string>
+    <string name="bulk_summary_heading">インポートの準備ができました</string>
+    <string name="bulk_detected_separator">区切り文字：%1$s</string>
+    <string name="bulk_fields">フィールド：%1$s → %2$s</string>
+    <string name="bulk_fields_changeable">フィールド：%1$s → %2$s · タップして変更</string>
+    <string name="bulk_fields_unnamed">フィールド %1$d</string>
+    <string name="bulk_fields_sheet_front">表面にするフィールドは？</string>
+    <string name="bulk_fields_sheet_back">裏面にするフィールドは？</string>
+    <string name="bulk_fields_sheet_hint">Anki のデッキは ID や順位のフィールドから始まることがよくあります。学習したい2つを選んでください。</string>
+    <string name="bulk_fields_sheet_step">ステップ %1$d / 2</string>
+    <string name="bulk_fields_sheet_cancel">キャンセル</string>
+    <string name="bulk_sample_label">サンプル</string>
+    <string name="bulk_import_button">%1$s をインポート</string>
+    <string name="bulk_pick_another">別のファイルを選択</string>
+
+    <!-- Failure modes, kept distinct: picking the wrong file used to surface a parser message. -->
+    <string name="bulk_error_unreadable_title">ファイルを開けませんでした</string>
+    <string name="bulk_error_unreadable_message">Loopky はこのファイルを読み込めませんでした。もう一度選ぶか、先に別の場所にコピーしてください。</string>
+    <string name="bulk_error_too_large_title">ファイルが大きすぎます</string>
+    <string name="bulk_error_too_large_message">Loopky がインポートできるのは %1$d MB までのファイルです。これは AnkiWeb のどのデッキよりも大きいので、Anki のエクスポートではない可能性があります。</string>
+    <string name="bulk_error_not_text_title">テキストファイルではありません</string>
+    <string name="bulk_error_not_text_message">Anki の .apkg か、プレーンテキストでエクスポートしたデッキを選んでください。写真や PDF はカードにできません。</string>
+    <string name="bulk_error_unsupported_apkg_title">この .apkg は開けません</string>
+    <string name="bulk_error_unsupported_apkg_message">新しい Anki のデッキは、Loopky がまだ読み込めない形式を使っています。Anki でデッキを「プレーンテキストのノート」としてエクスポートしてください。</string>
+    <string name="bulk_error_legacy_stub_title">このデッキには新しい Anki が必要です</string>
+    <string name="bulk_error_legacy_stub_message">このファイルには Anki の互換性用プレースホルダーしか入っていません。Anki 2.1.50 以降でデッキをエクスポートし直してください。</string>
+    <string name="bulk_error_no_cards_title">ファイルにカードがありません</string>
+    <string name="bulk_error_no_cards_message">Loopky はファイルを読み込みましたが、カードになるものが見つかりませんでした。各行に表面と裏面が必要です。</string>
+    <string name="bulk_error_unknown_title">インポートに失敗しました</string>
+    <string name="bulk_error_unknown_message">ファイルの読み込み中に問題が発生しました。別のファイルを試してください。</string>
+    <string name="bulk_sample_picture">画像</string>
+    <string name="bulk_skipped">%1$d 件をスキップ（表面または裏面がありません）</string>
+    <string name="deck_incomplete_warning">このデッキはアップロードが完了しなかったため、一部のカードが欠けています。もう一度インポートして完成させるか、削除してください。</string>
+    <!-- Add-tag sheet, shared by the publish flow and the deck editor -->
+    <string name="tag_sheet_title">タグを追加</string>
+    <string name="tag_sheet_input_placeholder">タグを入力…</string>
+    <string name="tag_sheet_suggested_label">おすすめ</string>
+    <string name="tag_sheet_current_label">現在のタグ</string>
+    <string name="tag_sheet_add_button">タグを追加</string>
+
+    <!-- Browsing without an account (#150). -->
+    <string name="guest_banner_title">見て回っているところ</string>
+    <string name="guest_banner_body">デッキを保存して、進捗を記録しましょう。</string>
+    <string name="guest_banner_cta">はじめる</string>
+
+    <string name="sign_in_prompt_cta">アカウント作成またはサインイン</string>
+    <string name="sign_in_prompt_dismiss">今はしない</string>
+    <string name="sign_in_prompt_follow_deck_title">このデッキを保存</string>
+    <string name="sign_in_prompt_follow_deck_body">フォローするとデッキがライブラリに保存され、常に最新の状態に保たれ、学習の記録も残ります。アカウントが必要ですが、メールは不要です。</string>
+    <string name="sign_in_prompt_clone_deck_title">自分のものにする</string>
+    <string name="sign_in_prompt_clone_deck_body">コピーは自分専用の複製です。自分の鍵で公開され、自由に編集できます。アカウントが必要ですが、メールは不要です。</string>
+    <string name="sign_in_prompt_follow_person_title">ユーザーをフォロー</string>
+    <string name="sign_in_prompt_follow_person_body">フォローすると、その人が公開したデッキが「見つける」に表示されます。アカウントが必要ですが、メールは不要です。</string>
+
+    <!-- Previewing a deck nobody has kept. -->
+    <string name="deck_detail_try_cards">カードを試す</string>
+    <string name="study_preview_badge">プレビュー · 進捗は保存されません</string>
+    <string name="study_preview_next">次のカード</string>
+    <string name="study_preview_complete_title">プレビューはここまでです 👋</string>
+    <string name="study_preview_guest_detail">アカウントを作成すると、このデッキは正解したカードを覚えていて、忘れかけたころにもう一度出題します。</string>
+    <string name="study_preview_member_detail">進捗を保存するには、このデッキをフォローするかコピーしてください。</string>
+    <string name="study_preview_action_guest">アカウントを作成</string>
+    <string name="study_preview_back">デッキに戻る</string>
+
+    <!-- App language -->
+    <string name="settings_section_language">言語</string>
+    <string name="settings_language_label">アプリの言語</string>
+    <string name="settings_language_system">システムのデフォルト</string>
+    <string name="settings_language_description_system">Android がほかのアプリ別の言語設定と一緒に管理します。</string>
+    <string name="settings_language_description_app">Loopky にのみ適用されます。デバイスの言語は変わりません。</string>
+
+    <!-- Appearance -->
+    <string name="settings_section_appearance">外観</string>
+    <string name="settings_theme_label">テーマ</string>
+    <string name="settings_theme_description">このデバイスの Loopky にのみ適用されます。「自動」では %1$s から %2$s までダークになります。</string>
+    <string name="settings_theme_system">システム</string>
+    <string name="settings_theme_auto">自動</string>
+    <string name="settings_theme_light">ライト</string>
+    <string name="settings_theme_dark">ダーク</string>
+
+    <!-- The four SRS grades, as the study screen's buttons. -->
+    <string name="srs_grade_again">もう一度</string>
+    <string name="srs_grade_hard">難しい</string>
+    <string name="srs_grade_good">正解</string>
+    <string name="srs_grade_easy">簡単</string>
+</resources>

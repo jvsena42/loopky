@@ -3706,3 +3706,38 @@ catalog's own "in" had been rendering "Next review in in 3 days" in English and 
 iOS. The catalog additions, `knownRegions` and the `home_caught_up_next_due` fix were made on Linux,
 where there is no simulator. `-AppleLanguages "(es)"` (etc.) on the next Mac run is the check. The
 tablet was not re-run, because no layout changed.
+
+## Vietnamese, Japanese, Korean and Chinese — 2026-09-18, `Medium_Phone` (staging)
+
+Android on `emulator-5554`, signed in as `pk:kfezy1…ccpqf4y`. As with the de/es/fr/it run, this
+touches every screen's copy rather than one flow, so it was checked on the screens the journeys pass
+through. The app locale was set with `cmd locale set-app-locales`.
+
+| Step | Result |
+| --- | --- |
+| Home, ja | ✅ PASS — "今日の復習 · 枚 / 復習待ち", "今日の新規カード 0 / 1 枚", "11 枚", tabs "今日 / デッキ / 見つける / プロフィール" |
+| Home, `zh-TW` (a bare region tag) | ✅ PASS — resolves to `values-b+zh+Hant`: "今日待複習", "11 張卡片", "開始學習", tabs "今天 / 牌組 / 探索 / 個人檔案" |
+| Settings → Language, under `zh-TW` | ✅ PASS — the dropdown shows 中文 (繁體中文) as selected, so `AppLocale.match` inferred the script, then lists Deutsch … Português (Brasil), Tiếng Việt, 日本語, 한국어, 中文 (简体中文), 中文 (繁體中文) |
+| Pick 中文 (简体中文) in the dropdown | ✅ PASS — `cmd locale get-app-locales` → `[zh-Hans]`, Settings recomposed as "设置 · 身份 · 分享 · 外观 · 语言" |
+| Home, ko | ✅ PASS — "오늘 복습 · 카드 / 복습 대기", "카드 11장", "학습 시작" |
+| Home, vi | ✅ PASS — "CẦN ÔN HÔM NAY", "0/1 thẻ mới hôm nay", "11 thẻ", "Bắt đầu học" |
+| Study, ja | ❌→✅ — "もう一度" clipped to "もう一" on the Again button; fixed by narrowing the button's side padding (see below), after which all four grades fit at full size |
+| `assembleDebug`, `detektAll`, `checkStringPlurals` | ✅ PASS |
+
+### Worth knowing
+
+**Four CJK characters did not fit a grade button.** Material's 24dp side padding left the label about
+42dp, less than four characters need even at the 11sp autosize floor. The padding is now 6dp.
+
+**Chinese is two translations keyed by script.** `values-b+zh+Hans`/`-Hant` rather than
+`zh-rCN`/`zh-rTW`, so zh-HK, zh-MO and zh-SG land on the right one through the platform's own
+likely-subtag matching.
+
+**The grade intervals ("<10m", "1d") are still English**, now in eleven languages.
+
+### Not verified here
+
+iOS. The catalog additions and `knownRegions` were made on Linux, where there is no simulator; running
+with `-AppleLanguages "(ja)"` (and `zh-Hant`) on the next Mac run is the check. That check should include
+the study grade row, since the iOS buttons may clip "もう一度" the way Android's did. The tablet was not
+re-run, because no layout changed apart from the grade buttons' padding.

@@ -528,10 +528,11 @@ The same rules apply to Swift.
 
 ### Strings (all languages)
 
-**Loopky ships in English, Brazilian Portuguese, German, Spanish, French and Italian, and a new
-string is not done until every language has it.** On Android that is `values/strings.xml` plus
-`values-{pt-rBR,de,es,fr,it}/strings.xml` (and `plurals.xml`); on iOS it is all six localizations
-of the key in `iosApp/iosApp/Localizable.xcstrings`. A missing translation does not fail any build,
+**Loopky ships in English, Brazilian Portuguese, German, Spanish, French, Italian, Vietnamese,
+Japanese, Korean and Simplified and Traditional Chinese, and a new string is not done until every
+language has it.** On Android that is `values/strings.xml` plus
+`values-{pt-rBR,de,es,fr,it,vi,ja,ko,b+zh+Hans,b+zh+Hant}/strings.xml` (and `plurals.xml`); on iOS
+it is all eleven localizations of the key in `iosApp/iosApp/Localizable.xcstrings`. A missing translation does not fail any build,
 any lint or any test — it falls back to English at render time, so a half-translated screen looks
 perfectly healthy from a green CI run and only a device set to that language ever shows it. Adding
 a language means `AppLocale.SUPPORTED`, `res/xml/locales_config.xml` and the Xcode project's
@@ -540,7 +541,12 @@ a language means `AppLocale.SUPPORTED`, `res/xml/locales_config.xml` and the Xco
 **The slogan is never translated.** `brand_tagline` ("Learn anything, remember everything.") is
 `translatable="false"` on Android and `shouldTranslate: false` in the catalog — it is the brand
 line, not copy. es, fr and it take CLDR `many` besides `one`/`other`, so their plurals carry all
-three.
+three; vi, ja, ko and zh have only `other`, so theirs carry one.
+
+**Chinese is two translations keyed by script, not by region.** `values-b+zh+Hans`/`-Hant` and the
+catalog's `zh-Hans`/`zh-Hant` are what a `zh-CN` or `zh-TW`/`zh-HK` device resolves to on both
+platforms, and `AppLocale.match` infers the script for a bare region tag — matching on the language
+subtag alone would hand Taiwan the Simplified translation.
 
 Two things that go with it. Never hardcode a user-facing string in a Composable or a SwiftUI
 view; and a string ported between platforms needs its format specifiers converted (`%1$s` →
