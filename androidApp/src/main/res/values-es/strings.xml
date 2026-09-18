@@ -514,8 +514,12 @@
     <string name="signup_phone_title">Verifica tu teléfono.</string>
     <string name="signup_phone_subtitle">Te enviaremos un código de verificación por SMS.</string>
     <string name="signup_phone_label">Número de teléfono</string>
-    <string name="signup_phone_placeholder">+316XXXXXXXX</string>
-    <string name="signup_phone_hint">Incluye el código de país (por ejemplo, +1 para Estados Unidos).</string>
+    <string name="signup_phone_hint">Elige tu país y escribe tu número.</string>
+    <string name="signup_phone_country_empty">No se encontró ningún país</string>
+    <string name="signup_phone_country_search">Buscar país</string>
+    <string name="signup_phone_country_button">País: %1$s, %2$s</string>
+    <string name="signup_phone_country">País</string>
+    <string name="signup_phone_sending_to">Enviaremos el SMS a %1$s.</string>
     <string name="signup_phone_send">Enviar código</string>
     <string name="signup_code_title">Escribe el código.</string>
     <string name="signup_code_subtitle">Enviamos un código de 6 dígitos a %1$s.</string>

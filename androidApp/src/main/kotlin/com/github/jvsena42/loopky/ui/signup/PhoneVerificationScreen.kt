@@ -12,7 +12,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -21,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jvsena42.loopky.R
+import com.github.jvsena42.loopky.presentation.signup.DialingCountry
 import com.github.jvsena42.loopky.presentation.signup.PhoneVerificationEffect
 import com.github.jvsena42.loopky.presentation.signup.PhoneVerificationPhase
 import com.github.jvsena42.loopky.presentation.signup.PhoneVerificationUiState
@@ -50,6 +54,7 @@ fun PhoneVerificationRoute(onBack: () -> Unit, onDone: () -> Unit) {
         // both phases share one ViewModel.
         onBack = { if (state.phase == PhoneVerificationPhase.CodeEntry) viewModel.onBackToNumber() else onBack() },
         onPhoneChange = viewModel::onPhoneNumberChange,
+        onCountrySelected = viewModel::onCountrySelected,
         onCodeChange = viewModel::onCodeChange,
         onSendCode = viewModel::onSendCodeClick,
         onVerify = viewModel::onVerifyClick,
@@ -61,6 +66,7 @@ private fun PhoneVerificationScreen(
     state: PhoneVerificationUiState,
     onBack: () -> Unit,
     onPhoneChange: (String) -> Unit,
+    onCountrySelected: (DialingCountry) -> Unit,
     onCodeChange: (String) -> Unit,
     onSendCode: () -> Unit,
     onVerify: () -> Unit,
@@ -69,7 +75,7 @@ private fun PhoneVerificationScreen(
     SignupScaffold(
         title = stringResource(if (isCodePhase) R.string.signup_code_title else R.string.signup_phone_title),
         subtitle = if (isCodePhase) {
-            stringResource(R.string.signup_code_subtitle, state.phoneNumber)
+            stringResource(R.string.signup_code_subtitle, state.displayNumber)
         } else {
             stringResource(R.string.signup_phone_subtitle)
         },
@@ -81,7 +87,12 @@ private fun PhoneVerificationScreen(
         if (isCodePhase) {
             CodeEntry(state = state, onCodeChange = onCodeChange, onVerify = onVerify, onResend = onSendCode)
         } else {
-            NumberEntry(state = state, onPhoneChange = onPhoneChange, onSendCode = onSendCode)
+            NumberEntry(
+                state = state,
+                onPhoneChange = onPhoneChange,
+                onCountrySelected = onCountrySelected,
+                onSendCode = onSendCode,
+            )
         }
     }
 }
@@ -90,29 +101,51 @@ private fun PhoneVerificationScreen(
 private fun NumberEntry(
     state: PhoneVerificationUiState,
     onPhoneChange: (String) -> Unit,
+    onCountrySelected: (DialingCountry) -> Unit,
     onSendCode: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
+    var isPickingCountry by rememberSaveable { mutableStateOf(false) }
     FieldLabel(stringResource(R.string.signup_phone_label))
     SignupTextField(
         value = state.phoneNumber,
         onValueChange = onPhoneChange,
-        isError = state.error != null || state.showMissingPlusHint,
+        isError = state.error != null,
         keyboardType = KeyboardType.Phone,
-        placeholder = stringResource(R.string.signup_phone_placeholder),
         testTag = "signup_phone_input",
+        leading = {
+            CountryCodeButton(
+                country = state.country,
+                enabled = !state.isWorking,
+                onClick = { isPickingCountry = true },
+                modifier = Modifier.testTag("signup_phone_country"),
+            )
+        },
     )
     Spacer(Modifier.height(8.dp))
-    // The same hint, in `danger` once the `+` is definitely missing. Recolouring rather than
-    // adding a second line keeps one place to look; keyed on the missing `+` rather than on
-    // validity, because "too short" is true of every number halfway through being typed.
+    // Once the number is complete, read it back in full: the trunk `0` it may have dropped and the
+    // calling code it added are both invisible in the field, and an SMS attempt is scarce.
     Text(
-        text = stringResource(R.string.signup_phone_hint),
-        color = if (state.showMissingPlusHint) colors.danger else colors.foregroundMuted,
+        text = if (state.canSendCode) {
+            stringResource(R.string.signup_phone_sending_to, state.displayNumber)
+        } else {
+            stringResource(R.string.signup_phone_hint)
+        },
+        color = colors.foregroundMuted,
         fontSize = 12.sp,
         lineHeight = 16.sp,
         modifier = Modifier.testTag("signup_phone_hint"),
     )
+    if (isPickingCountry) {
+        CountryPickerSheet(
+            selected = state.country,
+            onSelect = {
+                onCountrySelected(it)
+                isPickingCountry = false
+            },
+            onDismiss = { isPickingCountry = false },
+        )
+    }
     Spacer(Modifier.height(24.dp))
     // Withheld on a terminal limit: offering "send" would invite the user to spend attempts they
     // no longer have.
@@ -141,7 +174,6 @@ private fun CodeEntry(
         onValueChange = onCodeChange,
         isError = state.error != null,
         keyboardType = KeyboardType.NumberPassword,
-        placeholder = null,
         testTag = "signup_code_input",
     )
     Spacer(Modifier.height(24.dp))
@@ -184,15 +216,15 @@ private fun SignupTextField(
     onValueChange: (String) -> Unit,
     isError: Boolean,
     keyboardType: KeyboardType,
-    placeholder: String?,
     testTag: String,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val colors = LoopkyTheme.colors
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth().testTag(testTag),
-        placeholder = placeholder?.let { { Text(text = it, color = colors.foregroundMuted) } },
+        leadingIcon = leading,
         singleLine = true,
         isError = isError,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, autoCorrectEnabled = false),

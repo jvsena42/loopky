@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jvsena42.loopky.data.repository.SignupRepository
 import com.github.jvsena42.loopky.util.Log
+import com.github.jvsena42.loopky.util.deviceRegionCode
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -25,8 +26,11 @@ import kotlinx.coroutines.launch
  */
 class PhoneVerificationViewModel(
     private val signupRepository: SignupRepository,
+    regionCode: String? = deviceRegionCode(),
 ) : ViewModel() {
-    private val _state = MutableStateFlow(PhoneVerificationUiState())
+    private val _state = MutableStateFlow(
+        PhoneVerificationUiState(country = DialingCountries.forRegion(regionCode) ?: DialingCountries.fallback),
+    )
     val state: StateFlow<PhoneVerificationUiState> = _state.asStateFlow()
 
     private val _effects = MutableSharedFlow<PhoneVerificationEffect>(extraBufferCapacity = 4)
@@ -40,7 +44,7 @@ class PhoneVerificationViewModel(
             val resumed = runSuspendCatching { signupRepository.resumableSmsPhoneNumber() }.getOrNull()
             if (resumed != null) {
                 _state.update {
-                    it.copy(phase = PhoneVerificationPhase.CodeEntry, phoneNumber = resumed)
+                    it.withNumber(resumed).copy(phase = PhoneVerificationPhase.CodeEntry)
                 }
             }
         }
@@ -50,8 +54,13 @@ class PhoneVerificationViewModel(
     private var verifyJob: Job? = null
     private var cooldownJob: Job? = null
 
+    /** A number typed or pasted with its `+` moves the picker to that country and keeps the rest. */
     fun onPhoneNumberChange(value: String) {
-        _state.update { it.copy(phoneNumber = value, error = null) }
+        _state.update { it.withNumber(value).copy(error = null) }
+    }
+
+    fun onCountrySelected(country: DialingCountry) {
+        _state.update { it.copy(country = country, error = null) }
     }
 
     fun onCodeChange(value: String) {
@@ -62,7 +71,7 @@ class PhoneVerificationViewModel(
         if (sendJob?.isActive == true) return
         sendJob = viewModelScope.launch {
             _state.update { it.copy(isWorking = true, error = null) }
-            signupRepository.sendSmsCode(_state.value.normalizedPhoneNumber)
+            signupRepository.sendSmsCode(_state.value.internationalNumber)
                 .onSuccess {
                     _state.update { it.copy(isWorking = false, phase = PhoneVerificationPhase.CodeEntry) }
                     startCooldown()
@@ -84,7 +93,7 @@ class PhoneVerificationViewModel(
         verifyJob = viewModelScope.launch {
             val current = _state.value
             _state.update { it.copy(isWorking = true, error = null) }
-            signupRepository.redeemSmsCode(current.normalizedPhoneNumber, current.code)
+            signupRepository.redeemSmsCode(current.internationalNumber, current.code)
                 .onSuccess {
                     _state.update { it.copy(isWorking = false) }
                     _effects.emit(PhoneVerificationEffect.NavigateToHandoff)
@@ -118,16 +127,27 @@ class PhoneVerificationViewModel(
 
 enum class PhoneVerificationPhase { NumberEntry, CodeEntry }
 
+/**
+ * [phoneNumber] is the national part exactly as typed; [country] supplies the calling code. The
+ * two are only joined in [internationalNumber], so the field never shows digits the user did not
+ * type.
+ */
 data class PhoneVerificationUiState(
     val phase: PhoneVerificationPhase = PhoneVerificationPhase.NumberEntry,
+    val country: DialingCountry = DialingCountries.fallback,
     val phoneNumber: String = "",
     val code: String = "",
     val isWorking: Boolean = false,
     val resendCooldownSeconds: Int = 0,
     val error: SignupError? = null,
 ) {
-    /** What actually goes on the wire: separators stripped, so a pasted number is not rejected. */
-    val normalizedPhoneNumber: String get() = PhoneNumberInput.normalize(phoneNumber)
+    private val nationalPart: String get() = DialingCountries.nationalPart(country, phoneNumber)
+
+    /** What goes on the wire: E.164, separators and a trunk `0` stripped. */
+    val internationalNumber: String get() = country.prefix + nationalPart
+
+    /** [internationalNumber] with a space after the calling code, for showing back to the user. */
+    val displayNumber: String get() = "${country.prefix} $nationalPart"
 
     /**
      * A well-formed E.164 number, not merely a non-empty field.
@@ -136,10 +156,7 @@ data class PhoneVerificationUiState(
      * gets per week — and [isTerminal] then removes the send button, so the mistake is not
      * retryable. See [PhoneNumberInput].
      */
-    val canSendCode: Boolean get() = PhoneNumberInput.isValid(phoneNumber) && !isWorking
-
-    /** Say the `+` is missing, but only once it is unambiguously missing rather than unfinished. */
-    val showMissingPlusHint: Boolean get() = PhoneNumberInput.isMissingPlus(phoneNumber)
+    val canSendCode: Boolean get() = PhoneNumberInput.isValid(internationalNumber) && !isWorking
     val canVerify: Boolean get() = code.isNotBlank() && !isWorking
     val canResend: Boolean get() = resendCooldownSeconds == 0 && !isWorking
 
@@ -151,6 +168,13 @@ data class PhoneVerificationUiState(
         get() = error == SignupError.RateLimitedWeekly ||
             error == SignupError.RateLimitedYearly ||
             error == SignupError.PhoneBlocked
+}
+
+private fun PhoneVerificationUiState.withNumber(value: String): PhoneVerificationUiState {
+    val normalized = PhoneNumberInput.normalize(value)
+    if (!normalized.startsWith("+")) return copy(phoneNumber = value)
+    val (country, national) = DialingCountries.splitInternational(normalized, country) ?: return copy(phoneNumber = value)
+    return copy(country = country, phoneNumber = national)
 }
 
 sealed interface PhoneVerificationEffect {

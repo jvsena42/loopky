@@ -13,6 +13,7 @@ struct PhoneVerificationScreen: View {
     @State private var effectSink: FlowEffectSink?
     @State private var phoneNumber = ""
     @State private var code = ""
+    @State private var isPickingCountry = false
 
     private var isCodeEntry: Bool {
         uiState?.phase == PhoneVerificationPhase.codeentry
@@ -30,6 +31,11 @@ struct PhoneVerificationScreen: View {
         ) {
             if isCodeEntry { codeEntry } else { numberEntry }
         }
+        .sheet(isPresented: $isPickingCountry) {
+            if let uiState {
+                CountryPickerSheet(selected: uiState.country) { viewModel?.onCountrySelected(country: $0) }
+            }
+        }
         .onAppear { attach() }
         .onDisappear { detach() }
     }
@@ -37,7 +43,7 @@ struct PhoneVerificationScreen: View {
     private var subtitle: String {
         isCodeEntry
             ? String(format: NSLocalizedString("signup_code_subtitle", comment: ""),
-                     uiState?.phoneNumber ?? "")
+                     uiState?.displayNumber ?? "")
             : NSLocalizedString("signup_phone_subtitle", comment: "")
     }
 
@@ -45,26 +51,36 @@ struct PhoneVerificationScreen: View {
         VStack(alignment: .leading, spacing: 0) {
             FieldLabel(text: "signup_phone_label")
             Spacer().frame(height: 8)
-            SignupTextField(
-                text: $phoneNumber,
-                placeholder: "signup_phone_placeholder",
-                isEnabled: !(uiState?.isWorking ?? false),
-                isError: uiState?.error != nil || showMissingPlusHint,
-                keyboard: .phonePad
-            )
-            .onChange(of: phoneNumber) { _, value in
-                viewModel?.onPhoneNumberChange(value: value)
+            HStack(spacing: 8) {
+                CountryCodeButton(
+                    country: uiState?.country ?? DialingCountries.shared.fallback,
+                    isEnabled: !(uiState?.isWorking ?? false),
+                    action: { isPickingCountry = true }
+                )
+                .accessibilityIdentifier("signup_phone_country")
+
+                SignupTextField(
+                    text: $phoneNumber,
+                    placeholder: nil,
+                    isEnabled: !(uiState?.isWorking ?? false),
+                    isError: uiState?.error != nil,
+                    keyboard: .phonePad
+                )
+                .textContentType(.telephoneNumber)
+                .onChange(of: phoneNumber) { _, value in
+                    viewModel?.onPhoneNumberChange(value: value)
+                }
+                .accessibilityIdentifier("signup_phone_input")
             }
-            .accessibilityIdentifier("signup_phone_input")
 
             Spacer().frame(height: 8)
-            // The same hint in `danger` once the `+` is definitely missing, matching Android.
-            // Keyed on the missing `+` and not on validity: "too short" is true of every number
-            // halfway through being typed.
-            Text("signup_phone_hint")
+            // Once the number is complete, read it back in full: the trunk `0` it may have dropped
+            // and the calling code it added are both invisible in the field.
+            Text(verbatim: phoneHint)
                 .font(.system(size: 12))
-                .foregroundStyle(showMissingPlusHint ? LoopkyColor.danger : LoopkyColor.foregroundMuted)
+                .foregroundStyle(LoopkyColor.foregroundMuted)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("signup_phone_hint")
 
             // Withheld entirely on a terminal rate limit, not disabled: a button that cannot ever
             // work is worse than no button, because it invites tapping.
@@ -119,9 +135,12 @@ struct PhoneVerificationScreen: View {
 
     private var canResend: Bool { uiState?.canResend ?? false }
 
-    /// Both `canSendCode` and this come from the shared ViewModel, so the rule cannot drift
-    /// between the platforms.
-    private var showMissingPlusHint: Bool { uiState?.showMissingPlusHint ?? false }
+    private var phoneHint: String {
+        guard let uiState, uiState.canSendCode else {
+            return NSLocalizedString("signup_phone_hint", comment: "")
+        }
+        return String(format: NSLocalizedString("signup_phone_sending_to", comment: ""), uiState.displayNumber)
+    }
 
     private var resendLabel: String {
         canResend
@@ -138,7 +157,9 @@ struct PhoneVerificationScreen: View {
             guard let state = value as? PhoneVerificationUiState else { return }
             // The VM can restore a number on launch when a code was sent but never entered, so the
             // field follows state rather than only feeding it.
-            if state.phoneNumber != phoneNumber && phoneNumber.isEmpty {
+            // A pasted `+44 …` moves the picker and leaves only the national part, so the field
+            // takes that back too. Only then: the field otherwise owns its own text while typing.
+            if state.phoneNumber != phoneNumber && (phoneNumber.isEmpty || phoneNumber.contains("+")) {
                 phoneNumber = state.phoneNumber
             }
             uiState = state

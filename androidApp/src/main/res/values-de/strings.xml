@@ -514,8 +514,12 @@
     <string name="signup_phone_title">Telefon bestätigen.</string>
     <string name="signup_phone_subtitle">Wir schicken dir einen Bestätigungscode per SMS.</string>
     <string name="signup_phone_label">Telefonnummer</string>
-    <string name="signup_phone_placeholder">+49151XXXXXXXX</string>
-    <string name="signup_phone_hint">Mit Ländervorwahl (zum Beispiel +49 für Deutschland).</string>
+    <string name="signup_phone_hint">Wähle dein Land und gib dann deine Nummer ein.</string>
+    <string name="signup_phone_country_empty">Kein passendes Land</string>
+    <string name="signup_phone_country_search">Land suchen</string>
+    <string name="signup_phone_country_button">Land: %1$s, %2$s</string>
+    <string name="signup_phone_country">Land</string>
+    <string name="signup_phone_sending_to">Wir schicken die SMS an %1$s.</string>
     <string name="signup_phone_send">Code senden</string>
     <string name="signup_code_title">Gib den Code ein.</string>
     <string name="signup_code_subtitle">Wir haben einen 6-stelligen Code an %1$s geschickt.</string>

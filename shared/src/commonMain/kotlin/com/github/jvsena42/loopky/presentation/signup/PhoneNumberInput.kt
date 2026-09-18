@@ -34,18 +34,6 @@ object PhoneNumberInput {
      */
     fun isValid(raw: String): Boolean = E164.matches(normalize(raw))
 
-    /**
-     * Whether to say the `+` is missing yet.
-     *
-     * Only for an entry that has digits and no `+` — an unambiguous mistake that will not fix
-     * itself by typing more. Length is not used, because "too short" is true of every number
-     * halfway through being typed and a field that scolds you from the first digit is noise.
-     */
-    fun isMissingPlus(raw: String): Boolean {
-        val normalized = normalize(raw)
-        return normalized.isNotEmpty() && !normalized.startsWith("+")
-    }
-
     private val SEPARATORS = setOf(' ', '-', '.', '(', ')', ' ', '–', '—')
     private val E164 = Regex("""^\+[1-9]\d{7,14}$""")
 }

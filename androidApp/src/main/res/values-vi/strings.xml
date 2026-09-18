@@ -541,8 +541,12 @@
     <string name="signup_phone_title">Xác minh số điện thoại.</string>
     <string name="signup_phone_subtitle">Chúng tôi sẽ nhắn cho bạn một mã xác minh.</string>
     <string name="signup_phone_label">Số điện thoại</string>
-    <string name="signup_phone_placeholder">+849XXXXXXXX</string>
-    <string name="signup_phone_hint">Kèm mã quốc gia (ví dụ +84 cho Việt Nam).</string>
+    <string name="signup_phone_hint">Chọn quốc gia rồi nhập số của bạn.</string>
+    <string name="signup_phone_country_empty">Không tìm thấy quốc gia</string>
+    <string name="signup_phone_country_search">Tìm quốc gia</string>
+    <string name="signup_phone_country_button">Quốc gia: %1$s, %2$s</string>
+    <string name="signup_phone_country">Quốc gia</string>
+    <string name="signup_phone_sending_to">Chúng tôi sẽ nhắn tin đến %1$s.</string>
     <string name="signup_phone_send">Gửi mã</string>
     <string name="signup_code_title">Nhập mã.</string>
     <string name="signup_code_subtitle">Chúng tôi đã gửi mã 6 chữ số đến %1$s.</string>

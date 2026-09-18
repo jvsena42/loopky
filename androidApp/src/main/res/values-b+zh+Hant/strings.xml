@@ -541,8 +541,12 @@
     <string name="signup_phone_title">驗證你的手機。</string>
     <string name="signup_phone_subtitle">我們會傳簡訊驗證碼給你。</string>
     <string name="signup_phone_label">手機號碼</string>
-    <string name="signup_phone_placeholder">+8869XXXXXXXX</string>
-    <string name="signup_phone_hint">請包含國碼（例如台灣是 +886）。</string>
+    <string name="signup_phone_hint">先選擇國家/地區，再輸入號碼。</string>
+    <string name="signup_phone_country_empty">沒有符合的國家/地區</string>
+    <string name="signup_phone_country_search">搜尋國家/地區</string>
+    <string name="signup_phone_country_button">國家/地區：%1$s，%2$s</string>
+    <string name="signup_phone_country">國家/地區</string>
+    <string name="signup_phone_sending_to">我們會傳簡訊到 %1$s。</string>
     <string name="signup_phone_send">傳送驗證碼</string>
     <string name="signup_code_title">輸入驗證碼。</string>
     <string name="signup_code_subtitle">我們已將 6 位數驗證碼傳送到 %1$s。</string>
