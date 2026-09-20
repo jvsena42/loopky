@@ -10,14 +10,16 @@
     <action>Clear the search, tap the element with resource-id "decks_search" again to close it</action>
     <action>Tap the element with resource-id "decks_sort" and verify a menu with Recent / A–Z / Most cards appears; choose "A–Z" and verify the grid reorders</action>
     <action>Open any deck and tap the element with resource-id "deck_share"</action>
-    <action>Verify the Android share sheet opens (it previously did nothing at all)</action>
-    <action>Dismiss the share sheet, tap the element with resource-id "deck_edit"</action>
+    <action>Verify the in-app sheet (resource-id: share_link_sheet) opens showing the deck title, a QR code and the deck's pubky:// link truncated in the middle</action>
+    <action>Tap the element with resource-id "share_link_copy" and verify the button reads "Link copied"</action>
+    <action>Tap the element with resource-id "share_link_send" and verify the Android chooser opens with the QR code as a thumbnail beside the link text</action>
+    <action>Dismiss the chooser, tap the element with resource-id "deck_edit"</action>
     <action>Tap the deck cover (resource-id: deck_editor_cover) and verify the image picker sheet opens — a cover could previously only be set while publishing</action>
     <action>Dismiss the sheet and verify the card rows show move up/down buttons (resource-ids: card_move_up, card_move_down) alongside the drag handle (resource-id: card_drag_handle)</action>
     <action>Tap "card_move_down" on the first card and verify the two cards swap order</action>
     <action>Long-press "card_drag_handle" on the first card and drag it below the second, then release, and verify the two cards swap back</action>
     <action>Tap the element with resource-id "tab_profile" and tap the Share button</action>
-    <action>Verify the Android share sheet opens</action>
+    <action>Verify the same share sheet opens with the profile's QR code, and that "share_link_send" opens the Android chooser with the code attached</action>
     <action>Tap the element with resource-id "profile_signout" and verify a confirmation dialog appears rather than signing out immediately</action>
     <action>Cancel the dialog</action>
   </actions>

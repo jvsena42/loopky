@@ -3769,3 +3769,42 @@ iOS. The catalog additions and `knownRegions` were made on Linux, where there is
 with `-AppleLanguages "(ja)"` (and `zh-Hant`) on the next Mac run is the check. That check should include
 the study grade row, since the iOS buttons may clip "もう一度" the way Android's did. The tablet was not
 re-run, because no layout changed apart from the grade buttons' padding.
+
+---
+
+## 12 — Share a deck or a profile as a QR code (#325) — ✅ PASS (2026-09-20)
+
+Android on `emulator-5554` (Pixel_9, guest) and `emulator-5556` (Pixel_Tablet, signed in as
+`pk:ckm34u…sjx7mo`), iOS on the iPhone 17 simulator (guest), all against staging.
+
+The share buttons used to go straight to the system chooser. They now raise an in-app sheet
+carrying the link as a QR code, and its Share button attaches that code as a PNG.
+
+| Step | Result |
+| --- | --- |
+| Deck detail → `deck_share`, Android phone (dark) | ✅ PASS — sheet shows the deck title, "Scan to open in Loopky", the code and the link |
+| The link when it does not fit | ✅ PASS — elided in the middle (`pubky://rpzu1u4hphjr1fkjxgkcm…s/px6fsekq7i5g/manifest.json`), so both ends stay readable |
+| `share_link_copy` | ✅ PASS — the button reads "Link copied" for two seconds |
+| `share_link_send` | ✅ PASS — chooser opens titled "Sharing image", QR thumbnail beside the named line |
+| The attached PNG | ✅ PASS — pulled from `cache/share/loopky-qr.png` (816², 6 KB) and decoded with zxing: exactly the deck URI, right way up |
+| Friend profile → `friend_profile_share`, guest | ✅ PASS — same sheet with the person's pubky |
+| Own profile → Share, Pixel_Tablet landscape (light, expanded) | ✅ PASS — content capped at `PaneWidth.Focused` and centred, not smeared across the panel |
+| Pixel_Tablet portrait (medium) | ✅ PASS |
+| iOS deck detail → Share | ✅ PASS — sheet fits its content, middle-elided link, "Link copied" on tap |
+| iOS `share_link_send` | ✅ PASS — activity sheet offers Assign to Contact and Print, which only appear when an image is among the items |
+
+### Worth knowing
+
+**The chooser needs `ClipData`, not just `EXTRA_STREAM`.** With the stream extra alone the chooser
+drew no thumbnail, and a receiver that resolves the uri itself would have been refused: the read
+grant rides on the clip. The image is written to `cacheDir/share/`, the one path the new
+`FileProvider` exposes.
+
+**The copy confirmation is on the button, not in a toast.** Android 13 raises its own clipboard
+chip at the bottom of the screen; a toast landed on top of it, so two notices covered the buttons
+that had just moved out of reach.
+
+### Fixed in passing
+
+`DiscoverScreen.swift` did not compile on `main` — `onRetryBrowse` was passed after
+`onGridColumnsChanged`, which `DiscoverView` declares before it. Argument order, nothing else.
