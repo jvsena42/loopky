@@ -36,9 +36,9 @@ struct DiscoverScreen: View {
             onRetryFollowing: { viewModel?.onRetryFollowing() },
             onBrowseEndReached: { viewModel?.onBrowseEndReached() },
             onPeopleEndReached: { viewModel?.onPeopleEndReached() },
-            onGridColumnsChanged: { viewModel?.onGridColumnsChanged(columns: Int32($0)) },
             onRetryBrowse: { viewModel?.onRetryBrowse() },
             onRetryBrowsePage: { viewModel?.onRetryBrowsePage() },
+            onGridColumnsChanged: { viewModel?.onGridColumnsChanged(columns: Int32($0)) },
             isGuest: isGuest,
             onSignIn: onSignIn
         )
