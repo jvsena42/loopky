@@ -779,6 +779,11 @@
     <string name="share_profile_chooser_title">プロフィールを共有</string>
     <string name="share_deck_body">Loopky の %1$s\n%2$s</string>
     <string name="share_profile_body">Loopky の %1$s\n%2$s</string>
+    <string name="share_sheet_hint">スキャンしてLoopkyで開く</string>
+    <string name="share_sheet_copy">リンクをコピー</string>
+    <string name="share_sheet_send">共有…</string>
+    <string name="share_sheet_copied">リンクをコピーしました</string>
+    <string name="share_sheet_qr_content_description">このリンクのQRコード</string>
     <string name="deeplink_no_link_in_shared_text">このテキストには Loopky のリンクがありません。pubky:// アドレスを含むメッセージを共有してください。</string>
     <string name="deck_editor_move_up">カードを上に移動</string>
     <string name="deck_editor_move_down">カードを下に移動</string>

@@ -784,6 +784,11 @@
     <string name="share_profile_chooser_title">Chia sẻ hồ sơ</string>
     <string name="share_deck_body">%1$s trên Loopky\n%2$s</string>
     <string name="share_profile_body">%1$s trên Loopky\n%2$s</string>
+    <string name="share_sheet_hint">Quét để mở trong Loopky</string>
+    <string name="share_sheet_copy">Sao chép liên kết</string>
+    <string name="share_sheet_send">Chia sẻ…</string>
+    <string name="share_sheet_copied">Đã sao chép liên kết</string>
+    <string name="share_sheet_qr_content_description">Mã QR cho liên kết này</string>
     <string name="deeplink_no_link_in_shared_text">Không có liên kết Loopky nào trong văn bản đó. Hãy chia sẻ một tin nhắn chứa địa chỉ pubky://.</string>
     <string name="deck_editor_move_up">Di chuyển thẻ lên</string>
     <string name="deck_editor_move_down">Di chuyển thẻ xuống</string>

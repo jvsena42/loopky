@@ -736,6 +736,11 @@
     <string name="share_profile_chooser_title">프로필 공유</string>
     <string name="share_deck_body">Loopky의 %1$s\n%2$s</string>
     <string name="share_profile_body">Loopky의 %1$s\n%2$s</string>
+    <string name="share_sheet_hint">스캔하여 Loopky에서 열기</string>
+    <string name="share_sheet_copy">링크 복사</string>
+    <string name="share_sheet_send">공유…</string>
+    <string name="share_sheet_copied">링크를 복사했습니다</string>
+    <string name="share_sheet_qr_content_description">이 링크의 QR 코드</string>
     <string name="deeplink_no_link_in_shared_text">이 텍스트에는 Loopky 링크가 없어요. pubky:// 주소가 담긴 메시지를 공유하세요.</string>
     <string name="deck_editor_move_up">카드 위로 이동</string>
     <string name="deck_editor_move_down">카드 아래로 이동</string>
