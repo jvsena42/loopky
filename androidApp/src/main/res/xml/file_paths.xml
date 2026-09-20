@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The one directory Loopky hands out `content://` uris for: the QR image the share sheet
+     attaches. Deliberately a single cache subdirectory rather than `<cache-path path="."/>` —
+     a provider that exports the whole cache exports every deck blob and every scratch file in it. -->
+<paths>
+    <cache-path name="share" path="share/" />
+</paths>

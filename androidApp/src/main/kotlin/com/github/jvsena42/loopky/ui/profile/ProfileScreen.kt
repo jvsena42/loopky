@@ -75,13 +75,14 @@ import com.github.jvsena42.loopky.ui.components.ProfileHero
 import com.github.jvsena42.loopky.ui.components.ProfileStat
 import com.github.jvsena42.loopky.ui.components.ProfileStatsCard
 import com.github.jvsena42.loopky.ui.components.PubkyAppProfileCta
+import com.github.jvsena42.loopky.ui.components.ShareLinkSheetHost
+import com.github.jvsena42.loopky.ui.components.ShareLinkTarget
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.label
 import com.github.jvsena42.loopky.ui.util.openUrl
-import com.github.jvsena42.loopky.ui.util.shareText
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -99,19 +100,22 @@ fun ProfileRoute(
     val clipboard = LocalClipboardManager.current
     val currentSignedOut by rememberUpdatedState(onSignedOut)
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var shareTarget by remember { mutableStateOf<ShareLinkTarget?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
                 ProfileEffect.NavigateToOnboarding -> currentSignedOut()
-                is ProfileEffect.ShareProfile -> context.shareText(
+                is ProfileEffect.ShareProfile -> shareTarget = ShareLinkTarget(
+                    title = effect.identity.label(context),
+                    link = effect.uri,
                     // Named, not a bare key: a recipient sees who it is before tapping.
-                    text = context.getString(
+                    message = context.getString(
                         R.string.share_profile_body,
                         effect.identity.label(context),
                         effect.uri,
                     ),
-                    chooserTitle = context.getString(R.string.share_profile_chooser_title),
+                    chooserTitle = R.string.share_profile_chooser_title,
                 )
                 is ProfileEffect.CopyToClipboard -> clipboard.setText(AnnotatedString(effect.text))
                 is ProfileEffect.OpenUrl -> context.openUrl(effect.url)
@@ -143,6 +147,8 @@ fun ProfileRoute(
         onSaveClick = viewModel::onSaveClick,
         onDismissError = { errorMessage = null },
     )
+
+    ShareLinkSheetHost(target = shareTarget, onDismiss = { shareTarget = null })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

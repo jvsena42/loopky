@@ -29,7 +29,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +63,8 @@ import com.github.jvsena42.loopky.ui.components.ProfileHero
 import com.github.jvsena42.loopky.ui.components.ProfileStat
 import com.github.jvsena42.loopky.ui.components.ProfileStatsCard
 import com.github.jvsena42.loopky.ui.components.PubkyAppIconButton
+import com.github.jvsena42.loopky.ui.components.ShareLinkSheetHost
+import com.github.jvsena42.loopky.ui.components.ShareLinkTarget
 import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
 import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
@@ -68,7 +73,6 @@ import com.github.jvsena42.loopky.ui.layout.deckGridColumns
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.label
 import com.github.jvsena42.loopky.ui.util.openUrl
-import com.github.jvsena42.loopky.ui.util.shareText
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -91,6 +95,7 @@ fun FriendProfileRoute(
     val currentOpenProfile by rememberUpdatedState(onOpenProfile)
     val currentOpenFollows by rememberUpdatedState(onOpenFollows)
     val clipboard = LocalClipboardManager.current
+    var shareTarget by remember { mutableStateOf<ShareLinkTarget?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
@@ -99,14 +104,16 @@ fun FriendProfileRoute(
                 is FriendProfileEffect.OpenDeck -> currentOpenDeck(effect.authorPubky, effect.deckId)
                 is FriendProfileEffect.OpenProfile -> currentOpenProfile(effect.pubky)
                 is FriendProfileEffect.OpenUrl -> context.openUrl(effect.url)
-                is FriendProfileEffect.ShareProfile -> context.shareText(
+                is FriendProfileEffect.ShareProfile -> shareTarget = ShareLinkTarget(
+                    title = effect.identity.label(context),
+                    link = effect.uri,
                     // Named, not a bare key: a recipient sees who it is before tapping.
-                    text = context.getString(
+                    message = context.getString(
                         R.string.share_profile_body,
                         effect.identity.label(context),
                         effect.uri,
                     ),
-                    chooserTitle = context.getString(R.string.share_profile_chooser_title),
+                    chooserTitle = R.string.share_profile_chooser_title,
                 )
             }
         }
@@ -139,6 +146,8 @@ fun FriendProfileRoute(
         onOpenDeck = viewModel::onOpenDeck,
         onOpenAuthor = viewModel::onOpenAuthor,
     )
+
+    ShareLinkSheetHost(target = shareTarget, onDismiss = { shareTarget = null })
 }
 
 @Composable
