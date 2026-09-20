@@ -1,13 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// Identifiable payload for `.sheet(item:)`-driven shares.
-struct ShareItem: Identifiable {
-    let id = UUID()
-    let text: String
-}
-
-/// UIActivityViewController wrapper for effect-driven shares (deck URIs, profile links).
+/// `UIActivityViewController` wrapper — what `ShareLinkSheet`'s Share button presents, with the
+/// link's QR code and the named line beside it.
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
 

@@ -19,7 +19,7 @@ struct ProfileScreen: View {
     @State private var uiState: ProfileUiState?
     @State private var stateSink: FlowEffectSink?
     @State private var effectSink: FlowEffectSink?
-    @State private var shareItem: ShareItem?
+    @State private var shareTarget: ShareLinkTarget?
     @State private var toast: String?
 
     /// Edit-sheet fields are owned here while typing, like every other text input in the app.
@@ -55,7 +55,7 @@ struct ProfileScreen: View {
             onOpenSettings: onOpenSettings,
             onBackUpNow: onBackUpNow
         )
-        .sheet(item: $shareItem) { ShareSheet(items: [$0.text]) }
+        .sheet(item: $shareTarget) { ShareLinkSheet(target: $0) }
         .overlay(alignment: .bottom) {
             if let toast {
                 Text(toast)
@@ -112,7 +112,7 @@ struct ProfileScreen: View {
             case is ProfileEffectNavigateToOnboarding:
                 onSignedOut()
             case let share as ProfileEffectShareProfile:
-                shareItem = ShareItem(text: "\(IdentityData(share.identity).label) on Loopky\n\(share.uri)")
+                shareTarget = ShareLinkTarget(profile: share.identity, uri: share.uri)
             case let copy as ProfileEffectCopyToClipboard:
                 UIPasteboard.general.string = copy.text
                 flash(NSLocalizedString("profile_copied", comment: ""))

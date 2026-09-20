@@ -1,5 +1,6 @@
 import CoreImage.CIFilterBuiltins
 import SwiftUI
+import UIKit
 
 /// A QR code rendered from CoreImage — no dependency, unlike Android's zxing.
 ///
@@ -16,6 +17,8 @@ struct QrCodeView: View {
     /// Quiet zone. The spec asks for four modules of blank margin; without it, readers that find
     /// the code flush against other content often fail to lock on.
     var padding: CGFloat = 16
+    /// What VoiceOver reads. Defaults to the sign-in code this view was written for.
+    var label: LocalizedStringKey = "onboarding_qr_title"
 
     private static let context = CIContext()
 
@@ -36,7 +39,32 @@ struct QrCodeView: View {
         .padding(padding)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityLabel(Text("onboarding_qr_title"))
+        .accessibilityLabel(Text(label))
+    }
+
+    /// The same code as a shareable image: the modules blown up onto a white square with a margin.
+    ///
+    /// The margin is the quiet zone. A code pasted into a chat lands flush against a dark bubble,
+    /// and a reader that cannot find the border will not lock on to what is inside it.
+    ///
+    /// Drawn through `UIImage`, never `CGContext.draw`: the renderer's context is y-flipped, and a
+    /// vertically mirrored QR code is one no scanner reads.
+    static func shareImage(_ text: String, side: CGFloat = 720, margin: CGFloat = 48) -> UIImage? {
+        guard let code = render(text) else { return nil }
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        format.opaque = true
+        let size = CGSize(width: side, height: side)
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            // One module per pixel scaled up: interpolating smears the edges, and a smeared code
+            // is one a camera has to be nursed into reading.
+            context.cgContext.interpolationQuality = .none
+            UIImage(cgImage: code).draw(
+                in: CGRect(x: margin, y: margin, width: side - margin * 2, height: side - margin * 2)
+            )
+        }
     }
 
     private static func render(_ text: String) -> CGImage? {
