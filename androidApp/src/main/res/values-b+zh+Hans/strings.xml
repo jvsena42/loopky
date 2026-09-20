@@ -734,6 +734,11 @@
     <string name="share_profile_chooser_title">分享个人主页</string>
     <string name="share_deck_body">Loopky 上的 %1$s\n%2$s</string>
     <string name="share_profile_body">Loopky 上的 %1$s\n%2$s</string>
+    <string name="share_sheet_hint">扫码在 Loopky 中打开</string>
+    <string name="share_sheet_copy">复制链接</string>
+    <string name="share_sheet_send">分享…</string>
+    <string name="share_sheet_copied">已复制链接</string>
+    <string name="share_sheet_qr_content_description">此链接的二维码</string>
     <string name="deeplink_no_link_in_shared_text">这段文字中没有 Loopky 链接。请分享包含 pubky:// 地址的消息。</string>
     <string name="deck_editor_move_up">上移卡片</string>
     <string name="deck_editor_move_down">下移卡片</string>

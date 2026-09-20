@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
@@ -44,7 +43,7 @@ fun QrCode(
 ) {
     val sizePx = with(LocalDensity.current) { size.roundToPx() }
     val bitmap = remember(content, sizePx, foreground, background) {
-        encodeQr(content, sizePx, foreground.toArgb(), background.toArgb())
+        qrBitmap(content, sizePx, foreground.toArgb(), background.toArgb())?.asImageBitmap()
     } ?: return
 
     Image(
@@ -57,7 +56,18 @@ fun QrCode(
     )
 }
 
-private fun encodeQr(content: String, sizePx: Int, fgArgb: Int, bgArgb: Int): ImageBitmap? {
+/**
+ * The same code as [QrCode], as a plain bitmap — for the callers that hand one to something other
+ * than composition, such as the share sheet attaching it to an `ACTION_SEND`.
+ *
+ * `null` when the encoder refuses [content], exactly as [QrCode] draws nothing for it.
+ */
+fun qrBitmap(
+    content: String,
+    sizePx: Int,
+    fgArgb: Int = Color.Black.toArgb(),
+    bgArgb: Int = Color.White.toArgb(),
+): Bitmap? {
     if (content.isEmpty() || sizePx <= 0) return null
     val matrix = runCatching {
         QRCodeWriter().encode(
@@ -86,7 +96,7 @@ private fun encodeQr(content: String, sizePx: Int, fgArgb: Int, bgArgb: Int): Im
     }
     return Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888).apply {
         setPixels(pixels, 0, sizePx, 0, 0, sizePx, sizePx)
-    }.asImageBitmap()
+    }
 }
 
 private val DEFAULT_SIZE = 220.dp

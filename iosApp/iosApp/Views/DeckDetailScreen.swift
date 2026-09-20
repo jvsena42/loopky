@@ -21,7 +21,7 @@ struct DeckDetailScreen: View {
     @State private var uiState: DeckDetailUiState?
     @State private var stateSink: FlowEffectSink?
     @State private var effectSink: FlowEffectSink?
-    @State private var shareItem: ShareItem?
+    @State private var shareTarget: ShareLinkTarget?
     @State private var toast: String?
 
     var body: some View {
@@ -42,9 +42,7 @@ struct DeckDetailScreen: View {
         } message: {
             Text(deleteMessage)
         }
-        .sheet(item: $shareItem) { item in
-            ShareSheet(items: [item.text])
-        }
+        .sheet(item: $shareTarget) { ShareLinkSheet(target: $0) }
         // Raised by Edit on a deck you follow, the only route to a copy (#254). A sheet rather than
         // an alert because an alert snapshots its message: the "pick a different name" line could
         // never appear as the reader typed. See CopyDeckSheet.
@@ -199,7 +197,7 @@ struct DeckDetailScreen: View {
                 onStudy()
             case let share as DeckDetailEffectShare:
                 // Matches Android: "<title> on Loopky" beats a bare pubky:// manifest URL.
-                shareItem = ShareItem(text: "\(share.title) on Loopky\n\(share.uri)")
+                shareTarget = ShareLinkTarget(deckTitle: share.title, uri: share.uri)
             case is DeckDetailEffectDeleted:
                 onDeleted()
             case is DeckDetailEffectNavigateStudyPreview:

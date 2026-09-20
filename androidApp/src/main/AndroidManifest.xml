@@ -199,6 +199,19 @@
                 <data android:pathPattern=".*\\..*\\..*\\..*\\.apkg" />
             </intent-filter>
         </activity>
+
+        <!-- The QR image the share sheet attaches. Not exported: the receiving app reads it
+             through the one-shot grant on the ACTION_SEND intent, which is what
+             FLAG_GRANT_READ_URI_PERMISSION there is for. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

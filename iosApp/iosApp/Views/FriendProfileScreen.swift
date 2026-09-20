@@ -18,7 +18,7 @@ struct FriendProfileScreen: View {
     @State private var uiState: FriendProfileUiState?
     @State private var stateSink: FlowEffectSink?
     @State private var effectSink: FlowEffectSink?
-    @State private var shareItem: ShareItem?
+    @State private var shareTarget: ShareLinkTarget?
 
     var body: some View {
         FriendProfileView(
@@ -33,7 +33,7 @@ struct FriendProfileScreen: View {
             onDismissSignInPrompt: { viewModel?.onDismissSignInPrompt() },
             onSignIn: onSignIn
         )
-        .sheet(item: $shareItem) { ShareSheet(items: [$0.text]) }
+        .sheet(item: $shareTarget) { ShareLinkSheet(target: $0) }
         .onAppear { attach() }
         .onDisappear { detach() }
     }
@@ -84,7 +84,7 @@ struct FriendProfileScreen: View {
             case let author as FriendProfileEffectOpenProfile:
                 onOpenAuthor(author.pubky)
             case let share as FriendProfileEffectShareProfile:
-                shareItem = ShareItem(text: "\(IdentityData(share.identity).label) on Loopky\n\(share.uri)")
+                shareTarget = ShareLinkTarget(profile: share.identity, uri: share.uri)
             case let copy as FriendProfileEffectCopyToClipboard:
                 UIPasteboard.general.string = copy.text
             case let url as FriendProfileEffectOpenUrl:

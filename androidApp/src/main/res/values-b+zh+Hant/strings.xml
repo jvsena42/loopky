@@ -784,6 +784,11 @@
     <string name="share_profile_chooser_title">分享個人檔案</string>
     <string name="share_deck_body">Loopky 上的 %1$s\n%2$s</string>
     <string name="share_profile_body">Loopky 上的 %1$s\n%2$s</string>
+    <string name="share_sheet_hint">掃描以在 Loopky 中開啟</string>
+    <string name="share_sheet_copy">複製連結</string>
+    <string name="share_sheet_send">分享…</string>
+    <string name="share_sheet_copied">已複製連結</string>
+    <string name="share_sheet_qr_content_description">此連結的 QR 碼</string>
     <string name="deeplink_no_link_in_shared_text">這段文字中沒有 Loopky 連結。請分享包含 pubky:// 位址的訊息。</string>
     <string name="deck_editor_move_up">將卡片上移</string>
     <string name="deck_editor_move_down">將卡片下移</string>

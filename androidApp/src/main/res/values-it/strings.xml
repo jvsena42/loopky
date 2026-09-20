@@ -724,6 +724,11 @@
     <string name="share_profile_chooser_title">Condividi profilo</string>
     <string name="share_deck_body">%1$s su Loopky\n%2$s</string>
     <string name="share_profile_body">%1$s su Loopky\n%2$s</string>
+    <string name="share_sheet_hint">Scansiona per aprire in Loopky</string>
+    <string name="share_sheet_copy">Copia link</string>
+    <string name="share_sheet_send">Condividi…</string>
+    <string name="share_sheet_copied">Link copiato</string>
+    <string name="share_sheet_qr_content_description">Codice QR di questo link</string>
     <string name="deeplink_no_link_in_shared_text">Nessun link Loopky in quel testo. Condividi un messaggio che contenga un indirizzo pubky://.</string>
     <string name="deck_editor_move_up">Sposta la carta in su</string>
     <string name="deck_editor_move_down">Sposta la carta in giù</string>

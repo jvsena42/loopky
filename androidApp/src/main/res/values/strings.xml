@@ -785,6 +785,11 @@
     <string name="share_profile_chooser_title">Share profile</string>
     <string name="share_deck_body">%1$s on Loopky\n%2$s</string>
     <string name="share_profile_body">%1$s on Loopky\n%2$s</string>
+    <string name="share_sheet_hint">Scan to open in Loopky</string>
+    <string name="share_sheet_copy">Copy link</string>
+    <string name="share_sheet_send">Share…</string>
+    <string name="share_sheet_copied">Link copied</string>
+    <string name="share_sheet_qr_content_description">QR code for this link</string>
     <string name="deeplink_no_link_in_shared_text">No Loopky link in that text. Share a message containing a pubky:// address.</string>
     <string name="deck_editor_move_up">Move card up</string>
     <string name="deck_editor_move_down">Move card down</string>

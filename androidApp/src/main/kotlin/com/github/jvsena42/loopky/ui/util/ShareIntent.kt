@@ -6,9 +6,7 @@ import android.content.Intent
 /**
  * Opens the system share sheet with [text].
  *
- * Both share buttons in the app previously did nothing: `DeckDetailEffect.Share` was consumed
- * by an empty lambda and `ProfileEffect.ShareProfile` by a TODO, and no `ACTION_SEND` existed
- * anywhere in the codebase.
+ * The plain-text share, and [shareLinkWithQr]'s fallback when the code cannot be encoded.
  */
 fun Context.shareText(text: String, chooserTitle: String) {
     val intent = Intent(Intent.ACTION_SEND).apply {

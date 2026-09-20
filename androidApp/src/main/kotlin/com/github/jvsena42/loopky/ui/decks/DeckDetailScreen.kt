@@ -36,8 +36,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -63,6 +65,8 @@ import com.github.jvsena42.loopky.ui.components.CardPreviewRow
 import com.github.jvsena42.loopky.ui.components.ExpandableLinkedText
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
 import com.github.jvsena42.loopky.ui.components.LoopkyPrimaryButton
+import com.github.jvsena42.loopky.ui.components.ShareLinkSheetHost
+import com.github.jvsena42.loopky.ui.components.ShareLinkTarget
 import com.github.jvsena42.loopky.ui.components.SharePromptDialog
 import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
 import com.github.jvsena42.loopky.ui.components.errorMessage
@@ -72,7 +76,6 @@ import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.label
-import com.github.jvsena42.loopky.ui.util.shareText
 import com.github.jvsena42.loopky.ui.util.toast
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
@@ -108,6 +111,8 @@ fun DeckDetailRoute(
     val currentOpenProfile by rememberUpdatedState(onOpenProfile)
     val currentOpenClone by rememberUpdatedState(onOpenClone)
 
+    var shareTarget by remember { mutableStateOf<ShareLinkTarget?>(null) }
+
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
@@ -115,9 +120,11 @@ fun DeckDetailRoute(
                 is DeckDetailEffect.NavigateEditDeck -> currentEditDeck(effect.deckId)
                 DeckDetailEffect.NavigateStudy -> currentStudy(deckId)
                 DeckDetailEffect.NavigateStudyPreview -> currentPreview(deckId)
-                is DeckDetailEffect.Share -> context.shareText(
-                    text = context.getString(R.string.share_deck_body, effect.title, effect.uri),
-                    chooserTitle = context.getString(R.string.share_deck_chooser_title),
+                is DeckDetailEffect.Share -> shareTarget = ShareLinkTarget(
+                    title = effect.title,
+                    link = effect.uri,
+                    message = context.getString(R.string.share_deck_body, effect.title, effect.uri),
+                    chooserTitle = R.string.share_deck_chooser_title,
                 )
                 DeckDetailEffect.Deleted -> currentBack()
                 is DeckDetailEffect.Cloned -> currentOpenClone(effect.deckId)
@@ -170,6 +177,8 @@ fun DeckDetailRoute(
             onNeverAsk = viewModel::onShareNeverAsk,
         )
     }
+
+    ShareLinkSheetHost(target = shareTarget, onDismiss = { shareTarget = null })
 }
 
 @Composable
