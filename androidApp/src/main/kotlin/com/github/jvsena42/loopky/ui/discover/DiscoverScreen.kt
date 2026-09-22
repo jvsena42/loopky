@@ -295,7 +295,11 @@ private fun LazyListScope.peopleSection(
         // Uncontained, not multi-browse: the browsing variant squeezes the tiles at the keylines,
         // and a squeezed tile here is a name cut mid-word — the exact thing that reads as a
         // clipping bug rather than an invitation.
-        val carouselState = rememberCarouselState { state.people.items.size }
+        // The page in flight takes one extra slot at the end, so the spinner sits where the next
+        // tile will land rather than below a row the reader is scrolling sideways.
+        val carouselState = rememberCarouselState {
+            state.people.items.size + if (state.people.isLoadingMore) 1 else 0
+        }
         HorizontalUncontainedCarousel(
             state = carouselState,
             itemWidth = PERSON_TILE_WIDTH,
@@ -305,7 +309,16 @@ private fun LazyListScope.peopleSection(
                 .testTag("discover_people_row"),
             itemSpacing = 12.dp,
         ) { index ->
-            val person = state.people.items[index]
+            val person = state.people.items.getOrNull(index)
+            if (person == null) {
+                Box(
+                    modifier = Modifier.fillMaxSize().testTag("discover_people_loading_more"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SectionSpinner()
+                }
+                return@HorizontalUncontainedCarousel
+            }
             // A carousel has no footer to hang a sentinel off, so the trigger rides the tiles: ask
             // once the reader is within a tile of the end, which is early enough that the next page
             // lands before the row runs out under their finger.
