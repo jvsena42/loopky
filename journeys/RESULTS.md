@@ -174,6 +174,18 @@ Ring, so the expanded-width check was made by rotating `Medium_Phone` (914dp lan
 The study loop, discover, deck manage/delete, and profile/settings/sign-out journeys remain
 runnable on the emulator.
 
+### 04 — People on Loopky pages, with a spinner — 2026-09-22 — ✅ PASS
+
+Reported on v0.12.1 as "the strip filters out people who follow me": `pk:xm31yq…w187ho` follows
+nobody, and its one Loopky follower (`4hgqa5…by5wco`) never appeared. Nothing filtered on
+followers — 0.12.1 asked the directory for **10** candidates and stopped, and that follower is 14th
+in the indexer's order. `main`'s paged strip (`61196608`) already fixes it; verified on a physical
+phone (debug build with `LOOPKY_PUBKY_ENV=Production`): `cursor 0 -> 11 of 17`,
+then `11 -> 17 of 17, +4`, and the follower is on the second page. On staging (`emulator-5554`,
+`pk:kfezy1…cpqf4y`) the strip walks `0 -> 11 -> 21 -> 24 of 24`, and a newly added follower
+(`bzbjrj…yhjzpo`) is shown. The Android carousel now draws a spinner in an extra end slot while a
+page is in flight, matching iOS.
+
 ## 07 — Triage edit — ✅ PASS on iOS (2026-09-01); still not re-run on Android
 
 `journeys/07-triage-edit.xml`: edit a draft card's front/back in triage, keep, publish, and
