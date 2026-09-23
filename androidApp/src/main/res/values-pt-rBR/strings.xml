@@ -68,6 +68,7 @@
     <string name="deck_detail_delete_confirm">Excluir</string>
     <string name="deck_detail_delete_cancel">Cancelar</string>
     <string name="deck_detail_in_your_library">NA SUA BIBLIOTECA</string>
+    <string name="deck_detail_study_modes_label">MODOS DE ESTUDO</string>
     <string name="deck_detail_follow">Seguir baralho</string>
     <string name="deck_detail_following">Seguindo</string>
     <string name="deck_detail_cloning">Copiando baralho…</string>

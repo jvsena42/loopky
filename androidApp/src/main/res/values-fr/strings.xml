@@ -68,6 +68,7 @@
     <string name="deck_detail_delete_confirm">Supprimer</string>
     <string name="deck_detail_delete_cancel">Annuler</string>
     <string name="deck_detail_in_your_library">DANS TA BIBLIOTHÈQUE</string>
+    <string name="deck_detail_study_modes_label">MODES D\'ÉTUDE</string>
     <string name="deck_detail_follow">Suivre le paquet</string>
     <string name="deck_detail_following">Suivi</string>
     <string name="deck_detail_cloning">Copie du paquet…</string>

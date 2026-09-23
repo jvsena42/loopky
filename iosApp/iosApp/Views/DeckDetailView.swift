@@ -42,6 +42,14 @@ struct DeckDetailContent {
     var clonedCount: Int = 0
     /// This deck can be *tried* without being kept: flip its cards, grading nothing.
     var canPreview: Bool = false
+    /// The deck's study opt-ins, as the reader will actually get them — the shared ViewModel has
+    /// already folded Listen and Speak through `Deck.speechReady`.
+    var listenEnabled: Bool = false
+    var speakEnabled: Bool = false
+    var typeEnabled: Bool = false
+    var reverseEnabled: Bool = false
+
+    var hasStudyFeatures: Bool { listenEnabled || speakEnabled || typeEnabled || reverseEnabled }
 }
 
 struct CardPreviewData: Identifiable {
@@ -283,6 +291,19 @@ struct DeckDetailView: View {
                         }
                     }
                 }
+            }
+
+            // What the deck can be studied with — above the stats, because it is the other half
+            // of the same question: how big the deck is, and what answering it is like. It
+            // carries its own caption for exactly one reason: without it, a second row of pills
+            // under the tags reads as more tags.
+            if content.hasStudyFeatures {
+                DeckFeatureBadges(
+                    listenEnabled: content.listenEnabled,
+                    speakEnabled: content.speakEnabled,
+                    typeEnabled: content.typeEnabled,
+                    reverseEnabled: content.reverseEnabled
+                )
             }
 
             // Stats. On a deck you are not studying, Due and Mastered give their room to what

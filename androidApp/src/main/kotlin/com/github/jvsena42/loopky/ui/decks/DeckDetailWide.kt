@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailUiState
 import com.github.jvsena42.loopky.ui.components.AuthorRow
 import com.github.jvsena42.loopky.ui.components.CardPreviewRow
+import com.github.jvsena42.loopky.ui.components.DeckFeatureChips
 import com.github.jvsena42.loopky.ui.components.StatsBar
 import com.github.jvsena42.loopky.ui.components.TagChip
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
@@ -144,6 +145,19 @@ internal fun DeckDetailHeader(
                     TagChip(tag = tag, onClick = { onOpenTag(tag) })
                 }
             }
+        }
+
+        // What the deck can be studied with — above the stats, because it is the other half of
+        // the same question: how big the deck is, and what answering it is like. It carries its
+        // own caption for exactly one reason: without it, a second row of pills under the tags
+        // reads as more tags.
+        if (state.hasStudyFeatures) {
+            DeckFeatureChips(
+                listenEnabled = state.listenEnabled,
+                speakEnabled = state.speakEnabled,
+                typeEnabled = state.typeEnabled,
+                reverseEnabled = state.reverseEnabled,
+            )
         }
 
         // Stats

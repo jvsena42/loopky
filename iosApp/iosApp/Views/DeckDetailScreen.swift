@@ -123,7 +123,11 @@ struct DeckDetailScreen: View {
                 clonedFromLabel: content.clonedFrom.map { IdentityData($0).label },
                 followerCount: Int(content.followerCount),
                 clonedCount: Int(content.clonedCount),
-                canPreview: content.canPreview
+                canPreview: content.canPreview,
+                listenEnabled: content.listenEnabled,
+                speakEnabled: content.speakEnabled,
+                typeEnabled: content.typeEnabled,
+                reverseEnabled: content.reverseEnabled
             ))
         case let error as DeckDetailUiStateError:
             return .error(ErrorCopy.message(for: error.reason))

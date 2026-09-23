@@ -69,6 +69,7 @@
     <string name="deck_detail_delete_confirm">Delete</string>
     <string name="deck_detail_delete_cancel">Cancel</string>
     <string name="deck_detail_in_your_library">IN YOUR LIBRARY</string>
+    <string name="deck_detail_study_modes_label">STUDY MODES</string>
     <string name="deck_detail_follow">Follow deck</string>
     <string name="deck_detail_following">Following</string>
     <string name="deck_detail_cloning">Copying deck…</string>

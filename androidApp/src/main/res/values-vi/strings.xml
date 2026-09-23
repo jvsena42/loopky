@@ -69,6 +69,7 @@
     <string name="deck_detail_delete_confirm">Xóa</string>
     <string name="deck_detail_delete_cancel">Hủy</string>
     <string name="deck_detail_in_your_library">TRONG THƯ VIỆN CỦA BẠN</string>
+    <string name="deck_detail_study_modes_label">CHẾ ĐỘ HỌC</string>
     <string name="deck_detail_follow">Theo dõi bộ thẻ</string>
     <string name="deck_detail_following">Đang theo dõi</string>
     <string name="deck_detail_cloning">Đang sao chép bộ thẻ…</string>

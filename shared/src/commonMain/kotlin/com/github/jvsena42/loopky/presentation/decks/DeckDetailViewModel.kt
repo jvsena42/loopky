@@ -602,6 +602,13 @@ class DeckDetailViewModel(
             // them a way to try it before following is the point of the button.
             canPreview = !isOwned && !isFollowing && cards.isNotEmpty(),
             masteredPercent = mastered,
+            // Folded through speechReady like the study screen and the editor do: a deck with no
+            // declared language pair offers neither button, so advertising them here would name
+            // two features the session withholds. Type and Both directions are ungated.
+            listenEnabled = listenEnabled && speechReady,
+            speakEnabled = speakEnabled && speechReady,
+            typeEnabled = typeEnabled,
+            reverseEnabled = reverseEnabled,
             cardPreviews = cards.map { it.toPreview() },
         )
     }
@@ -696,6 +703,15 @@ sealed interface DeckDetailUiState {
          */
         val signInPrompt: SignInReason? = null,
         val masteredPercent: String,
+        /**
+         * The deck's study opt-ins, as the reader will actually get them: [listenEnabled] and
+         * [speakEnabled] are already folded through `Deck.speechReady`, so a deck that declared
+         * neither language never advertises a feature its study session withholds.
+         */
+        val listenEnabled: Boolean = false,
+        val speakEnabled: Boolean = false,
+        val typeEnabled: Boolean = false,
+        val reverseEnabled: Boolean = false,
         val cardPreviews: List<CardPreviewModel>,
         val showDeleteConfirm: Boolean = false,
         val isDeleting: Boolean = false,
@@ -709,6 +725,10 @@ sealed interface DeckDetailUiState {
          * offers a copy rather than the editor (#254).
          */
         val canEdit: Boolean get() = isOwned || isFollowing
+
+        /** Whether there is a study-modes row to draw at all — every deck may have none on. */
+        val hasStudyFeatures: Boolean
+            get() = listenEnabled || speakEnabled || typeEnabled || reverseEnabled
 
         /**
          * Whether [title] is just this deck's own name again — the one thing a copy's mandatory

@@ -68,6 +68,7 @@
     <string name="deck_detail_delete_confirm">Eliminar</string>
     <string name="deck_detail_delete_cancel">Cancelar</string>
     <string name="deck_detail_in_your_library">EN TU BIBLIOTECA</string>
+    <string name="deck_detail_study_modes_label">MODOS DE ESTUDIO</string>
     <string name="deck_detail_follow">Seguir mazo</string>
     <string name="deck_detail_following">Siguiendo</string>
     <string name="deck_detail_cloning">Copiando el mazo…</string>

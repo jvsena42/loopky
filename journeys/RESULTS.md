@@ -3883,3 +3883,45 @@ xxxhdpi art is asked for by name via `getDrawableForDensity`.
 "Network is unreachable") and would not leave portrait, so the expanded-width pass was done by
 resizing `emulator-5554` instead — the same `currentWindowAdaptiveInfo` path, since the width
 class is read from the window rather than from the device.
+
+## Deck detail says what the deck can be studied with — ✅ PASS (2026-09-23, `Medium_Phone` + `Pixel_Tablet`, staging)
+
+The four study opt-ins — Listen, Speak, Type the answer, Both directions — were settable at
+publish and in the deck editor and shown nowhere else, so the reader deciding whether to keep a
+deck was the one person who could not find out what it offered. Deck detail now carries them as a
+`STUDY MODES` row between the tags and the stats bar, on both platforms.
+
+| Step | Result |
+| --- | --- |
+| Own deck with only Both directions on | ✅ PASS — one chip, caption above it, nothing claimed that is off |
+| Editor → Listen on, no language pair yet | ✅ PASS — detail still shows only Both directions; Listen is inert without a pair, so it is not advertised |
+| Editor → front `es-ES`, back `en-US`, Save | ✅ PASS — detail gains Listen beside Both directions |
+| Dark mode, same deck | ✅ PASS — orange on `accentPrimarySoft`'s dark brown, still legible, still not a tag |
+| `Pixel_Tablet` portrait (medium, w800dp), followed deck of 551 cards | ✅ PASS — Listen · Speak · Both directions, one line |
+| The same at expanded width (w1067dp) | ✅ PASS — row sits in the two-pane metadata column above the stats bar |
+| `:androidApp:assembleDebug`, `detektAll`, `:shared:jvmTest`, `checkStringPlurals` | ✅ PASS |
+
+### Worth knowing
+
+**The chips take the primary accent, not the editor's alternating pair.** Listen and Type are
+orange in the editor and Speak and Both directions are purple — but purple on a soft purple pill
+is exactly what `TagChip` is, and the first build put four of them directly under the tag row
+where they read as four more tags. All four are orange now, so the rule on the screen is: orange
+says what the deck does, purple says what it is about. The `STUDY MODES` caption is the second
+half of that separation and is there for the same reason.
+
+**Listen and Speak are folded through `speechReady` before they reach the screen**, as the study
+session and the editor already do — the middle row of the table above is what that buys. A deck
+with the opt-in on and no declared pair offers neither button, so a chip there would name a
+feature the session withholds. Type and Both directions are ungated, as everywhere else.
+
+### Not covered
+
+**iOS was not run.** This is a Linux box: no Xcode, no SwiftLint, so `DeckFeatureBadges.swift` and
+the two lines wiring it into `DeckDetailView` are unbuilt and undriven. The Swift side needs a Mac
+pass before it can be called verified.
+
+**`Pixel_Tablet` still would not leave portrait** — `user_rotation`, `accelerometer_rotation` and
+`adb emu rotate` all left `rotation=0`, as the QR run above found. The expanded width class was
+reached with `wm density 240` instead (1600px ÷ 240dpi = 1067dp), which is the same
+`currentWindowAdaptiveInfo` path, since the class is read from the window.
