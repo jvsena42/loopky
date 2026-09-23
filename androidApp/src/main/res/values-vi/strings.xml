@@ -509,6 +509,8 @@
     <string name="component_stats_bar_due">Cần ôn</string>
     <string name="component_stats_bar_new">Mới</string>
     <string name="component_stats_bar_mastered">Thành thạo</string>
+    <string name="component_stats_bar_followers">Theo dõi</string>
+    <string name="component_stats_bar_copies">Bản sao</string>
     <string name="component_tag_chip_label">#%1$s</string>
     <string name="component_tag_chip_remove">Xóa nhãn</string>
 

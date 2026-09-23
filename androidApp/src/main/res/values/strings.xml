@@ -510,6 +510,8 @@
     <string name="component_stats_bar_due">Due</string>
     <string name="component_stats_bar_new">New</string>
     <string name="component_stats_bar_mastered">Mastered</string>
+    <string name="component_stats_bar_followers">Followers</string>
+    <string name="component_stats_bar_copies">Copies</string>
     <string name="component_tag_chip_label">#%1$s</string>
     <string name="component_tag_chip_remove">Remove tag</string>
 

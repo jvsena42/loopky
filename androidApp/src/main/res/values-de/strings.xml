@@ -483,6 +483,8 @@
     <string name="component_stats_bar_due">Fällig</string>
     <string name="component_stats_bar_new">Neu</string>
     <string name="component_stats_bar_mastered">Gemeistert</string>
+    <string name="component_stats_bar_followers">Follower</string>
+    <string name="component_stats_bar_copies">Kopien</string>
     <string name="component_tag_chip_label">#%1$s</string>
     <string name="component_tag_chip_remove">Tag entfernen</string>
 

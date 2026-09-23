@@ -504,6 +504,8 @@
     <string name="component_stats_bar_due">復習</string>
     <string name="component_stats_bar_new">新規</string>
     <string name="component_stats_bar_mastered">習得済み</string>
+    <string name="component_stats_bar_followers">フォロワー</string>
+    <string name="component_stats_bar_copies">コピー</string>
     <string name="component_tag_chip_label">#%1$s</string>
     <string name="component_tag_chip_remove">タグを削除</string>
 

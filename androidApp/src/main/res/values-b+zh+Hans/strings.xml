@@ -491,6 +491,8 @@
     <string name="component_stats_bar_due">待复习</string>
     <string name="component_stats_bar_new">新卡片</string>
     <string name="component_stats_bar_mastered">已掌握</string>
+    <string name="component_stats_bar_followers">关注者</string>
+    <string name="component_stats_bar_copies">副本</string>
     <string name="component_tag_chip_label">#%1$s</string>
     <string name="component_tag_chip_remove">移除标签</string>
 
