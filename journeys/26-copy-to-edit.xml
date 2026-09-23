@@ -13,7 +13,10 @@
     <action>Open a deck published by another author (a "discover_deck_tile" whose author is not you)</action>
     <action>Verify the deck offers "Follow deck" (resource-id: deck_follow) and NOTHING else that writes: there must be no Clone button (resource-id "deck_clone" must not exist) and no Edit control (resource-id "deck_edit") on a deck you have not followed</action>
     <action>Verify the Follow pill spans the full content width rather than sharing the row</action>
+    <action>Verify the stats bar carries no Due, New or Mastered column — none of the three means anything before you keep the deck — and that its room went to the deck's own counts instead: Total beside Followers, and Copies when anyone has copied it (resource-ids: deck_stat_followers, deck_stat_copies). A count the indexer has not answered for is absent, never a "0", so a deck nobody follows yet legitimately shows Total alone.</action>
+    <action>Verify the follower count is NOT also printed as a caption above the author (resource-id "deck_follower_count" must not exist here) — the stats bar is carrying it, and twice is once too many</action>
     <action>Tap "deck_follow" and verify it flips to "Following" immediately; dismiss the "Share this on Pubky?" prompt if it appears</action>
+    <action>Verify the stats bar has now swapped back: Total, Due, New and Mastered, with the follower and copy counts returning to their caption above the author (resource-id: deck_follower_count). Following is what makes your own progress a real number.</action>
     <action>Verify an Edit control (resource-id: deck_edit) has now appeared in the header, and that there is still no Delete control (a followed deck is not yours to delete)</action>
     <action>Tap "deck_edit" and verify it does NOT open the deck editor. A copy prompt appears instead, titled "Make your own copy?", naming the card count and saying the copy will not get the author's updates and that progress starts over.</action>
     <action>Verify the confirm button (resource-id: deck_clone_confirm) is DISABLED while the name field (resource-id: deck_clone_title) is empty — naming the copy is mandatory</action>
