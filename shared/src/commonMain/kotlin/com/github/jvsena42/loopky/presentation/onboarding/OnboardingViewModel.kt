@@ -60,9 +60,9 @@ class OnboardingViewModel(
     }
 
     /**
-     * Begin a Pubky Ring authorisation. [handoff] decides only whether we *also* fire the deeplink
+     * Begin a Pubky Ring authorisation. [handoff] decides only how the pending code is *presented*
      * — the relay poll underneath is identical either way, which is why a tablet can be signed in
-     * from a phone, and why this is a branch in the effect rather than a second flow.
+     * from a phone, and why this is a branch in the UI rather than a second flow.
      */
     fun onSignInClick(handoff: RingHandoff = RingHandoff.ThisDevice) {
         if (signInJob?.isActive == true) {
@@ -94,14 +94,12 @@ class OnboardingViewModel(
                 )
             }
             Log.d(TAG, "onSignInClick: state=AwaitingApproval, handoff=$handoff, ring=$ringInstalledHere")
-            // Only when Ring is meant to be on this device *and* actually is. Firing it for the QR
-            // path would bounce the user out to whatever claims `pubkyauth://`; firing it with
-            // nothing installed used to end the flow on "Pubky Ring isn't installed", which is a
-            // dead end for someone whose key is in Ring on another phone — the authorisation is
-            // live either way, so the UI can offer it as a code to scan instead.
-            if (handoff == RingHandoff.ThisDevice && ringInstalledHere) {
-                _effects.emit(OnboardingEffect.OpenDeeplink(handle.authUrl))
-            }
+            // No deeplink is fired from here, on any device. Ring being installed says nothing
+            // about whose key is in it, and firing on that guess sent a phone straight out to
+            // whatever claims `pubkyauth://` — past the code that is the only way in for a user
+            // whose key lives in Ring on their *other* phone. So every handoff shows the QR and
+            // [onOpenRingOnThisDevice] opens Ring on request; [ringInstalledHere] decides whether
+            // that button is worth offering, not whether the user gets a choice.
 
             Log.d(TAG, "onSignInClick: awaiting Pubky Ring approval…")
             // No deadline, on purpose (#299). The wait is a blocking FFI call nothing here can
