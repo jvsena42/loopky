@@ -96,13 +96,12 @@ internal fun RingScanPanel(
 }
 
 /**
- * The phone way in when the deeplink has nowhere to go.
+ * The phone way in: the same handoff as [RingScanPanel], over the sign-in screen rather than in it.
  *
- * Shown only where Ring is *not* installed on this device. With Ring here the handoff is a tap and
- * Ring is already in the foreground; a sheet behind it would just be something to dismiss on the
- * way back. Without it, the authorisation is live all the same and the key is presumably in Ring
- * on another phone — which no deeplink can reach, so the code that phone can scan is the way in.
- * This is the case that used to end on "Pubky Ring isn't installed" with nowhere to go but back.
+ * Shown for every phone sign-in, Ring installed here or not. Installed says only that *an* app
+ * claims `pubkyauth://` — not that this user's key is in it — and deeplinking on that guess walked
+ * straight past the code, which is the one way in for someone whose key is in Ring on their other
+ * phone. So the code leads and [onOpenRingHere] is the short path for whoever wants it.
  *
  * There is no Cancel button. A sheet already has two ways out that a panel does not — the scrim
  * and the swipe — and both land on [onDismiss], so a third control would be a button restating
@@ -112,7 +111,9 @@ internal fun RingScanPanel(
 @Composable
 internal fun RingScanSheet(
     authUrl: String,
+    ringInstalledHere: Boolean,
     stillWaiting: Boolean,
+    onOpenRingHere: () -> Unit,
     onGetRing: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -134,7 +135,11 @@ internal fun RingScanSheet(
         RingScanContent(
             authUrl = authUrl,
             title = stringResource(R.string.onboarding_qr_title),
-            body = stringResource(R.string.onboarding_qr_sheet_body),
+            // The sheet's own copy opens on "Pubky Ring isn't on this device", which is a lie to
+            // anyone who has it — so with Ring here the sheet borrows the panel's wording instead.
+            body = stringResource(
+                if (ringInstalledHere) R.string.onboarding_qr_body else R.string.onboarding_qr_sheet_body,
+            ),
             stillWaiting = stillWaiting,
             modifier = Modifier
                 .fillMaxWidth()
@@ -150,21 +155,30 @@ internal fun RingScanSheet(
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp),
         ) {
-            CopyLinkButton(authUrl = authUrl)
-            // The other half of "Ring is not on this device": someone who has it on another phone
-            // scans the code, and someone who does not have it at all needs to be told where it
-            // comes from. Without this, removing the not-installed error removed the only pointer
-            // to the app this whole screen depends on.
-            TextButton(
-                onClick = onGetRing,
-                modifier = Modifier.testTag("onboarding_qr_get_ring"),
-                colors = ButtonDefaults.textButtonColors(contentColor = colors.foregroundMuted),
-            ) {
-                Text(
-                    text = stringResource(R.string.onboarding_get_ring),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+            // Same gate as the panel's: a button that opens nothing, on the one screen a user
+            // cannot get past, is worse than no button.
+            if (ringInstalledHere) {
+                LoopkySecondaryButton(
+                    text = stringResource(R.string.onboarding_qr_open_here),
+                    onClick = onOpenRingHere,
+                    modifier = Modifier.testTag("onboarding_qr_open_here"),
                 )
+            }
+            CopyLinkButton(authUrl = authUrl)
+            // For someone who has Ring on no phone at all. Without this, removing the
+            // not-installed error removed the only pointer to the app this screen depends on.
+            if (!ringInstalledHere) {
+                TextButton(
+                    onClick = onGetRing,
+                    modifier = Modifier.testTag("onboarding_qr_get_ring"),
+                    colors = ButtonDefaults.textButtonColors(contentColor = colors.accentPrimary),
+                ) {
+                    Text(
+                        text = stringResource(R.string.onboarding_get_ring),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
         }
     }

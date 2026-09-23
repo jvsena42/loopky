@@ -93,7 +93,7 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun approvingOpensRingAndThenNavigatesHome() = runTest {
+    fun approvingNavigatesHome() = runTest {
         identityRepo.completionResult = Result.success(fakeSession())
         val vm = viewModel()
         val effects = collectEffects(vm)
@@ -102,8 +102,41 @@ class OnboardingViewModelTest {
         advanceUntilIdle()
 
         assertIs<OnboardingUiState.Success>(vm.state.value)
-        assertEquals(identityRepo.authUrl, (effects.first() as OnboardingEffect.OpenDeeplink).url)
         assertTrue(effects.contains(OnboardingEffect.NavigateHome))
+    }
+
+    @Test
+    fun signingInNeverOpensRingOnItsOwn() = runTest {
+        // Ring answering `pubkyauth://` here says only that some app does, not that it holds this
+        // user's key — deeplinking on that guess walked past the QR, which is the one way in for a
+        // key that lives in Ring on the user's other phone.
+        ringPresence.installed = true
+        identityRepo.completionNeverReturns = true
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+
+        vm.onSignInClick(RingHandoff.ThisDevice)
+        runCurrent()
+
+        val awaiting = assertIs<OnboardingUiState.AwaitingApproval>(vm.state.value)
+        assertTrue(awaiting.ringInstalledHere)
+        assertTrue(effects.none { it is OnboardingEffect.OpenDeeplink })
+    }
+
+    @Test
+    fun theOpenHereEscapeHatchReusesTheLiveAuthorisation() = runTest {
+        // A fresh beginSignIn would invalidate the code the user may already be pointing a phone at.
+        identityRepo.completionNeverReturns = true
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+
+        vm.onSignInClick(RingHandoff.ThisDevice)
+        runCurrent()
+        vm.onOpenRingOnThisDevice()
+        runCurrent()
+
+        assertEquals(identityRepo.authUrl, (effects.first() as OnboardingEffect.OpenDeeplink).url)
+        assertEquals(expected = 1, actual = identityRepo.beginSignInCount)
     }
 
     @Test

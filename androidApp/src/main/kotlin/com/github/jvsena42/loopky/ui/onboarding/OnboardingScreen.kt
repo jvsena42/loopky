@@ -208,21 +208,16 @@ private fun OnboardingContent(
     var policyAccepted by rememberSaveable { mutableStateOf(true) }
 
     val widthClass = windowWidthClass()
-    // The whole reason this screen knows about window size. A phone's key is in Ring on that same
-    // phone, so the deeplink is the shortest path; a tablet's owner keeps their key on their phone,
-    // where the deeplink cannot reach, so the way in is a code that phone can scan. Ring being
-    // installed *here* doesn't change it — the panel offers that as a second option rather than
-    // guessing, because a tablet that happens to have Ring may still not have this user's key.
+    // The whole reason this screen knows about window size — and it decides the *presentation*
+    // only. A tablet's sign-in column has room for the code inline; a phone's is full of hero, so
+    // the same content arrives as a sheet over it. Both wait on the same live authorisation, and
+    // neither opens Ring on its own: Ring being installed here says nothing about whose key is in
+    // it, so it is offered as a button rather than taken as an answer.
     val handoff = if (widthClass.isAtLeastMedium) RingHandoff.AnotherDevice else RingHandoff.ThisDevice
     val awaitingScan = (state as? OnboardingUiState.AwaitingApproval)
         ?.takeIf { it.handoff == RingHandoff.AnotherDevice }
-    // The phone's half of the same wait, and only for the phone that cannot take the deeplink.
-    // With Ring installed the handoff is a tap and Ring is already in the foreground — a sheet
-    // behind it would be something to dismiss on the way back. Without it, the authorisation is
-    // still live and the key is presumably in Ring on another phone, so the code it can scan is
-    // the way in rather than the "Pubky Ring isn't installed" dead end this used to be.
     val awaitingHere = (state as? OnboardingUiState.AwaitingApproval)
-        ?.takeIf { it.handoff == RingHandoff.ThisDevice && !it.ringInstalledHere }
+        ?.takeIf { it.handoff == RingHandoff.ThisDevice }
 
     Column(
         modifier = Modifier
@@ -307,7 +302,9 @@ private fun OnboardingContent(
     if (awaitingHere != null) {
         RingScanSheet(
             authUrl = awaitingHere.authUrl,
+            ringInstalledHere = awaitingHere.ringInstalledHere,
             stillWaiting = awaitingHere.stillWaiting,
+            onOpenRingHere = onOpenRingHere,
             onGetRing = onGetRing,
             onDismiss = onCancelSignIn,
         )

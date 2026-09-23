@@ -89,12 +89,9 @@ struct OnboardingScreen: View {
         uiState as? OnboardingUiStateAwaitingApproval
     }
 
-    /// Where the user is expected to approve this sign-in.
-    ///
-    /// A phone's key is in Ring on that same phone, so the deeplink is the shortest path. An iPad's
-    /// owner keeps their key on their phone, where the deeplink cannot reach, so the way in is a
-    /// code that phone can scan — and Ring being installed *here* does not change it, because an
-    /// iPad that happens to have Ring may still not have this user's key.
+    /// Where the user is expected to approve this sign-in — the code's presentation, and nothing
+    /// else. An iPad's sign-in column has room for it inline; a phone's is full of hero, so the
+    /// same panel arrives as a sheet over it. Neither opens Ring on its own.
     ///
     /// Computed from the window on every layout, never captured at launch: an iPad in Slide Over is
     /// a phone-shaped column, and rotation and a Split View divider both move the answer while the
@@ -103,17 +100,13 @@ struct OnboardingScreen: View {
         widthClass.isAtLeastMedium ? RingHandoff.anotherdevice : RingHandoff.thisdevice
     }
 
-    /// The pending authorisation, when it is waiting on a device this one cannot deeplink to.
+    /// The live authorisation, as the code that approves it.
     ///
-    /// The shared VM fires `OpenDeeplink` only when the handoff is `ThisDevice` *and* Ring is
-    /// actually installed here, so anything else leaves the authorisation live with nothing driving
-    /// it — the code is then the user's only way to approve it. Both halves of that condition
-    /// matter: reading `ringInstalledHere` alone would leave an iPad **with** Ring installed
-    /// waiting forever on a deeplink the VM deliberately never fired.
+    /// The shared VM never fires `OpenDeeplink` on its own, on any device — Ring being installed
+    /// here says nothing about whose key is in it — so every live authorisation has the code as its
+    /// way in, and `ringInstalledHere` only decides whether the panel also offers to open Ring.
     private var scanPrompt: RingScanPrompt? {
         guard let awaiting else { return nil }
-        let deeplinkFired = awaiting.handoff == RingHandoff.thisdevice && awaiting.ringInstalledHere
-        guard !deeplinkFired else { return nil }
         return RingScanPrompt(
             authUrl: awaiting.authUrl,
             ringInstalledHere: awaiting.ringInstalledHere,
