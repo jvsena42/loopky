@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The way in when Pubky Ring cannot be reached on this device: the pending authorisation as a QR
-/// code for Ring on the phone that holds the key.
+/// The way in to a Ring sign-in: the pending authorisation as a QR code for Ring on the phone that
+/// holds the key — which is as often the user's other phone as the one in their hand.
 ///
 /// The code carries the same one-shot `pubkyauth://` URL the deeplink would have, and the relay
 /// poll behind it is the same one — Ring does not care whether it was opened by a tap here or a
@@ -11,15 +11,14 @@ import SwiftUI
 ///
 /// Two presentations, because the two windows want different things. On a phone this is a `.sheet`
 /// — the sign-in screen is full of hero, and the code is a moment rather than a place. On an iPad
-/// it is rendered **inline**, in the sign-in column beside the hero: the QR *is* the primary path
-/// there (an iPad's owner keeps their key on their phone), and burying the primary path in a modal
-/// floating over an otherwise empty screen is the wrong shape for it.
+/// it is rendered **inline**, in the sign-in column beside the hero: there is a column to put it
+/// in, and burying it in a modal floating over an otherwise empty screen is the wrong shape.
 struct RingScanPanel: View {
     let authUrl: String
-    /// Drives the body copy and the "open it here instead" escape hatch. When Ring *is* here the
-    /// deeplink has already been fired on a phone, so the panel is a fallback rather than the main
-    /// event — but on an iPad the handoff is to another device regardless, and the button is what
-    /// lets someone whose key happens to be in Ring here take the short path anyway.
+    /// Drives the body copy and the "open it here instead" escape hatch — never whether this panel
+    /// is shown. Ring answering `pubkyauth://` here says only that some app does, not that it holds
+    /// this user's key, so the code leads on every device and the button is what lets whoever does
+    /// have their key here take the short path.
     let ringInstalledHere: Bool
     /// Set once the wait has run long, never as a failure: a late approval is still accepted (#299).
     var stillWaiting: Bool = false
