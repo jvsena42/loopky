@@ -483,6 +483,8 @@
     <string name="component_stats_bar_due">À réviser</string>
     <string name="component_stats_bar_new">Nouvelles</string>
     <string name="component_stats_bar_mastered">Maîtrisées</string>
+    <string name="component_stats_bar_followers">Abonnés</string>
+    <string name="component_stats_bar_copies">Copies</string>
     <string name="component_tag_chip_label">#%1$s</string>
     <string name="component_tag_chip_remove">Retirer le tag</string>
 

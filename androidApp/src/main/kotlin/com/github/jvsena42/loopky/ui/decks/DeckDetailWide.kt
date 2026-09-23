@@ -65,6 +65,10 @@ internal fun DeckDetailHeader(
     onToggleFollow: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Your own study of the deck is worth a number only once there is some: owned or followed.
+    // Read once, because it also decides where the follower and clone counts are drawn.
+    val showProgress = state.isOwned || state.isFollowing
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(20.dp)) {
         // Header: Back + Edit (owned or followed) + Delete (owner only) + Share
         if (showHeaderBar) {
@@ -101,11 +105,15 @@ internal fun DeckDetailHeader(
 
         // Hidden at zero rather than shown as "0 following": the indexer returns
         // nothing when it is unreachable or has not caught up, and a confident zero
-        // would be a lie in both cases.
-        SocialCountsRow(
-            followerCount = state.followerCount,
-            clonedCount = state.clonedCount,
-        )
+        // would be a lie in both cases. Only while the stats bar is showing your own
+        // progress — on a deck you are not studying the bar carries these same two
+        // counts as columns of its own, and a caption here would be the fact twice.
+        if (showProgress) {
+            SocialCountsRow(
+                followerCount = state.followerCount,
+                clonedCount = state.clonedCount,
+            )
+        }
 
         // Author — tapping them opens their profile. This is where you actually meet
         // a stranger, so leaving it inert was the one dead end into their decks.
@@ -144,9 +152,12 @@ internal fun DeckDetailHeader(
             dueLabel = state.dueLabel,
             newCards = state.newCards,
             masteredPercent = state.masteredPercent,
-            // Only Total means anything on a deck that is not yours yet: the action
-            // below is Follow, and there is nothing to be due.
-            showProgress = state.isOwned || state.isFollowing,
+            // Due and Mastered mean nothing on a deck that is not yours yet: the
+            // action below is Follow, and there is nothing to be due. What the deck
+            // has done takes their place — who keeps it, and who has copied it.
+            showProgress = showProgress,
+            followerCount = state.followerCount,
+            clonedCount = state.clonedCount,
         )
 
         // The one way of keeping someone else's deck. Clone stood beside it as an

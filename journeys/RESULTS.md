@@ -186,6 +186,25 @@ then `11 -> 17 of 17, +4`, and the follower is on the second page. On staging (`
 (`bzbjrj…yhjzpo`) is shown. The Android carousel now draws a spinner in an extra end slot while a
 page is in flight, matching iOS.
 
+### 26 — the stats bar on a deck you are not studying — 2026-09-23 — ✅ PASS
+
+`emulator-5554`, staging, on "Inglês para viajar de avião" (`jvsena42`, 551 cards, not owned and
+not followed). The bar used to spend its whole width on a single "551 / Total": Due, New and
+Mastered are facts about *your* study and are hidden there, so one column sat centred in an empty
+card. It now spends that room on the two facts about the *deck* — Total · Followers · Copies — and
+the follower caption that used to sit above the author is gone, since the bar is carrying it.
+
+Checked at all three width classes in one pass, because the metadata column is the narrowest place
+the three columns ever land: compact (`1080x2400`), medium (`1600x2560` @ 320dpi, 800dp) and
+expanded (`2560x1600` @ 240dpi, 1706dp — the two-pane layout, where the bar lives in the left
+column at roughly a third of the screen). Three columns fit at every one.
+
+A count the indexer has not answered for is **absent, never "0"** — unchanged from the caption's
+rule, and the reason this deck shows Total · Followers and no Copies: nobody has copied it. The
+three-column case was driven with the counts stubbed to 128/17, since no staging deck has a clone
+yet; the stub was reverted and the screen re-driven on the real build before the commit. Following
+the deck swaps the bar back to Total/Due/New/Mastered and returns the counts to their caption.
+
 ## 07 — Triage edit — ✅ PASS on iOS (2026-09-01); still not re-run on Android
 
 `journeys/07-triage-edit.xml`: edit a draft card's front/back in triage, keep, publish, and

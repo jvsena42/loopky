@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,8 +36,13 @@ fun StatsBar(
      * False for a deck you have neither published, followed nor cloned. Due and Mastered are
      * facts about *your* study of a deck, and on a stranger's deck they are necessarily zero and
      * necessarily meaningless — "442 Due" beside a Follow button promises study you cannot start.
+     *
+     * The room they leave goes to [followerCount] and [clonedCount], which are facts about the
+     * *deck* and are the two things worth knowing about one you are deciding whether to keep.
      */
     showProgress: Boolean = true,
+    followerCount: Int = 0,
+    clonedCount: Int = 0,
 ) {
     val colors = LoopkyTheme.colors
 
@@ -92,6 +98,34 @@ fun StatsBar(
                 mutedColor = colors.foregroundMuted,
                 modifier = Modifier.weight(1f),
             )
+        } else {
+            // Both hidden at zero rather than shown as "0": the indexer answers with nothing when
+            // it is behind or unreachable, so a zero here would be a lie in both cases. Total on
+            // its own is the honest fallback, and what this bar showed before either count did.
+            if (followerCount > 0) {
+                StatDivider(colors.borderSubtle)
+                StatColumn(
+                    value = followerCount.toString(),
+                    label = stringResource(R.string.component_stats_bar_followers),
+                    valueColor = colors.foregroundPrimary,
+                    mutedColor = colors.foregroundMuted,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("deck_stat_followers"),
+                )
+            }
+            if (clonedCount > 0) {
+                StatDivider(colors.borderSubtle)
+                StatColumn(
+                    value = clonedCount.toString(),
+                    label = stringResource(R.string.component_stats_bar_copies),
+                    valueColor = colors.foregroundPrimary,
+                    mutedColor = colors.foregroundMuted,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("deck_stat_copies"),
+                )
+            }
         }
     }
 }
@@ -142,12 +176,23 @@ private fun StatsBarPreview() {
                 .background(LoopkyTheme.colors.surfacePrimary)
                 .padding(16.dp),
         ) {
-            StatsBar(
-                totalCards = 42,
-                dueLabel = "8",
-                newCards = 12,
-                masteredPercent = "65%",
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatsBar(
+                    totalCards = 42,
+                    dueLabel = "8",
+                    newCards = 12,
+                    masteredPercent = "65%",
+                )
+                StatsBar(
+                    totalCards = 551,
+                    dueLabel = "0",
+                    newCards = 0,
+                    masteredPercent = "0%",
+                    showProgress = false,
+                    followerCount = 12,
+                    clonedCount = 3,
+                )
+            }
         }
     }
 }

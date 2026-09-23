@@ -493,6 +493,8 @@
     <string name="component_stats_bar_due">복습</string>
     <string name="component_stats_bar_new">새 카드</string>
     <string name="component_stats_bar_mastered">숙달</string>
+    <string name="component_stats_bar_followers">팔로워</string>
+    <string name="component_stats_bar_copies">사본</string>
     <string name="component_tag_chip_label">#%1$s</string>
     <string name="component_tag_chip_remove">태그 삭제</string>
 
