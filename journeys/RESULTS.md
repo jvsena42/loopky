@@ -129,6 +129,30 @@ This Pixel_Tablet AVD would not rotate: `user_rotation`, `cmd window user-rotati
 `emu rotate` all left `rotation=0`. The portrait check used `wm size 1600x2560`, which gives the same
 medium width class, followed by `wm size reset`.
 
+### 2026-09-23 — the phone shows the code too, Ring installed or not — ✅ PASS
+
+Sign-in no longer fires the `pubkyauth://` deeplink on its own, on any device. Installed says only
+that *some* app claims the scheme, not that it holds this user's key — and auto-deeplinking on that
+guess walked a phone straight past the QR, which is the one way in for a key kept in Ring on the
+user's other phone. Every handoff now shows the code; "I have Pubky Ring on this device" fires the
+deeplink on request, against the same live authorisation.
+
+Driven on `emulator-5554` (Pixel, compact) with a hand-built stub APK claiming `pubkyauth://`, since
+Ring itself is not installed there and the installed branch is the whole change:
+
+| Ring on the device | Result |
+| --- | --- |
+| yes (stub) | Loopky stayed in the foreground; sheet showed "Scan with Pubky Ring", the QR, "I have Pubky Ring on this device" and "Copy sign-in link", with the panel's body copy and no "Get the app". Tapping open-here resumed the stub — same authUrl, no second `beginSignIn` |
+| no | unchanged: same sheet with the "Pubky Ring isn't on this device…" body and "Don't have Pubky Ring? Get the app", no open-here button |
+
+The sheet borrows the tablet panel's body string when Ring is here — its own copy opens on "Pubky
+Ring isn't on this device", which is a lie to someone who has it — so no new string was added in any
+of the eleven languages.
+
+Tablet and iOS are untouched by this: the panel already showed the code and already gated open-here
+on `ringInstalledHere`. iOS was not re-driven — no Mac in this session — but its only change is
+dropping the `deeplinkFired` guard that suppressed the sheet.
+
 ## 02 — Paste-to-Import → triage → publish — ✅ PASS
 
 Re-verified on `emulator-5554` 2026-06-17 after adding the triage step + card options.
