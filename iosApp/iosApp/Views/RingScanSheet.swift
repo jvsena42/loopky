@@ -73,7 +73,7 @@ struct RingScanPanel: View {
 
                 Button("onboarding_get_ring", action: onGetRing)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(LoopkyColor.foregroundMuted)
+                    .foregroundStyle(LoopkyColor.accentPrimary)
                     .accessibilityIdentifier("onboarding_qr_get_ring")
 
                 Button("onboarding_qr_cancel", action: onCancel)

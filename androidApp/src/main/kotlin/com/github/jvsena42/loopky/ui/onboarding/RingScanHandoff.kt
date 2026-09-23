@@ -171,7 +171,7 @@ internal fun RingScanSheet(
                 TextButton(
                     onClick = onGetRing,
                     modifier = Modifier.testTag("onboarding_qr_get_ring"),
-                    colors = ButtonDefaults.textButtonColors(contentColor = colors.foregroundMuted),
+                    colors = ButtonDefaults.textButtonColors(contentColor = colors.accentPrimary),
                 ) {
                     Text(
                         text = stringResource(R.string.onboarding_get_ring),
