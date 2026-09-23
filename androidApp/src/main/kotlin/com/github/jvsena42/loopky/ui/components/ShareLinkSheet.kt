@@ -146,6 +146,7 @@ fun ShareLinkSheet(
                 QrCode(
                     content = link,
                     contentDescription = stringResource(R.string.share_sheet_qr_content_description),
+                    withMark = true,
                 )
             }
             Text(
@@ -204,7 +205,10 @@ private fun ShareLinkSheetPreview() {
                     .background(Color.White)
                     .padding(16.dp),
             ) {
-                QrCode(content = "pubky://abc/pub/loopky/decks/deck1/manifest.json")
+                QrCode(
+                    content = "pubky://abc/pub/loopky/decks/deck1/manifest.json",
+                    withMark = true,
+                )
             }
         }
     }

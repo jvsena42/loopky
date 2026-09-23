@@ -3820,3 +3820,47 @@ that had just moved out of reach.
 
 `DiscoverScreen.swift` did not compile on `main` — `onRetryBrowse` was passed after
 `onGridColumnsChanged`, which `DiscoverView` declares before it. Argument order, nothing else.
+
+## 12 — re-run: the Loopky fox in the middle of a share QR — ✅ PASS (2026-09-23)
+
+Android on `emulator-5554` (Medium_Phone, signed in as `pk:kfezy1…cpqf4y`) against staging, at
+both the compact width class and, with `wm size 2560x1600` / `wm density 320`, the expanded one.
+iOS **not run** — this is a Linux box, so nothing Swift here was compiled, let alone driven.
+
+Deck and profile codes now carry the app icon in the centre. The sign-in and Lightning codes pass
+no mark and are untouched.
+
+| Step | Result |
+| --- | --- |
+| Deck detail → `deck_share` (compact) | ✅ PASS — fox centred on a white plate, modules crisp around it |
+| The same code decoded with zxing | ✅ PASS — `pubky://kfezy1…/pub/loopky/decks/xmn5tyteltlw/manifest.json` |
+| `share_link_send` → the attached PNG | ✅ PASS — 816², fox sharp, decodes to the same URI |
+| The PNG downscaled to 400 / 240 / 160 / 120px | ✅ PASS — all four decode; 120px is ~2px per module |
+| Own profile → Share | ✅ PASS — same plate, decodes to the bare pubky |
+| Deck share at 1280dp (expanded) | ✅ PASS — two-pane detail behind, sheet still capped at `PaneWidth.Focused`, code decodes |
+| `:androidApp:assembleDebug`, `detektAll` | ✅ PASS |
+
+### Worth knowing
+
+**A mark in the middle is an error-correction decision, not a drawing one.** The plate destroys
+the modules under it, so `qrBitmap` moves from M to H whenever a mark is passed — H recovers ~30%
+of the code against the ~6% of its area a 24% plate covers. The four downscales above are what
+makes that margin a measurement rather than an assertion. Widening the plate without moving the
+level is how this silently stops scanning.
+
+**The launcher foreground is not the mark.** It is drawn inside the adaptive-icon safe zone, so a
+fifth of every edge is transparent; dropped into the plate as-is the fox lands at two thirds the
+size the plate was sized for. It is trimmed to its own alpha bounds instead of scaled by a
+hardcoded factor, so redrawing the icon cannot quietly shrink it.
+
+**The density bucket matters here in a way it does not on screen.** The shared PNG's plate is
+173px on every device, so `decodeResource` on an mdpi phone would upscale 60px of fox into it —
+a soft mark in the picture that leaves the app, with nothing on that device showing it. The
+xxxhdpi art is asked for by name via `getDrawableForDensity`.
+
+### Not covered
+
+**`Pixel_Tablet` could not be used.** The AVD booted but had no network at all (`ping` →
+"Network is unreachable") and would not leave portrait, so the expanded-width pass was done by
+resizing `emulator-5554` instead — the same `currentWindowAdaptiveInfo` path, since the width
+class is read from the window rather than from the device.
