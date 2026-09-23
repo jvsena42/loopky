@@ -67,7 +67,12 @@ struct ShareLinkSheet: View {
                 .foregroundColor(LoopkyColor.foregroundSecondary)
                 .multilineTextAlignment(.center)
 
-            QrCodeView(text: target.link, size: 220, label: "share_sheet_qr_content_description")
+            QrCodeView(
+                text: target.link,
+                size: 220,
+                label: "share_sheet_qr_content_description",
+                showsMark: true
+            )
 
             Text(verbatim: target.link)
                 .font(.system(size: 12))
@@ -106,7 +111,7 @@ struct ShareLinkSheet: View {
     /// The picture goes first: a receiving app that takes one item takes the code, and the link is
     /// inside it. Without a code to attach, the sentence alone still carries the address.
     private var systemShareItems: [Any] {
-        guard let image = QrCodeView.shareImage(target.link) else { return [target.message] }
+        guard let image = QrCodeView.shareImage(target.link, showsMark: true) else { return [target.message] }
         return [image, target.message]
     }
 
