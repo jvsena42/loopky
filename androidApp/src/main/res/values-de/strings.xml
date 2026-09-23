@@ -68,6 +68,7 @@
     <string name="deck_detail_delete_confirm">Löschen</string>
     <string name="deck_detail_delete_cancel">Abbrechen</string>
     <string name="deck_detail_in_your_library">IN DEINER BIBLIOTHEK</string>
+    <string name="deck_detail_study_modes_label">LERNMODI</string>
     <string name="deck_detail_follow">Stapel folgen</string>
     <string name="deck_detail_following">Folge ich</string>
     <string name="deck_detail_cloning">Stapel wird kopiert…</string>

@@ -69,6 +69,7 @@
     <string name="deck_detail_delete_confirm">刪除</string>
     <string name="deck_detail_delete_cancel">取消</string>
     <string name="deck_detail_in_your_library">已在你的牌組庫中</string>
+    <string name="deck_detail_study_modes_label">學習方式</string>
     <string name="deck_detail_follow">追蹤牌組</string>
     <string name="deck_detail_following">追蹤中</string>
     <string name="deck_detail_cloning">正在複製牌組…</string>

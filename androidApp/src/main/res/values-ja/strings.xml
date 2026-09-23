@@ -69,6 +69,7 @@
     <string name="deck_detail_delete_confirm">削除</string>
     <string name="deck_detail_delete_cancel">キャンセル</string>
     <string name="deck_detail_in_your_library">ライブラリに追加済み</string>
+    <string name="deck_detail_study_modes_label">学習モード</string>
     <string name="deck_detail_follow">デッキをフォロー</string>
     <string name="deck_detail_following">フォロー中</string>
     <string name="deck_detail_cloning">デッキをコピーしています…</string>

@@ -698,6 +698,10 @@ private fun DeckDetailScreenPreview() {
                 dueLabel = "8",
                 newCards = 12,
                 masteredPercent = "65%",
+                listenEnabled = true,
+                speakEnabled = true,
+                typeEnabled = true,
+                reverseEnabled = true,
                 cardPreviews = listOf(
                     CardPreviewModel(id = "c1", frontText = "Hola", backText = "Hello"),
                     CardPreviewModel(id = "c2", frontText = "Gracias", backText = "Thank you"),
@@ -744,6 +748,10 @@ private fun DeckDetailEmptyCardsPreview() {
                 newCards = 0,
                 canStudy = false,
                 masteredPercent = "—",
+                // Only two on, so the preview also shows the row leaving out what the author
+                // did not enable.
+                listenEnabled = true,
+                reverseEnabled = true,
                 cardPreviews = emptyList(),
             ),
             onBackClick = {},
