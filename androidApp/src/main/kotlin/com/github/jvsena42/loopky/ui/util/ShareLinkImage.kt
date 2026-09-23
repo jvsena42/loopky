@@ -8,6 +8,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
 import androidx.core.content.FileProvider
+import com.github.jvsena42.loopky.ui.components.loopkyQrMark
 import com.github.jvsena42.loopky.ui.components.qrBitmap
 import java.io.File
 
@@ -44,7 +45,9 @@ fun Context.shareLinkWithQr(text: String, link: String, chooserTitle: String) {
  * `content://` uri another app may read.
  */
 private fun Context.qrShareUri(link: String): Uri? {
-    val code = qrBitmap(link, SHARE_QR_PX) ?: return null
+    // The same code the sheet just showed, fox and all — a picture that dropped the mark on its way
+    // out of the app is one the recipient cannot match to the one they were shown.
+    val code = qrBitmap(link, SHARE_QR_PX, mark = loopkyQrMark(this)) ?: return null
     val plated = onWhitePlate(code)
     val dir = File(cacheDir, SHARE_DIR)
     return runCatching {
