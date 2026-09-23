@@ -39,6 +39,7 @@ struct DeckDetailContent {
     var clonedFromLabel: String?
     /// Distinct taggers per the indexer — approximate by nature, so display only.
     var followerCount: Int = 0
+    var clonedCount: Int = 0
     /// This deck can be *tried* without being kept: flip its cards, grading nothing.
     var canPreview: Bool = false
 }
@@ -284,12 +285,16 @@ struct DeckDetailView: View {
                 }
             }
 
-            // Stats
+            // Stats. On a deck you are not studying, Due and Mastered give their room to what
+            // the deck has done — who keeps it, and who has copied it.
             StatsBarView(
                 totalCards: content.totalCards,
                 dueLabel: content.dueLabel,
                 newCards: content.newCards,
-                masteredPercent: content.masteredPercent
+                masteredPercent: content.masteredPercent,
+                showProgress: content.isOwned || content.isFollowing,
+                followerCount: content.followerCount,
+                clonedCount: content.clonedCount
             )
         }
     }
@@ -381,7 +386,9 @@ struct DeckDetailView: View {
             .foregroundColor(LoopkyColor.foregroundMuted)
         }
         // Distinct taggers per the indexer — approximate by nature, so shown and never gated on.
-        if content.followerCount > 0 {
+        // Only while the stats bar is showing your own progress: on a deck you are not studying
+        // the bar carries this count as a column of its own.
+        if content.followerCount > 0, content.isOwned || content.isFollowing {
             Text(verbatim: String(
                 format: NSLocalizedString("deck_detail_followers", comment: ""),
                 content.followerCount

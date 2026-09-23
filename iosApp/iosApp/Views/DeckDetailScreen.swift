@@ -122,6 +122,7 @@ struct DeckDetailScreen: View {
                 canEdit: content.canEdit,
                 clonedFromLabel: content.clonedFrom.map { IdentityData($0).label },
                 followerCount: Int(content.followerCount),
+                clonedCount: Int(content.clonedCount),
                 canPreview: content.canPreview
             ))
         case let error as DeckDetailUiStateError:
