@@ -30,90 +30,152 @@ struct RingScanPanel: View {
     var onGetRing: () -> Void
     var onCancel: () -> Void
 
-    @State private var didCopy = false
-
     var body: some View {
-        VStack(spacing: 20) {
-            Text("onboarding_qr_title")
-                .font(.title2.bold())
-                .foregroundStyle(LoopkyColor.foregroundPrimary)
-                .multilineTextAlignment(.center)
+        RingScanContent(
+            authUrl: authUrl,
+            message: ringInstalledHere ? "onboarding_qr_body" : "onboarding_qr_sheet_body",
+            stillWaiting: stillWaiting
+        ) {
+            if ringInstalledHere {
+                Button("onboarding_qr_open_here", action: onOpenRingHere)
+                    .buttonStyle(.loopkySoft)
+                    .accessibilityIdentifier("onboarding_qr_open_here")
+            }
+            CopyLinkButton(authUrl: authUrl)
 
-            Text(ringInstalledHere ? "onboarding_qr_body" : "onboarding_qr_sheet_body")
-                .font(.subheadline)
+            Button("onboarding_get_ring", action: onGetRing)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(LoopkyColor.accentPrimary)
+                .accessibilityIdentifier("onboarding_qr_get_ring")
+
+            // The panel's only way out: it replaces the sign-in buttons rather than covering them.
+            Button("onboarding_qr_cancel", action: onCancel)
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(LoopkyColor.foregroundMuted)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
-            QrCodeView(text: authUrl)
-
-            // In place of the waiting line, not under it, so the panel does not grow and push
-            // Cancel — the way out the note points to — below the fold.
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                if stillWaiting {
-                    StillWaitingNote()
-                } else {
-                    Text("onboarding_qr_waiting")
-                        .font(.footnote)
-                        .foregroundStyle(LoopkyColor.foregroundMuted)
-                }
-            }
-
-            VStack(spacing: 10) {
-                if ringInstalledHere {
-                    Button("onboarding_qr_open_here", action: onOpenRingHere)
-                        .buttonStyle(.loopkySoft)
-                }
-                Button(didCopy ? "onboarding_qr_copied" : "onboarding_qr_copy") {
-                    UIPasteboard.general.string = authUrl
-                    didCopy = true
-                }
-                .buttonStyle(.loopkyOutline)
-
-                Button("onboarding_get_ring", action: onGetRing)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(LoopkyColor.accentPrimary)
-                    .accessibilityIdentifier("onboarding_qr_get_ring")
-
-                Button("onboarding_qr_cancel", action: onCancel)
-                    .font(.subheadline)
-                    .foregroundStyle(LoopkyColor.foregroundMuted)
-            }
+                .accessibilityIdentifier("onboarding_qr_cancel")
         }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 28)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous).fill(LoopkyColor.surfaceCard)
+        )
     }
 }
 
 /// The phone presentation of [RingScanPanel]: a native sheet with detents, so it gets the system's
 /// drag-to-dismiss and Liquid Glass chrome on the iOS 26 SDK for free.
+///
+/// There is no Cancel button, matching Android: dragging the sheet away already lands on
+/// `onCancelSignIn` through the presenting binding, so a third control would restate the gesture.
 struct RingScanSheet: View {
     let authUrl: String
     let ringInstalledHere: Bool
     var stillWaiting: Bool = false
     var onOpenRingHere: () -> Void
     var onGetRing: () -> Void
-    var onCancel: () -> Void
+
+    @State private var contentHeight: CGFloat = 0
 
     var body: some View {
-        RingScanPanel(
-            authUrl: authUrl,
-            ringInstalledHere: ringInstalledHere,
-            stillWaiting: stillWaiting,
-            onOpenRingHere: onOpenRingHere,
-            onGetRing: onGetRing,
-            onCancel: onCancel
-        )
-        .padding(24)
-        .frame(maxWidth: .infinity)
-        // The code is a single-task screen, so it keeps a focused measure on a regular width
-        // rather than spreading a 200pt QR across a form sheet.
-        .contentPane(PaneWidth.focused)
-        .background(LoopkyColor.surfacePrimary)
-        .presentationDetents([.large])
+        // A QR big enough to scan plus its controls does not fit a short phone, and a VStack that
+        // overflows a sheet clips in silence.
+        ScrollView {
+            RingScanContent(
+                authUrl: authUrl,
+                message: ringInstalledHere ? "onboarding_qr_body" : "onboarding_qr_sheet_body",
+                stillWaiting: stillWaiting
+            ) {
+                if ringInstalledHere {
+                    Button("onboarding_qr_open_here", action: onOpenRingHere)
+                        .buttonStyle(.loopkySoft)
+                        .accessibilityIdentifier("onboarding_qr_open_here")
+                }
+                CopyLinkButton(authUrl: authUrl)
+                if !ringInstalledHere {
+                    Button("onboarding_get_ring", action: onGetRing)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(LoopkyColor.accentPrimary)
+                        .accessibilityIdentifier("onboarding_qr_get_ring")
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 32)
+            .padding(.bottom, 24)
+            .frame(maxWidth: .infinity)
+            // The code is a single-task screen, so it keeps a focused measure on a regular width
+            // rather than spreading a 220pt QR across a form sheet.
+            .contentPane(PaneWidth.focused)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        // On the presentation, not the content: a `.background` on the content only paints as far
+        // as the content reaches, and the rest of the `.large` detent showed the system material.
+        .presentationBackground(LoopkyColor.surfaceCard)
+        // Sized to the content, like Android's sheet wrapping its column. The system clamps a
+        // detent taller than the screen to full height, where the ScrollView takes over.
+        .presentationDetents(contentHeight > 0 ? [.height(contentHeight)] : [.large])
         .presentationDragIndicator(.visible)
-        // Dragging the sheet away is the same intent as tapping Cancel: back out without leaving
-        // an error behind. Without this the authorisation would keep polling behind a gone sheet.
-        .interactiveDismissDisabled(false)
+        .accessibilityIdentifier("onboarding_ring_qr_sheet")
+    }
+}
+
+/// The handoff itself, shared by the iPad panel and the phone sheet so the two cannot drift. Only
+/// the body copy and the trailing controls differ, so both are passed in.
+private struct RingScanContent<Actions: View>: View {
+    let authUrl: String
+    let message: LocalizedStringKey
+    let stillWaiting: Bool
+    @ViewBuilder let actions: Actions
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("onboarding_qr_title")
+                .font(.system(size: 20, weight: .heavy))
+                .foregroundStyle(LoopkyColor.foregroundPrimary)
+                .multilineTextAlignment(.center)
+
+            Text(message)
+                .font(.system(size: 14))
+                .lineSpacing(4)
+                .foregroundStyle(LoopkyColor.foregroundSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            QrCodeView(text: authUrl, size: 220)
+
+            // In place of the waiting line, not under it, so the panel does not grow and push
+            // Cancel, the way out the note points to, below the fold.
+            if stillWaiting {
+                StillWaitingNote()
+            } else {
+                Text("onboarding_qr_waiting")
+                    .font(.system(size: 13))
+                    .foregroundStyle(LoopkyColor.foregroundMuted)
+                    .multilineTextAlignment(.center)
+            }
+
+            actions
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("onboarding_ring_qr")
+    }
+}
+
+/// The escape hatch for a camera that will not read the code: the same one-shot URL, on the
+/// clipboard, to be pasted into Ring by hand.
+private struct CopyLinkButton: View {
+    let authUrl: String
+    @State private var didCopy = false
+
+    var body: some View {
+        Button(didCopy ? "onboarding_qr_copied" : "onboarding_qr_copy") {
+            UIPasteboard.general.string = authUrl
+            didCopy = true
+        }
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(LoopkyColor.accentSecondary)
+        .accessibilityIdentifier("onboarding_qr_copy")
     }
 }
 
