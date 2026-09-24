@@ -78,8 +78,7 @@ struct OnboardingScreen: View {
                     ringInstalledHere: scanPrompt.ringInstalledHere,
                     stillWaiting: scanPrompt.stillWaiting,
                     onOpenRingHere: scanPrompt.onOpenRingHere,
-                    onGetRing: scanPrompt.onGetRing,
-                    onCancel: scanPrompt.onCancel
+                    onGetRing: scanPrompt.onGetRing
                 )
             }
         }
