@@ -153,6 +153,16 @@ Tablet and iOS are untouched by this: the panel already showed the code and alre
 on `ringInstalledHere`. iOS was not re-driven — no Mac in this session — but its only change is
 dropping the `deeplinkFired` guard that suppressed the sheet.
 
+### 2026-09-24 — iOS sheet matches Android's — ✅ PASS (iPhone 17e, iPad Pro 11-inch (M5) portrait)
+
+The iOS QR sheet now follows `RingScanHandoff.kt`: card surface, 220pt code on a white plate, no
+spinner, text-style Copy link, "Get the app" only without Ring, and no Cancel (a drag dismisses and
+cancels, as before). Two fixes: the sheet's colour was a `.background` on the content, so the
+`.large` detent showed system material below it; it is now `.presentationBackground`. And the
+detent is sized to the content instead of `.large`. Checked in light and dark on the iPhone, and as
+a form sheet on the iPad in portrait. Not driven: the iPad's inline panel in landscape (no rotation
+from `xcodebuildmcp`), which now draws as a card like Android's tablet panel.
+
 ## 02 — Paste-to-Import → triage → publish — ✅ PASS
 
 Re-verified on `emulator-5554` 2026-06-17 after adding the triage step + card options.
