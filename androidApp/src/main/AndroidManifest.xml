@@ -113,6 +113,21 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="pubky" />
             </intent-filter>
+            <!-- The same two things as the `https://loopky.app` links Loopky shares, which are
+                 clickable where `pubky://` is not (pubky.app posts, most chat clients).
+                 `autoVerify` checks `/.well-known/assetlinks.json` on the site at install; until
+                 it passes, Android 12+ opens these in the browser, which shows the deck and the
+                 store link. Apex only: `www` redirects there, and a host that fails verification
+                 would sink the whole filter on Android 11 and below. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="loopky.app" />
+                <data android:pathPrefix="/deck" />
+                <data android:pathPrefix="/profile" />
+            </intent-filter>
             <!-- Most chat clients do not linkify an unknown scheme, so a shared link usually
                  arrives as plain text. Sharing that text into Loopky opens what it points at.
                  The same filter also catches a shared `.txt` export, which arrives as this type
