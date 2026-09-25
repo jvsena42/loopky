@@ -154,9 +154,6 @@ object PubkyLinks {
     fun isPubkyPrefix(candidate: String, minLength: Int): Boolean =
         Pubky.isKeyPrefix(candidate, minLength)
 
-    /** The canonical shareable address of someone's profile. */
-    fun profileUri(pubky: String): String = "$SCHEME$pubky"
-
     /** The link Loopky shares for someone's profile. The deck equivalent is `Deck.webUrl`. */
     fun profileWebUrl(pubky: String): String =
         "$WEB_ORIGIN/$WEB_PROFILE_PATH/?$PARAM_PUBKY=${encodeUriComponent(pubky)}"

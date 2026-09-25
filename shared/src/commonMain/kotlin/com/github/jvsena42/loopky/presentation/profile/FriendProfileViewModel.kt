@@ -233,7 +233,7 @@ class FriendProfileViewModel(
         val identity = _state.value.identity
         viewModelScope.launch {
             _effects.emit(
-                FriendProfileEffect.ShareProfile(identity, PubkyLinks.profileUri(targetPubky)),
+                FriendProfileEffect.ShareProfile(identity, PubkyLinks.profileWebUrl(targetPubky)),
             )
         }
     }

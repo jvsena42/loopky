@@ -334,7 +334,7 @@ class ProfileViewModel(
         val identity = _state.value.identity ?: return
         viewModelScope.launch {
             _effects.emit(
-                ProfileEffect.ShareProfile(identity, PubkyLinks.profileUri(identity.pubky)),
+                ProfileEffect.ShareProfile(identity, PubkyLinks.profileWebUrl(identity.pubky)),
             )
         }
     }

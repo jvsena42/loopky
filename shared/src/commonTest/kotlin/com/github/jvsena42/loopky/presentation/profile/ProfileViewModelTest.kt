@@ -101,7 +101,7 @@ class ProfileViewModelTest {
         job.cancel()
 
         val shared = effects.filterIsInstance<ProfileEffect.ShareProfile>().single()
-        assertEquals("pubky://$TEST_PUBKY", shared.uri)
+        assertEquals("https://loopky.app/profile/?pubky=$TEST_PUBKY", shared.uri)
         // Named, so a recipient knows whose profile they are about to open.
         assertEquals("Ada", shared.identity.displayName)
     }

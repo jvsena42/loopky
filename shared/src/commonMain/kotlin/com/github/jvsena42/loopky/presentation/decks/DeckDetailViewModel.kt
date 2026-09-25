@@ -153,7 +153,7 @@ class DeckDetailViewModel(
     fun onShareClick() {
         viewModelScope.launch {
             val deck = deckRepository.getLocal(deckId) ?: return@launch
-            _effects.emit(DeckDetailEffect.Share(title = deck.title, uri = deck.pubkyUri.value))
+            _effects.emit(DeckDetailEffect.Share(title = deck.title, uri = deck.webUrl))
         }
     }
 
