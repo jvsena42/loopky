@@ -115,9 +115,61 @@ class PubkyLinksTest {
         assertFalse(PubkyLinks.isPubky("l" + PUBKY.drop(1)))
     }
 
+    // ── loopky.app links ──────────────────────────────────────────────
+
     @Test
-    fun buildsTheProfileUriItCanParseBack() {
-        assertEquals(PubkyLink.Profile(PUBKY), PubkyLinks.parse(PubkyLinks.profileUri(PUBKY)))
+    fun parsesTheDeckLinkThatSharingProduces() {
+        val deck = testDeck(id = "deck1", authorPubky = PUBKY)
+
+        assertEquals(
+            "https://loopky.app/deck/?author=$PUBKY&id=deck1",
+            deck.webUrl,
+        )
+        assertEquals(PubkyLink.Deck(PUBKY, "deck1"), PubkyLinks.parse(deck.webUrl))
+    }
+
+    @Test
+    fun buildsTheProfileLinkItCanParseBack() {
+        assertEquals(
+            "https://loopky.app/profile/?pubky=$PUBKY",
+            PubkyLinks.profileWebUrl(PUBKY),
+        )
+        assertEquals(PubkyLink.Profile(PUBKY), PubkyLinks.parse(PubkyLinks.profileWebUrl(PUBKY)))
+    }
+
+    @Test
+    fun anEscapedDeckIdSurvivesTheRoundTrip() {
+        val deck = testDeck(id = "d+ç~", authorPubky = PUBKY)
+
+        assertEquals(PubkyLink.Deck(PUBKY, "d+ç~"), PubkyLinks.parse(deck.webUrl))
+    }
+
+    @Test
+    fun acceptsTheShapesABrowserOrAPersonLeavesALinkIn() {
+        listOf(
+            "https://loopky.app/deck?author=$PUBKY&id=deck1",
+            "https://www.loopky.app/deck/?id=deck1&author=$PUBKY",
+            "HTTPS://Loopky.app/deck/?author=$PUBKY&id=deck1#top",
+            "http://loopky.app/deck/?author=$PUBKY&id=deck1&utm_source=chat",
+            "Spanish Verbs on Loopky\nhttps://loopky.app/deck/?author=$PUBKY&id=deck1.",
+        ).forEach { link ->
+            assertEquals(PubkyLink.Deck(PUBKY, "deck1"), PubkyLinks.parse(link), "for $link")
+        }
+    }
+
+    @Test
+    fun refusesALoopkyLinkThatNamesNothing() {
+        listOf(
+            "https://loopky.app/",
+            "https://loopky.app/deck/?author=$PUBKY",
+            "https://loopky.app/deck/?author=notakey&id=deck1",
+            "https://loopky.app/deck/?author=$PUBKY&id=a%2Fb",
+            "https://loopky.app/deck/?author=$PUBKY&id=%zz",
+            "https://loopky.app/profile/?pubky=notakey",
+            "https://loopky.app/privacy",
+            "https://loopky.app.evil.test/deck/?author=$PUBKY&id=deck1",
+            "https://evil.test/?u=https://loopky.app/deck/?author=$PUBKY&id=deck1",
+        ).forEach { link -> assertNull(PubkyLinks.parse(link), "should reject '$link'") }
     }
 
     private companion object {

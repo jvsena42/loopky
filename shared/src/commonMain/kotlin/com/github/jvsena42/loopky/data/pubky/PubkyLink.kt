@@ -1,9 +1,11 @@
 package com.github.jvsena42.loopky.data.pubky
 
 import com.github.jvsena42.loopky.domain.model.Pubky
+import com.github.jvsena42.loopky.util.decodeUriComponent
+import com.github.jvsena42.loopky.util.encodeUriComponent
 
 /**
- * Something a `pubky://` address can open to inside Loopky.
+ * Something a `pubky://` or `https://loopky.app` address can open to inside Loopky.
  *
  * Sharing a deck or a profile writes one of these URIs into a message; tapping it has to land on
  * the screen it names. [PubkyLinks] is the one place that decides which screen that is, so the
@@ -39,6 +41,21 @@ object PubkyLinks {
 
     private const val DECKS_PREFIX = "pub/loopky/decks/"
 
+    /**
+     * Where a shared link points. An `https` address is clickable in every chat client and in a
+     * pubky.app post, where `pubky://` is plain text, and a phone with Loopky installed opens it as
+     * a verified App Link; one without lands on a web page that shows the deck and the store link.
+     * Query parameters rather than path segments because the site is static GitHub Pages, where a
+     * path route would only exist as a `404.html` fallback served with status 404.
+     */
+    private const val WEB_ORIGIN = "https://loopky.app"
+    private val WEB_HOSTS = listOf("loopky.app", "www.loopky.app")
+    private const val WEB_DECK_PATH = "deck"
+    private const val WEB_PROFILE_PATH = "profile"
+    private const val PARAM_AUTHOR = "author"
+    private const val PARAM_DECK = "id"
+    private const val PARAM_PUBKY = "pubky"
+
     /** Punctuation a link keeps when it ends a sentence, which would otherwise join the deck id. */
     private const val TRAILING_PUNCTUATION = ".,;:!?)]}"
 
@@ -56,6 +73,7 @@ object PubkyLinks {
 
     /** [text] as a single address, with nothing around it. */
     private fun parseExact(text: String): PubkyLink? {
+        parseWeb(text)?.let { return it }
         val bare = text.removePrefix(PK_PREFIX).trim()
         if (!bare.startsWith(SCHEME)) {
             return if (isPubky(bare)) PubkyLink.Profile(bare) else null
@@ -80,6 +98,40 @@ object PubkyLinks {
     }
 
     /**
+     * A `loopky.app` share link. Stricter than the `pubky://` path: the account must be a real key,
+     * because a web address is one anybody can hand-edit into a link that opens Loopky.
+     */
+    private fun parseWeb(text: String): PubkyLink? {
+        val afterHost = WEB_HOSTS.firstNotNullOfOrNull { host ->
+            listOf("https://", "http://").firstNotNullOfOrNull { scheme ->
+                val prefix = scheme + host
+                text.takeIf { it.startsWith(prefix, ignoreCase = true) }?.drop(prefix.length)
+            }
+        } ?: return null
+        if (afterHost.isNotEmpty() && afterHost.first() !in "/?#") return null
+        val path = afterHost.substringBefore('#').substringBefore('?').trim('/')
+        val params = afterHost.substringBefore('#').substringAfter('?', missingDelimiterValue = "")
+            .split('&')
+            .mapNotNull { pair ->
+                val value = decodeUriComponent(pair.substringAfter('=', missingDelimiterValue = ""))
+                value?.let { pair.substringBefore('=') to it }
+            }
+            .toMap()
+        return when (path) {
+            WEB_DECK_PATH -> {
+                val author = params[PARAM_AUTHOR]?.takeIf(::isPubky) ?: return null
+                val deckId = params[PARAM_DECK]
+                    ?.takeIf { id -> id.isNotEmpty() && id.none { it == '/' || it.isWhitespace() } }
+                    ?: return null
+                PubkyLink.Deck(author, deckId)
+            }
+
+            WEB_PROFILE_PATH -> params[PARAM_PUBKY]?.takeIf(::isPubky)?.let(PubkyLink::Profile)
+            else -> null
+        }
+    }
+
+    /**
      * The first address embedded in [text].
      *
      * Splitting on whitespace is not enough on its own: a link at the end of a sentence keeps its
@@ -89,8 +141,11 @@ object PubkyLinks {
         .split(' ', '\t', '\n', '\r', '<', '>', '"', '\'')
         .asSequence()
         .map { token -> token.trim { it in TRAILING_PUNCTUATION } }
-        .filter { it.startsWith(SCHEME) || it.startsWith(PK_PREFIX) || isPubky(it) }
+        .filter { it.startsWith(SCHEME) || it.startsWith(PK_PREFIX) || isPubky(it) || isWebLink(it) }
         .firstNotNullOfOrNull(::parseExact)
+
+    private fun isWebLink(token: String): Boolean =
+        WEB_HOSTS.any { host -> token.contains("://$host", ignoreCase = true) }
 
     /** True when [candidate] is shaped like a bare pubky. */
     fun isPubky(candidate: String): Boolean = Pubky.isKey(candidate)
@@ -101,4 +156,8 @@ object PubkyLinks {
 
     /** The canonical shareable address of someone's profile. */
     fun profileUri(pubky: String): String = "$SCHEME$pubky"
+
+    /** The link Loopky shares for someone's profile. The deck equivalent is `Deck.webUrl`. */
+    fun profileWebUrl(pubky: String): String =
+        "$WEB_ORIGIN/$WEB_PROFILE_PATH/?$PARAM_PUBKY=${encodeUriComponent(pubky)}"
 }
