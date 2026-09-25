@@ -570,8 +570,9 @@ Two things the post record has to get right, both silent when wrong:
   all (`PostAttachments.tsx`). What it *does* render is the first `http(s)` link in the **content**:
   it runs that through an OpenGraph probe and, when the response is an image content-type, shows
   the image inline (`GenericPreview.tsx`, `detectMediaType`). So the cover travels as a plain URL
-  in the body. Nothing linkifies `pubky://`, so the cover is always the first link found whatever
-  order the body is in.
+  in the body, **ahead of** the deck's `https://loopky.app` link (see the next point but one): the
+  probe takes only the first link, and the deck's own cover is a better preview than the site's
+  generic card.
 - **A homeserver-blob cover cannot be shown on the web at all.** Only a web (Unsplash) cover has an
   `http(s)` URL; a gallery upload has only a `pubky://` one, which the OpenGraph probe — an
   ordinary HTTP fetch — cannot follow. Showing those means giving the cover a pubky.app **blob +
@@ -579,14 +580,19 @@ Two things the post record has to get right, both silent when wrong:
   on ingest (`PubkyAppBlob::create_id`, `HashId::validate_id`). Neither platform ships blake3, the
   FFI exposes only `create_tag_id`, and there is no Kotlin Multiplatform blake3 on Maven Central —
   so this is blocked on an FFI addition, not on a few lines of Kotlin.
-- **Nothing makes the `pubky://` URI clickable on the web, so do not try again.** pubky.app
-  renders post content as markdown and neither path linkifies it: remark-gfm's autolink literals
-  cover only `http(s)`, `www.` and `mailto`, and a CommonMark autolink (`<pubky://…>`) survives
-  the parse only to have its `href` blanked by react-markdown 10's `defaultUrlTransform`, which
-  permits `https?|ircs?|mailto|xmpp` and nothing else. No public HTTPS gateway maps a `pubky://`
-  record to a browsable page either. What *is* clickable in pubky.app is `#hashtags` (→ its tag
-  search) and `pk:`/`pubky` + 52 chars (→ a profile, rendered as `@DisplayName`) — neither of
-  which is a substitute for the deck link.
+- **The deck is linked as `https://loopky.app/deck/?author=…&id=…`, not as its `pubky://` URI.**
+  Nothing makes `pubky://` clickable in pubky.app, so do not try: remark-gfm's autolink literals
+  cover only `http(s)`, `www.` and `mailto`, and a CommonMark autolink (`<pubky://…>`) survives the
+  parse only to have its `href` blanked by react-markdown 10's `defaultUrlTransform`
+  (`https?|ircs?|mailto|xmpp`). The web link is clickable, Android opens it as a verified App Link
+  (`/.well-known/assetlinks.json` on the landing site, `jvsena42/loopky.github.io`), and without
+  the app it lands on a page there that renders the deck from its manifest beside the store link.
+  The share buttons hand out the same links (`Deck.webUrl`, `PubkyLinks.profileWebUrl`), and
+  `PubkyLinks.parse` reads them back, so a pasted or scanned one resolves like a `pubky://` one.
+  Query parameters rather than a path because the site is static GitHub Pages, where a path route
+  exists only as a `404.html` served with status 404. The `pubky://` URI stays the post's `embed`.
+  iOS cannot claim the links yet: universal links need an `apple-app-site-association` naming a
+  Team ID, and `Config.xcconfig` has none.
 - **Post ids are timestamp-derived, not content-derived.** `TimestampId::create_id` is
   Crockford-base32 of the 8 big-endian bytes of a microsecond Unix timestamp — always 13 chars —
   and `validate_id` only checks the length, the decode, and that the time is after 2024-10-01 and

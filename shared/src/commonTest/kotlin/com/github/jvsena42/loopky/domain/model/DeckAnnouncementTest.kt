@@ -12,12 +12,14 @@ import kotlin.test.assertTrue
 class DeckAnnouncementTest {
 
     @Test
-    fun `created announcement names the deck and links its manifest`() {
+    fun `created announcement names the deck and links it on the web`() {
         val deck = testDeck(id = "d1", title = "Kanji N5")
         val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Created).content
 
         assertTrue(content.startsWith("📚 I published a new deck on Loopky: \"Kanji N5\""), content)
-        assertTrue(content.contains("pubky://$TEST_PUBKY/pub/loopky/decks/d1/manifest.json"), content)
+        // pubky.app linkifies only http(s), so the pubky:// address would be dead text there.
+        assertTrue(content.endsWith("https://loopky.app/deck/?author=$TEST_PUBKY&id=d1"), content)
+        assertFalse(content.contains("pubky://"), content)
     }
 
     @Test
@@ -89,9 +91,9 @@ class DeckAnnouncementTest {
         val announcement = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Created)
 
         assertEquals("https://img.test/c.jpg", announcement.coverImageUrl)
-        // pubky.app probes the first http(s) link in the content and renders an image content-type
-        // inline; nothing linkifies the pubky:// URI, so the cover is the only candidate.
-        assertTrue(announcement.content.endsWith("https://img.test/c.jpg"), announcement.content)
+        // pubky.app previews only the first http(s) link, so the cover has to precede the deck's.
+        val content = announcement.content
+        assertTrue(content.indexOf("https://img.test/c.jpg") in 0 until content.indexOf(deck.webUrl), content)
     }
 
     @Test
@@ -103,7 +105,7 @@ class DeckAnnouncementTest {
         val announcement = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Created)
 
         assertNull(announcement.coverImageUrl)
-        assertTrue(announcement.content.endsWith("manifest.json"), announcement.content)
+        assertTrue(announcement.content.endsWith(deck.webUrl), announcement.content)
     }
 
     @Test

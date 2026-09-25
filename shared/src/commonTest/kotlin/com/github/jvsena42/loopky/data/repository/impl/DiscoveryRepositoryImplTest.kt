@@ -744,7 +744,7 @@ class DiscoveryRepositoryImplTest {
 
         val post = loopkyJson.decodeFromString<PostDto>(pubky.store.getValue(uri.value))
         assertTrue(post.content.contains("Kanji N5"), post.content)
-        assertTrue(post.content.contains(deck.pubkyUri.value), post.content)
+        assertTrue(post.content.contains(deck.webUrl), post.content)
         assertEquals(deck.pubkyUri.value, post.embed?.uri)
     }
 
