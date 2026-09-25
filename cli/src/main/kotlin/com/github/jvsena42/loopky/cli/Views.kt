@@ -59,6 +59,8 @@ data class DeckView(
      */
     val chunks: List<ChunkView> = emptyList(),
     val uri: String,
+    /** The `https://loopky.app` link the apps share: what an agent hands a person, where [uri] is for clients. */
+    @SerialName("share_url") val shareUrl: String,
 )
 
 /** One card record, as the manifest describes it. */
@@ -125,6 +127,7 @@ fun Deck.toView(): DeckView = DeckView(
     reverseEnabled = reverseEnabled,
     chunks = chunks.map { ChunkView(n = it.n, count = it.count, updatedAt = it.updatedAt) },
     uri = pubkyUri.value,
+    shareUrl = webUrl,
 )
 
 fun Card.toView(): CardView = CardView(

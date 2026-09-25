@@ -587,6 +587,24 @@ follows listing, or finding whatever wrote that record.
 
 ---
 
+### 2026-09-25 — `https://loopky.app` links — ✅ PASS (App Link verification pending)
+
+Debug APK on `emulator-5554` (Medium_Phone), guest session, against jvsena42's decks.
+
+| Step | Result |
+| --- | --- |
+| `VIEW https://loopky.app/deck/?author=…&id=viageming2026a` (`-p` pinned) | PASSED — deck detail for "Inglês para viajar de avião", 551 cards |
+| `VIEW https://loopky.app/profile/?pubky=…` | PASSED — jvsena42's profile, 30 decks |
+| Cold start via the https profile link | PASSED — force-stopped, lands on the profile |
+| `SEND text/plain` with the https deck link inside a sentence | PASSED — opens the deck |
+| Deck share sheet | PASSED — shows `https://loopky.app/deck/?author=…&id=viageming2026a`, and the QR encodes the same link |
+| `pm get-app-links` | `loopky.app: 1024`: not verified, as expected while assetlinks.json is undeployed and lacks the Play signing key |
+
+Not driven: pasting an https link into Discover search (covered by `PubkyLinksTest`), and an
+unpinned tap on a verified link, which needs the landing-site deploy first.
+
+---
+
 ## #147 — Local keys, recovery restore, and backup (2026-08-26)
 
 Driven on the Pixel_9 emulator against **staging**. Sign-out between runs via

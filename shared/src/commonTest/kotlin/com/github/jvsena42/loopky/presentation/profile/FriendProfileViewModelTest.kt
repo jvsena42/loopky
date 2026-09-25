@@ -126,7 +126,7 @@ class FriendProfileViewModelTest {
         collector.cancel()
 
         val shared = effects.filterIsInstance<FriendProfileEffect.ShareProfile>().single()
-        assertEquals("pubky://$stranger", shared.uri)
+        assertEquals("https://loopky.app/profile/?pubky=$stranger", shared.uri)
         assertEquals("Grace Hopper", shared.identity.displayName)
     }
 

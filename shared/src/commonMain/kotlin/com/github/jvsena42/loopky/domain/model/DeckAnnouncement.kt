@@ -15,6 +15,7 @@ data class DeckAnnouncement(
     val kind: Kind,
     val deckTitle: String,
     val deckUri: PubkyUri,
+    val deckUrl: String,
     /**
      * The original author's pubky, for [Kind.Followed] and [Kind.Cloned] — a clone credits
      * whoever it forked. Written into [content] as a **mention**, so the credit reaches the person
@@ -41,34 +42,24 @@ data class DeckAnnouncement(
     enum class Kind { Created, Followed, Cloned }
 
     /**
-     * The post body: a headline, the deck's `pubky://` address, and the cover's image URL.
+     * The post body: a headline, the cover's image URL, and the deck's `https://loopky.app` link.
      *
-     * **The URI is deliberately left bare, and it will not be clickable everywhere.** pubky.app
-     * renders post content as markdown, and neither of the two things that could linkify it does:
-     * remark-gfm's autolink literals cover only `http(s)`, `www.` and `mailto`, and a CommonMark
-     * autolink (`<pubky://…>`) survives the parse only to have its `href` blanked by
-     * react-markdown's `defaultUrlTransform`, which allows `https?|ircs?|mailto|xmpp` and nothing
-     * else. No public HTTPS gateway maps a `pubky://` record to a browsable page either, so there
-     * is no form of this link that is both clickable *and* correct on the web. It stays the
-     * canonical address: Loopky's own deep-link filter opens it, and so does any client that
-     * linkifies unknown schemes.
+     * **The deck goes in as [deckUrl], not as [deckUri].** pubky.app renders content as markdown
+     * and linkifies only `http(s)`, so a `pubky://` address there is inert text; the web link is
+     * clickable, opens Loopky as an App Link where it is installed, and a preview page where it is
+     * not. [deckUri] still travels in the post's `embed`, for clients that read the record.
      *
-     * **The cover URL is in the body because that is the only place a reader's client will look.**
-     * pubky.app resolves a post's `attachments` strictly as pubky.app *file records* and renders
-     * nothing for any other URI, but it runs the first `http(s)` link in the *content* through an
-     * OpenGraph probe and renders an image content-type inline. Same reason the URI above is safe
-     * to leave first: nothing linkifies `pubky://`, so the cover is the first link found.
+     * **The cover comes before the link, because only the first link is previewed.** pubky.app
+     * resolves `attachments` strictly as its own file records, but runs the first `http(s)` link in
+     * the content through an OpenGraph probe and renders an image content-type inline. The deck's
+     * own cover is a better preview than the site's generic card, which is what a static page can
+     * offer; with no cover, that card is what shows.
      *
      * **The author is credited as a mention, which is why the key is written out in full.** Nexus
      * scans post content for [MENTION_PREFIX] followed by exactly 52 characters of z-base-32,
      * writes a MENTIONED edge and notifies that account, and pubky.app renders the pair as a link
-     * to their profile — so a follow or a clone tells the author it happened instead of only the
-     * announcer's own followers. A display name could not do that, and it is the wrong identifier
-     * for a credit that outlives the post besides: self-declared, so two authors can credit as the
-     * same person, and changeable, so one can rename out of a credit already posted.
-     *
-     * The `pubky://` URI below is not a second mention: [MENTION_PREFIX] matches there too, but
-     * the 52 characters after it start `://` and fail the key check.
+     * to their profile. A display name could not do that: it is self-declared and changeable. The
+     * deck link carries the key as `author=`, which is not the prefix, so it is not a second one.
      *
      * The title is truncated because it is not always the user's own: announcing a follow or a
      * clone quotes another account's manifest, and pubky-app-specs rejects a post over
@@ -89,7 +80,7 @@ data class DeckAnnouncement(
                 Kind.Cloned -> "$icon Cloned the Loopky deck: $title$by into my library"
             }
             val cover = coverImageUrl?.let { "\n\n$it" }.orEmpty()
-            return "$headline\n\n${deckUri.value}$cover"
+            return "$headline$cover\n\n$deckUrl"
         }
 
     companion object {
@@ -99,6 +90,7 @@ data class DeckAnnouncement(
                 kind = kind,
                 deckTitle = deck.title,
                 deckUri = deck.pubkyUri,
+                deckUrl = deck.webUrl,
                 authorPubky = authorPubky,
                 coverEmoji = deck.coverEmoji,
                 coverImageUrl = deck.previewableCoverUrl(),
