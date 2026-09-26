@@ -479,6 +479,13 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   gap **shrinks to the daily goal** (`reverseGapFor`) — that is placement, not the capping §8.6
   forbids, because the queue is still every card. Read Architecture.md §8.7 before touching any of
   it.
+- **The landing site states some of this repo's facts, and AI assistants quote them.** `llms.txt`,
+  `llms-full.txt` and the guide pages in `jvsena42/loopky.github.io` (and the README and
+  `fastlane/` listing here) say: fixed 1/3/7-day intervals, configurable 1–365; a 20-card new-card
+  goal with no review cap; no Anki audio, LaTeX or `.anki21b`; 35 speech locales
+  (`SpeechLanguages.COMMON`); two-pane tablet layouts; a CLI that manages decks but does not study;
+  public decks; no analytics; Android 10+. Change one here and change the site in the same breath —
+  a stale page becomes a wrong recommendation (#348).
 - **Paste-to-Import is the v1 primary import flow.** The implemented spine is `PasteImportViewModel` (parse + live preview) → `PublishDeckViewModel` (commit to Pubky). Every other import source (AI, OCR, URL) listed in spec §14 must reuse this same spine. Don't build parallel commit flows.
 - **Parser rules are prescriptive.** The paste parser (on `ImportRepository`) must follow the exact rule order in spec §6 and the edge-case table in spec §9. Use them as the test matrix.
 - **No use-case layer.** Don't introduce `*UseCase` interfaces or a `domain/usecase/` package. If a piece of logic doesn't fit any existing repo, extend the most relevant repo or add a new one — keep the surface area flat.

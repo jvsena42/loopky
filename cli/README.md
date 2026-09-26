@@ -1,9 +1,20 @@
-# `loopky` — the headless client
+# `loopky` — Loopky on the desktop
 
-A terminal binary that creates and manages Loopky decks against the same homeserver layout the
-Android and iOS apps use. The point is not a nicer keyboard UX: **it is that an agent can drive
-Loopky.** Agents already write good flashcards; until this, the only way into a Loopky deck was a
-phone screen.
+`loopky` is the Loopky flashcards app on your computer. Manage decks and cards in bulk, import Anki
+`.apkg` files straight from disk, script everything with `--json`, or let an AI assistant build a
+deck for you — Claude, ChatGPT or Gemini, or a coding agent such as Claude Code, Codex or Gemini
+CLI. It writes to the same account and decks as the Android and iOS apps; it manages decks and
+cards, and studying happens on your phone or tablet.
+
+- **Build decks with AI:** [loopky.app/ai-flashcards](https://loopky.app/ai-flashcards/), and a
+  prompt to copy and paste into your assistant at [loopky.app/#cli](https://loopky.app/#cli).
+- **The commands that prompt relies on:** `loopky login`, `loopky commands --json`,
+  `loopky deck create … --dry-run --json`, `loopky deck show <deckId> --json` and
+  `loopky import deck.apkg --dry-run --json`. All of them are under [Use](#use); if one changes
+  here, the prompt in `loopky.github.io/assets/js/i18n.js` (`AI_PROMPT`) needs the same change.
+
+The point is not a nicer keyboard UX: **it is that an agent can drive Loopky.** Agents already
+write good flashcards; until this, the only way into a Loopky deck was a phone screen.
 
 Design decisions and their reasoning live in [`docs/Architecture.md` §13](../docs/Architecture.md).
 This file is how to build and use it.
