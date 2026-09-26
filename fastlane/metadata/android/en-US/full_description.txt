@@ -1,0 +1,25 @@
+Loopky is a free, open source flashcards app with spaced repetition, and a full replacement for Anki for most learners. Import your Anki decks, study on your phone or tablet, and share decks with your class through one link.
+
+<b>Spaced repetition that tells you what it does</b>
+Grade each card Again, Hard, Good or Easy. Every button shows the interval it gives, and you can change the intervals in settings (1, 3 and 7 days by default). New cards have a daily goal of 20, and reviews are never capped.
+
+<b>An Anki alternative that imports your decks</b>
+Import Anki .apkg files, including images, as well as .txt and .csv files. Or paste a vocabulary list straight in: Loopky finds the separator and shows you the cards before you publish.
+
+<b>Vocabulary and pronunciation practice</b>
+Listen reads cards aloud, Speak checks your pronunciation, and Type asks you to type the answer, in 35 languages. Reverse cards ask you the other way round too, and cards can carry images.
+
+<b>For language learners, med school and teachers</b>
+Build vocabulary decks, study for exams, or make one deck for a whole class and share it with a single link. Publish a deck, follow and copy other people's decks, and find new ones by tag in Discover.
+
+<b>Made for tablets</b>
+Two-pane layouts on tablets, not a stretched phone screen.
+
+<b>Manage decks from your computer</b>
+The loopky command line tool creates and edits decks in bulk, imports Anki files from disk, and lets an AI assistant build a deck for you.
+
+<b>Your key, your data</b>
+There is no Loopky account and no Loopky server. You sign in with a key held in Pubky Ring, and your decks and progress live on a Pubky homeserver you hold the key to. Published decks are public. No ads and no analytics.
+
+Guides: https://loopky.app
+Source code: https://github.com/jvsena42/loopky

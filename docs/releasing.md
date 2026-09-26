@@ -132,3 +132,22 @@ nowhere. The run summary says so on every release where the token is missing.
   every asset name `cli/install.sh` fetches and downloads-and-runs the published Linux binary
   before moving `latest`, so a release that reached `latest` has been checked; one that did not is
   visible as a red run with the previous version still installable.
+
+## Store listing as code
+
+`fastlane/metadata/android/en-US/` holds the listing text and the phone and tablet screenshots, in
+the layout F-Droid and IzzyOnDroid read. The screenshots are copies of `screenshots/phone/` and
+`screenshots/tablet/` — git stores identical files once — so recapturing one means copying it
+again. The description states facts the landing site also states (intervals, the new-card goal,
+35 speech languages); change them together.
+
+**Neither open source store can take the app as it is built today** (checked for #348):
+
+- **F-Droid** builds from source, and rejects both prebuilt `libpubkycore.so` files in
+  `shared/src/androidMain/jniLibs/` (they would have to be built from `pubky-core-ffi-fork`'s Rust
+  in the recipe) and the proprietary Google Play services dependencies —
+  `play-services-code-scanner` and `credentials-play-services-auth`. It would need a flavor without
+  either.
+- **IzzyOnDroid** accepts the prebuilt native library, but its scanner blocks the same two Play
+  services libraries, and it asks for the Play dependency-info blob to be off
+  (`dependenciesInfo { includeInApk = false }`).
