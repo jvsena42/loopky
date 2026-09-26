@@ -7,9 +7,6 @@ sealed interface OnboardingEffect {
     /** Navigate to the install page for Pubky Ring (store listing). */
     data class OpenInstallPage(val url: String) : OnboardingEffect
 
-    /** Onboarding complete — pop onboarding and navigate to the main app. */
-    data object NavigateHome : OnboardingEffect
-
     /**
      * Ring authorised a pubky the homeserver has no account for.
      *

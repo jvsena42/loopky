@@ -119,13 +119,18 @@ fun OnboardingScreen(
     val currentOnUnregistered by rememberUpdatedState(onUnregistered)
     val currentOnExplore by rememberUpdatedState(onExplore)
 
-    // Driven off the state rather than an effect on purpose. `effects` is a zero-replay SharedFlow,
-    // so anything emitted from the ViewModel's init can be dropped if this collector has not
-    // attached yet — and "no persisted session" is decided in exactly that window. Idle is the
-    // ViewModel's word for it, and a StateFlow cannot lose it.
+    // Both exits from the cold start are driven off the state rather than an effect on purpose.
+    // `effects` is a zero-replay SharedFlow, so anything emitted from the ViewModel's init is
+    // dropped if this collector has not attached yet — or has detached, as it does when the first
+    // launch recreates the activity to apply the app's night mode. A dropped NavigateHome held a
+    // returning user on the splash until the app was killed. A StateFlow cannot lose either.
     val noSession = state is OnboardingUiState.Idle
     LaunchedEffect(autoExplore, noSession) {
         if (autoExplore && noSession) currentOnExplore()
+    }
+    val signedIn = state is OnboardingUiState.Success
+    LaunchedEffect(signedIn) {
+        if (signedIn) currentOnNavigateHome()
     }
 
     LaunchedEffect(viewModel) {
@@ -154,7 +159,6 @@ fun OnboardingScreen(
                         context.startActivity(intent)
                     }
                 }
-                OnboardingEffect.NavigateHome -> currentOnNavigateHome()
                 is OnboardingEffect.NavigateUnregistered -> currentOnUnregistered(effect.pubky)
             }
         }
@@ -186,7 +190,7 @@ private fun OnboardingContent(
     leaving: Boolean = false,
 ) {
     // [OnboardingUiState.Success] belongs here with the other two: it is always followed by
-    // [OnboardingEffect.NavigateHome], so the CTA it would otherwise draw is on screen for the
+    // navigating home, so the CTA it would otherwise draw is on screen for the
     // whole navigation — a returning user saw the sign-in wall flash between the splash and their
     // own library on every cold start.
     if (leaving || state is OnboardingUiState.Restoring || state is OnboardingUiState.Success) {
