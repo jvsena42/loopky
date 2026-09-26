@@ -1,0 +1,25 @@
+Loopky é um app de flashcards grátis e de código aberto com repetição espaçada, e substitui o Anki por completo para a maioria dos estudantes. Importe seus baralhos do Anki, estude no celular ou no tablet e compartilhe baralhos com a sua turma por um único link.
+
+<b>Repetição espaçada que mostra o que faz</b>
+Avalie cada carta com De novo, Difícil, Bom ou Fácil. Cada botão mostra o intervalo que ele dá, e você pode mudar os intervalos nas configurações (1, 3 e 7 dias por padrão). Cartas novas têm uma meta diária de 20, e as revisões não têm limite.
+
+<b>Uma alternativa ao Anki que importa seus baralhos</b>
+Importe arquivos .apkg do Anki, com imagens, além de arquivos .txt e .csv. Ou cole uma lista de vocabulário direto: o Loopky encontra o separador e mostra as cartas antes de você publicar.
+
+<b>Prática de vocabulário e pronúncia</b>
+Ouvir lê as cartas em voz alta, Falar confere sua pronúncia e Digitar pede que você digite a resposta, em 35 idiomas. Cartas inversas também perguntam no sentido contrário, e as cartas podem ter imagens.
+
+<b>Para quem aprende idiomas, faz medicina ou dá aula</b>
+Monte baralhos de vocabulário, estude para provas ou crie um baralho para a turma toda e compartilhe com um único link. Publique um baralho, siga e copie baralhos de outras pessoas e encontre novos por tag em Descobrir.
+
+<b>Feito para tablets</b>
+Layout em dois painéis nos tablets, não uma tela de celular esticada.
+
+<b>Gerencie baralhos no computador</b>
+A ferramenta de linha de comando loopky cria e edita baralhos em massa, importa arquivos do Anki do disco e deixa um assistente de IA montar um baralho para você.
+
+<b>Sua chave, seus dados</b>
+Não existe conta Loopky nem servidor Loopky. Você entra com uma chave guardada no Pubky Ring, e seus baralhos e seu progresso ficam num homeserver Pubky do qual você tem a chave. Baralhos publicados são públicos. Sem anúncios e sem rastreamento.
+
+Guias: https://loopky.app/pt-br/
+Código-fonte: https://github.com/jvsena42/loopky

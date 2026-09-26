@@ -1,0 +1,25 @@
+Loopky là ứng dụng thẻ ghi nhớ miễn phí, mã nguồn mở, dùng lặp lại ngắt quãng, và thay thế hoàn toàn Anki cho hầu hết người học. Nhập bộ thẻ Anki của bạn, học trên điện thoại hoặc máy tính bảng, và chia sẻ bộ thẻ với cả lớp chỉ bằng một link.
+
+<b>Lặp lại ngắt quãng, nói rõ nó làm gì</b>
+Chấm mỗi thẻ là Lại, Khó, Tốt hoặc Dễ. Mỗi nút hiện khoảng thời gian nó đặt cho thẻ, và bạn có thể đổi các khoảng này trong cài đặt (mặc định là 1, 3 và 7 ngày). Thẻ mới có mục tiêu 20 thẻ mỗi ngày, và số lượt ôn không bao giờ bị giới hạn.
+
+<b>Thay thế Anki, nhập được bộ thẻ của bạn</b>
+Nhập tệp Anki .apkg, kể cả hình ảnh, cùng với tệp .txt và .csv. Hoặc dán thẳng một danh sách từ vựng: Loopky tự tìm ký tự phân cách và cho bạn xem thẻ trước khi đăng.
+
+<b>Luyện từ vựng và phát âm</b>
+Nghe đọc to thẻ, Nói kiểm tra phát âm của bạn, và Gõ yêu cầu bạn gõ câu trả lời, với 35 ngôn ngữ. Thẻ đảo chiều hỏi bạn theo chiều ngược lại, và thẻ có thể kèm hình ảnh.
+
+<b>Cho người học ngoại ngữ, sinh viên y và giáo viên</b>
+Làm bộ thẻ từ vựng, ôn thi, hoặc làm một bộ thẻ cho cả lớp và chia sẻ bằng một link. Đăng bộ thẻ, theo dõi và sao chép bộ thẻ của người khác, và tìm bộ thẻ mới theo tag trong Khám phá.
+
+<b>Làm cho máy tính bảng</b>
+Bố cục hai khung trên máy tính bảng, không phải màn hình điện thoại bị kéo giãn.
+
+<b>Quản lý bộ thẻ từ máy tính</b>
+Công cụ dòng lệnh loopky tạo và sửa nhiều bộ thẻ cùng lúc, nhập tệp Anki từ ổ đĩa, và để trợ lý AI làm bộ thẻ cho bạn.
+
+<b>Khóa của bạn, dữ liệu của bạn</b>
+Không có tài khoản Loopky và không có máy chủ Loopky. Bạn đăng nhập bằng khóa lưu trong Pubky Ring, và bộ thẻ cùng tiến độ học của bạn nằm trên một homeserver Pubky mà bạn giữ khóa. Bộ thẻ đã đăng là công khai. Không quảng cáo, không phân tích dữ liệu.
+
+Hướng dẫn: https://loopky.app/vi/
+Mã nguồn: https://github.com/jvsena42/loopky

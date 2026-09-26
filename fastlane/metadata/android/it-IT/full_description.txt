@@ -1,0 +1,25 @@
+Loopky è un'app di flashcard gratuita e open source con ripetizione dilazionata, e per la maggior parte degli studenti sostituisce Anki in tutto. Importa i tuoi mazzi Anki, studia su telefono o tablet e condividi i mazzi con la tua classe con un solo link.
+
+<b>Ripetizione dilazionata che ti mostra cosa fa</b>
+Valuta ogni carta con Ancora, Difficile, Bene o Facile. Ogni pulsante mostra l'intervallo che assegna, e puoi cambiare gli intervalli nelle impostazioni (1, 3 e 7 giorni per impostazione predefinita). Le carte nuove hanno un obiettivo giornaliero di 20, e i ripassi non hanno mai un limite.
+
+<b>Un'alternativa ad Anki che importa i tuoi mazzi</b>
+Importa file Anki .apkg, immagini comprese, e anche file .txt e .csv. Oppure incolla direttamente una lista di vocaboli: Loopky trova il separatore e ti mostra le carte prima che tu pubblichi.
+
+<b>Esercizi di vocabolario e pronuncia</b>
+Ascolta legge le carte ad alta voce, Parla controlla la tua pronuncia e Scrivi ti chiede di scrivere la risposta, in 35 lingue. Le carte inverse ti interrogano anche nell'altro senso, e le carte possono contenere immagini.
+
+<b>Per chi studia lingue, per medicina e per insegnanti</b>
+Crea mazzi di vocaboli, prepara gli esami o fai un mazzo per tutta la classe e condividilo con un solo link. Pubblica un mazzo, segui e clona i mazzi degli altri e trovane di nuovi per tag in Scopri.
+
+<b>Fatta per i tablet</b>
+Layout a due pannelli sui tablet, non lo schermo di un telefono allargato.
+
+<b>Gestisci i mazzi dal computer</b>
+Lo strumento da riga di comando loopky crea e modifica mazzi in blocco, importa file Anki dal disco e lascia che un assistente IA crei un mazzo per te.
+
+<b>La tua chiave, i tuoi dati</b>
+Non c'è un account Loopky né un server Loopky. Accedi con una chiave custodita in Pubky Ring, e i tuoi mazzi e progressi stanno su un homeserver Pubky di cui hai tu la chiave. I mazzi pubblicati sono pubblici. Niente pubblicità e niente statistiche di utilizzo.
+
+Guide: https://loopky.app/it/
+Codice sorgente: https://github.com/jvsena42/loopky
