@@ -1,0 +1,25 @@
+Loopky ist eine kostenlose, quelloffene Karteikarten-App mit verteilter Wiederholung und für die meisten Lernenden ein vollwertiger Ersatz für Anki. Importiere deine Anki-Stapel, lerne auf Handy oder Tablet und teile Stapel mit einem einzigen Link mit deiner Klasse.
+
+<b>Verteilte Wiederholung, die zeigt, was sie tut</b>
+Bewerte jede Karte mit Nochmal, Schwer, Gut oder Einfach. Jeder Button zeigt das Intervall, das er vergibt, und du kannst die Intervalle in den Einstellungen ändern (standardmäßig 1, 3 und 7 Tage). Für neue Karten gibt es ein Tagesziel von 20, und Wiederholungen sind nie begrenzt.
+
+<b>Eine Anki-Alternative, die deine Stapel importiert</b>
+Importiere Anki-Dateien im Format .apkg, auch mit Bildern, sowie .txt- und .csv-Dateien. Oder füge eine Vokabelliste direkt ein: Loopky erkennt das Trennzeichen und zeigt dir die Karten, bevor du veröffentlichst.
+
+<b>Vokabeln und Aussprache üben</b>
+Hören liest Karten vor, Sprechen prüft deine Aussprache und Tippen lässt dich die Antwort eintippen, in 35 Sprachen. Umgekehrte Karten fragen dich auch in die andere Richtung ab, und Karten können Bilder enthalten.
+
+<b>Für Sprachenlernende, Medizinstudium und Lehrkräfte</b>
+Bau Vokabelstapel, lerne für Prüfungen oder erstelle einen Stapel für die ganze Klasse und teile ihn mit einem einzigen Link. Veröffentliche einen Stapel, folge den Stapeln anderer oder klone sie, und finde neue über Tags in Entdecken.
+
+<b>Für Tablets gemacht</b>
+Zweispaltige Ansichten auf Tablets statt eines gestreckten Handybildschirms.
+
+<b>Stapel vom Computer aus verwalten</b>
+Das Kommandozeilen-Tool loopky erstellt und bearbeitet Stapel in großen Mengen, importiert Anki-Dateien von der Festplatte und lässt einen KI-Assistenten einen Stapel für dich bauen.
+
+<b>Dein Schlüssel, deine Daten</b>
+Es gibt kein Loopky-Konto und keinen Loopky-Server. Du meldest dich mit einem Schlüssel an, der in Pubky Ring liegt, und deine Stapel und dein Lernfortschritt liegen auf einem Pubky-Homeserver, zu dem du den Schlüssel hast. Veröffentlichte Stapel sind öffentlich. Keine Werbung und keine Analyse.
+
+Anleitungen: https://loopky.app/de/
+Quellcode: https://github.com/jvsena42/loopky

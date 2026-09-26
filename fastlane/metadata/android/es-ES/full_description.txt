@@ -1,0 +1,25 @@
+Loopky es una app de flashcards gratis y de código abierto con repetición espaciada, y sustituye por completo a Anki para la mayoría de estudiantes. Importa tus mazos de Anki, estudia en el móvil o la tableta y comparte mazos con tu clase con un solo enlace.
+
+<b>Repetición espaciada que te dice lo que hace</b>
+Evalúa cada tarjeta con Otra vez, Difícil, Bien o Fácil. Cada botón muestra el intervalo que da, y puedes cambiar los intervalos en los ajustes (1, 3 y 7 días por defecto). Las tarjetas nuevas tienen un objetivo diario de 20, y los repasos no tienen límite.
+
+<b>Una alternativa a Anki que importa tus mazos</b>
+Importa archivos .apkg de Anki, con imágenes, además de archivos .txt y .csv. O pega directamente una lista de vocabulario: Loopky detecta el separador y te enseña las tarjetas antes de publicar.
+
+<b>Práctica de vocabulario y pronunciación</b>
+Escuchar lee las tarjetas en voz alta, Hablar comprueba tu pronunciación y Escribir te pide que escribas la respuesta, en 35 idiomas. Las tarjetas inversas también preguntan al revés, y las tarjetas pueden llevar imágenes.
+
+<b>Para estudiantes de idiomas, de medicina y profesores</b>
+Crea mazos de vocabulario, prepara exámenes o haz un mazo para toda la clase y compártelo con un solo enlace. Publica un mazo, sigue y copia mazos de otras personas y encuentra nuevos por etiqueta en Descubrir.
+
+<b>Hecha para tabletas</b>
+Diseño de dos paneles en tabletas, no una pantalla de móvil estirada.
+
+<b>Gestiona mazos desde tu ordenador</b>
+La herramienta de línea de comandos loopky crea y edita mazos en bloque, importa archivos de Anki desde el disco y deja que un asistente de IA cree un mazo por ti.
+
+<b>Tu clave, tus datos</b>
+No hay cuenta de Loopky ni servidor de Loopky. Inicias sesión con una clave guardada en Pubky Ring, y tus mazos y tu progreso viven en un homeserver de Pubky del que tú tienes la clave. Los mazos publicados son públicos. Sin anuncios y sin analíticas.
+
+Guías: https://loopky.app/es/
+Código fuente: https://github.com/jvsena42/loopky
