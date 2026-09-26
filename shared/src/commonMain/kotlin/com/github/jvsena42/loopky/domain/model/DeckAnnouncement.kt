@@ -73,7 +73,11 @@ data class DeckAnnouncement(
                 ?.let { " by $MENTION_PREFIX$it" }
                 .orEmpty()
             val title = "\"" + deckTitle.trim().ellipsized(MAX_TITLE_LENGTH) + "\""
-            val icon = coverEmoji?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_ICON
+            // A letter is the title-initial fallback the deck screens draw — and that the
+            // editor used to save as `cover_emoji` — never an emoji the author picked, so it
+            // must not open the post.
+            val icon = coverEmoji?.trim()?.takeIf { it.isNotEmpty() && it.none(Char::isLetter) }
+                ?: DEFAULT_ICON
             val headline = when (kind) {
                 Kind.Created -> "$icon I published a new deck on Loopky: $title"
                 Kind.Followed -> "$icon Now following the Loopky deck: $title$by"
