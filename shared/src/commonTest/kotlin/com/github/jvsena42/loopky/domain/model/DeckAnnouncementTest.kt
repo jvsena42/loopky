@@ -83,6 +83,24 @@ class DeckAnnouncementTest {
     }
 
     @Test
+    fun `a title initial saved as the cover emoji falls back to the icon`() {
+        listOf("K", "k", " K ", "ä").forEach { initial ->
+            val deck = testDeck(title = "Kanji N5").copy(coverEmoji = initial)
+            val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Created).content
+            assertTrue(content.startsWith("📚 I published"), content)
+        }
+    }
+
+    @Test
+    fun `any emoji the deck carries still opens the post`() {
+        listOf("🇯🇵", "📚", "1️⃣", "⭐", "™️", "ℹ️", "👩‍🔬", "🅰️").forEach { emoji ->
+            val deck = testDeck(title = "Kanji N5").copy(coverEmoji = emoji)
+            val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed).content
+            assertTrue(content.startsWith("$emoji Now following"), content)
+        }
+    }
+
+    @Test
     fun `a web cover goes in the body where a reader's client will look for it`() {
         val deck = testDeck(
             coverImageRef = testCoverImage().copy(path = "", sha256 = "", url = "https://img.test/c.jpg"),
