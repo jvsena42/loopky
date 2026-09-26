@@ -1,7 +1,41 @@
 # Loopky
 
-A mobile flashcards app that fuses Duolingo TinyCards' playfulness, Anki's spaced repetition, and
-Pubky's decentralized identity and social graph. iOS + Android, built with Kotlin Multiplatform.
+Loopky is a free, open source flashcards app with spaced repetition, and a full replacement for
+Anki for most learners. Import your Anki decks, study on your phone or tablet, and manage decks
+from your computer with the command line tool. It reads cards aloud, checks your pronunciation, and
+shares decks with your class through one link.
+[Get it on Google Play](https://play.google.com/store/apps/details?id=com.github.jvsena42.loopky) ·
+[loopky.app](https://loopky.app)
+
+## Features
+
+- **Spaced repetition** with Again, Hard, Good and Easy. Each button shows the interval it gives,
+  and you can change the intervals.
+- **Import** Anki `.apkg` files, `.txt` and `.csv`, or paste a list straight in.
+- **Listen, Speak and Type** modes in 35 languages: hear the card, say the answer and have your
+  pronunciation checked, or type it.
+- **Reverse cards and images** on either side of a card.
+- **Two-pane tablet layouts**, not a stretched phone screen.
+- **Share decks by link.** Publish a deck, follow and copy other people's, and find new ones in
+  Discover.
+- **A desktop command line tool** to manage decks and cards in bulk, or to let an AI agent build
+  them for you — see [`cli/README.md`](./cli/README.md).
+- **No ads and no analytics.**
+
+## Guides
+
+- [Switch from Anki](https://loopky.app/anki-alternative/)
+- [Loopky for language learning](https://loopky.app/language-learning/)
+- [Loopky for medical students](https://loopky.app/medical-students/)
+- [Loopky for teachers](https://loopky.app/teachers/)
+- [AI flashcards](https://loopky.app/ai-flashcards/)
+- [Compare Loopky with Anki and Quizlet](https://loopky.app/compare/)
+- [FAQ](https://loopky.app/faq/)
+
+## How it works
+
+Loopky blends Duolingo TinyCards' playfulness, Anki's spaced repetition, and Pubky's decentralized
+identity and social graph. iOS + Android, built with Kotlin Multiplatform.
 
 There is no Loopky account and no Loopky server. You sign in with a key held by
 [Pubky Ring](https://pubky.org), and your decks and study progress are written to a Pubky
@@ -25,25 +59,6 @@ Captured against a live Pubky homeserver on both platforms. Full-resolution file
 Captured on the v0.6.0 debug build — a Pixel phone emulator (1080×2400) and the `Pixel_Tablet`
 emulator in landscape (2560×1600), the two width classes the adaptive layouts target.
 
-#### Phone
-
-<table>
-<tr>
-<td align="center"><img src="screenshots/phone/00-onboarding.png" width="170" alt="Onboarding"><br><sub><b>Sign in</b><br>A key, not an account</sub></td>
-<td align="center"><img src="screenshots/phone/01-home.png" width="170" alt="Today"><br><sub><b>Today</b><br>The daily queue</sub></td>
-<td align="center"><img src="screenshots/phone/02-decks.png" width="170" alt="Deck library"><br><sub><b>Library</b><br>Your decks</sub></td>
-<td align="center"><img src="screenshots/phone/03-deck-detail.png" width="170" alt="Deck detail"><br><sub><b>Deck</b><br>Stats, tags, cards</sub></td>
-<td align="center"><img src="screenshots/phone/04-study-front.png" width="170" alt="Study prompt"><br><sub><b>Study</b><br>Listen and Speak</sub></td>
-</tr>
-<tr>
-<td align="center"><img src="screenshots/phone/05-study-answer.png" width="170" alt="Grading a card"><br><sub><b>Grade</b><br>The button says the interval</sub></td>
-<td align="center"><img src="screenshots/phone/06-discover.png" width="170" alt="Discover"><br><sub><b>Discover</b><br>Decks and tags</sub></td>
-<td align="center"><img src="screenshots/phone/07-profile.png" width="170" alt="Profile"><br><sub><b>Profile</b><br>Your Pubky identity</sub></td>
-<td align="center"><img src="screenshots/phone/08-paste-import.png" width="170" alt="Paste to import"><br><sub><b>Paste import</b><br>Separator auto-detected</sub></td>
-<td align="center"><img src="screenshots/phone/09-signup.png" width="170" alt="Homeserver signup"><br><sub><b>Signup</b><br>SMS, sats or invite</sub></td>
-</tr>
-</table>
-
 #### Tablet
 
 Home, deck detail and onboarding are real two-pane layouts at expanded width, with a navigation
@@ -51,20 +66,39 @@ rail in place of the tab bar — not a stretched phone column.
 
 <table>
 <tr>
-<td align="center"><img src="screenshots/tablet/01-home.png" width="380" alt="Today on tablet"><br><sub><b>Today</b> — queue beside the deck grid</sub></td>
-<td align="center"><img src="screenshots/tablet/02-decks.png" width="380" alt="Deck library on tablet"><br><sub><b>Library</b> — four columns at expanded width</sub></td>
+<td align="center"><img src="screenshots/tablet/01-home.png" width="380" alt="Loopky on an Android tablet: today's queue beside the deck grid"><br><sub><b>Today</b> — queue beside the deck grid</sub></td>
+<td align="center"><img src="screenshots/tablet/02-decks.png" width="380" alt="Loopky on an Android tablet: the deck library in four columns"><br><sub><b>Library</b> — four columns at expanded width</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="screenshots/tablet/03-deck-detail.png" width="380" alt="Deck detail on tablet"><br><sub><b>Deck</b> — metadata beside the full card list</sub></td>
-<td align="center"><img src="screenshots/tablet/04-study-front.png" width="380" alt="Study on tablet"><br><sub><b>Study</b> — the prompt side</sub></td>
+<td align="center"><img src="screenshots/tablet/03-deck-detail.png" width="380" alt="Loopky on an Android tablet: deck details beside the full card list"><br><sub><b>Deck</b> — metadata beside the full card list</sub></td>
+<td align="center"><img src="screenshots/tablet/04-study-front.png" width="380" alt="Loopky on an Android tablet: studying a card, with Listen and Speak buttons"><br><sub><b>Study</b> — the prompt side</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="screenshots/tablet/05-study-answer.png" width="380" alt="Grading on tablet"><br><sub><b>Grade</b> — grades move beside the card</sub></td>
-<td align="center"><img src="screenshots/tablet/06-discover.png" width="380" alt="Discover on tablet"><br><sub><b>Discover</b> — trending tags and follows</sub></td>
+<td align="center"><img src="screenshots/tablet/05-study-answer.png" width="380" alt="Loopky on an Android tablet: the grade buttons beside the card"><br><sub><b>Grade</b> — grades move beside the card</sub></td>
+<td align="center"><img src="screenshots/tablet/06-discover.png" width="380" alt="Loopky on an Android tablet: Discover, with trending tags and decks to follow"><br><sub><b>Discover</b> — trending tags and follows</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="screenshots/tablet/07-profile.png" width="380" alt="Profile on tablet"><br><sub><b>Profile</b> — identity and totals</sub></td>
-<td align="center"><img src="screenshots/tablet/00-onboarding.png" width="380" alt="Onboarding on tablet"><br><sub><b>Sign in</b> — split across two panes</sub></td>
+<td align="center"><img src="screenshots/tablet/07-profile.png" width="380" alt="Loopky on an Android tablet: your profile and study totals"><br><sub><b>Profile</b> — identity and totals</sub></td>
+<td align="center"><img src="screenshots/tablet/00-onboarding.png" width="380" alt="Loopky on an Android tablet: sign-in on one side, what Loopky is on the other"><br><sub><b>Sign in</b> — split across two panes</sub></td>
+</tr>
+</table>
+
+#### Phone
+
+<table>
+<tr>
+<td align="center"><img src="screenshots/phone/00-onboarding.png" width="170" alt="Loopky on an Android phone: sign in with Pubky Ring, no account or password"><br><sub><b>Sign in</b><br>A key, not an account</sub></td>
+<td align="center"><img src="screenshots/phone/01-home.png" width="170" alt="Loopky on an Android phone: today's queue of cards to review"><br><sub><b>Today</b><br>The daily queue</sub></td>
+<td align="center"><img src="screenshots/phone/02-decks.png" width="170" alt="Loopky on an Android phone: the deck library"><br><sub><b>Library</b><br>Your decks</sub></td>
+<td align="center"><img src="screenshots/phone/03-deck-detail.png" width="170" alt="Loopky on an Android phone: a deck with its cover, tags, study stats and cards"><br><sub><b>Deck</b><br>Stats, tags, cards</sub></td>
+<td align="center"><img src="screenshots/phone/04-study-front.png" width="170" alt="Loopky on an Android phone: studying a card, with Listen and Speak buttons"><br><sub><b>Study</b><br>Listen and Speak</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="screenshots/phone/05-study-answer.png" width="170" alt="Loopky on an Android phone: the answer side, with Again, Hard, Good and Easy buttons showing each interval"><br><sub><b>Grade</b><br>The button says the interval</sub></td>
+<td align="center"><img src="screenshots/phone/06-discover.png" width="170" alt="Loopky on an Android phone: Discover, with trending tags and decks to follow"><br><sub><b>Discover</b><br>Decks and tags</sub></td>
+<td align="center"><img src="screenshots/phone/07-profile.png" width="170" alt="Loopky on an Android phone: your profile and study totals"><br><sub><b>Profile</b><br>Your Pubky identity</sub></td>
+<td align="center"><img src="screenshots/phone/08-paste-import.png" width="170" alt="Loopky on an Android phone: importing a deck by pasting a list of cards"><br><sub><b>Paste import</b><br>Separator auto-detected</sub></td>
+<td align="center"><img src="screenshots/phone/09-signup.png" width="170" alt="Loopky on an Android phone: creating an account by SMS, Lightning or invite code"><br><sub><b>Signup</b><br>SMS, sats or invite</sub></td>
 </tr>
 </table>
 
@@ -78,39 +112,39 @@ iPhone 17 Pro Max simulator (1320×2868) and the iPad Pro 13-inch simulator (206
 sizes App Store Connect asks for. The SwiftUI screens are native, not Compose Multiplatform, and
 the iPad has its own regular-size-class layouts rather than a stretched phone column.
 
-#### iPhone
-
-<table>
-<tr>
-<td align="center"><img src="screenshots/ios-phone/01-home.png" width="170" alt="Today"><br><sub><b>Today</b><br>The daily queue</sub></td>
-<td align="center"><img src="screenshots/ios-phone/02-decks.png" width="170" alt="Deck library"><br><sub><b>Library</b><br>Your decks</sub></td>
-<td align="center"><img src="screenshots/ios-phone/03-deck-detail.png" width="170" alt="Deck detail"><br><sub><b>Deck</b><br>Stats, tags, cards</sub></td>
-<td align="center"><img src="screenshots/ios-phone/04-study-front.png" width="170" alt="Study prompt"><br><sub><b>Study</b><br>The prompt side</sub></td>
-</tr>
-<tr>
-<td align="center"><img src="screenshots/ios-phone/05-study-answer.png" width="170" alt="Grading a card"><br><sub><b>Grade</b><br>Listen, Speak, and the interval on the button</sub></td>
-<td align="center"><img src="screenshots/ios-phone/06-discover.png" width="170" alt="Discover"><br><sub><b>Discover</b><br>Decks and tags from people you follow</sub></td>
-<td align="center"><img src="screenshots/ios-phone/07-profile.png" width="170" alt="Profile"><br><sub><b>Profile</b><br>Your Pubky identity</sub></td>
-</tr>
-</table>
-
 #### iPad
 
 <table>
 <tr>
-<td align="center"><img src="screenshots/ios-tablet/01-home.png" width="380" alt="Today on iPad"><br><sub><b>Today</b> — queue beside the deck grid</sub></td>
-<td align="center"><img src="screenshots/ios-tablet/02-decks.png" width="380" alt="Deck library on iPad"><br><sub><b>Library</b> — multi-column at regular width</sub></td>
+<td align="center"><img src="screenshots/ios-tablet/01-home.png" width="380" alt="Loopky on an iPad: today's queue beside the deck grid"><br><sub><b>Today</b> — queue beside the deck grid</sub></td>
+<td align="center"><img src="screenshots/ios-tablet/02-decks.png" width="380" alt="Loopky on an iPad: the deck library in several columns"><br><sub><b>Library</b> — multi-column at regular width</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="screenshots/ios-tablet/04-study-front.png" width="380" alt="Study on iPad"><br><sub><b>Study</b> — the prompt side</sub></td>
-<td align="center"><img src="screenshots/ios-tablet/05-study-answer.png" width="380" alt="Grading on iPad"><br><sub><b>Grade</b> — grades move beside the card</sub></td>
+<td align="center"><img src="screenshots/ios-tablet/04-study-front.png" width="380" alt="Loopky on an iPad: studying a card, with Listen and Speak buttons"><br><sub><b>Study</b> — the prompt side</sub></td>
+<td align="center"><img src="screenshots/ios-tablet/05-study-answer.png" width="380" alt="Loopky on an iPad: the grade buttons beside the card"><br><sub><b>Grade</b> — grades move beside the card</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="screenshots/ios-tablet/06-discover.png" width="380" alt="Discover on iPad"><br><sub><b>Discover</b> — four columns of decks and tags</sub></td>
-<td align="center"><img src="screenshots/ios-tablet/07-profile.png" width="380" alt="Profile on iPad"><br><sub><b>Profile</b> — identity and totals</sub></td>
+<td align="center"><img src="screenshots/ios-tablet/06-discover.png" width="380" alt="Loopky on an iPad: Discover, with trending tags and decks to follow"><br><sub><b>Discover</b> — four columns of decks and tags</sub></td>
+<td align="center"><img src="screenshots/ios-tablet/07-profile.png" width="380" alt="Loopky on an iPad: your profile and study totals"><br><sub><b>Profile</b> — identity and totals</sub></td>
 </tr>
 <tr>
-<td align="center" colspan="2"><img src="screenshots/ios-tablet/00-onboarding.png" width="380" alt="Onboarding on iPad"><br><sub><b>Sign in</b> — a simulator has no Pubky Ring, so the QR handoff is raised automatically</sub></td>
+<td align="center" colspan="2"><img src="screenshots/ios-tablet/00-onboarding.png" width="380" alt="Loopky on an iPad: sign in by scanning a QR code with Pubky Ring on your phone"><br><sub><b>Sign in</b> — a simulator has no Pubky Ring, so the QR handoff is raised automatically</sub></td>
+</tr>
+</table>
+
+#### iPhone
+
+<table>
+<tr>
+<td align="center"><img src="screenshots/ios-phone/01-home.png" width="170" alt="Loopky on an iPhone: today's queue of cards to review"><br><sub><b>Today</b><br>The daily queue</sub></td>
+<td align="center"><img src="screenshots/ios-phone/02-decks.png" width="170" alt="Loopky on an iPhone: the deck library"><br><sub><b>Library</b><br>Your decks</sub></td>
+<td align="center"><img src="screenshots/ios-phone/03-deck-detail.png" width="170" alt="Loopky on an iPhone: a deck with its cover, tags, study stats and cards"><br><sub><b>Deck</b><br>Stats, tags, cards</sub></td>
+<td align="center"><img src="screenshots/ios-phone/04-study-front.png" width="170" alt="Loopky on an iPhone: studying a card, with Listen and Speak buttons"><br><sub><b>Study</b><br>The prompt side</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="screenshots/ios-phone/05-study-answer.png" width="170" alt="Loopky on an iPhone: the answer side, with Again, Hard, Good and Easy buttons showing each interval"><br><sub><b>Grade</b><br>Listen, Speak, and the interval on the button</sub></td>
+<td align="center"><img src="screenshots/ios-phone/06-discover.png" width="170" alt="Loopky on an iPhone: Discover, with trending tags and decks to follow"><br><sub><b>Discover</b><br>Decks and tags from people you follow</sub></td>
+<td align="center"><img src="screenshots/ios-phone/07-profile.png" width="170" alt="Loopky on an iPhone: your profile and study totals"><br><sub><b>Profile</b><br>Your Pubky identity</sub></td>
 </tr>
 </table>
 
@@ -135,9 +169,7 @@ record what could not be reached there and why.
 
 iPad and every width but a phone is [#173](https://github.com/jvsena42/loopky/issues/173).
 
-Roughly 1,300 shared tests run on every PR. Two known blockers before a Play release: the native
-Pubky libraries fail 16 KB page-size alignment, and release packaging is still an unsigned
-universal APK with no R8.
+Roughly 1,300 shared tests run on every PR.
 
 ---
 
