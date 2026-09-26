@@ -73,10 +73,7 @@ data class DeckAnnouncement(
                 ?.let { " by $MENTION_PREFIX$it" }
                 .orEmpty()
             val title = "\"" + deckTitle.trim().ellipsized(MAX_TITLE_LENGTH) + "\""
-            // A letter is the title-initial fallback the deck screens draw — and that the
-            // editor used to save as `cover_emoji` — never an emoji the author picked, so it
-            // must not open the post.
-            val icon = coverEmoji?.trim()?.takeIf { it.isNotEmpty() && it.none(Char::isLetter) }
+            val icon = coverEmoji?.trim()?.takeIf { it.isNotEmpty() && !it.isTitleInitial() }
                 ?: DEFAULT_ICON
             val headline = when (kind) {
                 Kind.Created -> "$icon I published a new deck on Loopky: $title"
@@ -159,6 +156,13 @@ private val PREVIEW_PROTOCOLS = listOf("https", "http")
  * the body: a cover URL long enough to trip that limit is long enough to swamp the post.
  */
 private const val MAX_ATTACHMENT_URL_LENGTH = 200
+
+/**
+ * The title-initial fallback the deck screens draw when a deck has no emoji — which the editor
+ * saves back as `cover_emoji` — rather than an emoji the author picked. Only a lone letter:
+ * `ℹ️` is a letter too, but its variation selector makes it two chars, so it still opens the post.
+ */
+private fun String.isTitleInitial(): Boolean = length == 1 && single().isLetter()
 
 private const val ELLIPSIS = "…"
 

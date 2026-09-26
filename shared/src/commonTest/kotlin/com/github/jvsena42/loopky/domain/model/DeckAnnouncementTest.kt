@@ -92,8 +92,8 @@ class DeckAnnouncementTest {
     }
 
     @Test
-    fun `a symbol emoji that is not a letter still opens the post`() {
-        listOf("1️⃣", "⭐", "™️").forEach { emoji ->
+    fun `any emoji the deck carries still opens the post`() {
+        listOf("🇯🇵", "📚", "1️⃣", "⭐", "™️", "ℹ️", "👩‍🔬", "🅰️").forEach { emoji ->
             val deck = testDeck(title = "Kanji N5").copy(coverEmoji = emoji)
             val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed).content
             assertTrue(content.startsWith("$emoji Now following"), content)
