@@ -316,6 +316,15 @@ fun StudySessionScreen(
                 onDone = onClose,
             )
         }
+        // Met on the last card: nothing is left to keep studying, so the one way out uncovers
+        // the summary underneath — its sync error and next-due line included.
+        (state as? StudySessionUiState.Complete)?.goalCelebration?.let { celebration ->
+            GoalCelebrationScreen(
+                celebration = celebration,
+                onKeepStudying = null,
+                onDone = onContinueAfterGoal,
+            )
+        }
     }
 
     if (state is StudySessionUiState.Reviewing) {
@@ -818,12 +827,13 @@ private fun SyncErrorBanner(
  * The daily goal, met. Covers the session because it happens once a day.
  *
  * Both ways out are equal in weight but not emphasis: "Keep studying" is the filled button, because
- * the card behind this is already loaded and the goal withholds nothing.
+ * the card behind this is already loaded and the goal withholds nothing. A null [onKeepStudying]
+ * means the session has ended, and [onDone] becomes the single filled "Done".
  */
 @Composable
 private fun BoxScope.GoalCelebrationScreen(
     celebration: GoalCelebration,
-    onKeepStudying: () -> Unit,
+    onKeepStudying: (() -> Unit)?,
     onDone: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
@@ -872,19 +882,22 @@ private fun BoxScope.GoalCelebrationScreen(
                 color = colors.foregroundPrimary,
                 textAlign = TextAlign.Center,
             )
-            Text(
-                text = stringResource(R.string.study_goal_reached_body),
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                color = colors.foregroundMuted,
-                textAlign = TextAlign.Center,
-            )
+            // "Keep going if you're on a roll" is an offer only a session with cards left can make.
+            if (onKeepStudying != null) {
+                Text(
+                    text = stringResource(R.string.study_goal_reached_body),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = colors.foregroundMuted,
+                    textAlign = TextAlign.Center,
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = onKeepStudying,
+                onClick = onKeepStudying ?: onDone,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("study_goal_keep_studying"),
+                    .testTag(if (onKeepStudying != null) "study_goal_keep_studying" else "study_goal_dismiss"),
                 shape = RoundedCornerShape(50),
                 contentPadding = PaddingValues(vertical = 16.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -893,23 +906,27 @@ private fun BoxScope.GoalCelebrationScreen(
                 ),
             ) {
                 Text(
-                    text = stringResource(R.string.study_goal_keep_studying),
+                    text = stringResource(
+                        if (onKeepStudying != null) R.string.study_goal_keep_studying else R.string.study_done,
+                    ),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.W700,
                 )
             }
-            TextButton(
-                onClick = onDone,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("study_goal_done"),
-            ) {
-                Text(
-                    text = stringResource(R.string.study_goal_done),
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.W600,
-                    color = colors.foregroundMuted,
-                )
+            if (onKeepStudying != null) {
+                TextButton(
+                    onClick = onDone,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("study_goal_done"),
+                ) {
+                    Text(
+                        text = stringResource(R.string.study_goal_done),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.W600,
+                        color = colors.foregroundMuted,
+                    )
+                }
             }
         }
     }
