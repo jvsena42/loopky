@@ -321,14 +321,13 @@ class StudySessionViewModel(
      * The queue is untouched — the card behind the celebration is already the next one, and "Keep
      * studying" simply dismisses it. Marked as shown the moment it goes up, not when it is
      * dismissed: a process killed while it is on screen has still shown it.
+     *
+     * A goal met on the session's last card is celebrated over "All done!" rather than skipped:
+     * skipping left it owed, so it popped up one card into the *next* session instead.
      */
     private suspend fun celebrateGoalIfOwed() {
         val goal = settingsRepository.studySettings.value.settings.newCardsPerDayGoal
         if (!srsRepository.dailyProgress.value.owesGoalCelebration(goal)) return
-        // The celebration renders over a card, so there has to be one. Grading the last card
-        // straight past the goal goes to "All done!", which says the same thing — and marking it
-        // shown here would spend the day's one celebration on a screen that never appeared.
-        if (queue.getOrNull(index) == null) return
         goalReached = true
         haptic(StudyHaptic.Celebration)
         goalCelebration = GoalCelebration(
@@ -344,7 +343,11 @@ class StudySessionViewModel(
     fun onContinueAfterGoal() {
         goalReached = false
         _state.update { current ->
-            (current as? StudySessionUiState.Reviewing)?.copy(goalCelebration = null) ?: current
+            when (current) {
+                is StudySessionUiState.Reviewing -> current.copy(goalCelebration = null)
+                is StudySessionUiState.Complete -> current.copy(goalCelebration = null)
+                else -> current
+            }
         }
     }
 
@@ -612,7 +615,8 @@ class StudySessionViewModel(
      * not record.
      */
     private fun emitComplete() {
-        haptic(StudyHaptic.Success)
+        // The celebration has already buzzed for this grade; a Success on top smears into it.
+        if (!goalReached) haptic(StudyHaptic.Success)
         if (isPreview) {
             _state.update {
                 StudySessionUiState.Complete(
@@ -624,7 +628,13 @@ class StudySessionViewModel(
             return
         }
         srsRepository.flushAsync()
-        _state.update { StudySessionUiState.Complete(gradedCardIds.size, syncError = syncError) }
+        _state.update {
+            StudySessionUiState.Complete(
+                gradedCardIds.size,
+                syncError = syncError,
+                goalCelebration = goalCelebration.takeIf { goalReached },
+            )
+        }
         // After the state, not before: the congrats screen must not wait on a lookup, and nextDueAt
         // is cache-only but still suspending.
         viewModelScope.launch {
@@ -808,6 +818,8 @@ sealed interface StudySessionUiState {
         val nextDueAtMillis: Long? = null,
         val newCardsToday: Int = 0,
         val newCardsGoal: Int = DEFAULT_NEW_CARDS_PER_DAY,
+        /** The goal was met on the last card. Covers the summary, with nothing left to keep studying. */
+        val goalCelebration: GoalCelebration? = null,
     ) : StudySessionUiState
 
     data class Error(val reason: ErrorReason) : StudySessionUiState

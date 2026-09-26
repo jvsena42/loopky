@@ -126,6 +126,24 @@ class StudySessionHapticsTest {
     }
 
     @Test
+    fun aGoalMetOnTheLastCardCelebratesInsteadOfTheSessionsSuccess() = runTest(mainDispatcher) {
+        // Both would land on the same grade and smear into one buzz.
+        settingsRepo.setStudySettings(StudySettings(newCardsPerDayGoal = 1))
+        seedDeck(cards = 1)
+        val vm = viewModel()
+        advanceUntilIdle()
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+        runCurrent()
+
+        vm.onGrade(SrsGrade.Good)
+        advanceUntilIdle()
+
+        assertEquals(listOf(StudyHaptic.Celebration), effects.haptics())
+        job.cancel()
+    }
+
+    @Test
     fun aGradeArrivingWhileTheLastOneIsStillWritingIsSilent() = runTest {
         seedDeck(cards = 3)
         val vm = viewModel()

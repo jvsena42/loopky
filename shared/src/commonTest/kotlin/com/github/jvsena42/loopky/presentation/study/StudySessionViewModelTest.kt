@@ -250,10 +250,9 @@ class StudySessionViewModelTest {
     }
 
     @Test
-    fun aGoalMetOnTheLastCardIsNotSpentOnAScreenNobodySees() = runTest(mainDispatcher) {
-        // The celebration renders over a card. Hitting the goal on the final grade goes straight
-        // to "All done!", which carries the same news — but marking it shown there would use up
-        // the day's one celebration invisibly.
+    fun aGoalMetOnTheLastCardIsCelebratedThenAndNotInTheNextSession() = runTest(mainDispatcher) {
+        // Skipping it here left it owed, so it popped up one card into the next session — on a
+        // phone, typically only after the app had been restarted.
         settingsRepo.setStudySettings(StudySettings(newCardsPerDayGoal = 1))
         deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish")
         srsRepo.due = listOf(testCard("c1", front = "hola", back = "hello"))
@@ -263,10 +262,23 @@ class StudySessionViewModelTest {
         vm.onGrade(SrsGrade.Good)
         advanceUntilIdle()
 
-        assertIs<StudySessionUiState.Complete>(vm.state.value)
-        assertFalse(
-            srsRepo.dailyProgress.value.goalCelebrated,
-            "the day's celebration was consumed without being shown",
+        val done = assertIs<StudySessionUiState.Complete>(vm.state.value)
+        val celebration = assertNotNull(done.goalCelebration, "the goal was met but not celebrated")
+        assertEquals(expected = 1, actual = celebration.newCardsToday)
+        assertTrue(srsRepo.dailyProgress.value.goalCelebrated, "the celebration was left owed")
+
+        // Dismissing it uncovers the summary, which is still there underneath.
+        vm.onContinueAfterGoal()
+        assertNull(assertIs<StudySessionUiState.Complete>(vm.state.value).goalCelebration)
+
+        srsRepo.due = (2..4).map { testCard("c$it", front = "front $it", back = "back $it") }
+        val next = viewModel()
+        advanceUntilIdle()
+        next.onGrade(SrsGrade.Good)
+        advanceUntilIdle()
+        assertNull(
+            assertIs<StudySessionUiState.Reviewing>(next.state.value).goalCelebration,
+            "the celebration came back in the next session",
         )
     }
 

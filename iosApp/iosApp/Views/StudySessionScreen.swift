@@ -83,6 +83,8 @@ struct StudySessionScreen: View {
             return StudyViewState(
                 phase: .complete,
                 syncErrorMessage: done.syncError.map { ErrorCopy.message(for: $0) },
+                goalReached: done.goalCelebration != nil,
+                newCardsToday: Int(done.goalCelebration?.newCardsToday ?? 0),
                 reviewed: Int(done.reviewed),
                 isPreview: done.isPreview,
                 isSignedIn: done.isSignedIn
