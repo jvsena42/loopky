@@ -131,7 +131,7 @@ struct OnboardingScreen: View {
     ///
     /// Three of the four are not `Restoring`. `uiState` is `nil` until the first `StateFlow` value
     /// crosses the bridge, which is a frame or more *before* the cold start's `Restoring` arrives;
-    /// `Success` is always followed by `NavigateHome`, so the CTA would otherwise be drawn for the
+    /// `Success` is always followed by navigating home, so the CTA would otherwise be drawn for the
     /// whole navigation; and a launch with no session is handed to browsing by `onExplore`, which
     /// Android holds the splash for in the same way.
     private var holdSplash: Bool {
@@ -163,8 +163,14 @@ struct OnboardingScreen: View {
         guard viewModel == nil else { return }
         let vm = IosDependencies.shared.onboardingViewModel()
         viewModel = vm
-        stateSink = FlowEffectSink(vm.state) { uiState = $0 }
         let signedIn = onSignedIn
+        // Home is reached off the `Success` state, not an effect: the cold start decides it in the
+        // ViewModel's `init`, which can run before `effectSink` below is attached, and a zero-replay
+        // effect emitted then is lost — leaving a returning user on the splash.
+        stateSink = FlowEffectSink(vm.state) { state in
+            uiState = state
+            if state is OnboardingUiStateSuccess { signedIn() }
+        }
         effectSink = FlowEffectSink(vm.effects) { effect in
             switch effect {
             case let open as OnboardingEffectOpenDeeplink:
@@ -177,8 +183,6 @@ struct OnboardingScreen: View {
                 }
             case let install as OnboardingEffectOpenInstallPage:
                 if let url = URL(string: install.url) { openURL(url) }
-            case is OnboardingEffectNavigateHome:
-                signedIn()
             case let unregistered as OnboardingEffectNavigateUnregistered:
                 onUnregistered(unregistered.pubky)
             default:
