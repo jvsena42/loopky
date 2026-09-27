@@ -784,6 +784,22 @@ enlarging.
 **iOS is written but not driven:** this run was on Linux, where neither Kotlin/Native for iOS nor
 Swift builds. `CountryPickerSheet.swift` and `Region.ios.kt` have not been compiled.
 
+## Cold start as a returning user never sticks on the splash (#353) — ✅ PASS on Android (2026-09-27, `Medium_Phone`, staging); iOS not run
+
+Signed in via journey 20's test phrase, then cold-started repeatedly. Home is now reached off the
+`Success` state rather than a `NavigateHome` effect that could be emitted before anything collected it.
+
+| Step | Result |
+| --- | --- |
+| Signed-out cold start | PASSED — handed straight to the guest Discover shell |
+| Restore with the BIP-39 test phrase | PASSED — lands on Home |
+| Force-stop + cold start, ×6 | PASSED — Home every time |
+| Force-stop + cold start with system night mode flipped 0–1.2 s into launch, ×10 | PASSED — Home every time; the flip recreates `MainActivity` mid-start, the window in which the old effect was lost |
+| Settings → Sign out | PASSED — onboarding shown and held; no bounce back to Home |
+
+**iOS is written but not driven:** this run was on Linux. The `OnboardingScreen.swift` half has not
+been compiled.
+
 
 # iOS
 

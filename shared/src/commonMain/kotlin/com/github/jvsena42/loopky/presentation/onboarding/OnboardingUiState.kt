@@ -43,7 +43,11 @@ sealed interface OnboardingUiState {
     /** Parsing the callback + persisting session. Full-screen progress overlay acceptable. */
     data object Verifying : OnboardingUiState
 
-    /** Terminal success — the VM will also emit [OnboardingEffect.NavigateHome] once. */
+    /**
+     * Terminal success; the screen leaves for home on seeing it. A state rather than an effect,
+     * because the cold start reaches it from `init`, before any effect collector may be attached —
+     * a dropped `NavigateHome` left the app on the splash until it was killed.
+     */
     data class Success(val session: Session) : OnboardingUiState
 
     /** Sign-in failed; show message + retry CTA. */

@@ -51,7 +51,6 @@ class OnboardingViewModel(
             if (persisted != null) {
                 Log.d(TAG, "init: found persisted session pubky=${persisted.identity.pubky.take(PUBKY_LOG_PREFIX_LEN)}…")
                 _state.update { OnboardingUiState.Success(persisted) }
-                _effects.emit(OnboardingEffect.NavigateHome)
             } else {
                 Log.d(TAG, "init: no persisted session")
                 _state.update { OnboardingUiState.Idle }
@@ -118,7 +117,6 @@ class OnboardingViewModel(
                 .onSuccess { session ->
                     Log.d(TAG, "onSignInClick: SUCCESS pubky=${session.identity.pubky.take(PUBKY_LOG_PREFIX_LEN)}…")
                     _state.update { OnboardingUiState.Success(session) }
-                    _effects.emit(OnboardingEffect.NavigateHome)
                 }
                 .onFailure { err ->
                     Log.e(TAG, "onSignInClick: completion FAILED — ${err::class.simpleName}: ${err.message}", err)

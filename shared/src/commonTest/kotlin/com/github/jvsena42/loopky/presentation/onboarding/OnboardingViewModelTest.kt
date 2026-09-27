@@ -96,13 +96,11 @@ class OnboardingViewModelTest {
     fun approvingNavigatesHome() = runTest {
         identityRepo.completionResult = Result.success(fakeSession())
         val vm = viewModel()
-        val effects = collectEffects(vm)
 
         vm.onSignInClick()
         advanceUntilIdle()
 
         assertIs<OnboardingUiState.Success>(vm.state.value)
-        assertTrue(effects.contains(OnboardingEffect.NavigateHome))
     }
 
     @Test
@@ -199,7 +197,6 @@ class OnboardingViewModelTest {
         identityRepo.completionGate = approval
         identityRepo.completionResult = Result.success(fakeSession())
         val vm = viewModel()
-        val effects = collectEffects(vm)
 
         vm.onSignInClick()
         advanceTimeBy(5 * 60 * 1000L)
@@ -208,6 +205,18 @@ class OnboardingViewModelTest {
         advanceUntilIdle()
 
         assertIs<OnboardingUiState.Success>(vm.state.value)
-        assertTrue(effects.contains(OnboardingEffect.NavigateHome))
+    }
+
+    @Test
+    fun aPersistedSessionIsReportedInStateWithNoCollectorAttached() = runTest {
+        // Nothing collects `effects` here, as on a cold start whose screen has not subscribed yet
+        // or whose activity is being recreated: the way home must still be readable afterwards.
+        val vm = OnboardingViewModel(
+            identityRepository = FakeIdentityRepository(session = fakeSession()),
+            ringPresence = ringPresence,
+        )
+        advanceUntilIdle()
+
+        assertIs<OnboardingUiState.Success>(vm.state.value)
     }
 }
