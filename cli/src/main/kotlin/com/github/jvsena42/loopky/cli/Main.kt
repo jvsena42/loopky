@@ -593,6 +593,17 @@ internal val USAGE = """
              That shape comes out of the envelope at data.cards[], not at the top level. See
              "--json shape" under AGENTS for the whole of it.
 
+    CARD TEXT
+      A parenthesized aside is never part of the answer. Typing, Speak and Listen all drop it —
+      ASCII ( ) and full-width （ ） alike — while the card still SHOWS it. So it is the place for
+      what the reader should see but never has to say or type:
+
+        hola (informal)          usted (formal)          ねこ (neko)          猫（ねこ）
+
+      A register, a sense, a romanization or a kana reading goes in brackets; putting it in the
+      text proper makes it part of the expected answer, and a spoken "hola" misses "hola informal".
+      A side that is ENTIRELY parenthesized is kept whole, since it would otherwise have no answer.
+
     CARD IMAGES
       A card picture is a URL. Nothing is uploaded and no media quota is spent — but nothing is
       fetched either, so this client cannot tell you the picture loads. It can only tell you what
