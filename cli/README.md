@@ -265,6 +265,12 @@ Four rules:
 
   Naming *no* pair leaves them alone, so `--clear-tags` on a language deck really does empty it.
 
+**Brackets are notes, not answer.** Typing, Speak and Listen all drop a parenthesized aside —
+ASCII `( )` and full-width `（ ）` — while the card still shows it. That makes it the place for a
+register, a sense, a romanization or a kana reading: `hola (informal)`, `ねこ (neko)`, `猫（ねこ）`.
+Written without brackets, the note becomes part of the expected answer, and a spoken "hola" misses
+"hola informal". A side that is *entirely* parenthesized is kept whole, or it would have no answer.
+
 ## Anki `.apkg`
 
 Bulk Anki import is the job this tool was built for (#46). `import` takes an `.apkg` on the same
