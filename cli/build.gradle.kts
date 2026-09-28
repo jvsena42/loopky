@@ -261,6 +261,13 @@ fun nativeBuildArgs(): List<String> {
         // of its own. Exactly the noise the jar's start script exists to suppress, arriving by a
         // different door, on the channel an agent harness captures into its transcript.
         "--enable-native-access=ALL-UNNAMED",
+        // The JDK reads these in `HttpURLConnection`'s static initializer, which native-image runs at
+        // *build* time — so `ProxyEnvironment` setting them at startup came too late, and a proxy URL
+        // with credentials got a 407 from the binary while the jar went through (#212, measured in
+        // `cli/sandbox-sim`). Safe to bake in: nothing answers a challenge unless `ProxyEnvironment`
+        // installed an `Authenticator`, which it does only for credentials in a proxy URL.
+        "-Djdk.http.auth.tunneling.disabledSchemes=",
+        "-Djdk.http.auth.proxying.disabledSchemes=Basic",
         // Baseline x86-64 rather than `native-image`'s x86-64-v3 default. A binary compiled for
         // v3 needs AVX2 and dies with SIGILL on a host without it — and this one is *downloaded*,
         // onto a sandbox whose CPU nobody chose. Irrelevant to a client that spends its life
