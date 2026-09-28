@@ -76,14 +76,22 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 printf 'loopky: downloading %s\n' "$ASSET" >&2
-STATUS="$(curl -sSL "$BASE/$ASSET" -o "$TMP/loopky" -w '%{http_code}')" \
+# `-w` reports the last hop: a release URL redirects to GitHub's download host, and a refusal there
+# has a different fix from one on github.com.
+RESULT="$(curl -sSL "$BASE/$ASSET" -o "$TMP/loopky" -w '%{http_code} %{url_effective}')" \
     || die "could not download $BASE/$ASSET"
+STATUS="${RESULT%% *}"
+HOST="$(printf '%s' "${RESULT#* }" | sed -e 's|^[a-z]*://||' -e 's|[/:].*||')"
 case "$STATUS" in
     2??) ;;
     # GitHub does not refuse a public release; a proxy scoped to other repositories does (#365).
-    403) die "$BASE/$ASSET answered 403, so a proxy in front of GitHub refused it. In a Claude Code
+    403) if [ "$HOST" = github.com ]; then
+            die "$BASE/$ASSET answered 403, so a proxy in front of GitHub refused it. In a Claude Code
 cloud session GitHub traffic goes through a proxy that reaches only the repositories attached to the
-session: attach $REPO to the environment, or install loopky in its setup script." ;;
+session: attach $REPO to the environment, or install loopky in its setup script."
+        fi
+        die "a proxy refused $HOST (403), where GitHub serves release downloads from. Allow it
+alongside github.com." ;;
     *) die "could not download $BASE/$ASSET (HTTP $STATUS)" ;;
 esac
 

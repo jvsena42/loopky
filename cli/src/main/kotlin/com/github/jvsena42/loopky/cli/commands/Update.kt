@@ -4,10 +4,10 @@ import com.github.jvsena42.loopky.cli.Args
 import com.github.jvsena42.loopky.cli.CliError
 import com.github.jvsena42.loopky.cli.CommandResult
 import com.github.jvsena42.loopky.cli.ExitCode
-import com.github.jvsena42.loopky.cli.GITHUB_REFUSED_ADVICE
 import com.github.jvsena42.loopky.cli.Installation
 import com.github.jvsena42.loopky.cli.SupportedHost
 import com.github.jvsena42.loopky.cli.UpdateChecker
+import com.github.jvsena42.loopky.cli.githubRefusedAdvice
 import com.github.jvsena42.loopky.cli.hostSupport
 import com.github.jvsena42.loopky.cli.isProxyRefusal
 import com.github.jvsena42.loopky.cli.isUntrustedCertificate
@@ -121,7 +121,7 @@ suspend fun update(
     )
 
     if (manifest == null && checker.lastFetchRefused) {
-        throw CliError(ExitCode.ProxyRefused, "The release page answered 403. $GITHUB_REFUSED_ADVICE")
+        throw CliError(ExitCode.ProxyRefused, "The release page answered 403. ${githubRefusedAdvice(host = null)}")
     }
     if (manifest == null) {
         // Not an error. No egress, an allowlist proxy and a release page with no manifest yet all
@@ -218,7 +218,11 @@ private fun download(url: String): ByteArray {
             }
         if (code == HTTP_NOT_FOUND) throw CliError(ExitCode.NotFound, "$url does not exist")
         if (code == HTTP_PROXY_AUTH) throw CliError(ExitCode.ProxyRefused, "the proxy refused its credentials fetching $url")
-        if (code == HTTP_FORBIDDEN) throw CliError(ExitCode.ProxyRefused, "$url answered 403. $GITHUB_REFUSED_ADVICE")
+        if (code == HTTP_FORBIDDEN) {
+            // After redirects, so a refused download host is named rather than blamed on github.com.
+            val host = connection.url.host
+            throw CliError(ExitCode.ProxyRefused, "$host answered 403 for $url. ${githubRefusedAdvice(host)}")
+        }
         if (code !in SUCCESS) throw CliError(ExitCode.Network, "HTTP $code fetching $url")
         val bytes = runCatching { connection.inputStream.use { it.readNBytes(MAX_DOWNLOAD_BYTES + 1) } }
             .getOrElse { throw CliError(ExitCode.Network, "download of $url failed: ${it.message}") }

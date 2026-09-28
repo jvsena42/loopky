@@ -60,7 +60,7 @@ class UpdateChecker(
 
     /**
      * Whether the last fetch was answered 403. GitHub does not refuse a public release asset, so
-     * that is a proxy in front of it — see [GITHUB_REFUSED_ADVICE].
+     * that is a proxy in front of it — see [githubRefusedAdvice].
      */
     var lastFetchRefused: Boolean = false
         private set
@@ -304,12 +304,25 @@ fun updateAdvice(installation: Installation, version: String, repo: String = Upd
 private const val HTTP_FORBIDDEN = 403
 
 /**
+ * What to do about a 403 on a release fetch. GitHub does not refuse a public release, so a proxy
+ * did — but a release URL redirects to [RELEASE_ASSET_HOST], and the two refusals have different
+ * fixes. [host] is the hop that answered, or null when the fetch cannot say.
+ *
  * A Claude Code cloud session sends GitHub traffic through a proxy that reaches only the
- * repositories attached to the session (#365), so from a session on any other repository the
- * release page answers 403 even with github.com allowed.
+ * repositories attached to the session (#365), so from a session on any other repository
+ * github.com answers 403 even with it allowed.
  */
-internal const val GITHUB_REFUSED_ADVICE =
-    "GitHub itself does not refuse a public release, so a proxy in front of it did. In a Claude Code " +
-        "cloud session, GitHub traffic goes through a proxy that reaches only the repositories attached " +
-        "to the session: attach jvsena42/loopky to the environment, or install loopky in the " +
-        "environment's setup script."
+internal fun githubRefusedAdvice(host: String?): String {
+    val attach = "In a Claude Code cloud session, GitHub traffic goes through a proxy that reaches only " +
+        "the repositories attached to the session: attach jvsena42/loopky to the environment, or " +
+        "install loopky in the environment's setup script."
+    return when (host) {
+        "github.com" -> "GitHub itself does not refuse a public release, so a proxy in front of it did. $attach"
+        null -> "GitHub does not refuse a public release, so a proxy did — on github.com or on its " +
+            "download host $RELEASE_ASSET_HOST; `loopky doctor` shows which. If it is github.com: $attach"
+        else -> "A proxy refused $host, where GitHub serves release downloads from. Allow it alongside " +
+            "github.com; `loopky doctor` lists every host loopky needs."
+    }
+}
+
+private const val RELEASE_ASSET_HOST = "release-assets.githubusercontent.com"

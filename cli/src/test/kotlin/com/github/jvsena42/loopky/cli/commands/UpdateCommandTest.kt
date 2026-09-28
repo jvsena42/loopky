@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.cli.InstallMethod
 import com.github.jvsena42.loopky.cli.Installation
 import com.github.jvsena42.loopky.cli.SupportedHost
 import com.github.jvsena42.loopky.cli.UpdateChecker
+import com.github.jvsena42.loopky.cli.githubRefusedAdvice
 import com.github.jvsena42.loopky.data.nexus.HttpFetcher
 import com.github.jvsena42.loopky.data.nexus.HttpRequest
 import com.github.jvsena42.loopky.data.nexus.HttpResponse
@@ -104,6 +105,15 @@ class UpdateCommandTest {
         }
         assertEquals(ExitCode.ProxyRefused, error.exitCode)
         assertTrue("attach jvsena42/loopky" in error.message!!, error.message!!)
+        assertTrue("release-assets.githubusercontent.com" in error.message!!, error.message!!)
+    }
+
+    @Test
+    fun `a refused download host is named, not blamed on github`() {
+        val advice = githubRefusedAdvice("release-assets.githubusercontent.com")
+        assertTrue("release-assets.githubusercontent.com" in advice, advice)
+        assertFalse("attach" in advice, advice)
+        assertTrue("attach jvsena42/loopky" in githubRefusedAdvice("github.com"))
     }
 
     /**
