@@ -71,12 +71,21 @@ class ProxyEnvironmentTest {
     }
 
     @Test
-    fun `an explicit -D property is never overridden`() {
+    fun `an explicit -D proxy wins as a whole, never mixed with the environment's`() {
         val set = mutableMapOf("https.proxyHost" to "explicit")
-        ProxyEnvironment.from(mapOf("HTTPS_PROXY" to "http://env:3128"))
+        ProxyEnvironment.from(mapOf("HTTPS_PROXY" to "http://env:3128", "HTTP_PROXY" to "http://env:80"))
             .install(getProperty = set::get, setProperty = { k, v -> set[k] = v }, warn = {})
         assertEquals("explicit", set["https.proxyHost"])
-        assertEquals("3128", set["https.proxyPort"])
+        assertNull(set["https.proxyPort"], "the environment's port must not be grafted onto -D's host")
+        assertEquals("env", set["http.proxyHost"], "the other scheme is not affected")
+    }
+
+    @Test
+    fun `NO_PROXY still applies beside an explicit -D http proxy`() {
+        val set = mutableMapOf("http.proxyHost" to "explicit")
+        ProxyEnvironment.from(mapOf("NO_PROXY" to "internal.example"))
+            .install(getProperty = set::get, setProperty = { k, v -> set[k] = v }, warn = {})
+        assertEquals("localhost|127.*|internal.example|*.internal.example", set["http.nonProxyHosts"])
     }
 
     @Test

@@ -26,7 +26,7 @@ internal class ProxyEnvironment private constructor(
         setProperty: (String, String) -> Unit = { key, value -> System.setProperty(key, value) },
         warn: (String) -> Unit = System.err::println,
     ) {
-        properties.forEach { (key, value) -> if (getProperty(key) == null) setProperty(key, value) }
+        applyProperties(getProperty, setProperty)
         if (credentials.isNotEmpty()) {
             // Basic is allowed on the CONNECT and nowhere else. An origin answering 407 from inside
             // the tunnel was checked on JDK 17, 21 and 25 and gets nothing; disabling Basic for plain
@@ -36,6 +36,18 @@ internal class ProxyEnvironment private constructor(
             Authenticator.setDefault(ProxyAuthenticator(credentials))
         }
         warnings.forEach(warn)
+    }
+
+    /**
+     * Per scheme, never per property: an explicit `-Dhttps.proxyHost` beside `HTTPS_PROXY`'s port
+     * would describe a proxy neither of them named. Agent sandboxes set both, via
+     * `JAVA_TOOL_OPTIONS`, and agree today — this keeps a drift between them from mixing.
+     */
+    private fun applyProperties(getProperty: (String) -> String?, setProperty: (String, String) -> Unit) {
+        val explicitSchemes = SCHEMES.filter { scheme -> PROXY_KEYS.any { getProperty("$scheme.$it") != null } }
+        properties
+            .filterKeys { key -> key == NON_PROXY_HOSTS || explicitSchemes.none { key.startsWith("$it.proxy") } }
+            .forEach { (key, value) -> if (getProperty(key) == null) setProperty(key, value) }
     }
 
     companion object {
@@ -135,6 +147,13 @@ internal fun nonProxyHosts(noProxy: String): String? {
 }
 
 private const val DEFAULT_HTTP_PORT = 80
+private val PROXY_KEYS = listOf("proxyHost", "proxyPort")
+
+private val SCHEMES = listOf("https", "http")
+
+/** Shares the `http.` prefix but is its own setting, not the http proxy's. */
+private const val NON_PROXY_HOSTS = "http.nonProxyHosts"
+
 private const val TUNNELING_DISABLED_SCHEMES = "jdk.http.auth.tunneling.disabledSchemes"
 private const val PROXYING_DISABLED_SCHEMES = "jdk.http.auth.proxying.disabledSchemes"
 private val JDK_DEFAULT_NON_PROXY_HOSTS = listOf("localhost", "127.*")
