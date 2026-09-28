@@ -55,11 +55,33 @@ class DoctorTest {
         assert("nexus.pubky.app" in error.data.toString())
     }
 
+    /** The sandbox #212 is about: relays blocked, so the lookup fails exactly where the list is needed. */
     @Test
-    fun `a failed homeserver lookup is a network failure, not a clean bill of health`() = runTest {
+    fun `a failed lookup of the default homeserver still lists its known host`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("pkarr" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
+        }
         val error = assertFailsWith<CliError> {
             doctor(
                 Args.parse(arrayOf("doctor")),
+                client(Result.failure(RuntimeException("no responses"))),
+                environment,
+                probe,
+                proxy = "http://proxy:3128",
+            )
+        }
+        assertEquals(ExitCode.ProxyRefused, error.exitCode)
+        val report = error.data.toString()
+        assert("homeserver.pubky.app" in report) { report }
+        assert(""""allowlist_complete":true""" in report) { report }
+        assert(error.message!!.startsWith("refused by the proxy: pkarr.pubky.app, pkarr.pubky.org")) { error.message!! }
+    }
+
+    @Test
+    fun `a failed lookup of another homeserver is incomplete, and a network failure`() = runTest {
+        val error = assertFailsWith<CliError> {
+            doctor(
+                Args.parse(arrayOf("doctor", "--homeserver", "otherhomeserver")),
                 client(Result.failure(RuntimeException("no responses"))),
                 environment,
                 reachable(),
@@ -67,6 +89,48 @@ class DoctorTest {
             )
         }
         assertEquals(ExitCode.Network, error.exitCode)
+        assert(""""allowlist_complete":false""" in error.data.toString())
+    }
+
+    @Test
+    fun `one refused pkarr relay is not a failure while the other works`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("pkarr.pubky.org" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
+        }
+        val result = doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+        assert("pkarr.pubky.org" in result.data.toString()) { "the refused relay is still reported" }
+    }
+
+    @Test
+    fun `both pkarr relays refused and no lookup is a refusal`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("pkarr" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
+        }
+        val error = assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(Result.failure(RuntimeException("x"))), environment, probe, null)
+        }
+        assertEquals(ExitCode.ProxyRefused, error.exitCode)
+    }
+
+    @Test
+    fun `interception is its own status and exits tls_untrusted`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { ProbeOutcome(INTERCEPTED, "PKIX path building failed", null, 1) }
+        val error = assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+        }
+        assertEquals(ExitCode.TlsUntrusted, error.exitCode)
+        assert(error.message!!.startsWith("TLS intercepted:"))
+    }
+
+    @Test
+    fun `the asset CDN is probed even when github never redirects to it`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("github.com" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
+        }
+        val error = assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+        }
+        assert("release-assets.githubusercontent.com" in error.data.toString())
     }
 
     @Test

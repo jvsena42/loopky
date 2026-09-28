@@ -8,8 +8,10 @@ import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.UpdateChecker
 import com.github.jvsena42.loopky.cli.cliJson
 import com.github.jvsena42.loopky.cli.isProxyRefusal
+import com.github.jvsena42.loopky.cli.isUntrustedCertificate
 import com.github.jvsena42.loopky.cli.requireUsableOperand
 import com.github.jvsena42.loopky.cli.result
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -31,18 +33,27 @@ data class DoctorResult(
     /** `http://host:port`, never the credentials; null when no proxy is configured. */
     val proxy: String?,
     val homeserver: String,
-    /** The ordinary domain the homeserver's pkarr record names, or null if the lookup failed. */
+    /**
+     * The ordinary domain the homeserver's pkarr record names — or, when that lookup failed for the
+     * environment's own default homeserver, the domain it is known to have. Null only for a
+     * `--homeserver` whose record could not be read.
+     */
     @SerialName("homeserver_host") val homeserverHost: String?,
     val hosts: List<HostCheck>,
     /** Every host above, deduplicated — what to paste into an allowlist. */
     val allowlist: List<String>,
+    /** False when the homeserver's host could not be learned, so the list above is missing it. */
+    @SerialName("allowlist_complete") val allowlistComplete: Boolean,
 )
 
 @Serializable
 data class HostCheck(
     val host: String,
     @SerialName("needed_for") val neededFor: String,
-    /** `reachable` (any HTTP answer, even an error), `refused` (by a proxy) or `unreachable`. */
+    /**
+     * `reachable` (any HTTP answer, even an error), `refused` (by a proxy), `intercepted` (TLS
+     * re-signed by a CA this client does not trust) or `unreachable`.
+     */
     val status: String,
     val detail: String?,
     @SerialName("ms") val millis: Long,
@@ -74,29 +85,76 @@ internal suspend fun doctor(
         ?.let { requireUsableOperand(it.trim().removePrefix("pubky"), "--homeserver") }
         ?: environment.pubky.defaultHomeserver
     val lookup = resolveHttps(homeserver)
-    val homeserverHost = lookup.getOrNull()?.let(::icannTarget)
+    val resolvedHost = lookup.getOrNull()?.let(::icannTarget)
+    // In the sandbox #212 is about, the relays are blocked too, so the lookup fails exactly where
+    // the list is needed — and an allowlist missing the homeserver costs a second round trip
+    // through a human. The default homeserver's domain is known; only a `--homeserver` is not.
+    val homeserverHost = resolvedHost ?: KNOWN_HOMESERVER_HOSTS[homeserver]
+    val lookupFailure = lookup.exceptionOrNull()?.let { "pkarr lookup of $homeserver failed: ${it.message}" }
+        ?: "pkarr record of $homeserver names no ordinary domain".takeIf { resolvedHost == null }
 
     val targets = buildList {
         add(Target(RELAY_URL, "login (Pubky Ring approval)"))
-        PKARR_RELAYS.forEach { add(Target(it, "finding any homeserver (pkarr)")) }
+        PKARR_RELAYS.forEach { add(Target(it, "finding any homeserver (pkarr; either relay is enough)")) }
         homeserverHost?.let { add(Target("https://$it/", "every deck read and write")) }
         add(Target(environment.indexer, "tag trending and indexer reads"))
         add(Target(UpdateChecker.manifestUrl(), "install and loopky update"))
     }
-    val checks = coroutineScope {
+    val probed = coroutineScope {
         targets.map { target -> async { target to probe(target.url) } }.awaitAll()
     }.flatMap { (target, outcome) -> followRedirects(target, outcome, probe) }
-    val lookupFailure = lookup.exceptionOrNull()?.let { "pkarr lookup of $homeserver failed: ${it.message}" }
-        ?: "pkarr record of $homeserver names no ordinary domain".takeIf { homeserverHost == null }
+    val checks = withAssetCdn(probed, probe)
 
-    val report = DoctorResult(proxy, homeserver, homeserverHost, checks, checks.map { it.host }.distinct())
+    val report = DoctorResult(
+        proxy = proxy,
+        homeserver = homeserver,
+        homeserverHost = homeserverHost,
+        hosts = checks,
+        allowlist = checks.map { it.host }.distinct(),
+        allowlistComplete = homeserverHost != null,
+    )
+    val blocking = blockingChecks(checks, relaysWork = resolvedHost != null)
     val text = render(report, lookupFailure)
-    val exit = when {
-        checks.any { it.status == REFUSED } -> ExitCode.ProxyRefused
-        lookupFailure != null || checks.any { it.status == UNREACHABLE } -> ExitCode.Network
-        else -> return result(report, text)
-    }
-    throw CliError(exit, text, cliJson.encodeToJsonElement(DoctorResult.serializer(), report))
+    val exit = exitFor(blocking, hostKnown = homeserverHost != null) ?: return result(report, text)
+    // The summary first: a failure's text reaches stderr behind `loopky: `, which would otherwise
+    // knock the table's first row out of line with the rest.
+    throw CliError(exit, "${summarize(blocking)}\n$text", cliJson.encodeToJsonElement(DoctorResult.serializer(), report))
+}
+
+private fun exitFor(blocking: List<HostCheck>, hostKnown: Boolean): ExitCode? = when {
+    blocking.any { it.status == REFUSED } -> ExitCode.ProxyRefused
+    blocking.any { it.status == INTERCEPTED } -> ExitCode.TlsUntrusted
+    !hostKnown || blocking.any { it.status == UNREACHABLE } -> ExitCode.Network
+    else -> null
+}
+
+/** The asset CDN is only met through GitHub's redirect, which a refused github.com never issues. */
+private suspend fun withAssetCdn(checks: List<HostCheck>, probe: suspend (String) -> ProbeOutcome): List<HostCheck> {
+    if (checks.any { it.host == ASSET_CDN_HOST }) return checks
+    val outcome = probe(ASSET_CDN_URL)
+    return checks + HostCheck(ASSET_CDN_HOST, "install and loopky update", outcome.status, outcome.detail, outcome.millis)
+}
+
+/**
+ * The checks that decide the exit code. The two pkarr relays are either/or — pkarr races them — so
+ * one refused relay is not a failure while the other answers, or while a lookup through them just
+ * succeeded, which is direct evidence one of them works. A real sandbox allows one and refuses the
+ * other (#357).
+ */
+private fun blockingChecks(checks: List<HostCheck>, relaysWork: Boolean): List<HostCheck> {
+    val relayHosts = PKARR_RELAYS.map(::hostOf).toSet()
+    val relays = checks.filter { it.host in relayHosts }
+    val relaysOk = relaysWork || relays.any { it.status == REACHABLE }
+    return if (relaysOk) checks - relays.toSet() else checks
+}
+
+private fun summarize(blocking: List<HostCheck>): String {
+    fun hosts(status: String) = blocking.filter { it.status == status }.map { it.host }
+    return listOfNotNull(
+        hosts(REFUSED).takeIf { it.isNotEmpty() }?.let { "refused by the proxy: ${it.joinToString(", ")}" },
+        hosts(INTERCEPTED).takeIf { it.isNotEmpty() }?.let { "TLS intercepted: ${it.joinToString(", ")}" },
+        hosts(UNREACHABLE).takeIf { it.isNotEmpty() }?.let { "unreachable: ${it.joinToString(", ")}" },
+    ).joinToString("; ").ifEmpty { "the homeserver's host could not be learned" }
 }
 
 private data class Target(val url: String, val neededFor: String)
@@ -139,7 +197,12 @@ private fun render(report: DoctorResult, lookupFailure: String?): String = build
         append("  ${status.padEnd(STATUS_WIDTH)} ${check.host.padEnd(width)}  ${check.neededFor}")
         appendLine(check.detail?.let { " — $it" }.orEmpty())
     }
-    append("Allowlist:  ${report.allowlist.joinToString(" ")}")
+    if (report.allowlistComplete) {
+        append("Allowlist:  ${report.allowlist.joinToString(" ")}")
+    } else {
+        appendLine("Allowlist (incomplete — the homeserver's host is missing; allow the pkarr relays and re-run):")
+        append("            ${report.allowlist.joinToString(" ")}")
+    }
 }
 
 /**
@@ -181,7 +244,11 @@ private suspend fun httpsProbe(url: String): ProbeOutcome = withContext(Dispatch
             connection.disconnect()
         }
     }.getOrElse { error ->
-        val status = if (error.isProxyRefusal()) REFUSED else UNREACHABLE
+        val status = when {
+            error.isProxyRefusal() -> REFUSED
+            error.isUntrustedCertificate() -> INTERCEPTED
+            else -> UNREACHABLE
+        }
         ProbeOutcome(status, error.message ?: error::class.simpleName, null, elapsed())
     }
 }
@@ -192,9 +259,19 @@ private const val RELAY_URL = "https://httprelay.pubky.app/"
 /** pkarr's `DEFAULT_RELAYS`, which `libpubkycore` resolves every homeserver through. */
 private val PKARR_RELAYS = listOf("https://pkarr.pubky.app/", "https://pkarr.pubky.org/")
 
+/** Each environment's default homeserver and the ordinary domain its record names (checked 2026-09-28). */
+private val KNOWN_HOMESERVER_HOSTS = mapOf(
+    PubkyEnvironment.Production.defaultHomeserver to "homeserver.pubky.app",
+    PubkyEnvironment.Staging.defaultHomeserver to "homeserver.staging.pubky.app",
+)
+
+private const val ASSET_CDN_HOST = "release-assets.githubusercontent.com"
+private const val ASSET_CDN_URL = "https://$ASSET_CDN_HOST/"
+
 internal const val REACHABLE = "reachable"
 internal const val REFUSED = "refused"
 internal const val UNREACHABLE = "unreachable"
+internal const val INTERCEPTED = "intercepted"
 
 private const val STATUS_WIDTH = 11
 private const val MAX_REDIRECTS = 4
