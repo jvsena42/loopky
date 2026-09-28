@@ -808,6 +808,80 @@ jobs:
           grep -q '"front_index":2' apkg.json
           grep -q '"format":"apkg"' apkg.json
 
+      # For `cli-sandbox-sim`, which puts this exact binary behind the proxies.
+      - name: Keep the binary for the proxy rows
+        uses: actions/upload-artifact@v7
+        with:
+          name: loopky-linux-x86-64
+          path: dist/loopky
+          retention-days: 3
+          if-no-files-found: error
+
+  cli-sandbox-sim:
+    # **The CLI behind the networks agent sandboxes give it (#364).** `cli/sandbox-sim` reproduces
+    # them in Docker — Claude Code's Trusted and Custom allowlists, a proxy wanting credentials, no
+    # egress at all — and this holds every row's exit code to `cli/sandbox-sim/expected.tsv`. Run
+    # against the jar *and* the binary because two of the findings it was built for were
+    # native-only: native-image froze the JDK's proxy auth-scheme properties at build time, so the
+    # binary took a 407 where the jar went through.
+    #
+    # **Linux only: the macOS and Windows native rows stay unverified behind a proxy.** A hosted
+    # macOS or Windows runner has no Docker to put them behind one.
+    #
+    # The `codex-*` and `intercepting` profiles are left out, not pinned: every row of theirs fails
+    # the same way until the pubky SDK trusts the system store (pubky/pubky-homeserver#648), and a
+    # table of 15s would only have to be rewritten when it does.
+    #
+    # Most rows reach the production relay, pkarr and Nexus. `check.sh` runs a drifting profile a
+    # second time before failing, because `doctor` gives each host 5s and one slow answer reads as
+    # unreachable (#369). And `run.sh`'s preflight refuses outright — exit 3, a red job, never a
+    # quietly different table — if the runner's own egress ever starts intercepting TLS.
+    name: CLI behind sandbox proxies (${{ matrix.build }})
+    needs: [changes, cli-binary]
+    if: needs.changes.outputs.cli == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [jar, native]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        if: matrix.build == 'jar'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        if: matrix.build == 'jar'
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build the distribution
+        if: matrix.build == 'jar'
+        run: ./gradlew :cli:installDist
+
+      - name: Take the binary `cli-binary` built
+        if: matrix.build == 'native'
+        uses: actions/download-artifact@v8
+        with:
+          name: loopky-linux-x86-64
+          path: native/bin
+
+      # `LOOPKY_DIST` is a directory holding `bin/loopky`, absolute because Compose resolves a
+      # relative one against `cli/sandbox-sim/`. Artifacts lose the executable bit.
+      - name: Hold every profile to expected.tsv
+        env:
+          BUILD: ${{ matrix.build }}
+        run: |
+          set -euo pipefail
+          if [ "$BUILD" = native ]; then
+            chmod +x native/bin/loopky
+            export LOOPKY_DIST="$GITHUB_WORKSPACE/native"
+          fi
+          cli/sandbox-sim/check.sh "$BUILD"
+
   cli-binary-macos:
     # **The other row (#239).** `cli-binary` above builds `linux-x86-64`; the macOS binary was
     # built only by `release.yml`, on a tag.
