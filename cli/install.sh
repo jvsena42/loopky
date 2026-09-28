@@ -76,8 +76,16 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 printf 'loopky: downloading %s\n' "$ASSET" >&2
-curl -fsSL "$BASE/$ASSET" -o "$TMP/loopky" \
+STATUS="$(curl -sSL "$BASE/$ASSET" -o "$TMP/loopky" -w '%{http_code}')" \
     || die "could not download $BASE/$ASSET"
+case "$STATUS" in
+    2??) ;;
+    # GitHub does not refuse a public release; a proxy scoped to other repositories does (#365).
+    403) die "$BASE/$ASSET answered 403, so a proxy in front of GitHub refused it. In a Claude Code
+cloud session GitHub traffic goes through a proxy that reaches only the repositories attached to the
+session: attach $REPO to the environment, or install loopky in its setup script." ;;
+    *) die "could not download $BASE/$ASSET (HTTP $STATUS)" ;;
+esac
 
 # The digest is checked when a tool for it exists and skipped, loudly, when none does. Failing the
 # install on a missing `sha256sum` would be worse than saying so: the sandbox this targets is

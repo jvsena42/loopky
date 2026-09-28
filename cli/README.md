@@ -571,7 +571,10 @@ What was measured (#212, `cli/sandbox-sim/`, and a real Claude Code cloud sessio
 - **Installing from inside a Claude Code session** goes through its GitHub proxy, which serves
   release assets only for repositories attached to the session. A session on another repository
   can get a 403 for the binary; attach `jvsena42/loopky`, or install in the environment's setup
-  script.
+  script. `loopky update` reports that 403 as exit 14 with the same advice, and `install.sh` names
+  it — but the one-liner's own `curl … | sh` fetch is refused before the script exists, and then
+  prints nothing at all, so a silent install there is this. Taken from Claude Code's documentation,
+  not yet measured in such a session (#365).
 
 Sign in on a machine with a phone and hand the sandbox `LOOPKY_SESSION` (see Environment): then
 `httprelay.pubky.app` is not needed at all.

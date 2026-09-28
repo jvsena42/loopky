@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.cli.Args
 import com.github.jvsena42.loopky.cli.CliError
 import com.github.jvsena42.loopky.cli.CommandResult
 import com.github.jvsena42.loopky.cli.ExitCode
+import com.github.jvsena42.loopky.cli.GITHUB_REFUSED_ADVICE
 import com.github.jvsena42.loopky.cli.Installation
 import com.github.jvsena42.loopky.cli.SupportedHost
 import com.github.jvsena42.loopky.cli.UpdateChecker
@@ -119,6 +120,9 @@ suspend fun update(
         text,
     )
 
+    if (manifest == null && checker.lastFetchRefused) {
+        throw CliError(ExitCode.ProxyRefused, "The release page answered 403. $GITHUB_REFUSED_ADVICE")
+    }
     if (manifest == null) {
         // Not an error. No egress, an allowlist proxy and a release page with no manifest yet all
         // land here, and none of them is a reason to exit non-zero on a command that changed
@@ -214,6 +218,7 @@ private fun download(url: String): ByteArray {
             }
         if (code == HTTP_NOT_FOUND) throw CliError(ExitCode.NotFound, "$url does not exist")
         if (code == HTTP_PROXY_AUTH) throw CliError(ExitCode.ProxyRefused, "the proxy refused its credentials fetching $url")
+        if (code == HTTP_FORBIDDEN) throw CliError(ExitCode.ProxyRefused, "$url answered 403. $GITHUB_REFUSED_ADVICE")
         if (code !in SUCCESS) throw CliError(ExitCode.Network, "HTTP $code fetching $url")
         val bytes = runCatching { connection.inputStream.use { it.readNBytes(MAX_DOWNLOAD_BYTES + 1) } }
             .getOrElse { throw CliError(ExitCode.Network, "download of $url failed: ${it.message}") }
@@ -438,6 +443,7 @@ private const val MB = 1024 * 1024
 private const val MAX_DOWNLOAD_BYTES = 256 * MB
 private const val HTTP_NOT_FOUND = 404
 private const val HTTP_PROXY_AUTH = 407
+private const val HTTP_FORBIDDEN = 403
 private const val CONNECT_TIMEOUT_MS = 15_000
 private const val READ_TIMEOUT_MS = 60_000
 private val SUCCESS = 200..299

@@ -59,6 +59,13 @@ class UpdateChecker(
 ) {
 
     /**
+     * Whether the last fetch was answered 403. GitHub does not refuse a public release asset, so
+     * that is a proxy in front of it — see [GITHUB_REFUSED_ADVICE].
+     */
+    var lastFetchRefused: Boolean = false
+        private set
+
+    /**
      * The newest release, from the cache when fresh and the network otherwise. [force] is for
      * `loopky update`, a direct question that must not be answered out of a day-old file.
      */
@@ -111,6 +118,7 @@ class UpdateChecker(
             Log.d(TAG, "update check could not reach $url: ${it.message}")
             return null
         }
+        lastFetchRefused = response.statusCode == HTTP_FORBIDDEN
         if (!response.isSuccess) {
             // A release published before the manifest existed 404s here. Not a fault, and not
             // worth a word on stderr — it is indistinguishable from "no releases yet".
@@ -292,3 +300,16 @@ fun updateAdvice(installation: Installation, version: String, repo: String = Upd
             "This is the jar distribution, which is a directory rather than a file — re-download it " +
                 "from https://github.com/$repo/releases/latest"
     }
+
+private const val HTTP_FORBIDDEN = 403
+
+/**
+ * A Claude Code cloud session sends GitHub traffic through a proxy that reaches only the
+ * repositories attached to the session (#365), so from a session on any other repository the
+ * release page answers 403 even with github.com allowed.
+ */
+internal const val GITHUB_REFUSED_ADVICE =
+    "GitHub itself does not refuse a public release, so a proxy in front of it did. In a Claude Code " +
+        "cloud session, GitHub traffic goes through a proxy that reaches only the repositories attached " +
+        "to the session: attach jvsena42/loopky to the environment, or install loopky in the " +
+        "environment's setup script."
