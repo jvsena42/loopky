@@ -2439,9 +2439,10 @@ Two things remain. A **TLS-intercepting** proxy fails on both stacks even with i
 system-wide — the pubky SDK bundles its roots (exit 15, `tls_untrusted`), which is upstream work
 (pubky/pubky-homeserver#648). The JDK keeps its own store, which the jar can be pointed at with
 `-Djavax.net.ssl.trustStore` — a Claude Code cloud session does this — but that reaches only the
-JVM half, so `doctor` compares the two stacks rather than trusting the JVM's view. And a
-**black-holed** relay makes `login --timeout` report 13 ("nobody approved") rather than 5, because
-the FFI's grant resume (§13.10) keeps rejoining a relay it never reached.
+JVM half, so `doctor` compares the two stacks rather than trusting the JVM's view. A
+**black-holed** relay used to make `login --timeout` report 13 ("nobody approved") rather than 5,
+because the FFI's grant resume (§13.10) keeps rejoining a relay it never reached; `login` now asks
+the relay with `doctor`'s probe before showing a QR and fails 5, 14 or 15 there (#360).
 
 ### 13.18 Still open
 

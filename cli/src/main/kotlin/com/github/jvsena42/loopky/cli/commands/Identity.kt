@@ -179,6 +179,7 @@ suspend fun login(
     // slot the first poll takes, so refusing `--timeout twenty` after starting one would spend a
     // code nobody ever saw.
     val timeout = args.positiveIntOrNull("timeout")
+    requireRelayReachable(retryingTimeout(::httpsProbe))
     val handle = identity.beginSignIn(capabilities = CLI_CAPABILITIES, returnToApp = false)
         .getOrElse { throw asCliError(it) }
 
@@ -243,6 +244,27 @@ suspend fun login(
                 appendLine("Treat that like a password: it authorises writes to /pub/loopky until it expires.")
             }
         }.trimEnd(),
+    )
+}
+
+/**
+ * Ring's approval arrives through the relay, and the FFI rejoins it on every transport failure until
+ * `--timeout` — right for a blip on a relay it reached, wrong for one it never did, which used to end
+ * as 13 "nobody approved" and send an agent back to the human for a QR that could not work (#360).
+ * So the relay is asked once before any QR is shown, the way `doctor` asks it.
+ */
+internal suspend fun requireRelayReachable(probe: suspend (String) -> ProbeOutcome) {
+    val outcome = probe(RELAY_URL)
+    val exit = when (outcome.status) {
+        REACHABLE -> return
+        REFUSED -> ExitCode.ProxyRefused
+        INTERCEPTED -> ExitCode.TlsUntrusted
+        else -> ExitCode.Network
+    }
+    throw CliError(
+        exit,
+        "The sign-in relay ${hostOf(RELAY_URL)} cannot be reached from here (${outcome.detail}), so no " +
+            "approval could arrive. No QR was shown. `loopky doctor` lists what this machine can reach.",
     )
 }
 

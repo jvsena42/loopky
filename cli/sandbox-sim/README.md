@@ -61,14 +61,14 @@ Exit codes, jar build, bundled `libpubkycore`.
 
 | | `import --dry-run` | `doctor` | `tag trending` | `login --timeout 5` |
 | --- | --- | --- | --- | --- |
-| claude-trusted | 0 | 14 | 14 | 5 |
+| claude-trusted | 0 | 14 | 14 | 14 |
 | claude-custom | 0 | 0 | 0 | 13 |
-| codex-common | 0 | 14 | 14 | 5 |
+| codex-common | 0 | 14 | 14 | 14 |
 | codex-custom | 0 | 15 | 15 | 5 |
 | codex-custom-readonly | 0 | 15 | 15 | 5 |
 | authenticated | 0 | 0 | 0 | 13 |
 | intercepting | 0 | 15 | 15 | 5 |
-| offline | 0 | 5 | 5 (15s) | 13 (!) |
+| offline | 0 | 5 | 5 (15s) | 5 |
 | codex-custom, `JVM_TRUSTS_PROXY_CA=1` | 0 | 15 | 0 | 5 |
 
 - **The two defaults refuse Pubky; adding `doctor`'s hosts is the whole fix** where the proxy does
@@ -76,8 +76,8 @@ Exit codes, jar build, bundled `libpubkycore`.
 - **Anything intercepting fails**, allowlisted or not, because the pubky SDK trusts only its bundled
   roots (pubky/pubky-homeserver#648). The last row is why `doctor` compares the stacks: the JVM,
   given the CA, passes, while the SDK still cannot resolve anything.
-- **`login` under a refusal reads 5**, not 14, until the bundled FFI reports its error chain
-  (pubky-core-ffi-fork#9); with `PUBKYCORE_DIR` at that build it is 14. **`login` offline reads
-  13** because the relay resume keeps retrying a relay it never reached.
+- **`login` asks the relay before it shows a QR** (#360), with the same probe `doctor` uses, so a
+  refused relay reads 14 and an unreachable one 5. It used to read 13 offline, because the FFI's
+  relay resume keeps rejoining a relay it never reached until `--timeout`.
 - `doctor`'s probes time out at 5s each, and a timed-out probe is asked once more before its host
   reads as unreachable (#369), so a 5 has already survived one retry.

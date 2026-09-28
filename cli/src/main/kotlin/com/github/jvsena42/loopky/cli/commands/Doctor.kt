@@ -175,7 +175,7 @@ private fun nextStep(exit: ExitCode, blocking: List<HostCheck>, allowlist: List<
  * is asked once more. Only a timeout: it costs up to another [PROBE_TIMEOUT_MS], and only on a path
  * that is already failing.
  */
-private fun retryingTimeout(probe: suspend (String) -> ProbeOutcome): suspend (String) -> ProbeOutcome = { url ->
+internal fun retryingTimeout(probe: suspend (String) -> ProbeOutcome): suspend (String) -> ProbeOutcome = { url ->
     val first = probe(url)
     if (!first.timedOut) {
         first
@@ -312,7 +312,7 @@ private fun configuredProxy(): String? {
 }
 
 /** pubky's `DEFAULT_HTTP_RELAY_INBOX`, where `loopky login` waits for Ring. */
-private const val RELAY_URL = "https://httprelay.pubky.app/"
+internal const val RELAY_URL = "https://httprelay.pubky.app/"
 
 /** pkarr's `DEFAULT_RELAYS`, which `libpubkycore` resolves every homeserver through. */
 private val PKARR_RELAYS = listOf("https://pkarr.pubky.app/", "https://pkarr.pubky.org/")

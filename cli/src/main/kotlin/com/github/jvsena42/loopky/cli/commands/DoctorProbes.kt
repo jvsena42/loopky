@@ -29,7 +29,7 @@ internal class DoctorProbes(
     val write: suspend (String) -> WriteAnswer? = ::unauthenticatedPut,
 )
 
-private suspend fun httpsProbe(url: String): ProbeOutcome = withContext(Dispatchers.IO) {
+internal suspend fun httpsProbe(url: String): ProbeOutcome = withContext(Dispatchers.IO) {
     val started = System.nanoTime()
     fun elapsed() = (System.nanoTime() - started) / NANOS_PER_MILLI
     runCatching {
