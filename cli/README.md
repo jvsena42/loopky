@@ -538,7 +538,9 @@ once these hosts are added (production):
 environment's settings → *Network access: Custom*, keep the default domains, add these under
 *Allowed domains*. Codex: the environment's settings → *Agent internet access: On*, add these as
 allowed domains, and **leave "GET, HEAD and OPTIONS only" off** — every write is a `PUT` or
-`DELETE`, and since `doctor`'s own probes are all `GET`s it would pass and every write would fail.
+`DELETE`. `doctor` sends one unauthenticated `PUT` to the homeserver to catch that option: the
+homeserver answers it 401, a method filter answers 403 first, and `doctor` then reports the
+homeserver `method_blocked` and exits 14.
 
 **`loopky doctor` prints this list for the machine it runs on**, asking each host through the
 configured proxy, and ends with a `next_step` addressed to the agent: which hosts to ask the user
@@ -561,13 +563,15 @@ What was measured (#212, `cli/sandbox-sim/`, and a real Claude Code cloud sessio
 - **A proxy that intercepts TLS does not work yet.** The pubky SDK ships its own root
   certificates and reads neither the system store nor `SSL_CERT_FILE`, so it rejects the proxy's
   CA (exit 15, `tls_untrusted`); the fix is upstream (pubky/pubky-homeserver#648). Until then such
-  a sandbox needs Loopky's hosts exempted from inspection. The jar's JVM half — Nexus, `update` —
-  can be given the CA with `-Djavax.net.ssl.trustStore` through `JAVA_TOOL_OPTIONS` or
-  `LOOPKY_OPTS`, which a Claude Code cloud session already does; that does not reach the SDK, and
-  `doctor` reports the two disagreeing.
+  a sandbox needs Loopky's hosts exempted from inspection. The JVM half — Nexus, `update`,
+  `--check-images` — trusts the certificates `SSL_CERT_FILE` and `SSL_CERT_DIR` name on top of its
+  own store, in the jar and the native binary alike (#362), so `tag trending` works there already;
+  that does not reach the SDK, and `doctor` reports the two disagreeing.
 - **A refusal is exit 14, `proxy_refused`** — never 5, which would tell an agent to retry a request
-  an allowlist will refuse every time. A refused relay or homeserver reads as 14 once the bundled
-  `libpubkycore` carries the proxy's answer through (next bindings bump); until then, 5.
+  an allowlist will refuse every time. That includes a refused relay or homeserver on Linux and
+  Windows; the macOS build's `libpubkycore` does not carry the proxy's answer through yet, so there
+  a refused homeserver still reads as 5 (`login`'s relay check runs on the JVM and reads 14
+  everywhere).
 - **Installing from inside a Claude Code session** goes through its GitHub proxy, which serves
   release assets only for repositories attached to the session. A session on another repository
   can get a 403 for the binary; attach `jvsena42/loopky`, or install in the environment's setup
@@ -604,8 +608,8 @@ and stays 5.
 15 is a certificate this client does not trust, which in a sandbox means a proxy re-signing TLS
 with its own CA. Not 1, because nothing about it is a bug, and not 5, because an untrusted CA stays
 untrusted on the next attempt. The fix is on the proxy's side — exempt Loopky's hosts from
-interception — or, for the jar only, a trust store holding that CA passed as
-`-Djavax.net.ssl.trustStore` through `JAVA_TOOL_OPTIONS` or `LOOPKY_OPTS`.
+interception. The JVM half already trusts whatever `SSL_CERT_FILE`/`SSL_CERT_DIR` name, so until
+pubky/pubky-homeserver#648 a 15 comes from the SDK half.
 
 13 is nobody approving a sign-in inside `--timeout`. *That process* is not signed in — deliberately
 not "nothing was stored", which it cannot promise: the await runs on a thread that is unobserved

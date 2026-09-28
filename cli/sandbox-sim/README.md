@@ -25,7 +25,28 @@ errors reached stderr.
 - `PUBKYCORE_DIR=<dir>` loads that directory's `libpubkycore.so` instead of the bundled one, to try
   an FFI change first. The jar only: the native binary embeds its library.
 - `JVM_TRUSTS_PROXY_CA=1` also hands the jar's JVM a trust store holding the proxy's CA, as a Claude
-  Code cloud session does through `JAVA_TOOL_OPTIONS`.
+  Code cloud session does through `JAVA_TOOL_OPTIONS`. Since #362 it changes nothing measurable: the
+  client exports `SSL_CERT_FILE`, which the JVM half now trusts on its own.
+- `SIM_SUMMARY=<file>` also writes the rows there as TSV — profile, command, exit, error code, ms —
+  for anything that compares them rather than reads them.
+
+## In CI
+
+`check.sh` runs profiles through `run.sh` and fails on any exit code that differs from
+[`expected.tsv`](expected.tsv), which is **the source of truth** for the rows it holds:
+`claude-trusted`, `claude-custom`, `authenticated` and `offline`, for the jar and the native binary.
+
+```shell
+cli/sandbox-sim/check.sh jar                                  # every profile in expected.tsv
+LOOPKY_DIST=<dir holding bin/loopky> cli/sandbox-sim/check.sh native
+cli/sandbox-sim/check.sh jar offline                          # just the profiles named
+```
+
+The `cli-sandbox-sim` job in `.github/workflows/ci.yml` runs both on every change under `cli/`, on
+Linux only — the macOS and Windows native binaries stay unverified behind a proxy. A profile that
+drifts is run a second time before it fails, because `doctor` reads one slow production host as
+unreachable (#369). A change that moves an exit code on purpose changes `expected.tsv` in the same
+PR. `codex-*` and `intercepting` are left out until pubky/pubky-homeserver#648 moves their rows.
 
 ## What it models
 
@@ -57,27 +78,36 @@ anywhere.
 
 ## What it found (2026-09-28)
 
-Exit codes, jar build, bundled `libpubkycore`.
+Exit codes, jar build, bundled `libpubkycore` at pubky-core-ffi-fork@243ac31 (#361). The
+`claude-*`, `authenticated` and `offline` rows are no longer kept here: [`expected.tsv`](expected.tsv)
+holds them, for the jar and the binary, and CI fails when they move. These are the ones CI does not
+run.
 
 | | `import --dry-run` | `doctor` | `tag trending` | `login --timeout 5` |
 | --- | --- | --- | --- | --- |
-| claude-trusted | 0 | 14 | 14 | 5 |
-| claude-custom | 0 | 0 | 0 | 13 |
-| codex-common | 0 | 14 | 14 | 5 |
-| codex-custom | 0 | 15 | 15 | 5 |
-| codex-custom-readonly | 0 | 15 | 15 | 5 |
-| authenticated | 0 | 0 | 0 | 13 |
-| intercepting | 0 | 15 | 15 | 5 |
-| offline | 0 | 5 | 5 (15s) | 13 (!) |
-| codex-custom, `JVM_TRUSTS_PROXY_CA=1` | 0 | 15 | 0 | 5 |
+| codex-common | 0 | 14 | 14 | 14 |
+| codex-custom | 0 | 15 | 0 | 15 |
+| codex-custom-readonly | 0 | 14 | 0 | 15 |
+| intercepting | 0 | 15 | 0 | 15 |
 
 - **The two defaults refuse Pubky; adding `doctor`'s hosts is the whole fix** where the proxy does
   not intercept. `login` 13 there is correct: it reached the relay and waited for a phone.
 - **Anything intercepting fails**, allowlisted or not, because the pubky SDK trusts only its bundled
-  roots (pubky/pubky-homeserver#648). The last row is why `doctor` compares the stacks: the JVM,
-  given the CA, passes, while the SDK still cannot resolve anything.
-- **`login` under a refusal reads 5**, not 14, until the bundled FFI reports its error chain
-  (pubky-core-ffi-fork#9); with `PUBKYCORE_DIR` at that build it is 14. **`login` offline reads
-  13** because the relay resume keeps retrying a relay it never reached.
-- `doctor`'s probes time out at 5s each, so one slow host reads as unreachable — re-run it before
-  believing a single 5.
+  roots (pubky/pubky-homeserver#648). `tag trending` passes there because the JVM trusts
+  `SSL_CERT_FILE` (#362), and that is why `doctor` compares the stacks: the JVM reaches the relays
+  while the SDK still cannot resolve anything.
+- **`codex-custom-readonly`'s `doctor` reads 14, not 15**: with the proxy's CA trusted the JVM
+  reaches the homeserver, and the unauthenticated `PUT` meets the method filter (`method_blocked`,
+  #363). Its `next_step` names the certificate problem as well, so fixing one does not only
+  uncover the other.
+- **`login` asks the relay before it shows a QR** (#360), with the same probe `doctor` uses, so a
+  refused relay reads 14 and an unreachable one 5 — where it used to read 13 offline, because the
+  FFI's relay resume keeps rejoining a relay it never reached until `--timeout`. Past that probe,
+  the bundled FFI reports its error chain (pubky-core-ffi-fork#9), so an intercepted relay
+  handshake reads 15 rather than 5. That holds for the Linux and Windows rows; the macOS row has
+  not been rebuilt yet (#361).
+- No DHT errors reach stderr behind any proxy (pubky-core-ffi-fork#10). `offline` still shows a
+  few, since with no proxy configured the DHT is tried as on an open network.
+- `doctor`'s probes time out at 5s each, and a timed-out probe is asked once more before its host
+  reads as unreachable (#369), so a 5 has already survived one retry.
+- `offline`'s `tag trending` takes ~15s to read 5.

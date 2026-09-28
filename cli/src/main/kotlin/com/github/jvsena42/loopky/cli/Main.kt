@@ -59,6 +59,7 @@ import kotlin.system.exitProcess
  */
 fun main(argv: Array<String>) {
     ProxyEnvironment.from(System.getenv()).install()
+    CertificateEnvironment.from(System.getenv()).install()
     val exit = runCatching { run(argv) }.getOrElse { error ->
         // Nothing should reach here; if it does, say so honestly rather than exiting 0.
         System.err.println("loopky: ${error::class.simpleName}: ${error.message}")

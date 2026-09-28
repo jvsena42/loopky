@@ -34,7 +34,8 @@ class DoctorTest {
         val pinned = "https://github.com/jvsena42/loopky/releases/download/v1.0.0/latest.json"
         val probe = reachable(mapOf(manifest to pinned, pinned to "https://release-assets.githubusercontent.com/x"))
 
-        val result = doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = null)
+        val result =
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = null)
 
         val report = result.data.toString()
         listOf(
@@ -44,12 +45,122 @@ class DoctorTest {
     }
 
     @Test
+    fun `a probe that times out once and then answers is reachable, and says so`() = runTest {
+        val attempts = mutableMapOf<String, Int>()
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            val attempt = attempts.merge(url, 1, Int::plus)!!
+            if ("nexus" in url && attempt == 1) {
+                ProbeOutcome(UNREACHABLE, "Read timed out", null, PROBE_TIMEOUT, timedOut = true)
+            } else {
+                ProbeOutcome(REACHABLE, null, null, 1)
+            }
+        }
+
+        val result =
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = null)
+
+        val nexus = result.data.toString().substringAfter("nexus.pubky.app").substringBefore("}")
+        assert(""""status":"reachable"""" in nexus) { nexus }
+        assert("second try" in nexus) { nexus }
+        assertEquals(listOf(2), attempts.filterKeys { "nexus" in it }.values.toList())
+    }
+
+    @Test
+    fun `a probe that times out twice is unreachable`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("nexus" in url) {
+                ProbeOutcome(UNREACHABLE, "Read timed out", null, PROBE_TIMEOUT, timedOut = true)
+            } else {
+                ProbeOutcome(REACHABLE, null, null, 1)
+            }
+        }
+
+        val error = assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = null)
+        }
+
+        assertEquals(ExitCode.Network, error.exitCode)
+        assert("timed out twice" in error.data.toString())
+    }
+
+    @Test
+    fun `a refusal is not retried`() = runTest {
+        var nexusProbes = 0
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("nexus" in url) {
+                nexusProbes++
+                ProbeOutcome(REFUSED, "403", null, 1)
+            } else {
+                ProbeOutcome(REACHABLE, null, null, 1)
+            }
+        }
+
+        assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = "http://proxy:3128")
+        }
+
+        assertEquals(1, nexusProbes)
+    }
+
+    @Test
+    fun `a proxy that answers writes itself is method_blocked and exits proxy_refused`() = runTest {
+        val writes = mutableListOf<String>()
+        val readOnly: suspend (String) -> WriteAnswer? = { url -> writes += url; WriteAnswer(403, "method PUT not allowed") }
+
+        val error = assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, DoctorProbes(reachable(), readOnly), "http://proxy:3128")
+        }
+
+        assertEquals(ExitCode.ProxyRefused, error.exitCode)
+        assertEquals(listOf("https://homeserver.pubky.app/pub/loopky/doctor"), writes)
+        val report = error.data.toString()
+        assert(""""status":"method_blocked"""" in report) { report }
+        assert("GET, HEAD and OPTIONS" in report) { report }
+        assert(error.message!!.startsWith("writes refused by the proxy: homeserver.pubky.app")) { error.message!! }
+    }
+
+    /** Both problems at once — `codex-custom-readonly` with the proxy's CA trusted by the JVM. */
+    @Test
+    fun `a method block beside an SDK that cannot resolve names both`() = runTest {
+        val readOnly: suspend (String) -> WriteAnswer? = { WriteAnswer(403, "method PUT not allowed") }
+
+        val error = assertFailsWith<CliError> {
+            doctor(
+                Args.parse(arrayOf("doctor")),
+                client(Result.failure(RuntimeException("no responses"))),
+                environment,
+                DoctorProbes(reachable(), readOnly),
+                "http://proxy:3128",
+            )
+        }
+
+        assertEquals(ExitCode.ProxyRefused, error.exitCode)
+        val nextStep = error.data.toString()
+        assert("GET, HEAD and OPTIONS" in nextStep) { nextStep }
+        assert("pubky-homeserver#648" in nextStep) { nextStep }
+    }
+
+    @Test
+    fun `no write probe is sent when the homeserver's read already failed`() = runTest {
+        var writes = 0
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("homeserver" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
+        }
+
+        assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, DoctorProbes(probe) { writes++; null }, "http://proxy:3128")
+        }
+
+        assertEquals(0, writes)
+    }
+
+    @Test
     fun `a refused host exits proxy_refused and still carries the report`() = runTest {
         val probe: suspend (String) -> ProbeOutcome = { url ->
             if ("nexus" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
         }
         val error = assertFailsWith<CliError> {
-            doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = "http://proxy:3128")
         }
         assertEquals(ExitCode.ProxyRefused, error.exitCode)
         assert("nexus.pubky.app" in error.data.toString())
@@ -66,7 +177,7 @@ class DoctorTest {
                 Args.parse(arrayOf("doctor")),
                 client(Result.failure(RuntimeException("no responses"))),
                 environment,
-                probe,
+                probes(probe),
                 proxy = "http://proxy:3128",
             )
         }
@@ -84,7 +195,7 @@ class DoctorTest {
                 Args.parse(arrayOf("doctor", "--homeserver", "otherhomeserver")),
                 client(Result.failure(RuntimeException("no responses"))),
                 environment,
-                reachable(),
+                probes(reachable()),
                 proxy = null,
             )
         }
@@ -97,7 +208,8 @@ class DoctorTest {
         val probe: suspend (String) -> ProbeOutcome = { url ->
             if ("pkarr.pubky.org" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
         }
-        val result = doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+        val result =
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = "http://proxy:3128")
         assert("pkarr.pubky.org" in result.data.toString()) { "the refused relay is still reported" }
     }
 
@@ -107,7 +219,7 @@ class DoctorTest {
             if ("pkarr" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
         }
         val error = assertFailsWith<CliError> {
-            doctor(Args.parse(arrayOf("doctor")), client(Result.failure(RuntimeException("x"))), environment, probe, null)
+            doctor(Args.parse(arrayOf("doctor")), client(Result.failure(RuntimeException("x"))), environment, probes(probe), null)
         }
         assertEquals(ExitCode.ProxyRefused, error.exitCode)
     }
@@ -116,7 +228,7 @@ class DoctorTest {
     fun `interception is its own status and exits tls_untrusted`() = runTest {
         val probe: suspend (String) -> ProbeOutcome = { ProbeOutcome(INTERCEPTED, "PKIX path building failed", null, 1) }
         val error = assertFailsWith<CliError> {
-            doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = "http://proxy:3128")
         }
         assertEquals(ExitCode.TlsUntrusted, error.exitCode)
         assert(error.message!!.startsWith("TLS intercepted:"))
@@ -128,14 +240,14 @@ class DoctorTest {
             if ("github.com" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
         }
         val error = assertFailsWith<CliError> {
-            doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = "http://proxy:3128")
         }
         assert("release-assets.githubusercontent.com" in error.data.toString())
     }
 
     @Test
     fun `--homeserver takes a key with or without the pubky prefix`() = runTest {
-        doctor(Args.parse(arrayOf("doctor", "--homeserver", "pubkyabc")), client(), environment, reachable(), null)
+        doctor(Args.parse(arrayOf("doctor", "--homeserver", "pubkyabc")), client(), environment, probes(reachable()), null)
         assertEquals("abc", resolved.single())
     }
 
@@ -147,7 +259,7 @@ class DoctorTest {
                 Args.parse(arrayOf("doctor")),
                 client(),
                 environment,
-                reachable(mapOf(manifest to location)),
+                probes(reachable(mapOf(manifest to location))),
                 proxy = null,
             )
             assert("github.com" in result.data.toString()) { location }
@@ -157,7 +269,7 @@ class DoctorTest {
     @Test
     fun `a blank --homeserver is bad input, never a lookup`() = runTest {
         val error = assertFailsWith<CliError> {
-            doctor(Args.parse(arrayOf("doctor", "--homeserver", "  ")), client(), environment, reachable(), null)
+            doctor(Args.parse(arrayOf("doctor", "--homeserver", "  ")), client(), environment, probes(reachable()), null)
         }
         assertEquals(ExitCode.BadInput, error.exitCode)
         assert(resolved.isEmpty())
@@ -176,7 +288,7 @@ class DoctorTest {
             if ("nexus" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
         }
         val error = assertFailsWith<CliError> {
-            doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = "http://proxy:3128")
         }
         val report = error.data.toString()
         assert("Ask the user to allow these hosts" in report && "nexus.pubky.app" in report) { report }
@@ -186,7 +298,8 @@ class DoctorTest {
 
     @Test
     fun `nothing wrong means no next step`() = runTest {
-        val result = doctor(Args.parse(arrayOf("doctor")), client(), environment, reachable(), proxy = null)
+        val result =
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(reachable()), proxy = null)
         assert(""""next_step":null""" in result.data.toString()) { result.data.toString() }
     }
 
@@ -198,7 +311,7 @@ class DoctorTest {
                 Args.parse(arrayOf("doctor")),
                 client(Result.failure(RuntimeException("No signed packet found: resolve query received no responses"))),
                 environment,
-                reachable(),
+                probes(reachable()),
                 proxy = "http://proxy:3128",
             )
         }
@@ -206,3 +319,9 @@ class DoctorTest {
         assert(error.message!!.startsWith("the pubky SDK could not use the pkarr relays"))
     }
 }
+
+private const val PROBE_TIMEOUT = 5_000L
+
+/** The production homeserver's answer to an unauthenticated PUT (checked 2026-09-28) as the write probe. */
+private fun probes(read: suspend (String) -> ProbeOutcome) =
+    DoctorProbes(read) { WriteAnswer(401, "No authenticated session found") }

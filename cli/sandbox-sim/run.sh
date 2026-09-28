@@ -14,8 +14,14 @@
 # Set LOOPKY_SESSION to add the signed-in rows; nothing here stores or prints it. Set
 # PUBKYCORE_DIR to a directory holding a libpubkycore.so to try an FFI build before it ships.
 # JVM_TRUSTS_PROXY_CA=1 also hands the jar's JVM a trust store with the proxy's CA, as a Claude
-# Code cloud session does through JAVA_TOOL_OPTIONS.
+# Code cloud session does through JAVA_TOOL_OPTIONS. SIM_SUMMARY=<file> also writes the rows there
+# as TSV — profile, command, exit, error code, ms — which is what check.sh compares (#364).
 set -euo pipefail
+# Absolute before the cd below. Not `realpath -m`: BSD realpath on macOS has no -m.
+case "${SIM_SUMMARY:-}" in
+  "" | /*) ;;
+  *) SIM_SUMMARY="$PWD/$SIM_SUMMARY" ;;
+esac
 cd "$(dirname "$0")"
 
 # Squid's dstdomain: `.example.com` is the domain and its subdomains, a bare name that host alone —
@@ -48,7 +54,7 @@ case "${1:-}" in
                    grep -hv '^#' allowlists/codex-common.txt allowlists/loopky.txt > allowlist.active.txt ;;
   intercepting)    profile=intercepting ;;
   offline)         profile="" ;;
-  *) sed -n '2,19p' "$0"; exit 2 ;;
+  *) sed -n '2,18p' "$0"; exit 2 ;;
 esac
 
 # The proxies reach the internet through this machine. If its own egress re-signs TLS — a Claude
@@ -86,8 +92,14 @@ if [ -n "$profile" ]; then
 fi
 case "$profile" in intercepting|codex) export EXTRA_CA=/ca/mitmproxy-ca-cert.pem ;; esac
 
+# The container tags each row's machine-readable twin with `#row<TAB>`; it goes to SIM_SUMMARY, never
+# to the terminal, so the human table stays as it was and nothing has to scrape it.
+summary=/dev/null
+if [ -n "${SIM_SUMMARY:-}" ]; then summary=$SIM_SUMMARY; : > "$summary"; fi
 docker compose build -q client >/dev/null
-docker compose run --rm -T client bash -s <<'SCRIPT'
+docker compose run --rm -T client bash -s <<'SCRIPT' | awk -v out="$summary" -v profile="$1" '
+  /^#row\t/ { sub(/^#row\t/, ""); print profile "\t" $0 > out; next }
+  { print; fflush() }'
 row() {
   local label=$1; shift
   local start=$(date +%s%N)
@@ -97,6 +109,7 @@ row() {
   local msg=$(grep -o '"message":"[^"]*' /tmp/out | head -1 | cut -d'"' -f4 | cut -c1-70)
   local noise=$(grep -c 'Could not bootstrap' /tmp/err || true)
   printf '%-22s %4s %-16s %6sms  %3s  %s\n' "$label" "$code" "${err:-ok}" "$ms" "$noise" "$msg"
+  printf '#row\t%s\t%s\t%s\t%s\n' "$label" "$code" "${err:-ok}" "$ms"
 }
 printf '%-22s %4s %-16s %8s  %3s  %s\n' command exit code time dht message
 row "import --dry-run"      import /fixtures/cards.tsv --title Sim --dry-run
