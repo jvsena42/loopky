@@ -9,6 +9,7 @@ import com.github.jvsena42.loopky.cli.SupportedHost
 import com.github.jvsena42.loopky.cli.UpdateChecker
 import com.github.jvsena42.loopky.cli.hostSupport
 import com.github.jvsena42.loopky.cli.isProxyRefusal
+import com.github.jvsena42.loopky.cli.isUntrustedCertificate
 import com.github.jvsena42.loopky.cli.isWindowsOs
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.cli.unsupportedHostMessage
@@ -204,7 +205,11 @@ private fun download(url: String): ByteArray {
         // caller needs to tell a malformed release from a bad minute on the network.
         val code = runCatching { connection.responseCode }
             .getOrElse {
-                val exit = if (it.isProxyRefusal()) ExitCode.ProxyRefused else ExitCode.Network
+                val exit = when {
+                    it.isProxyRefusal() -> ExitCode.ProxyRefused
+                    it.isUntrustedCertificate() -> ExitCode.TlsUntrusted
+                    else -> ExitCode.Network
+                }
                 throw CliError(exit, "could not reach $url: ${it.message}")
             }
         if (code == HTTP_NOT_FOUND) throw CliError(ExitCode.NotFound, "$url does not exist")

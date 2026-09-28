@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.cli
 
+import javax.net.ssl.SSLHandshakeException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -56,5 +57,32 @@ class ProxyRefusalTest {
     fun `407 inside an id is not a status`() {
         val error = RuntimeException("Not found: pubky://abc/pub/loopky/decks/http4070abcd/manifest.json")
         assertEquals(ExitCode.NotFound, ExitCode.of(error))
+    }
+
+    /** As sandbox-sim's `intercepting` profile produced it, trending's failure through Nexus. */
+    @Test
+    fun `a certificate the JDK cannot verify is tls_untrusted, not internal`() {
+        val pkix = RuntimeException(
+            "(certificate_unknown) PKIX path building failed: sun.security.provider.certpath." +
+                "SunCertPathBuilderException: unable to find valid certification path to requested target",
+        )
+        assertEquals(ExitCode.TlsUntrusted, ExitCode.of(pkix))
+    }
+
+    @Test
+    fun `the PKIX cause is found below a wrapping exception`() {
+        val wrapped = RuntimeException(
+            "GET https://nexus.pubky.app/v0/info failed",
+            SSLHandshakeException("PKIX path building failed"),
+        )
+        assertEquals(ExitCode.TlsUntrusted, ExitCode.of(wrapped))
+    }
+
+    @Test
+    fun `rustls rejecting the chain is tls_untrusted`() {
+        val error = RuntimeException(
+            "… error sending request for url (…): client error (Connect): invalid peer certificate: UnknownIssuer",
+        )
+        assertEquals(ExitCode.TlsUntrusted, ExitCode.of(error))
     }
 }

@@ -667,6 +667,7 @@ internal val USAGE = """
                               12 the homeserver answered 5xx — not your input, and worth retrying
                               13 login --timeout ran out before anyone approved
                               14 a proxy refused the host — allowlist it; retrying will not help
+                              15 the certificate is not trusted — usually a proxy re-signing TLS
 
     NOTES
       Sessions are stored as a mode-0600 file, not in an OS keyring. libsecret is usually absent

@@ -125,6 +125,7 @@ private fun CliCommand.exitCodes(): List<ExitCode> = buildList {
         // Anything past the pre-Koin boundary loads `libpubkycore` and talks to a homeserver.
         add(ExitCode.Network)
         add(ExitCode.ProxyRefused)
+        add(ExitCode.TlsUntrusted)
         add(ExitCode.ServerError)
         add(ExitCode.UnsupportedHost)
     }

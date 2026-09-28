@@ -340,6 +340,7 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         alsoExits = listOf(
             ExitCode.Network,
             ExitCode.ProxyRefused,
+            ExitCode.TlsUntrusted,
             ExitCode.NotFound,
             ExitCode.UnsupportedHost,
             ExitCode.UpdateUnsupported,

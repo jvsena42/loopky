@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.cli
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import kotlinx.serialization.json.JsonElement
+import javax.net.ssl.SSLPeerUnverifiedException
 
 /**
  * What `loopky` exits with, and what an agent is supposed to do about it.
@@ -130,6 +131,17 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
      * side of the proxy — a host added to the allowlist, or working credentials in `HTTPS_PROXY`.
      */
     ProxyRefused(14, "proxy_refused", "a proxy refused this host or its credentials - allowlist it; retrying will not help"),
+
+    /**
+     * The server's certificate is not one this client trusts (#212) — in practice, a proxy
+     * re-signing TLS with its own CA.
+     *
+     * Not [Internal], which it read as once trending stopped swallowing failures: nothing about it
+     * is a bug. Not [Network] either: a CA the client does not trust will not become trusted on a
+     * retry. The fix is the proxy's — exempt the host from interception — or, for the jar, a trust
+     * store passed as `-Djavax.net.ssl.trustStore`.
+     */
+    TlsUntrusted(15, "tls_untrusted", "the certificate is not trusted - usually a proxy re-signing TLS; exempt the host from interception"),
     ;
 
     companion object {
@@ -143,6 +155,7 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
          */
         fun of(error: Throwable): ExitCode = when {
             error.isProxyRefusal() -> ProxyRefused
+            error.isUntrustedCertificate() -> TlsUntrusted
             else -> fromReason(error)
         }
 
@@ -180,6 +193,24 @@ internal fun Throwable.isProxyRefusal(): Boolean {
     JDK_TUNNEL_STATUS.find(message)?.let { return it.groupValues[1] in REFUSING_STATUSES }
     return RUST_TUNNEL_REFUSALS.any { it in message } || PROXY_AUTH_STATUS.containsMatchIn(message)
 }
+
+/**
+ * The certificate chain did not verify, in either stack. The JDK words it as a PKIX failure,
+ * usually a cause or two below the `SSLHandshakeException`; rustls as "invalid peer certificate".
+ */
+internal fun Throwable.isUntrustedCertificate(): Boolean =
+    generateSequence(this) { it.cause }.take(MAX_CAUSES).any { error ->
+        val message = error.message?.lowercase().orEmpty()
+        error is SSLPeerUnverifiedException || UNTRUSTED_CERTIFICATE.any { it in message }
+    }
+
+private val UNTRUSTED_CERTIFICATE = listOf(
+    "pkix path building failed",
+    "unable to find valid certification path",
+    "invalid peer certificate",
+)
+
+private const val MAX_CAUSES = 8
 
 private val JDK_TUNNEL_STATUS = Regex("""unable to tunnel through proxy\. proxy returns "http/[0-9.]+ ([0-9]{3})""")
 private val REFUSING_STATUSES = setOf("403", "407")

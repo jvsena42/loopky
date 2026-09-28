@@ -529,6 +529,7 @@ file never has the problem.
 | | | 12 | homeserver 5xx |
 | | | 13 | `login --timeout` ran out |
 | | | 14 | a proxy refused the host |
+| | | 15 | the certificate is not trusted |
 
 `loopky commands --json` carries this table — name, number and a line of what to do about it —
 along with the subset each command can actually produce. That last part is worth reading for its
@@ -539,6 +540,12 @@ not 5 because 5 promises that the same request may pass on the next attempt, and
 answers the same way every time: the fix is a host added to the list, or working credentials in
 `HTTPS_PROXY`. A proxy that silently drops the connection instead looks like any other timeout,
 and stays 5.
+
+15 is a certificate this client does not trust, which in a sandbox means a proxy re-signing TLS
+with its own CA. Not 1, because nothing about it is a bug, and not 5, because an untrusted CA stays
+untrusted on the next attempt. The fix is on the proxy's side — exempt Loopky's hosts from
+interception — or, for the jar only, a trust store holding that CA passed as
+`-Djavax.net.ssl.trustStore` through `JAVA_TOOL_OPTIONS` or `LOOPKY_OPTS`.
 
 13 is nobody approving a sign-in inside `--timeout`. *That process* is not signed in — deliberately
 not "nothing was stored", which it cannot promise: the await runs on a thread that is unobserved
