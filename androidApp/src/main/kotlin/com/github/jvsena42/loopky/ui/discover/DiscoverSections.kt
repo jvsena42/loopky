@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -142,6 +143,38 @@ fun TopicRow(
                 modifier = Modifier
                     .animateItem()
                     .testTag("discover_topic_chip"),
+            )
+        }
+    }
+}
+
+/**
+ * One line rather than a `LoopkyErrorBlock`: topics are a
+ * filter above the content, and a full error block there would outweigh the decks it filters.
+ */
+@Composable
+fun TopicsErrorLine(
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LoopkyTheme.colors
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.discover_topics_error),
+            color = colors.foregroundMuted,
+            fontSize = 13.sp,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        TextButton(onClick = onRetry, modifier = Modifier.testTag("discover_topics_retry")) {
+            Text(
+                text = stringResource(R.string.home_retry),
+                color = colors.accentPrimary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
