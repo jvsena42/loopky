@@ -44,6 +44,63 @@ class DoctorTest {
     }
 
     @Test
+    fun `a probe that times out once and then answers is reachable, and says so`() = runTest {
+        val attempts = mutableMapOf<String, Int>()
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            val attempt = attempts.merge(url, 1, Int::plus)!!
+            if ("nexus" in url && attempt == 1) {
+                ProbeOutcome(UNREACHABLE, "Read timed out", null, PROBE_TIMEOUT, timedOut = true)
+            } else {
+                ProbeOutcome(REACHABLE, null, null, 1)
+            }
+        }
+
+        val result = doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = null)
+
+        val nexus = result.data.toString().substringAfter("nexus.pubky.app").substringBefore("}")
+        assert(""""status":"reachable"""" in nexus) { nexus }
+        assert("second try" in nexus) { nexus }
+        assertEquals(listOf(2), attempts.filterKeys { "nexus" in it }.values.toList())
+    }
+
+    @Test
+    fun `a probe that times out twice is unreachable`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("nexus" in url) {
+                ProbeOutcome(UNREACHABLE, "Read timed out", null, PROBE_TIMEOUT, timedOut = true)
+            } else {
+                ProbeOutcome(REACHABLE, null, null, 1)
+            }
+        }
+
+        val error = assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = null)
+        }
+
+        assertEquals(ExitCode.Network, error.exitCode)
+        assert("timed out twice" in error.data.toString())
+    }
+
+    @Test
+    fun `a refusal is not retried`() = runTest {
+        var nexusProbes = 0
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("nexus" in url) {
+                nexusProbes++
+                ProbeOutcome(REFUSED, "403", null, 1)
+            } else {
+                ProbeOutcome(REACHABLE, null, null, 1)
+            }
+        }
+
+        assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+        }
+
+        assertEquals(1, nexusProbes)
+    }
+
+    @Test
     fun `a refused host exits proxy_refused and still carries the report`() = runTest {
         val probe: suspend (String) -> ProbeOutcome = { url ->
             if ("nexus" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
@@ -206,3 +263,5 @@ class DoctorTest {
         assert(error.message!!.startsWith("the pubky SDK could not use the pkarr relays"))
     }
 }
+
+private const val PROBE_TIMEOUT = 5_000L

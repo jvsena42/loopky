@@ -26,6 +26,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URI
 
 @Serializable
@@ -64,8 +65,17 @@ data class HostCheck(
     @SerialName("ms") val millis: Long,
 )
 
-/** What one HTTPS request to a host came back with. */
-internal data class ProbeOutcome(val status: String, val detail: String?, val redirect: String?, val millis: Long)
+/**
+ * What one HTTPS request to a host came back with. [timedOut] singles out the one unreachable case
+ * worth asking again: a refusal or a certificate failure answers the same every time.
+ */
+internal data class ProbeOutcome(
+    val status: String,
+    val detail: String?,
+    val redirect: String?,
+    val millis: Long,
+    val timedOut: Boolean = false,
+)
 
 /**
  * [resolveHttps] is [com.github.jvsena42.loopky.data.pubky.PubkyClient.resolveHttps].
@@ -86,6 +96,7 @@ internal suspend fun doctor(
     probe: suspend (String) -> ProbeOutcome = ::httpsProbe,
     proxy: String? = configuredProxy(),
 ): CommandResult {
+    val probe = retryingTimeout(probe)
     val homeserver = args.option("homeserver")
         ?.let { requireUsableOperand(it.trim().removePrefix("pubky"), "--homeserver") }
         ?: environment.pubky.defaultHomeserver
@@ -171,6 +182,26 @@ private fun nextStep(exit: ExitCode, blocking: List<HostCheck>, allowlist: List<
             "Nothing refused these hosts; they did not answer. Retry once; if it persists, the proxy or " +
                 "the network in front of it is down — nothing on the allowlist will change that."
     }
+
+/**
+ * One slow answer under load must not read as `unreachable` and exit 5 (#369), so a timed-out probe
+ * is asked once more. Only a timeout: it costs up to another [PROBE_TIMEOUT_MS], and only on a path
+ * that is already failing.
+ */
+private fun retryingTimeout(probe: suspend (String) -> ProbeOutcome): suspend (String) -> ProbeOutcome = { url ->
+    val first = probe(url)
+    if (!first.timedOut) {
+        first
+    } else {
+        val second = probe(url)
+        val detail = if (second.timedOut) {
+            "timed out twice: ${second.detail}"
+        } else {
+            listOfNotNull("answered on the second try, after a timeout", second.detail).joinToString("; ")
+        }
+        second.copy(detail = detail, millis = first.millis + second.millis)
+    }
+}
 
 /** The asset CDN is only met through GitHub's redirect, which a refused github.com never issues. */
 private suspend fun withAssetCdn(checks: List<HostCheck>, probe: suspend (String) -> ProbeOutcome): List<HostCheck> {
@@ -295,7 +326,13 @@ private suspend fun httpsProbe(url: String): ProbeOutcome = withContext(Dispatch
             error.isUntrustedCertificate() -> INTERCEPTED
             else -> UNREACHABLE
         }
-        ProbeOutcome(status, error.message ?: error::class.simpleName, null, elapsed())
+        ProbeOutcome(
+            status,
+            error.message ?: error::class.simpleName,
+            null,
+            elapsed(),
+            timedOut = status == UNREACHABLE && error is SocketTimeoutException,
+        )
     }
 }
 

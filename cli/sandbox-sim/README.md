@@ -79,5 +79,5 @@ Exit codes, jar build, bundled `libpubkycore`.
 - **`login` under a refusal reads 5**, not 14, until the bundled FFI reports its error chain
   (pubky-core-ffi-fork#9); with `PUBKYCORE_DIR` at that build it is 14. **`login` offline reads
   13** because the relay resume keeps retrying a relay it never reached.
-- `doctor`'s probes time out at 5s each, so one slow host reads as unreachable — re-run it before
-  believing a single 5.
+- `doctor`'s probes time out at 5s each, and a timed-out probe is asked once more before its host
+  reads as unreachable (#369), so a 5 has already survived one retry.
