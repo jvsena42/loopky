@@ -582,10 +582,11 @@ already in the deck — is a homeserver read. `deck create --dry-run` answers th
 `data.created`: `true` means the deck *would* be published, `false` that the id is taken, and
 `dry_run` beside it says nothing was written either way.
 
-`whoami --json` reports `session_live`, asked rather than assumed — `false` only when the homeserver
-refused the session, and `null` with a `session_check_error` when the question could not be asked
-(a proxy refusing the homeserver is not a dead session, and signing in again would fail the same
-way). Worth checking before starting an hour-long import rather than forty cards in. There is no
+`whoami --json` reports `session_live`, asked rather than assumed. Read it with `session_checked`
+beside it: `session_live: false` with `session_checked: true` is a session the homeserver refused —
+sign in again — while `session_checked: false` means the question could not be asked, and
+`session_check_error` says why (a proxy refusing the homeserver is not a dead session, and signing
+in again would fail the same way). Worth checking before starting an hour-long import rather than forty cards in. There is no
 `expires_at` to report: the session payload does not carry one.
 
 ## Things worth knowing before you script it

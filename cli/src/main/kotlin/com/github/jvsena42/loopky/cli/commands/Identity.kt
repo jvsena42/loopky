@@ -113,12 +113,19 @@ data class WhoamiResult(
      * can only discover the wall, not plan around it. This is what an agent should check before
      * starting an hour-long import rather than 40 cards in (#165).
      *
-     * `false` only when the homeserver refused the session; `null` when the question could not be
-     * asked — a proxy refusing the homeserver used to read as a dead session here, and sent agents
-     * to ask for a QR scan that fails the same way (#212). [sessionCheckError] says why.
+     * Still a plain boolean — `false` whenever the session is not confirmed live — because the type
+     * is part of `"schema": 1`, and a strictly typed consumer must keep parsing it. Whether `false`
+     * means *refused* or *could not ask* is [sessionChecked]'s to say.
      */
-    @SerialName("session_live") val sessionLive: Boolean?,
-    /** Why [sessionLive] is null: an exit-code name and the failure. Null whenever it is not. */
+    @SerialName("session_live") val sessionLive: Boolean,
+    /**
+     * Whether the homeserver was actually asked. False when a proxy, an untrusted certificate or the
+     * network stopped the question — which used to read as a dead session and sent agents to ask
+     * for a QR scan that fails the same way (#212). Added beside [sessionLive], not folded into it,
+     * so a client that predates it sees the old shape.
+     */
+    @SerialName("session_checked") val sessionChecked: Boolean = true,
+    /** Why [sessionChecked] is false: an exit-code name and the failure. Null whenever it is true. */
     @SerialName("session_check_error") val sessionCheckError: SessionCheckError? = null,
     /** Null, always, and deliberately — see [CLI_CAPABILITIES]. */
     @SerialName("display_name") val displayName: String? = null,
@@ -311,7 +318,8 @@ suspend fun whoami(
             sessionStore = sessionStore.location,
             environment = environment.name,
             indexer = environment.indexer,
-            sessionLive = live,
+            sessionLive = live == true,
+            sessionChecked = live != null,
             sessionCheckError = checkError,
         ),
         buildString {
