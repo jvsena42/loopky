@@ -27,6 +27,26 @@ errors reached stderr.
 - `JVM_TRUSTS_PROXY_CA=1` also hands the jar's JVM a trust store holding the proxy's CA, as a Claude
   Code cloud session does through `JAVA_TOOL_OPTIONS`. Since #362 it changes nothing measurable: the
   client exports `SSL_CERT_FILE`, which the JVM half now trusts on its own.
+- `SIM_SUMMARY=<file>` also writes the rows there as TSV — profile, command, exit, error code, ms —
+  for anything that compares them rather than reads them.
+
+## In CI
+
+`check.sh` runs profiles through `run.sh` and fails on any exit code that differs from
+[`expected.tsv`](expected.tsv), which is **the source of truth** for the rows it holds:
+`claude-trusted`, `claude-custom`, `authenticated` and `offline`, for the jar and the native binary.
+
+```shell
+cli/sandbox-sim/check.sh jar                                  # every profile in expected.tsv
+LOOPKY_DIST=<dir holding bin/loopky> cli/sandbox-sim/check.sh native
+cli/sandbox-sim/check.sh jar offline                          # just the profiles named
+```
+
+The `cli-sandbox-sim` job in `.github/workflows/ci.yml` runs both on every change under `cli/`, on
+Linux only — the macOS and Windows native binaries stay unverified behind a proxy. A profile that
+drifts is run a second time before it fails, because `doctor` reads one slow production host as
+unreachable (#369). A change that moves an exit code on purpose changes `expected.tsv` in the same
+PR. `codex-*` and `intercepting` are left out until pubky/pubky-homeserver#648 moves their rows.
 
 ## What it models
 
@@ -58,19 +78,17 @@ anywhere.
 
 ## What it found (2026-09-28)
 
-Exit codes, jar build, bundled `libpubkycore` at pubky-core-ffi-fork@243ac31 (#361). The native
-binary (`LOOPKY_DIST`) gives the same codes on `claude-trusted` and `claude-custom`.
+Exit codes, jar build, bundled `libpubkycore` at pubky-core-ffi-fork@243ac31 (#361). The
+`claude-*`, `authenticated` and `offline` rows are no longer kept here: [`expected.tsv`](expected.tsv)
+holds them, for the jar and the binary, and CI fails when they move. These are the ones CI does not
+run.
 
 | | `import --dry-run` | `doctor` | `tag trending` | `login --timeout 5` |
 | --- | --- | --- | --- | --- |
-| claude-trusted | 0 | 14 | 14 | 14 |
-| claude-custom | 0 | 0 | 0 | 13 |
 | codex-common | 0 | 14 | 14 | 14 |
 | codex-custom | 0 | 15 | 0 | 15 |
 | codex-custom-readonly | 0 | 14 | 0 | 15 |
-| authenticated | 0 | 0 | 0 | 13 |
 | intercepting | 0 | 15 | 0 | 15 |
-| offline | 0 | 5 | 5 (15s) | 5 |
 
 - **The two defaults refuse Pubky; adding `doctor`'s hosts is the whole fix** where the proxy does
   not intercept. `login` 13 there is correct: it reached the relay and waited for a phone.
@@ -92,3 +110,4 @@ binary (`LOOPKY_DIST`) gives the same codes on `claude-trusted` and `claude-cust
   few, since with no proxy configured the DHT is tried as on an open network.
 - `doctor`'s probes time out at 5s each, and a timed-out probe is asked once more before its host
   reads as unreachable (#369), so a 5 has already survived one retry.
+- `offline`'s `tag trending` takes ~15s to read 5.
