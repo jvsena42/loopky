@@ -98,17 +98,20 @@ tasks.withType<Test>().configureEach {
  * the first thing to try when a homeserver call fails for no visible reason.
  */
 tasks.named<CreateStartScripts>("startScripts") {
+    // Kept equal to `RUST_LOG_DEFAULT` in `RustLog.kt`, which the binary sets instead (#212). A local,
+    // because the configuration cache cannot serialize a script-level value captured by `doLast`.
+    val rustLogDefault = "warn,pubky::client::http_targets::native=error"
     doLast {
         unixScript.writeText(
             unixScript.readText().replace(
                 "\nAPP_HOME=",
-                "\nexport RUST_LOG=\"\${RUST_LOG:-warn}\"\n\nAPP_HOME=",
+                "\nexport RUST_LOG=\"\${RUST_LOG:-$rustLogDefault}\"\n\nAPP_HOME=",
             ),
         )
         windowsScript.writeText(
             windowsScript.readText().replace(
                 "\r\nset APP_HOME=",
-                "\r\nif not defined RUST_LOG set RUST_LOG=warn\r\nset APP_HOME=",
+                "\r\nif not defined RUST_LOG set RUST_LOG=$rustLogDefault\r\nset APP_HOME=",
             ),
         )
     }
