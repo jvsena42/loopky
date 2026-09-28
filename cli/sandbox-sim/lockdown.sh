@@ -15,5 +15,14 @@ if [ -n "$EXTRA_CA" ] && [ -f "$EXTRA_CA" ]; then
   # What an agent in an intercepting sandbox is told to do: trust the proxy's CA system-wide.
   cp "$EXTRA_CA" /usr/local/share/ca-certificates/sandbox-proxy.crt && update-ca-certificates >/dev/null 2>&1
   export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+  if [ "${JVM_TRUSTS_PROXY_CA:-0}" = 1 ]; then
+    # What a Claude Code cloud session does for the JVM: a trust store holding the gateway's CA,
+    # handed over through JAVA_TOOL_OPTIONS. Reaches the jar's JVM half only — not the Rust half,
+    # and not the native binary.
+    cp "$JAVA_HOME/lib/security/cacerts" /tmp/sandbox-trust.p12
+    keytool -importcert -noprompt -alias sandbox-proxy -file "$EXTRA_CA" \
+      -keystore /tmp/sandbox-trust.p12 -storepass changeit >/dev/null 2>&1
+    export JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStore=/tmp/sandbox-trust.p12 -Djavax.net.ssl.trustStorePassword=changeit"
+  fi
 fi
 exec "$@"
