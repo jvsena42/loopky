@@ -2437,8 +2437,9 @@ else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
 
 Two things remain. A **TLS-intercepting** proxy fails on both stacks even with its CA trusted
 system-wide — the pubky SDK bundles its roots (exit 15, `tls_untrusted`), which is upstream work
-(pubky/pubky-homeserver#648). The JDK keeps its own store, which the jar can be pointed at with
-`-Djavax.net.ssl.trustStore` — a Claude Code cloud session does this — but that reaches only the
+(pubky/pubky-homeserver#648). The JDK keeps its own store and reads neither variable, so
+`CertificateEnvironment` layers `SSL_CERT_FILE`/`SSL_CERT_DIR` over it at startup (#362) — the only
+route the native binary has, since it ignores `JAVA_TOOL_OPTIONS` — but that reaches only the
 JVM half, so `doctor` compares the two stacks rather than trusting the JVM's view. A
 **black-holed** relay used to make `login --timeout` report 13 ("nobody approved") rather than 5,
 because the FFI's grant resume (§13.10) keeps rejoining a relay it never reached; `login` now asks

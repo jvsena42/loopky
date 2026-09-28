@@ -25,7 +25,8 @@ errors reached stderr.
 - `PUBKYCORE_DIR=<dir>` loads that directory's `libpubkycore.so` instead of the bundled one, to try
   an FFI change first. The jar only: the native binary embeds its library.
 - `JVM_TRUSTS_PROXY_CA=1` also hands the jar's JVM a trust store holding the proxy's CA, as a Claude
-  Code cloud session does through `JAVA_TOOL_OPTIONS`.
+  Code cloud session does through `JAVA_TOOL_OPTIONS`. Since #362 it changes nothing measurable: the
+  client exports `SSL_CERT_FILE`, which the JVM half now trusts on its own.
 
 ## What it models
 
@@ -64,22 +65,23 @@ Exit codes, jar build, bundled `libpubkycore`.
 | claude-trusted | 0 | 14 | 14 | 14 |
 | claude-custom | 0 | 0 | 0 | 13 |
 | codex-common | 0 | 14 | 14 | 14 |
-| codex-custom | 0 | 15 | 15 | 15 |
-| codex-custom-readonly | 0 | 15 | 15 | 15 |
+| codex-custom | 0 | 15 | 0 | 5 |
+| codex-custom-readonly | 0 | 14 | 0 | 5 |
 | authenticated | 0 | 0 | 0 | 13 |
-| intercepting | 0 | 15 | 15 | 15 |
+| intercepting | 0 | 15 | 0 | 5 |
 | offline | 0 | 5 | 5 (15s) | 5 |
-| codex-custom, `JVM_TRUSTS_PROXY_CA=1` | 0 | 15 | 0 | 5 |
 
 - **The two defaults refuse Pubky; adding `doctor`'s hosts is the whole fix** where the proxy does
   not intercept. `login` 13 there is correct: it reached the relay and waited for a phone.
 - **Anything intercepting fails**, allowlisted or not, because the pubky SDK trusts only its bundled
-  roots (pubky/pubky-homeserver#648). The last row is why `doctor` compares the stacks: the JVM,
-  given the CA, passes, while the SDK still cannot resolve anything.
+  roots (pubky/pubky-homeserver#648). `tag trending` passes there because the JVM trusts
+  `SSL_CERT_FILE` (#362), and that is why `doctor` compares the stacks: the JVM reaches the relays
+  while the SDK still cannot resolve anything.
+- **`codex-custom-readonly`'s `doctor` reads 14, not 15**: with the proxy's CA trusted the JVM
+  reaches the homeserver, and the unauthenticated `PUT` meets the method filter (`method_blocked`,
+  #363) before the SDK's certificate problem is the one worth reporting.
 - **`login` asks the relay before it shows a QR** (#360), with the same probe `doctor` uses, so a
-  refused relay reads 14, an intercepted one 15 and an unreachable one 5 — except where the JVM
-  was handed the proxy's CA (`JVM_TRUSTS_PROXY_CA=1`), which passes the probe and fails in the SDK
-  as before, 5. It used to read 13 offline, because the FFI's
+  refused relay reads 14 and an unreachable one 5. It used to read 13 offline, because the FFI's
   relay resume keeps rejoining a relay it never reached until `--timeout`.
 - `doctor`'s probes time out at 5s each, and a timed-out probe is asked once more before its host
   reads as unreachable (#369), so a 5 has already survived one retry.

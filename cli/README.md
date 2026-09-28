@@ -563,10 +563,10 @@ What was measured (#212, `cli/sandbox-sim/`, and a real Claude Code cloud sessio
 - **A proxy that intercepts TLS does not work yet.** The pubky SDK ships its own root
   certificates and reads neither the system store nor `SSL_CERT_FILE`, so it rejects the proxy's
   CA (exit 15, `tls_untrusted`); the fix is upstream (pubky/pubky-homeserver#648). Until then such
-  a sandbox needs Loopky's hosts exempted from inspection. The jar's JVM half — Nexus, `update` —
-  can be given the CA with `-Djavax.net.ssl.trustStore` through `JAVA_TOOL_OPTIONS` or
-  `LOOPKY_OPTS`, which a Claude Code cloud session already does; that does not reach the SDK, and
-  `doctor` reports the two disagreeing.
+  a sandbox needs Loopky's hosts exempted from inspection. The JVM half — Nexus, `update`,
+  `--check-images` — trusts the certificates `SSL_CERT_FILE` and `SSL_CERT_DIR` name on top of its
+  own store, in the jar and the native binary alike (#362), so `tag trending` works there already;
+  that does not reach the SDK, and `doctor` reports the two disagreeing.
 - **A refusal is exit 14, `proxy_refused`** — never 5, which would tell an agent to retry a request
   an allowlist will refuse every time. A refused relay or homeserver reads as 14 once the bundled
   `libpubkycore` carries the proxy's answer through (next bindings bump); until then, 5.
@@ -606,8 +606,8 @@ and stays 5.
 15 is a certificate this client does not trust, which in a sandbox means a proxy re-signing TLS
 with its own CA. Not 1, because nothing about it is a bug, and not 5, because an untrusted CA stays
 untrusted on the next attempt. The fix is on the proxy's side — exempt Loopky's hosts from
-interception — or, for the jar only, a trust store holding that CA passed as
-`-Djavax.net.ssl.trustStore` through `JAVA_TOOL_OPTIONS` or `LOOPKY_OPTS`.
+interception. The JVM half already trusts whatever `SSL_CERT_FILE`/`SSL_CERT_DIR` name, so until
+pubky/pubky-homeserver#648 a 15 comes from the SDK half.
 
 13 is nobody approving a sign-in inside `--timeout`. *That process* is not signed in — deliberately
 not "nothing was stored", which it cannot promise: the await runs on a thread that is unobserved
