@@ -2432,6 +2432,8 @@ else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
   SDKs (`cli/sandbox-sim/allowlists/` holds them verbatim, with their sources). Codex's default is
   no internet at all in the agent phase, and its GET/HEAD/OPTIONS-only option would refuse every
   write — and, being enforceable on HTTPS only by decrypting it, implies a TLS-intercepting proxy.
+  Every other `doctor` probe is a `GET`, so it sends one unauthenticated `PUT` to the homeserver:
+  a 401 is the homeserver, a 403 or 405 is a filter in front of it (`method_blocked`, exit 14, #363).
 
 Two things remain. A **TLS-intercepting** proxy fails on both stacks even with its CA trusted
 system-wide — the pubky SDK bundles its roots (exit 15, `tls_untrusted`), which is upstream work

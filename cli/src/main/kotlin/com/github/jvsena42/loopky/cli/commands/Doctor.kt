@@ -7,16 +7,12 @@ import com.github.jvsena42.loopky.cli.CommandResult
 import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.UpdateChecker
 import com.github.jvsena42.loopky.cli.cliJson
-import com.github.jvsena42.loopky.cli.isProxyRefusal
-import com.github.jvsena42.loopky.cli.isUntrustedCertificate
 import com.github.jvsena42.loopky.cli.requireUsableOperand
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -25,8 +21,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.net.HttpURLConnection
-import java.net.SocketTimeoutException
 import java.net.URI
 
 @Serializable
@@ -58,23 +52,12 @@ data class HostCheck(
     @SerialName("needed_for") val neededFor: String,
     /**
      * `reachable` (any HTTP answer, even an error), `refused` (by a proxy), `intercepted` (TLS
-     * re-signed by a CA this client does not trust) or `unreachable`.
+     * re-signed by a CA this client does not trust), `unreachable`, or — for the homeserver only —
+     * `method_blocked` (reads pass, but a proxy answers writes itself).
      */
     val status: String,
     val detail: String?,
     @SerialName("ms") val millis: Long,
-)
-
-/**
- * What one HTTPS request to a host came back with. [timedOut] singles out the one unreachable case
- * worth asking again: a refusal or a certificate failure answers the same every time.
- */
-internal data class ProbeOutcome(
-    val status: String,
-    val detail: String?,
-    val redirect: String?,
-    val millis: Long,
-    val timedOut: Boolean = false,
 )
 
 /**
@@ -93,10 +76,10 @@ internal suspend fun doctor(
     args: Args,
     resolveHttps: suspend (String) -> Result<String>,
     environment: CliEnvironment,
-    probe: suspend (String) -> ProbeOutcome = ::httpsProbe,
+    probes: DoctorProbes = DoctorProbes(),
     proxy: String? = configuredProxy(),
 ): CommandResult {
-    val probe = retryingTimeout(probe)
+    val probe = retryingTimeout(probes.read)
     val homeserver = args.option("homeserver")
         ?.let { requireUsableOperand(it.trim().removePrefix("pubky"), "--homeserver") }
         ?: environment.pubky.defaultHomeserver
@@ -119,7 +102,7 @@ internal suspend fun doctor(
     val probed = coroutineScope {
         targets.map { target -> async { target to probe(target.url) } }.awaitAll()
     }.flatMap { (target, outcome) -> followRedirects(target, outcome, probe) }
-    val checks = withAssetCdn(probed, probe)
+    val checks = withAssetCdn(probed, probe).withWriteCheck(homeserverHost, probes.write)
 
     val blocking = blockingChecks(checks, relaysWork = resolvedHost != null)
     // These probes run on the JVM; the lookup ran in the SDK. The JVM reaching a relay the SDK
@@ -150,7 +133,7 @@ internal suspend fun doctor(
 }
 
 private fun exitFor(blocking: List<HostCheck>, hostKnown: Boolean, sdkDisagrees: Boolean): ExitCode? = when {
-    blocking.any { it.status == REFUSED } -> ExitCode.ProxyRefused
+    blocking.any { it.status == REFUSED || it.status == METHOD_BLOCKED } -> ExitCode.ProxyRefused
     blocking.any { it.status == INTERCEPTED } || sdkDisagrees -> ExitCode.TlsUntrusted
     !hostKnown || blocking.any { it.status == UNREACHABLE } -> ExitCode.Network
     else -> null
@@ -158,11 +141,15 @@ private fun exitFor(blocking: List<HostCheck>, hostKnown: Boolean, sdkDisagrees:
 
 /**
  * Addressed to an agent, which cannot change a sandbox's network itself: stop, and ask the human
- * for exactly this. Both products keep the setting per environment, and Codex's read-only option
- * would pass `doctor` — every probe is a GET — and then refuse every write.
+ * for exactly this. Both products keep the setting per environment.
  */
 private fun nextStep(exit: ExitCode, blocking: List<HostCheck>, allowlist: List<String>, sdkDisagrees: Boolean): String =
     when (exit) {
+        ExitCode.ProxyRefused if blocking.none { it.status == REFUSED } ->
+            "Reads reach the homeserver but its proxy refuses writes, so every deck and card change would " +
+                "fail. Ask the user to allow all HTTP methods in this sandbox's network settings, then run " +
+                "`loopky doctor` again. Codex: the environment's settings, Agent internet access, and turn off " +
+                "the restriction to GET, HEAD and OPTIONS — loopky writes with PUT and DELETE."
         ExitCode.ProxyRefused -> {
             val refused = blocking.filter { it.status == REFUSED }.map { it.host }
             "Ask the user to allow these hosts in this sandbox's network settings, then run `loopky doctor` " +
@@ -203,6 +190,27 @@ private fun retryingTimeout(probe: suspend (String) -> ProbeOutcome): suspend (S
     }
 }
 
+/**
+ * Every other probe is a GET, so a proxy that lets only GET/HEAD/OPTIONS through passes all of them
+ * and then refuses every write (#363). An unauthenticated PUT tells the two apart: the homeserver
+ * answers it 401, while a method filter answers first with its own 403 or 405. Asked only once the
+ * homeserver's GET got through — anything else is already reported.
+ */
+private suspend fun List<HostCheck>.withWriteCheck(
+    homeserverHost: String?,
+    writeProbe: suspend (String) -> WriteAnswer?,
+): List<HostCheck> {
+    val read = firstOrNull { it.host == homeserverHost && it.status == REACHABLE } ?: return this
+    val answer = writeProbe("https://$homeserverHost$WRITE_PROBE_PATH") ?: return this
+    if (answer.code !in METHOD_REFUSALS) return this
+    val blocked = read.copy(
+        status = METHOD_BLOCKED,
+        detail = "a PUT was answered ${answer.code} by something other than the homeserver" +
+            answer.body.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty(),
+    )
+    return map { if (it === read) blocked else it }
+}
+
 /** The asset CDN is only met through GitHub's redirect, which a refused github.com never issues. */
 private suspend fun withAssetCdn(checks: List<HostCheck>, probe: suspend (String) -> ProbeOutcome): List<HostCheck> {
     if (checks.any { it.host == ASSET_CDN_HOST }) return checks
@@ -228,6 +236,8 @@ private fun summarize(blocking: List<HostCheck>, sdkDisagrees: Boolean): String 
     return listOfNotNull(
         SDK_DISAGREES.takeIf { sdkDisagrees },
         hosts(REFUSED).takeIf { it.isNotEmpty() }?.let { "refused by the proxy: ${it.joinToString(", ")}" },
+        hosts(METHOD_BLOCKED).takeIf { it.isNotEmpty() }
+            ?.let { "writes refused by the proxy: ${it.joinToString(", ")}" },
         hosts(INTERCEPTED).takeIf { it.isNotEmpty() }?.let { "TLS intercepted: ${it.joinToString(", ")}" },
         hosts(UNREACHABLE).takeIf { it.isNotEmpty() }?.let { "unreachable: ${it.joinToString(", ")}" },
     ).joinToString("; ").ifEmpty { "the homeserver's host could not be learned" }
@@ -301,41 +311,6 @@ private fun configuredProxy(): String? {
     return "http://$host:${System.getProperty("https.proxyPort") ?: DEFAULT_PROXY_PORT}"
 }
 
-private suspend fun httpsProbe(url: String): ProbeOutcome = withContext(Dispatchers.IO) {
-    val started = System.nanoTime()
-    fun elapsed() = (System.nanoTime() - started) / NANOS_PER_MILLI
-    runCatching {
-        val connection = URI(url).toURL().openConnection() as HttpURLConnection
-        try {
-            connection.connectTimeout = PROBE_TIMEOUT_MS
-            connection.readTimeout = PROBE_TIMEOUT_MS
-            connection.instanceFollowRedirects = false
-            val code = connection.responseCode
-            val redirect = connection.getHeaderField("Location")?.takeIf { code in REDIRECTS }
-            if (code == HTTP_PROXY_AUTH) {
-                ProbeOutcome(REFUSED, "the proxy refused its credentials (407)", null, elapsed())
-            } else {
-                ProbeOutcome(REACHABLE, null, redirect, elapsed())
-            }
-        } finally {
-            connection.disconnect()
-        }
-    }.getOrElse { error ->
-        val status = when {
-            error.isProxyRefusal() -> REFUSED
-            error.isUntrustedCertificate() -> INTERCEPTED
-            else -> UNREACHABLE
-        }
-        ProbeOutcome(
-            status,
-            error.message ?: error::class.simpleName,
-            null,
-            elapsed(),
-            timedOut = status == UNREACHABLE && error is SocketTimeoutException,
-        )
-    }
-}
-
 /** pubky's `DEFAULT_HTTP_RELAY_INBOX`, where `loopky login` waits for Ring. */
 private const val RELAY_URL = "https://httprelay.pubky.app/"
 
@@ -358,11 +333,12 @@ internal const val REACHABLE = "reachable"
 internal const val REFUSED = "refused"
 internal const val UNREACHABLE = "unreachable"
 internal const val INTERCEPTED = "intercepted"
+internal const val METHOD_BLOCKED = "method_blocked"
+
+private const val WRITE_PROBE_PATH = "/pub/loopky/doctor"
+private val METHOD_REFUSALS = setOf(403, 405)
 
 private const val STATUS_WIDTH = 11
 private const val MAX_REDIRECTS = 4
-private const val PROBE_TIMEOUT_MS = 5_000
-private const val NANOS_PER_MILLI = 1_000_000
-private const val HTTP_PROXY_AUTH = 407
+internal const val PROBE_TIMEOUT_MS = 5_000
 private const val DEFAULT_PROXY_PORT = 80
-private val REDIRECTS = 300..399

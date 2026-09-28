@@ -538,7 +538,9 @@ once these hosts are added (production):
 environment's settings → *Network access: Custom*, keep the default domains, add these under
 *Allowed domains*. Codex: the environment's settings → *Agent internet access: On*, add these as
 allowed domains, and **leave "GET, HEAD and OPTIONS only" off** — every write is a `PUT` or
-`DELETE`, and since `doctor`'s own probes are all `GET`s it would pass and every write would fail.
+`DELETE`. `doctor` sends one unauthenticated `PUT` to the homeserver to catch that option: the
+homeserver answers it 401, a method filter answers 403 first, and `doctor` then reports the
+homeserver `method_blocked` and exits 14.
 
 **`loopky doctor` prints this list for the machine it runs on**, asking each host through the
 configured proxy, and ends with a `next_step` addressed to the agent: which hosts to ask the user
