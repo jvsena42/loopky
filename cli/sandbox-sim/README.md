@@ -64,10 +64,10 @@ Exit codes, jar build, bundled `libpubkycore`.
 | claude-trusted | 0 | 14 | 14 | 14 |
 | claude-custom | 0 | 0 | 0 | 13 |
 | codex-common | 0 | 14 | 14 | 14 |
-| codex-custom | 0 | 15 | 15 | 5 |
-| codex-custom-readonly | 0 | 15 | 15 | 5 |
+| codex-custom | 0 | 15 | 15 | 15 |
+| codex-custom-readonly | 0 | 15 | 15 | 15 |
 | authenticated | 0 | 0 | 0 | 13 |
-| intercepting | 0 | 15 | 15 | 5 |
+| intercepting | 0 | 15 | 15 | 15 |
 | offline | 0 | 5 | 5 (15s) | 5 |
 | codex-custom, `JVM_TRUSTS_PROXY_CA=1` | 0 | 15 | 0 | 5 |
 
@@ -77,7 +77,9 @@ Exit codes, jar build, bundled `libpubkycore`.
   roots (pubky/pubky-homeserver#648). The last row is why `doctor` compares the stacks: the JVM,
   given the CA, passes, while the SDK still cannot resolve anything.
 - **`login` asks the relay before it shows a QR** (#360), with the same probe `doctor` uses, so a
-  refused relay reads 14 and an unreachable one 5. It used to read 13 offline, because the FFI's
+  refused relay reads 14, an intercepted one 15 and an unreachable one 5 — except where the JVM
+  was handed the proxy's CA (`JVM_TRUSTS_PROXY_CA=1`), which passes the probe and fails in the SDK
+  as before, 5. It used to read 13 offline, because the FFI's
   relay resume keeps rejoining a relay it never reached until `--timeout`.
 - `doctor`'s probes time out at 5s each, and a timed-out probe is asked once more before its host
   reads as unreachable (#369), so a 5 has already survived one retry.
