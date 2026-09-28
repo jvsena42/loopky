@@ -64,6 +64,12 @@ data class DeckCreateResult(
      * homeserver holds.
      */
     @SerialName("dry_run") val dryRun: Boolean = false,
+    /**
+     * Whether the homeserver was asked if the id is free. Only a `--id` is ever asked about: a
+     * minted one cannot already exist, which is also why a `--dry-run` without one needs no
+     * session (#367).
+     */
+    @SerialName("id_checked") val idChecked: Boolean = true,
 )
 
 /**
@@ -86,14 +92,15 @@ data class DeckCreateResult(
  * this command's own card-file reader, every row's validation and `--check-images` — and returns
  * before the publish, with `created` saying whether the deck *would* be published.
  * `import --dry-run` was the only pre-flight there was, and it goes through a *different* parser
- * (#257, item 8), so it could not answer what this command would do with the same file. Unlike
- * that one it needs a session, because the two things worth checking here — is this id free, and
- * would a publish replace a deck's chunk table — are homeserver reads.
+ * (#257, item 8), so it could not answer what this command would do with the same file. With
+ * `--id` it needs a session, because whether that id is free is a homeserver read. Without one it
+ * does not (#367): a minted id has nothing to ask about, so [session] is null, the file is checked
+ * offline, and the preview's `author_pubky` is empty.
  */
 suspend fun deckCreate(
     args: Args,
     decks: DeckRepository,
-    session: Session,
+    session: Session?,
     onNote: (String) -> Unit = System.err::println,
     onProgress: (String) -> Unit,
 ): CommandResult {
@@ -109,7 +116,7 @@ suspend fun deckCreate(
             // `dry_run` still travels, even though this branch writes nothing either way: a
             // caller branching on it must not have to know which of the two reasons applied.
             // `created = false` is what separates this from the preview of a free id.
-            DeckCreateResult(existing.toView(), created = false, dryRun = args.has(DRY_RUN_FLAG)),
+            DeckCreateResult(existing.toView(), created = false, dryRun = args.has(DRY_RUN_FLAG), idChecked = true),
             "${existing.id} already exists — ${existing.title} (${existing.cardCount} cards). Nothing written.",
         )
     }
@@ -136,19 +143,22 @@ suspend fun deckCreate(
     // After the deck is assembled, so `--cover-url`'s advice is in it, and after the probe.
     log.advice.reportStaticImageAdvice(onNote)
 
+    val idChecked = args.option("id") != null
     if (args.has(DRY_RUN_FLAG)) {
         return result(
-            DeckCreateResult(deck.toView(), imageChecks, log.advice, created = true, dryRun = true),
-            "$deckId would be created — $title (${cards.size} cards). Nothing was written.",
+            DeckCreateResult(deck.toView(), imageChecks, log.advice, created = true, dryRun = true, idChecked = idChecked),
+            "$deckId would be created — $title (${cards.size} cards). Nothing was written." +
+                (if (idChecked) "" else " No --id was given, so the homeserver was not asked about one."),
         )
     }
+    requireNotNull(session) { "deck create publishes, so it needs a session" }
 
     val published = decks.publish(deck, cards) { progress ->
         onProgress("${progress.cardsWritten}/${progress.totalCards} cards, ${progress.chunksWritten}/${progress.totalChunks} chunks")
     }.getOrElse { throw asCliError(it) }
 
     return result(
-        DeckCreateResult(published.toView(), imageChecks, log.advice),
+        DeckCreateResult(published.toView(), imageChecks, log.advice, idChecked = idChecked),
         "Created ${published.id} — ${published.title} (${published.cardCount} cards)",
     )
 }
@@ -162,7 +172,7 @@ suspend fun deckCreate(
 @Suppress("LongParameterList")
 private fun Args.newDeck(
     deckId: String,
-    session: Session,
+    session: Session?,
     title: String,
     cardCount: Int,
     now: Long,
@@ -172,7 +182,7 @@ private fun Args.newDeck(
     val backLang = option("back-lang")
     return Deck(
         id = deckId,
-        authorPubky = session.identity.pubky,
+        authorPubky = session?.identity?.pubky.orEmpty(),
         title = title,
         description = option("description")?.takeIf { it.isNotBlank() },
         coverEmoji = option("cover-emoji")?.takeIf { it.isNotBlank() },
@@ -246,10 +256,11 @@ private fun Args.deckIdToCreate(): String {
 private suspend fun existingDeck(
     args: Args,
     decks: DeckRepository,
-    session: Session,
+    session: Session?,
     deckId: String,
 ): Deck? {
     if (args.option("id") == null) return null
+    requireNotNull(session) { "deck create --id needs a session to check the id" }
     val existing = decks.fetchRemote(session.identity.pubky, deckId).fold(
         onSuccess = { it },
         onFailure = { if (ExitCode.of(it) == ExitCode.NotFound) null else throw asCliError(it) },

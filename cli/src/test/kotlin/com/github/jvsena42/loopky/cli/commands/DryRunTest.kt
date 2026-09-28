@@ -26,8 +26,8 @@ import kotlin.test.assertTrue
  * well-formed four-column TSV (#257, item 8). Each command now stops just before its own write,
  * which is the only place an answer about that command can come from.
  *
- * Both need a session, unlike `import --dry-run`: what is worth checking here — is this id free,
- * is this row already in the deck — is a homeserver read.
+ * Both need a session where they read the homeserver — is this id free, is this row already in
+ * the deck. `deck create --dry-run` without `--id` asks nothing, so it runs without one (#367).
  */
 class DryRunTest {
 
@@ -78,6 +78,38 @@ class DryRunTest {
         // `false` for both previews left nothing able to answer it.
         assertEquals("true", data.getValue("created").jsonPrimitive.content)
         assertEquals("Capitais", data.getValue("deck").jsonObject.getValue("title").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `a dry run without --id checks the file with no session and no read`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck(id = "unused"), readFails = missing)
+
+        val result = deckCreate(
+            create("--title", "Capitais", "--from-file", fileOf(3), "--dry-run"),
+            decks,
+            session = null,
+            {},
+            {},
+        )
+
+        val data = result.data.jsonObject
+        assertEquals("true", data.getValue("created").jsonPrimitive.content)
+        assertEquals("false", data.getValue("id_checked").jsonPrimitive.content)
+        assertEquals("3", data.getValue("deck").jsonObject.getValue("card_count").jsonPrimitive.content)
+        assertTrue(decks.fetchRemoteCalls.isEmpty() && decks.syncCalls.isEmpty())
+        assertEquals(emptyList(), decks.published)
+    }
+
+    @Test
+    fun `a dry run without a session still refuses a bad card file`() = runBlocking {
+        val file = File.createTempFile("cards", ".tsv").also { it.deleteOnExit() }
+        file.writeText("front only\t\n")
+
+        val error = assertFailsWith<CliError> {
+            deckCreate(create("--title", "T", "--from-file", file.absolutePath, "--dry-run"), FakeDeckRepository(testDeck()), null, {}, {})
+        }
+
+        assertEquals(ExitCode.BadInput, error.exitCode)
     }
 
     /** An id that is taken is still refused on a dry run — that is the answer being asked for. */

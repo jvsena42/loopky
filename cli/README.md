@@ -636,11 +636,13 @@ renews it: writes start failing, reads keep working, and from the outside that i
 indistinguishable from a network wobble. An agent told the wrong one either retries a dead session
 forever or abandons a working network.
 
-`--dry-run` on `import` exits 0 without a session at all: it reads a local file. On `deck create`
-and `card add` it needs one, because what those two have to check — is this id free, is this row
-already in the deck — is a homeserver read. `deck create --dry-run` answers the first in
-`data.created`: `true` means the deck *would* be published, `false` that the id is taken, and
-`dry_run` beside it says nothing was written either way.
+`--dry-run` on `import` exits 0 without a session at all: it reads a local file. So does
+`deck create --dry-run` **without `--id`**: a freshly minted id has nothing on the homeserver to
+ask about, so it validates the card file offline, reports `data.id_checked: false` and an empty
+`author_pubky`. With `--id`, and on `card add`, it needs a session, because what those have to
+check — is this id free, is this row already in the deck — is a homeserver read. `deck create
+--dry-run` answers the first in `data.created`: `true` means the deck *would* be published, `false`
+that the id is taken, and `dry_run` beside it says nothing was written either way.
 
 `whoami --json` reports `session_live`, asked rather than assumed. Read it with `session_checked`
 beside it: `session_live: false` with `session_checked: true` is a session the homeserver refused —

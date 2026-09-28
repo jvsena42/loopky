@@ -223,8 +223,11 @@ private suspend fun dispatch(
 
         "deck list" -> authed(sessions, identity, environment) { deckList(koin.decks()) }
         "deck show" -> authed(sessions, identity, environment) { deckShow(args, koin.decks()) }
-        "deck create" -> authed(sessions, identity, environment) { session ->
-            deckCreate(args, koin.decks(), session, note, progress)
+        // A dry run with a minted id reads nothing from the homeserver, so like `import --dry-run`
+        // it must not put a sign-in in front of checking a card file (#367).
+        "deck create" -> {
+            val offline = args.has(DRY_RUN_FLAG) && args.option("id") == null
+            deckCreate(args, koin.decks(), if (offline) null else sessions.require(identity, environment), note, progress)
         }
         "deck edit" -> authed(sessions, identity, environment) { deckEdit(args, koin.decks()) }
         "deck delete" -> authed(sessions, identity, environment) { deckDelete(args, koin.decks()) }
@@ -424,7 +427,8 @@ internal val USAGE = """
                                 --dry-run runs all of that — the id check, this command’s own
                                 card-file reader, every row, --check-images — and stops before the
                                 publish. It is the pre-flight for a file you are about to publish
-                                with; import --dry-run reads a different format.
+                                with; import --dry-run reads a different format. Without --id
+                                there is no id to check, so it needs no session.
       deck edit <deckId> [--title T] [--description D] [--cover-url URL] [--cover-emoji E]
                   [--tag T]... [--clear-tags] [--clear-cover]
                   [--listen|--no-listen] [--speak|--no-speak]
