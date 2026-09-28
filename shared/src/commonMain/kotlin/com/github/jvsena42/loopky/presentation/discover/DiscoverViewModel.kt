@@ -369,11 +369,30 @@ class DiscoverViewModel(
         }
     }
 
+    /**
+     * An unreachable indexer is reported, not folded into an empty row: "nothing is trending" and
+     * "couldn't ask" must not look the same (#366). The followed feed's labels still show beside the
+     * error, since they never depended on the indexer.
+     */
     private suspend fun loadTopics() {
-        globalTopics = tagRepository.trendingDeckTags()
-            .onFailure { Log.e(TAG, "loadTopics: FAILED — ${it.message}", it) }
-            .getOrElse { emptyList() }
-        _state.update { it.copy(topics = it.topics.loaded(mergedTopics(globalTopics, feed))) }
+        tagRepository.trendingDeckTags()
+            .onSuccess { tags ->
+                globalTopics = tags
+                _state.update { it.copy(topics = it.topics.loaded(mergedTopics(globalTopics, feed))) }
+            }
+            .onFailure { err ->
+                Log.e(TAG, "loadTopics: FAILED — ${err.message}", err)
+                globalTopics = emptyList()
+                _state.update {
+                    it.copy(topics = it.topics.loaded(mergedTopics(globalTopics, feed)).failed(err.toErrorReason()))
+                }
+            }
+    }
+
+    fun onRetryTopics() {
+        if (_state.value.topics.isLoading) return
+        _state.update { it.copy(topics = it.topics.loading()) }
+        viewModelScope.launch { loadTopics() }
     }
 
     /**
