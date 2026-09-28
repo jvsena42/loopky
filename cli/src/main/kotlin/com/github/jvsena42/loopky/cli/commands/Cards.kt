@@ -127,10 +127,9 @@ suspend fun cardEdit(
     cards: CardRepository,
     onNote: (String) -> Unit = System.err::println,
 ): CommandResult {
+    // Operands and the file are resolved before the first read, so a usage mistake exits 9 rather
+    // than surfacing as whatever the homeserver says about the deck (#240, #370).
     val deckId = args.requireWord(2, "deckId")
-    val deck = decks.sync(deckId).getOrElse { throw asCliError(it) }
-    val existing = cards.fetchByDeck(deck).getOrElse { throw asCliError(it) }.associateBy { it.id }
-
     val log = ImageAdviceLog()
     val rows = args.option("from-file")?.let { readCardFile(it, log, onNote) } ?: listOf(
         CardFileRow(
@@ -141,15 +140,23 @@ suspend fun cardEdit(
             backImageUrl = args.option("back-image")?.let { log.checked(it, "--back-image") },
         ),
     )
+    rows.forEach { row ->
+        if (row.id == null) {
+            throw CliError(
+                ExitCode.Usage,
+                "Every row of a card edit --from-file needs an id. Read them with `card list --json`.",
+            )
+        }
+    }
+
+    val deck = decks.sync(deckId).getOrElse { throw asCliError(it) }
+    val existing = cards.fetchByDeck(deck).getOrElse { throw asCliError(it) }.associateBy { it.id }
 
     val now = System.currentTimeMillis()
     val planned = mutableListOf<PlannedWrite>()
     var skipped = 0
     for ((index, row) in rows.withIndex()) {
-        val id = row.id ?: throw CliError(
-            ExitCode.Usage,
-            "Every row of a card edit --from-file needs an id. Read them with `card list --json`.",
-        )
+        val id = requireNotNull(row.id)
         val current = existing[id]
             ?: throw CliError(ExitCode.NotFound, "Deck $deckId has no card $id.")
         val updated = current.applying(row, now).requireBothSides(id)
