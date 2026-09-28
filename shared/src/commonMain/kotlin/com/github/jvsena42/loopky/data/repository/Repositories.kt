@@ -703,7 +703,9 @@ interface TagRepository {
      * Topic labels carried by Loopky decks network-wide, most-decks-first — the Discover chip row.
      *
      * Aggregated client-side because deck tags index as *resources* and `/v0/tags/hot` only sees
-     * `Post|User` targets (§7.7 point 3). [ReservedTags] labels are excluded; never throws.
+     * `Post|User` targets (§7.7 point 3). [ReservedTags] labels are excluded. An unreachable
+     * indexer is a failure, never an empty list: "nothing is trending" and "could not ask" must
+     * not read the same (#212).
      *
      * Sees only the top [sampleSize] decks by tagger count, so a topic living solely on an unpopular
      * deck is invisible — the ceiling of aggregating client-side (#58).
@@ -711,7 +713,7 @@ interface TagRepository {
     suspend fun trendingDeckTags(
         sampleSize: Int = DEFAULT_DECK_TAG_SAMPLE,
         limit: Int = DEFAULT_DECK_TAG_LIMIT,
-    ): List<Tag>
+    ): Result<List<Tag>>
 
     /**
      * Loopky subjects carrying [tag] network-wide — the read that makes a deck findable by someone

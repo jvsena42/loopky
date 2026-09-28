@@ -241,7 +241,7 @@ class TagRepositoryImplTest {
         )
 
         // spanish is on two decks, biology on one; loopky-deck is Loopky's index, not a topic.
-        assertEquals(listOf(Tag("spanish"), Tag("biology")), repo.trendingDeckTags())
+        assertEquals(listOf(Tag("spanish"), Tag("biology")), repo.trendingDeckTags().getOrThrow())
     }
 
     @Test
@@ -261,7 +261,7 @@ class TagRepositoryImplTest {
         )
 
         // One deck tagged 99 times is not a topic; two decks sharing a label is.
-        assertEquals(listOf(Tag("broad"), Tag("hyped")), repo.trendingDeckTags())
+        assertEquals(listOf(Tag("broad"), Tag("hyped")), repo.trendingDeckTags().getOrThrow())
     }
 
     @Test
@@ -277,14 +277,14 @@ class TagRepositoryImplTest {
             """.trimIndent(),
         )
 
-        assertEquals(listOf(Tag("aaa"), Tag("bbb")), repo.trendingDeckTags(limit = 2))
+        assertEquals(listOf(Tag("aaa"), Tag("bbb")), repo.trendingDeckTags(limit = 2).getOrThrow())
     }
 
     @Test
-    fun trendingDeckTagsIsEmptyWhenTheIndexerFails() = runTest {
+    fun trendingDeckTagsFailsWhenTheIndexerFails() = runTest {
         http.fail(deckStreamUrl(sampleSize = 50), HttpError(statusCode = 500, message = "boom"))
 
-        assertEquals(emptyList(), repo.trendingDeckTags())
+        assertTrue(repo.trendingDeckTags().isFailure)
     }
 
     private fun deckStreamUrl(sampleSize: Int) =

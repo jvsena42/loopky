@@ -370,7 +370,7 @@ class DiscoverViewModel(
     }
 
     private suspend fun loadTopics() {
-        globalTopics = runSuspendCatching { tagRepository.trendingDeckTags() }
+        globalTopics = tagRepository.trendingDeckTags()
             .onFailure { Log.e(TAG, "loadTopics: FAILED — ${it.message}", it) }
             .getOrElse { emptyList() }
         _state.update { it.copy(topics = it.topics.loaded(mergedTopics(globalTopics, feed))) }
