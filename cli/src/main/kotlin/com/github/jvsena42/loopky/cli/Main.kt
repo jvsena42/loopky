@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.cli.commands.deckEdit
 import com.github.jvsena42.loopky.cli.commands.deckList
 import com.github.jvsena42.loopky.cli.commands.deckShow
 import com.github.jvsena42.loopky.cli.commands.deckSync
+import com.github.jvsena42.loopky.cli.commands.doctor
 import com.github.jvsena42.loopky.cli.commands.import
 import com.github.jvsena42.loopky.cli.commands.importDryRun
 import com.github.jvsena42.loopky.cli.commands.login
@@ -218,6 +219,7 @@ private suspend fun dispatch(
         )
         "logout" -> logout(identity)
         "whoami" -> whoami(identity, koin.get<PubkyClient>(), koin.get<SecureSessionStore>(), environment)
+        "doctor" -> doctor(args, koin.get<PubkyClient>()::resolveHttps, environment)
 
         "deck list" -> authed(sessions, identity, environment) { deckList(koin.decks()) }
         "deck show" -> authed(sessions, identity, environment) { deckShow(args, koin.decks()) }
@@ -396,6 +398,10 @@ internal val USAGE = """
       logout                    Forget the stored session.
       whoami                    Pubky, homeserver, capabilities, environment, and whether the
                                 session is still accepted.
+      doctor [--homeserver <pubky>]
+                                Ask every host loopky needs, through the configured proxy, and
+                                print the allowlist. No session needed. Exits 14 if a proxy
+                                refused one, 5 if one was unreachable.
 
     DECKS
       deck list

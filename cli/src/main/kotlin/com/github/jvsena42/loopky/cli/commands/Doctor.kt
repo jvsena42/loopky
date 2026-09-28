@@ -1,0 +1,205 @@
+package com.github.jvsena42.loopky.cli.commands
+
+import com.github.jvsena42.loopky.cli.Args
+import com.github.jvsena42.loopky.cli.CliEnvironment
+import com.github.jvsena42.loopky.cli.CliError
+import com.github.jvsena42.loopky.cli.CommandResult
+import com.github.jvsena42.loopky.cli.ExitCode
+import com.github.jvsena42.loopky.cli.UpdateChecker
+import com.github.jvsena42.loopky.cli.cliJson
+import com.github.jvsena42.loopky.cli.isProxyRefusal
+import com.github.jvsena42.loopky.cli.requireUsableOperand
+import com.github.jvsena42.loopky.cli.result
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.net.HttpURLConnection
+import java.net.URI
+
+@Serializable
+data class DoctorResult(
+    /** `http://host:port`, never the credentials; null when no proxy is configured. */
+    val proxy: String?,
+    val homeserver: String,
+    /** The ordinary domain the homeserver's pkarr record names, or null if the lookup failed. */
+    @SerialName("homeserver_host") val homeserverHost: String?,
+    val hosts: List<HostCheck>,
+    /** Every host above, deduplicated — what to paste into an allowlist. */
+    val allowlist: List<String>,
+)
+
+@Serializable
+data class HostCheck(
+    val host: String,
+    @SerialName("needed_for") val neededFor: String,
+    /** `reachable` (any HTTP answer, even an error), `refused` (by a proxy) or `unreachable`. */
+    val status: String,
+    val detail: String?,
+    @SerialName("ms") val millis: Long,
+)
+
+/** What one HTTPS request to a host came back with. */
+internal data class ProbeOutcome(val status: String, val detail: String?, val redirect: String?, val millis: Long)
+
+/**
+ * [resolveHttps] is [com.github.jvsena42.loopky.data.pubky.PubkyClient.resolveHttps].
+ *
+ * Every host `loopky` talks to, asked directly, so an agent behind an allowlist learns which hosts to
+ * ask for rather than meeting them one failed command at a time (#212).
+ *
+ * Needs no session on purpose: a sandbox without egress is exactly where signing in fails, and the
+ * diagnostic cannot depend on what it diagnoses. The homeserver is the environment's default unless
+ * `--homeserver` names another; its ordinary domain comes from its own pkarr record, because that is
+ * the host the client falls back to when the record's direct address is unreachable — which, behind
+ * a proxy, it always is.
+ */
+internal suspend fun doctor(
+    args: Args,
+    resolveHttps: suspend (String) -> Result<String>,
+    environment: CliEnvironment,
+    probe: suspend (String) -> ProbeOutcome = ::httpsProbe,
+    proxy: String? = configuredProxy(),
+): CommandResult {
+    val homeserver = args.option("homeserver")
+        ?.let { requireUsableOperand(it.trim().removePrefix("pubky"), "--homeserver") }
+        ?: environment.pubky.defaultHomeserver
+    val lookup = resolveHttps(homeserver)
+    val homeserverHost = lookup.getOrNull()?.let(::icannTarget)
+
+    val targets = buildList {
+        add(Target(RELAY_URL, "login (Pubky Ring approval)"))
+        PKARR_RELAYS.forEach { add(Target(it, "finding any homeserver (pkarr)")) }
+        homeserverHost?.let { add(Target("https://$it/", "every deck read and write")) }
+        add(Target(environment.indexer, "tag trending and indexer reads"))
+        add(Target(UpdateChecker.manifestUrl(), "install and loopky update"))
+    }
+    val checks = coroutineScope {
+        targets.map { target -> async { target to probe(target.url) } }.awaitAll()
+    }.flatMap { (target, outcome) -> followRedirects(target, outcome, probe) }
+    val lookupFailure = lookup.exceptionOrNull()?.let { "pkarr lookup of $homeserver failed: ${it.message}" }
+        ?: "pkarr record of $homeserver names no ordinary domain".takeIf { homeserverHost == null }
+
+    val report = DoctorResult(proxy, homeserver, homeserverHost, checks, checks.map { it.host }.distinct())
+    val text = render(report, lookupFailure)
+    val exit = when {
+        checks.any { it.status == REFUSED } -> ExitCode.ProxyRefused
+        lookupFailure != null || checks.any { it.status == UNREACHABLE } -> ExitCode.Network
+        else -> return result(report, text)
+    }
+    throw CliError(exit, text, cliJson.encodeToJsonElement(DoctorResult.serializer(), report))
+}
+
+private data class Target(val url: String, val neededFor: String)
+
+/**
+ * GitHub answers a release asset github.com → github.com → its asset CDN, and an allowlist needs
+ * every host on the way. Same-host hops are followed but not reported twice.
+ */
+private suspend fun followRedirects(
+    target: Target,
+    first: ProbeOutcome,
+    probe: suspend (String) -> ProbeOutcome,
+): List<HostCheck> {
+    val origin = HostCheck(hostOf(target.url), target.neededFor, first.status, first.detail, first.millis)
+    val checks = mutableListOf(origin)
+    var from = target.url
+    var next = first.redirect
+    repeat(MAX_REDIRECTS) {
+        // A Location may be relative (a captive portal's `/login`) or malformed; either ends the chain.
+        val url = next?.let { location -> runCatching { URI(from).resolve(location).toString() }.getOrNull() }
+            ?: return checks
+        val host = hostOrNull(url) ?: return checks
+        val outcome = probe(url)
+        from = url
+        if (checks.none { it.host == host }) {
+            checks += HostCheck(host, target.neededFor, outcome.status, outcome.detail, outcome.millis)
+        }
+        next = outcome.redirect
+    }
+    return checks
+}
+
+private fun render(report: DoctorResult, lookupFailure: String?): String = buildString {
+    appendLine("Proxy:      ${report.proxy ?: "none"}")
+    appendLine("Homeserver: ${report.homeserver}")
+    lookupFailure?.let { appendLine("            $it") }
+    val width = report.hosts.maxOf { it.host.length }
+    report.hosts.forEach { check ->
+        val status = if (check.status == REACHABLE) check.status else check.status.uppercase()
+        append("  ${status.padEnd(STATUS_WIDTH)} ${check.host.padEnd(width)}  ${check.neededFor}")
+        appendLine(check.detail?.let { " — $it" }.orEmpty())
+    }
+    append("Allowlist:  ${report.allowlist.joinToString(" ")}")
+}
+
+/**
+ * The first HTTPS record target that is an ordinary domain rather than `.` or a pkarr key, from
+ * `resolve_https`'s `{"https_records": [...]}`.
+ */
+internal fun icannTarget(resolved: String): String? =
+    runCatching { Json.parseToJsonElement(resolved).jsonObject.getValue("https_records").jsonArray }.getOrNull()
+        ?.mapNotNull { (it as? JsonObject)?.get("target")?.jsonPrimitive?.contentOrNull?.trimEnd('.') }
+        ?.firstOrNull { '.' in it }
+
+internal fun hostOf(url: String): String = requireNotNull(hostOrNull(url)) { "no host in $url" }
+
+private fun hostOrNull(url: String): String? = runCatching { URI(url).host }.getOrNull()
+
+/** The JVM's effective proxy, which [com.github.jvsena42.loopky.cli.ProxyEnvironment] set from the environment. */
+private fun configuredProxy(): String? {
+    val host = System.getProperty("https.proxyHost") ?: return null
+    return "http://$host:${System.getProperty("https.proxyPort") ?: DEFAULT_PROXY_PORT}"
+}
+
+private suspend fun httpsProbe(url: String): ProbeOutcome = withContext(Dispatchers.IO) {
+    val started = System.nanoTime()
+    fun elapsed() = (System.nanoTime() - started) / NANOS_PER_MILLI
+    runCatching {
+        val connection = URI(url).toURL().openConnection() as HttpURLConnection
+        try {
+            connection.connectTimeout = PROBE_TIMEOUT_MS
+            connection.readTimeout = PROBE_TIMEOUT_MS
+            connection.instanceFollowRedirects = false
+            val code = connection.responseCode
+            val redirect = connection.getHeaderField("Location")?.takeIf { code in REDIRECTS }
+            if (code == HTTP_PROXY_AUTH) {
+                ProbeOutcome(REFUSED, "the proxy refused its credentials (407)", null, elapsed())
+            } else {
+                ProbeOutcome(REACHABLE, null, redirect, elapsed())
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }.getOrElse { error ->
+        val status = if (error.isProxyRefusal()) REFUSED else UNREACHABLE
+        ProbeOutcome(status, error.message ?: error::class.simpleName, null, elapsed())
+    }
+}
+
+/** pubky's `DEFAULT_HTTP_RELAY_INBOX`, where `loopky login` waits for Ring. */
+private const val RELAY_URL = "https://httprelay.pubky.app/"
+
+/** pkarr's `DEFAULT_RELAYS`, which `libpubkycore` resolves every homeserver through. */
+private val PKARR_RELAYS = listOf("https://pkarr.pubky.app/", "https://pkarr.pubky.org/")
+
+internal const val REACHABLE = "reachable"
+internal const val REFUSED = "refused"
+internal const val UNREACHABLE = "unreachable"
+
+private const val STATUS_WIDTH = 11
+private const val MAX_REDIRECTS = 4
+private const val PROBE_TIMEOUT_MS = 5_000
+private const val NANOS_PER_MILLI = 1_000_000
+private const val HTTP_PROXY_AUTH = 407
+private const val DEFAULT_PROXY_PORT = 80
+private val REDIRECTS = 300..399
