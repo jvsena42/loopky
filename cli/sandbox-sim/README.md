@@ -52,7 +52,8 @@ ordinary allowlisted host.
 **The proxies need plain egress from the machine running Docker.** Inside a Claude Code cloud
 session that egress is itself TLS-intercepted, and every profile would silently become
 `intercepting` — describing the host, not the change. `run.sh` checks that first, against the stock
-CA store, and refuses to run if it fails.
+CA store, and refuses to run if it fails — except for `offline`, which uses no proxy and runs
+anywhere.
 
 ## What it found (2026-09-28)
 

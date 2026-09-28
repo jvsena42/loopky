@@ -53,7 +53,8 @@ esac
 
 # The proxies reach the internet through this machine. If its own egress re-signs TLS — a Claude
 # Code cloud session's does — every profile silently turns into `intercepting` and the table
-# describes the host, not the change. Checked with the stock CA store, before anything else.
+# describes the host, not the change. Checked with the stock CA store, before anything else — and
+# skipped for `offline`, which has no proxy for the host's egress to distort.
 PREFLIGHT='
 import sys, urllib.request, urllib.error
 try:
@@ -63,7 +64,7 @@ except urllib.error.HTTPError:
 except Exception as e:
     sys.exit(f"{type(e).__name__}: {e}")
 '
-if ! docker run --rm --entrypoint python3 mitmproxy/mitmproxy:latest -c "$PREFLIGHT" 2>/tmp/sandbox-sim-preflight.err; then
+if [ -n "$profile" ] && ! docker run --rm --entrypoint python3 mitmproxy/mitmproxy:latest -c "$PREFLIGHT" 2>/tmp/sandbox-sim-preflight.err; then
   if grep -qiE 'certificate|SSL' /tmp/sandbox-sim-preflight.err; then
     echo "run.sh: this machine's own egress intercepts TLS ($(head -c 200 /tmp/sandbox-sim-preflight.err))." >&2
     echo "run.sh: every profile would measure that, not loopky. Run it on a host with plain egress." >&2
