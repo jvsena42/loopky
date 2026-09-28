@@ -121,6 +121,15 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
      * that the first poll takes, so the code already on screen is spent either way.
      */
     Timeout(13, "timeout", "login --timeout ran out before anyone approved - check whoami"),
+
+    /**
+     * A proxy between this machine and the network refused the host, or its credentials (#212).
+     *
+     * Not [Network], which says "retryable as-is": an allowlist answers the same way every time,
+     * and an agent told `network` retries a request that can never pass. The fix is on the other
+     * side of the proxy — a host added to the allowlist, or working credentials in `HTTPS_PROXY`.
+     */
+    ProxyRefused(14, "proxy_refused", "a proxy refused this host or its credentials - allowlist it; retrying will not help"),
     ;
 
     companion object {
@@ -132,7 +141,12 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
          * homeserver record" and "the DHT did not answer" arrive through one call and are not the
          * same thing.
          */
-        fun of(error: Throwable): ExitCode = when (error.toErrorReason()) {
+        fun of(error: Throwable): ExitCode = when {
+            error.isProxyRefusal() -> ProxyRefused
+            else -> fromReason(error)
+        }
+
+        private fun fromReason(error: Throwable): ExitCode = when (error.toErrorReason()) {
             ErrorReason.NotSignedIn -> NotSignedIn
             ErrorReason.SessionExpired, ErrorReason.SessionUnreachable -> SessionExpired
             ErrorReason.Offline,
@@ -151,6 +165,31 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
         }
     }
 }
+
+/**
+ * A proxy said no, in either HTTP stack. The JDK names the CONNECT's status — only a 403 or 407 is
+ * a refusal; a 502/503 is the proxy failing to reach a host it allows, and stays retryable. Nexus
+ * reports a 407 as its own status. hyper-util's tunnel errors reach the FFI's message only through
+ * its source chain, and `unsuccessful` **drops the status**, so that one is a judgment: behind an
+ * allowlist it is a refusal on every call, and a wrong 14 costs one `loopky doctor` where a wrong 5
+ * is a retry loop. A proxy that drops rather than refuses is a timeout, and stays
+ * [ExitCode.Network].
+ */
+internal fun Throwable.isProxyRefusal(): Boolean {
+    val message = message?.lowercase() ?: return false
+    JDK_TUNNEL_STATUS.find(message)?.let { return it.groupValues[1] in REFUSING_STATUSES }
+    return RUST_TUNNEL_REFUSALS.any { it in message } || PROXY_AUTH_STATUS.containsMatchIn(message)
+}
+
+private val JDK_TUNNEL_STATUS = Regex("""unable to tunnel through proxy\. proxy returns "http/[0-9.]+ ([0-9]{3})""")
+private val REFUSING_STATUSES = setOf("403", "407")
+
+private val RUST_TUNNEL_REFUSALS = listOf(
+    "tunnel error: unsuccessful",
+    "tunnel error: proxy authorization required",
+)
+
+private val PROXY_AUTH_STATUS = Regex("http 407(?![0-9])")
 
 /**
  * The homeserver answered a 5xx.

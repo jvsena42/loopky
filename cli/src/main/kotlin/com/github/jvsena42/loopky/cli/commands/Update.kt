@@ -8,6 +8,7 @@ import com.github.jvsena42.loopky.cli.Installation
 import com.github.jvsena42.loopky.cli.SupportedHost
 import com.github.jvsena42.loopky.cli.UpdateChecker
 import com.github.jvsena42.loopky.cli.hostSupport
+import com.github.jvsena42.loopky.cli.isProxyRefusal
 import com.github.jvsena42.loopky.cli.isWindowsOs
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.cli.unsupportedHostMessage
@@ -202,8 +203,12 @@ private fun download(url: String): ByteArray {
         // it is the only status that means the file is genuinely not published, which is what the
         // caller needs to tell a malformed release from a bad minute on the network.
         val code = runCatching { connection.responseCode }
-            .getOrElse { throw CliError(ExitCode.Network, "could not reach $url: ${it.message}") }
+            .getOrElse {
+                val exit = if (it.isProxyRefusal()) ExitCode.ProxyRefused else ExitCode.Network
+                throw CliError(exit, "could not reach $url: ${it.message}")
+            }
         if (code == HTTP_NOT_FOUND) throw CliError(ExitCode.NotFound, "$url does not exist")
+        if (code == HTTP_PROXY_AUTH) throw CliError(ExitCode.ProxyRefused, "the proxy refused its credentials fetching $url")
         if (code !in SUCCESS) throw CliError(ExitCode.Network, "HTTP $code fetching $url")
         val bytes = runCatching { connection.inputStream.use { it.readNBytes(MAX_DOWNLOAD_BYTES + 1) } }
             .getOrElse { throw CliError(ExitCode.Network, "download of $url failed: ${it.message}") }
@@ -427,6 +432,7 @@ private const val SUPERSEDED_SUFFIX = ".old"
 private const val MB = 1024 * 1024
 private const val MAX_DOWNLOAD_BYTES = 256 * MB
 private const val HTTP_NOT_FOUND = 404
+private const val HTTP_PROXY_AUTH = 407
 private const val CONNECT_TIMEOUT_MS = 15_000
 private const val READ_TIMEOUT_MS = 60_000
 private val SUCCESS = 200..299

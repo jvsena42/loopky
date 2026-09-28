@@ -339,6 +339,7 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         // `download`, which throws that on a 404 — a release with no artifact for this host.
         alsoExits = listOf(
             ExitCode.Network,
+            ExitCode.ProxyRefused,
             ExitCode.NotFound,
             ExitCode.UnsupportedHost,
             ExitCode.UpdateUnsupported,

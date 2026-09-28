@@ -528,10 +528,17 @@ file never has the problem.
 | 5 | network | 11 | update found, not applied |
 | | | 12 | homeserver 5xx |
 | | | 13 | `login --timeout` ran out |
+| | | 14 | a proxy refused the host |
 
 `loopky commands --json` carries this table — name, number and a line of what to do about it —
 along with the subset each command can actually produce. That last part is worth reading for its
 *absences*: `tag trending` never answers `session_expired`, so there is no point signing in first.
+
+14 is an allowlist proxy saying no — a `403` on the tunnel, or a `407` for its credentials. It is
+not 5 because 5 promises that the same request may pass on the next attempt, and an allowlist
+answers the same way every time: the fix is a host added to the list, or working credentials in
+`HTTPS_PROXY`. A proxy that silently drops the connection instead looks like any other timeout,
+and stays 5.
 
 13 is nobody approving a sign-in inside `--timeout`. *That process* is not signed in — deliberately
 not "nothing was stored", which it cannot promise: the await runs on a thread that is unobserved

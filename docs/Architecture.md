@@ -1525,6 +1525,7 @@ always says which network answered.
 | 11 | `update` found a newer release and may not install it here (§13.12) |
 | 12 | the homeserver answered 5xx |
 | 13 | `login --timeout` ran out before anyone approved (§13.10) |
+| 14 | a proxy refused the host or its credentials (§13.17) |
 
 4 is the reason this table is not three rows long. The homeserver session dies after roughly an
 hour and nothing renews it (#165): writes start failing, reads keep working, and from outside it
