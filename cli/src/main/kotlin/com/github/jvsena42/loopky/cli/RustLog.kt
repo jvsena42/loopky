@@ -64,8 +64,12 @@ internal fun defaultRustLogToWarn(
 /**
  * `warn`, not `off`. A warning from the SDK is something the user should see — it is the layer
  * that knows about relays, DHT lookups and TLS, and nothing above it can re-report what it drops.
+ *
+ * Minus one target: its only warning is "Direct endpoint unreachable … ICANN fallback", which
+ * behind any proxy is the expected path, and — the SDK's cache dying with each process — landed on
+ * the stderr of every signed-in command (#212). Mirrored in the jar's start script.
  */
-private const val RUST_LOG_DEFAULT = "warn"
+internal const val RUST_LOG_DEFAULT = "warn,pubky::client::http_targets::native=error"
 
 /** `setenv`'s third argument. Reached only when the variable is unset, so it never overwrites. */
 private const val OVERWRITE_EXISTING = 1

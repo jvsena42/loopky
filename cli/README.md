@@ -151,6 +151,7 @@ loopky whoami --json
 loopky logout
 
 loopky commands --json              # the whole surface as JSON. No session, no network.
+loopky doctor                       # every host this needs, through your proxy, as an allowlist
 
 loopky update --check            # is there a newer release?
 loopky update                    # fetch it, check its digest, replace this binary
@@ -514,7 +515,66 @@ file never has the problem.
 | `LOOPKY_ENV` | `staging` or `production`. `--env` wins. Defaults to production. |
 | `LOOPKY_CONFIG_HOME` | Where state lives. Defaults to `$XDG_CONFIG_HOME/loopky`, then `~/.config/loopky` (`~/Library/Application Support/loopky` on macOS, `%LOCALAPPDATA%\loopky` on Windows — `Local`, not `Roaming`, so a session secret is not copied to a domain profile server at logoff). Setting it also moves the session out of the macOS Keychain and back into a file — and on Windows, pointing either it or `XDG_CONFIG_HOME` at a roaming location (`%APPDATA%`, `%USERPROFILE%\.config`) puts the session back in the roaming profile. |
 | `LOOPKY_NO_UPDATE_CHECK` | Set to anything to never look for a newer release. The check is cached for a day, runs alongside the command, and can never fail it — but a pipeline that wants no surprises can switch it off. `--no-update-check` does the same for one invocation. |
+| `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY` | The proxy to go through, read by **both** HTTP stacks in the process, in reqwest's order: uppercase first, and a set-but-empty variable counts as set (falling back to `ALL_PROXY`). Credentials in the URL work, and are sent only on the tunnel's `CONNECT`. Only `http://` proxies: a `socks5://` or `https://` one is refused with a warning. See "Behind a proxy" below. |
 | `RUST_LOG` | The pubky SDK's own tracing, defaulted to `warn` — by the start script in the jar distribution and through libc in the binary, which has no start script. `RUST_LOG=debug` is the first thing to try when a homeserver call fails for no visible reason. |
+
+## Behind a proxy (agent sandboxes)
+
+A cloud agent sandbox reaches the network through an **allowlist proxy**, and **neither product's
+default list includes Pubky**: Claude Code on the web's *Trusted* level is package registries,
+GitHub and cloud SDKs, and Codex cloud has no internet at all in the agent phase unless an
+environment turns it on (its *Common dependencies* preset has no Pubky host either). `loopky` works
+once these hosts are added (production):
+
+| Host | Needed for |
+| --- | --- |
+| `httprelay.pubky.app` | `login` — where the Ring approval arrives |
+| `pkarr.pubky.app` **or** `pkarr.pubky.org` | finding any homeserver. Either one is enough: pkarr races them |
+| `homeserver.pubky.app` | every deck read and write |
+| `nexus.pubky.app` | `tag trending` and every indexer read |
+| `github.com`, `release-assets.githubusercontent.com` | install and `loopky update` |
+
+**Where the list goes is the human's to change, not the agent's.** Claude Code on the web: the
+environment's settings → *Network access: Custom*, keep the default domains, add these under
+*Allowed domains*. Codex: the environment's settings → *Agent internet access: On*, add these as
+allowed domains, and **leave "GET, HEAD and OPTIONS only" off** — every write is a `PUT` or
+`DELETE`, and since `doctor`'s own probes are all `GET`s it would pass and every write would fail.
+
+**`loopky doctor` prints this list for the machine it runs on**, asking each host through the
+configured proxy, and ends with a `next_step` addressed to the agent: which hosts to ask the user
+for, and where. It needs no session. Exit 14 names what was refused; any other command's 14 or 15
+points at it. The homeserver row is read from your homeserver's own pkarr record, so an account on
+another homeserver has another host (`loopky doctor --homeserver <pubky>`); staging has
+`nexus.staging.pubky.app` and `homeserver.staging.pubky.app`.
+
+What was measured (#212, `cli/sandbox-sim/`, and a real Claude Code cloud session):
+
+- **UDP is not needed.** The DHT is only one of pkarr's two paths; the relays carry resolution on
+  their own, at the same speed. With a proxy configured the SDK uses the relays only, so a proxy
+  that lacks both fails the lookup even where UDP would have reached the DHT.
+- **Every command that touches the homeserver pays ~1.5s.** The homeserver's record also names a
+  direct address, which the SDK tries first and a sandbox always drops, before falling back to
+  `homeserver.pubky.app`. The SDK caches that choice for a minute, but the cache lives in the
+  process, and each `loopky` invocation is a new one — so a sequence of commands belongs in
+  `loopky batch`, which pays it once. (pubky/pubky-homeserver#647 asks for the probe to be skipped
+  behind a proxy.)
+- **A proxy that intercepts TLS does not work yet.** The pubky SDK ships its own root
+  certificates and reads neither the system store nor `SSL_CERT_FILE`, so it rejects the proxy's
+  CA (exit 15, `tls_untrusted`); the fix is upstream (pubky/pubky-homeserver#648). Until then such
+  a sandbox needs Loopky's hosts exempted from inspection. The jar's JVM half — Nexus, `update` —
+  can be given the CA with `-Djavax.net.ssl.trustStore` through `JAVA_TOOL_OPTIONS` or
+  `LOOPKY_OPTS`, which a Claude Code cloud session already does; that does not reach the SDK, and
+  `doctor` reports the two disagreeing.
+- **A refusal is exit 14, `proxy_refused`** — never 5, which would tell an agent to retry a request
+  an allowlist will refuse every time. A refused relay or homeserver reads as 14 once the bundled
+  `libpubkycore` carries the proxy's answer through (next bindings bump); until then, 5.
+- **Installing from inside a Claude Code session** goes through its GitHub proxy, which serves
+  release assets only for repositories attached to the session. A session on another repository
+  can get a 403 for the binary; attach `jvsena42/loopky`, or install in the environment's setup
+  script.
+
+Sign in on a machine with a phone and hand the sandbox `LOOPKY_SESSION` (see Environment): then
+`httprelay.pubky.app` is not needed at all.
 
 ## Exit codes
 
@@ -528,10 +588,24 @@ file never has the problem.
 | 5 | network | 11 | update found, not applied |
 | | | 12 | homeserver 5xx |
 | | | 13 | `login --timeout` ran out |
+| | | 14 | a proxy refused the host |
+| | | 15 | the certificate is not trusted |
 
 `loopky commands --json` carries this table — name, number and a line of what to do about it —
 along with the subset each command can actually produce. That last part is worth reading for its
 *absences*: `tag trending` never answers `session_expired`, so there is no point signing in first.
+
+14 is an allowlist proxy saying no — a `403` on the tunnel, or a `407` for its credentials. It is
+not 5 because 5 promises that the same request may pass on the next attempt, and an allowlist
+answers the same way every time: the fix is a host added to the list, or working credentials in
+`HTTPS_PROXY`. A proxy that silently drops the connection instead looks like any other timeout,
+and stays 5.
+
+15 is a certificate this client does not trust, which in a sandbox means a proxy re-signing TLS
+with its own CA. Not 1, because nothing about it is a bug, and not 5, because an untrusted CA stays
+untrusted on the next attempt. The fix is on the proxy's side — exempt Loopky's hosts from
+interception — or, for the jar only, a trust store holding that CA passed as
+`-Djavax.net.ssl.trustStore` through `JAVA_TOOL_OPTIONS` or `LOOPKY_OPTS`.
 
 13 is nobody approving a sign-in inside `--timeout`. *That process* is not signed in — deliberately
 not "nothing was stored", which it cannot promise: the await runs on a thread that is unobserved
@@ -568,9 +642,12 @@ already in the deck — is a homeserver read. `deck create --dry-run` answers th
 `data.created`: `true` means the deck *would* be published, `false` that the id is taken, and
 `dry_run` beside it says nothing was written either way.
 
-`whoami --json` reports `session_live`, asked rather than assumed — worth checking before starting
-an hour-long import rather than forty cards in. There is no `expires_at` to report: the session
-payload does not carry one.
+`whoami --json` reports `session_live`, asked rather than assumed. Read it with `session_checked`
+beside it: `session_live: false` with `session_checked: true` is a session the homeserver refused —
+sign in again — while `session_checked: false` means the question could not be asked, and
+`session_check_error` says why (a proxy refusing the homeserver is not a dead session, and signing
+in again would fail the same way). Worth checking before starting an hour-long import rather than forty cards in. There is no
+`expires_at` to report: the session payload does not carry one.
 
 ## Things worth knowing before you script it
 
@@ -687,6 +764,14 @@ payload does not carry one.
   QR code is an encoding, not a protection. It is created `0600` and deleted once approval lands,
   but for the length of the approval window that file is a session anyone who can read it can
   take.
+- **An agent should show the human the link, not only the QR.** Someone driving a cloud session
+  from the Claude or ChatGPT app on a phone has Pubky Ring on *that* phone — and a phone cannot scan
+  its own screen. `login --json` puts the link on stdout as its `auth_url` event: show it in the
+  chat inside a code block, so it can be copied even where the app does not turn `pubkyauth://`
+  into a link, and tapped or pasted into Ring on the same device. Next to the QR, not instead of
+  it. The same rule as `--qr-out` applies: until Ring approves it the link is a credential, so it
+  goes to the human in the conversation and nowhere else — not into a commit, an issue, a log or a
+  file — and `--timeout` bounds how long it stays one.
 - **You are told when the client is stale, and never updated behind your back.** A newer release
   arrives as one line on stderr and as `update_available` in the `--json` envelope — null when
   there is nothing to say, otherwise `{version, schema, schema_changed}`. The last of those is

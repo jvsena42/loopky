@@ -111,10 +111,10 @@ class TagRepositoryImpl(
         Unit
     }
 
-    override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): List<Tag> {
+    override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): Result<List<Tag>> {
         val resources = nexus.resourcesByTag(ReservedTags.DECK.value, sampleSize)
             .onFailure { Log.w(TAG, "trendingDeckTags: FAILED — ${it.message}") }
-            .getOrElse { emptyList() }
+            .getOrElse { return Result.failure(it) }
 
         val decksPerLabel = mutableMapOf<String, Int>()
         val taggersPerLabel = mutableMapOf<String, Int>()
@@ -136,14 +136,15 @@ class TagRepositoryImpl(
         // deck from owning the whole chip row. Tagger sum breaks ties, then the label itself so
         // the order is stable — the indexer's own ordering is not, and at this corpus size most
         // ties are 1-vs-1.
-        return decksPerLabel.entries
+        return Result.success(decksPerLabel.entries
             .sortedWith(
                 compareByDescending<Map.Entry<String, Int>> { it.value }
                     .thenByDescending { taggersPerLabel[it.key] ?: 0 }
                     .thenBy { it.key },
             )
             .take(limit)
-            .map { Tag(it.key) }
+            .map { Tag(it.key) },
+        )
     }
 
     override suspend fun taggedSubjects(

@@ -107,7 +107,7 @@ class CommandSurfaceJsonTest {
     @Test
     fun `needs_session is reported`() {
         assertEquals(
-            listOf("login", "tag trending", "update", "completion", "commands"),
+            listOf("login", "doctor", "tag trending", "update", "completion", "commands"),
             surface.commands.filterNot { it.needsSession }.map { it.path },
         )
     }

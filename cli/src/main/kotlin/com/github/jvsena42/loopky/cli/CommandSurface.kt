@@ -220,6 +220,12 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         notBatchable = "It would revoke the session the remaining operations run as.",
     ),
     CliCommand("whoami", "pubky, homeserver, capabilities, environment, and whether the session is live"),
+    CliCommand(
+        path = "doctor",
+        summary = "check every host loopky needs through the configured proxy, and print the allowlist",
+        options = listOf(CliOption("homeserver", "check this homeserver pubky instead of the default one")),
+        needsSession = false,
+    ),
 
     CliCommand("deck list", "every deck you have published"),
     CliCommand("deck show", "one deck and its manifest", Operand.Opaque("deckId")),
@@ -339,6 +345,8 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         // `download`, which throws that on a 404 — a release with no artifact for this host.
         alsoExits = listOf(
             ExitCode.Network,
+            ExitCode.ProxyRefused,
+            ExitCode.TlsUntrusted,
             ExitCode.NotFound,
             ExitCode.UnsupportedHost,
             ExitCode.UpdateUnsupported,

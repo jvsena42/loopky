@@ -207,6 +207,10 @@ internal fun checkEnvironmentAgrees(session: Session, environment: CliEnvironmen
 fun asCliError(error: Throwable, injected: Boolean = false): CliError {
     val code = ExitCode.of(error)
     val hint = when {
+        // The one host that failed is rarely the only one missing; doctor names them all, and says
+        // what to ask the human for (#212).
+        code == ExitCode.ProxyRefused -> " Run `loopky doctor` for every host to ask the user to allowlist."
+        code == ExitCode.TlsUntrusted -> " Run `loopky doctor`: the hosts need exempting from TLS inspection."
         code != ExitCode.SessionExpired -> ""
         injected -> " LOOPKY_SESSION is no longer valid; mint a new one with `loopky login --export`."
         else -> " Run `loopky login` again."

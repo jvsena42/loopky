@@ -1525,6 +1525,8 @@ always says which network answered.
 | 11 | `update` found a newer release and may not install it here (§13.12) |
 | 12 | the homeserver answered 5xx |
 | 13 | `login --timeout` ran out before anyone approved (§13.10) |
+| 14 | a proxy refused the host or its credentials (§13.17) |
+| 15 | the certificate is not trusted — usually a TLS-intercepting proxy (§13.17) |
 
 4 is the reason this table is not three rows long. The homeserver session dies after roughly an
 hour and nothing renews it (#165): writes start failing, reads keep working, and from outside it
@@ -2392,17 +2394,57 @@ ordinary JPEG it is, the width rule reaches `thumb.wikimedia.org` because that i
 `imageinfo` API hands back, and `--help` now shows the `--json` envelope's shape — `data.cards[]`,
 with `front` an object carrying `.text` — since two failed parses is what discovering that costs.
 
-### 13.17 Still open
+### 13.17 Behind an allowlist proxy (#212)
 
-- **Can Loopky run behind an allowlist proxy at all?** A hard blocker for cloud sandboxes, not a
-  polish item. Homegate and Nexus are fixed hosts, but the homeserver is resolved from its pubky
-  over pkarr and served under a pkarr-derived certificate, so the data host is **not a fixed
-  name** — and pkarr's DHT path is UDP, which an HTTP-only proxy blocks outright. Somebody has to
-  establish whether the relay fallback is enough to run the whole client over HTTP to a known set
-  of hosts. If it is, document the list; if it is not, the container image with unrestricted
-  egress is the only cloud-sandbox story and that should be said out loud. The update check
-  (§13.12) deliberately adds nothing to that list — it uses the release page the installer already
-  needs — so this stays exactly as hard as it was.
+The question was whether the client can run over HTTP alone to a known set of hosts. **It can**,
+measured rather than read, in a container whose only egress is a Squid allowlist and everything
+else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
+
+- **pkarr needs no UDP.** Resolution races the DHT against the HTTP relays (`pkarr.pubky.app`,
+  `pkarr.pubky.org`), and the relays answer alone in ~0.7s — the same as on an open network.
+  The FFI drops the DHT entirely when an HTTPS proxy is configured (pubky-core-ffi-fork; in the
+  bundled `libpubkycore` from the next bindings bump), because all it did there was log an ERROR
+  every two seconds onto the stderr of every command.
+- **The homeserver is a fixed name after all.** Its pkarr record names a direct address *and* an
+  ordinary domain (`homeserver.pubky.app` for production). `pubky` probes the direct address for
+  1.5s — the probe does not go through the proxy, so a sandbox always fails it — then falls back
+  to the domain over ordinary TLS and caches the choice for 60s. The cache lives in the SDK
+  client, which dies with each process, so for the CLI that is ~1.5s on **every** command that
+  touches the homeserver — `loopky batch` pays it once — and the fallback's WARN is quieted in
+  the default `RUST_LOG` for the same reason.
+- **The JVM side was the part that did not work.** reqwest reads `HTTPS_PROXY`;
+  `HttpURLConnection` does not. Nexus, the update check and `--check-images` connected directly,
+  timed out after 15s, and `tag trending` answered `ok` with no tags. `ProxyEnvironment` maps the
+  variables onto the JDK's properties at startup, and trending now fails rather than returning
+  `[]`.
+- **A refusal is its own exit code**, 14 `proxy_refused` (§13.4), because 5 says "retry as-is" and
+  an allowlist answers the same every time. The JVM side classifies today; the Rust side (relay,
+  homeserver) does once the bundled `libpubkycore` reports its errors' source chain, from the same
+  bindings bump — the proxy's 403 sits two links below what `Display` prints, and until then it
+  reads as 5.
+- **`loopky doctor` answers the host list** for the environment and homeserver at hand, since the
+  homeserver's host comes from its own record. It needs no session: a sandbox without egress is
+  exactly where signing in fails. It also says what to do — an agent cannot change its sandbox's
+  network, so the report ends with `next_step`: which hosts to ask the human for, and where each
+  product keeps the setting.
+- **Neither product's default allowlist includes Pubky.** Claude Code on the web's *Trusted* list
+  and Codex's *Common dependencies* preset are both package registries, source hosts and cloud
+  SDKs (`cli/sandbox-sim/allowlists/` holds them verbatim, with their sources). Codex's default is
+  no internet at all in the agent phase, and its GET/HEAD/OPTIONS-only option would refuse every
+  write — and, being enforceable on HTTPS only by decrypting it, implies a TLS-intercepting proxy.
+
+Two things remain. A **TLS-intercepting** proxy fails on both stacks even with its CA trusted
+system-wide — the pubky SDK bundles its roots (exit 15, `tls_untrusted`), which is upstream work
+(pubky/pubky-homeserver#648). The JDK keeps its own store, which the jar can be pointed at with
+`-Djavax.net.ssl.trustStore` — a Claude Code cloud session does this — but that reaches only the
+JVM half, so `doctor` compares the two stacks rather than trusting the JVM's view. And a
+**black-holed** relay makes `login --timeout` report 13 ("nobody approved") rather than 5, because
+the FFI's grant resume (§13.10) keeps rejoining a relay it never reached.
+
+### 13.18 Still open
+
+- **A TLS-intercepting proxy** (§13.17) needs the pubky SDK to trust a CA it was not built with.
+  Upstream work; until then such a sandbox exempts Loopky's hosts from interception.
 - **Its own repo, and the `core` / `presentation` split.** Starting in-tree is cheaper while
   `shared` is moving; the trigger for extracting is the first *out-of-tree* consumer, which needs
   a published artifact — and that artifact is the module boundary. The seam is real and these two

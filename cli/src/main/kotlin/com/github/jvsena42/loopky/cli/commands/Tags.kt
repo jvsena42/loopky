@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.cli.commands
 import com.github.jvsena42.loopky.cli.Args
 import com.github.jvsena42.loopky.cli.CliEnvironment
 import com.github.jvsena42.loopky.cli.CommandResult
+import com.github.jvsena42.loopky.cli.asCliError
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import kotlinx.serialization.Serializable
@@ -44,7 +45,9 @@ suspend fun tagTrending(
     val limit = args.positiveInt("limit", DEFAULT_TRENDING_LIMIT)
     // `trendingDeckTags` answers with labels in order, not with counts: Nexus ranks them and the
     // ranking is the information. A fabricated count beside each one would read as data.
-    val trending = tags.trendingDeckTags(limit = limit).map { TrendingTagView(it.value) }
+    val trending = tags.trendingDeckTags(limit = limit)
+        .getOrElse { throw asCliError(it) }
+        .map { TrendingTagView(it.value) }
     return result(
         TagTrendingResult(trending, environment.indexer),
         if (trending.isEmpty()) {

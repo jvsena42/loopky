@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.cli.commands.deckEdit
 import com.github.jvsena42.loopky.cli.commands.deckList
 import com.github.jvsena42.loopky.cli.commands.deckShow
 import com.github.jvsena42.loopky.cli.commands.deckSync
+import com.github.jvsena42.loopky.cli.commands.doctor
 import com.github.jvsena42.loopky.cli.commands.import
 import com.github.jvsena42.loopky.cli.commands.importDryRun
 import com.github.jvsena42.loopky.cli.commands.login
@@ -57,6 +58,7 @@ import kotlin.system.exitProcess
  *   retries forever or gives up on a working network.
  */
 fun main(argv: Array<String>) {
+    ProxyEnvironment.from(System.getenv()).install()
     val exit = runCatching { run(argv) }.getOrElse { error ->
         // Nothing should reach here; if it does, say so honestly rather than exiting 0.
         System.err.println("loopky: ${error::class.simpleName}: ${error.message}")
@@ -217,6 +219,7 @@ private suspend fun dispatch(
         )
         "logout" -> logout(identity)
         "whoami" -> whoami(identity, koin.get<PubkyClient>(), koin.get<SecureSessionStore>(), environment)
+        "doctor" -> doctor(args, koin.get<PubkyClient>()::resolveHttps, environment)
 
         "deck list" -> authed(sessions, identity, environment) { deckList(koin.decks()) }
         "deck show" -> authed(sessions, identity, environment) { deckShow(args, koin.decks()) }
@@ -395,6 +398,10 @@ internal val USAGE = """
       logout                    Forget the stored session.
       whoami                    Pubky, homeserver, capabilities, environment, and whether the
                                 session is still accepted.
+      doctor [--homeserver <pubky>]
+                                Ask every host loopky needs, through the configured proxy, and
+                                print the allowlist. No session needed. Exits 14 if a proxy
+                                refused one, 5 if one was unreachable.
 
     DECKS
       deck list
@@ -665,6 +672,8 @@ internal val USAGE = """
       5 network                11 update found but not applied (a managed install)
                               12 the homeserver answered 5xx — not your input, and worth retrying
                               13 login --timeout ran out before anyone approved
+                              14 a proxy refused the host — allowlist it; retrying will not help
+                              15 the certificate is not trusted — usually a proxy re-signing TLS
 
     NOTES
       Sessions are stored as a mode-0600 file, not in an OS keyring. libsecret is usually absent

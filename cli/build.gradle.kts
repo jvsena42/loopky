@@ -98,17 +98,20 @@ tasks.withType<Test>().configureEach {
  * the first thing to try when a homeserver call fails for no visible reason.
  */
 tasks.named<CreateStartScripts>("startScripts") {
+    // Kept equal to `RUST_LOG_DEFAULT` in `RustLog.kt`, which the binary sets instead (#212). A local,
+    // because the configuration cache cannot serialize a script-level value captured by `doLast`.
+    val rustLogDefault = "warn,pubky::client::http_targets::native=error"
     doLast {
         unixScript.writeText(
             unixScript.readText().replace(
                 "\nAPP_HOME=",
-                "\nexport RUST_LOG=\"\${RUST_LOG:-warn}\"\n\nAPP_HOME=",
+                "\nexport RUST_LOG=\"\${RUST_LOG:-$rustLogDefault}\"\n\nAPP_HOME=",
             ),
         )
         windowsScript.writeText(
             windowsScript.readText().replace(
                 "\r\nset APP_HOME=",
-                "\r\nif not defined RUST_LOG set RUST_LOG=warn\r\nset APP_HOME=",
+                "\r\nif not defined RUST_LOG set RUST_LOG=$rustLogDefault\r\nset APP_HOME=",
             ),
         )
     }
@@ -261,6 +264,13 @@ fun nativeBuildArgs(): List<String> {
         // of its own. Exactly the noise the jar's start script exists to suppress, arriving by a
         // different door, on the channel an agent harness captures into its transcript.
         "--enable-native-access=ALL-UNNAMED",
+        // The JDK reads these in `HttpURLConnection`'s static initializer, which native-image runs at
+        // *build* time — so `ProxyEnvironment` setting them at startup came too late, and a proxy URL
+        // with credentials got a 407 from the binary while the jar went through (#212, measured in
+        // `cli/sandbox-sim`). Safe to bake in: nothing answers a challenge unless `ProxyEnvironment`
+        // installed an `Authenticator`, which it does only for credentials in a proxy URL.
+        "-Djdk.http.auth.tunneling.disabledSchemes=",
+        "-Djdk.http.auth.proxying.disabledSchemes=Basic",
         // Baseline x86-64 rather than `native-image`'s x86-64-v3 default. A binary compiled for
         // v3 needs AVX2 and dies with SIGILL on a host without it — and this one is *downloaded*,
         // onto a sandbox whose CPU nobody chose. Irrelevant to a client that spends its life

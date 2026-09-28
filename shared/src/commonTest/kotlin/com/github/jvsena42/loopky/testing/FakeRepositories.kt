@@ -1070,9 +1070,9 @@ class RecordingTagRepository : TagRepository {
     var deckTags: List<Tag> = emptyList()
     val deckTagRequests = mutableListOf<Pair<Int, Int>>()
 
-    override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): List<Tag> {
+    override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): Result<List<Tag>> {
         deckTagRequests.add(sampleSize to limit)
-        return deckTags.take(limit)
+        return Result.success(deckTags.take(limit))
     }
 
     /** Indexer reads, canned per label. */

@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.cli
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import kotlinx.serialization.json.JsonElement
+import javax.net.ssl.SSLPeerUnverifiedException
 
 /**
  * What `loopky` exits with, and what an agent is supposed to do about it.
@@ -121,6 +122,26 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
      * that the first poll takes, so the code already on screen is spent either way.
      */
     Timeout(13, "timeout", "login --timeout ran out before anyone approved - check whoami"),
+
+    /**
+     * A proxy between this machine and the network refused the host, or its credentials (#212).
+     *
+     * Not [Network], which says "retryable as-is": an allowlist answers the same way every time,
+     * and an agent told `network` retries a request that can never pass. The fix is on the other
+     * side of the proxy — a host added to the allowlist, or working credentials in `HTTPS_PROXY`.
+     */
+    ProxyRefused(14, "proxy_refused", "a proxy refused this host or its credentials - allowlist it; retrying will not help"),
+
+    /**
+     * The server's certificate is not one this client trusts (#212) — in practice, a proxy
+     * re-signing TLS with its own CA.
+     *
+     * Not [Internal], which it read as once trending stopped swallowing failures: nothing about it
+     * is a bug. Not [Network] either: a CA the client does not trust will not become trusted on a
+     * retry. The fix is the proxy's — exempt the host from interception — or, for the jar, a trust
+     * store passed as `-Djavax.net.ssl.trustStore`.
+     */
+    TlsUntrusted(15, "tls_untrusted", "the certificate is not trusted - usually a proxy re-signing TLS; exempt the host from interception"),
     ;
 
     companion object {
@@ -132,7 +153,13 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
          * homeserver record" and "the DHT did not answer" arrive through one call and are not the
          * same thing.
          */
-        fun of(error: Throwable): ExitCode = when (error.toErrorReason()) {
+        fun of(error: Throwable): ExitCode = when {
+            error.isProxyRefusal() -> ProxyRefused
+            error.isUntrustedCertificate() -> TlsUntrusted
+            else -> fromReason(error)
+        }
+
+        private fun fromReason(error: Throwable): ExitCode = when (error.toErrorReason()) {
             ErrorReason.NotSignedIn -> NotSignedIn
             ErrorReason.SessionExpired, ErrorReason.SessionUnreachable -> SessionExpired
             ErrorReason.Offline,
@@ -151,6 +178,49 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
         }
     }
 }
+
+/**
+ * A proxy said no, in either HTTP stack. The JDK names the CONNECT's status — only a 403 or 407 is
+ * a refusal; a 502/503 is the proxy failing to reach a host it allows, and stays retryable. Nexus
+ * reports a 407 as its own status. hyper-util's tunnel errors reach the FFI's message only through
+ * its source chain, and `unsuccessful` **drops the status**, so that one is a judgment: behind an
+ * allowlist it is a refusal on every call, and a wrong 14 costs one `loopky doctor` where a wrong 5
+ * is a retry loop. A proxy that drops rather than refuses is a timeout, and stays
+ * [ExitCode.Network].
+ */
+internal fun Throwable.isProxyRefusal(): Boolean {
+    val message = message?.lowercase() ?: return false
+    JDK_TUNNEL_STATUS.find(message)?.let { return it.groupValues[1] in REFUSING_STATUSES }
+    return RUST_TUNNEL_REFUSALS.any { it in message } || PROXY_AUTH_STATUS.containsMatchIn(message)
+}
+
+/**
+ * The certificate chain did not verify, in either stack. The JDK words it as a PKIX failure,
+ * usually a cause or two below the `SSLHandshakeException`; rustls as "invalid peer certificate".
+ */
+internal fun Throwable.isUntrustedCertificate(): Boolean =
+    generateSequence(this) { it.cause }.take(MAX_CAUSES).any { error ->
+        val message = error.message?.lowercase().orEmpty()
+        error is SSLPeerUnverifiedException || UNTRUSTED_CERTIFICATE.any { it in message }
+    }
+
+private val UNTRUSTED_CERTIFICATE = listOf(
+    "pkix path building failed",
+    "unable to find valid certification path",
+    "invalid peer certificate",
+)
+
+private const val MAX_CAUSES = 8
+
+private val JDK_TUNNEL_STATUS = Regex("""unable to tunnel through proxy\. proxy returns "http/[0-9.]+ ([0-9]{3})""")
+private val REFUSING_STATUSES = setOf("403", "407")
+
+private val RUST_TUNNEL_REFUSALS = listOf(
+    "tunnel error: unsuccessful",
+    "tunnel error: proxy authorization required",
+)
+
+private val PROXY_AUTH_STATUS = Regex("http 407(?![0-9])")
 
 /**
  * The homeserver answered a 5xx.
