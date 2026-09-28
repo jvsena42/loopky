@@ -2408,8 +2408,10 @@ else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
 - **The homeserver is a fixed name after all.** Its pkarr record names a direct address *and* an
   ordinary domain (`homeserver.pubky.app` for production). `pubky` probes the direct address for
   1.5s — the probe does not go through the proxy, so a sandbox always fails it — then falls back
-  to the domain over ordinary TLS and caches the choice for 60s. That is the whole cost of the
-  proxy: ~1.5s on the first homeserver call of each minute.
+  to the domain over ordinary TLS and caches the choice for 60s. The cache lives in the SDK
+  client, which dies with each process, so for the CLI that is ~1.5s on **every** command that
+  touches the homeserver — `loopky batch` pays it once — and the fallback's WARN is quieted in
+  the default `RUST_LOG` for the same reason.
 - **The JVM side was the part that did not work.** reqwest reads `HTTPS_PROXY`;
   `HttpURLConnection` does not. Nexus, the update check and `--check-images` connected directly,
   timed out after 15s, and `tag trending` answered `ok` with no tags. `ProxyEnvironment` maps the
@@ -2422,12 +2424,22 @@ else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
   reads as 5.
 - **`loopky doctor` answers the host list** for the environment and homeserver at hand, since the
   homeserver's host comes from its own record. It needs no session: a sandbox without egress is
-  exactly where signing in fails.
+  exactly where signing in fails. It also says what to do — an agent cannot change its sandbox's
+  network, so the report ends with `next_step`: which hosts to ask the human for, and where each
+  product keeps the setting.
+- **Neither product's default allowlist includes Pubky.** Claude Code on the web's *Trusted* list
+  and Codex's *Common dependencies* preset are both package registries, source hosts and cloud
+  SDKs (`cli/sandbox-sim/allowlists/` holds them verbatim, with their sources). Codex's default is
+  no internet at all in the agent phase, and its GET/HEAD/OPTIONS-only option would refuse every
+  write — and, being enforceable on HTTPS only by decrypting it, implies a TLS-intercepting proxy.
 
 Two things remain. A **TLS-intercepting** proxy fails on both stacks even with its CA trusted
-system-wide — the pubky SDK bundles its roots and the JDK keeps its own store — which is upstream
-work. And a **black-holed** relay makes `login --timeout` report 13 ("nobody approved") rather than
-5, because the FFI's grant resume (§13.10) keeps rejoining a relay it never reached.
+system-wide — the pubky SDK bundles its roots (exit 15, `tls_untrusted`), which is upstream work
+(pubky/pubky-homeserver#648). The JDK keeps its own store, which the jar can be pointed at with
+`-Djavax.net.ssl.trustStore` — a Claude Code cloud session does this — but that reaches only the
+JVM half, so `doctor` compares the two stacks rather than trusting the JVM's view. And a
+**black-holed** relay makes `login --timeout` report 13 ("nobody approved") rather than 5, because
+the FFI's grant resume (§13.10) keeps rejoining a relay it never reached.
 
 ### 13.18 Still open
 

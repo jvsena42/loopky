@@ -520,45 +520,61 @@ file never has the problem.
 
 ## Behind a proxy (agent sandboxes)
 
-A cloud agent sandbox usually reaches the network through an **allowlist proxy**, and its
-out-of-the-box list covers package managers, not Pubky. `loopky` works behind one once these hosts
-are on it (production):
+A cloud agent sandbox reaches the network through an **allowlist proxy**, and **neither product's
+default list includes Pubky**: Claude Code on the web's *Trusted* level is package registries,
+GitHub and cloud SDKs, and Codex cloud has no internet at all in the agent phase unless an
+environment turns it on (its *Common dependencies* preset has no Pubky host either). `loopky` works
+once these hosts are added (production):
 
 | Host | Needed for |
 | --- | --- |
 | `httprelay.pubky.app` | `login` — where the Ring approval arrives |
-| `pkarr.pubky.app`, `pkarr.pubky.org` | finding any homeserver (pkarr over HTTP) |
+| `pkarr.pubky.app` **or** `pkarr.pubky.org` | finding any homeserver. Either one is enough: pkarr races them |
 | `homeserver.pubky.app` | every deck read and write |
 | `nexus.pubky.app` | `tag trending` and every indexer read |
 | `github.com`, `release-assets.githubusercontent.com` | install and `loopky update` |
 
-**`loopky doctor` prints this list for your setup rather than this README's**, asking each host
-through the configured proxy — it needs no session, and exits 14 naming what was refused. The
-homeserver row is the one worth checking there: it is read from your homeserver's own pkarr
-record, so an account on another homeserver has another host (`loopky doctor --homeserver
-<pubky>`), and staging has `nexus.staging.pubky.app` and its own homeserver.
+**Where the list goes is the human's to change, not the agent's.** Claude Code on the web: the
+environment's settings → *Network access: Custom*, keep the default domains, add these under
+*Allowed domains*. Codex: the environment's settings → *Agent internet access: On*, add these as
+allowed domains, and **leave "GET, HEAD and OPTIONS only" off** — every write is a `PUT` or
+`DELETE`, and since `doctor`'s own probes are all `GET`s it would pass and every write would fail.
 
-What was measured in a Squid allowlist container with everything else dropped (#212):
+**`loopky doctor` prints this list for the machine it runs on**, asking each host through the
+configured proxy, and ends with a `next_step` addressed to the agent: which hosts to ask the user
+for, and where. It needs no session. Exit 14 names what was refused; any other command's 14 or 15
+points at it. The homeserver row is read from your homeserver's own pkarr record, so an account on
+another homeserver has another host (`loopky doctor --homeserver <pubky>`); staging has
+`nexus.staging.pubky.app` and `homeserver.staging.pubky.app`.
 
-- **UDP is not needed.** The DHT is only one of pkarr's two paths; the relays above carry
-  resolution on their own, at the same speed.
-- **The homeserver's first contact costs ~1.5s.** Its record also names a direct address, which
-  the client tries first and a sandbox always drops; after that it uses `homeserver.pubky.app` and
-  remembers the choice for a minute.
-- **A proxy that intercepts TLS does not work**, even with its CA trusted system-wide: the pubky
-  SDK ships its own root certificates and does not read `SSL_CERT_FILE`. That needs a change
-  upstream; until then such a sandbox needs these hosts exempted from interception.
+What was measured (#212, `cli/sandbox-sim/`, and a real Claude Code cloud session):
+
+- **UDP is not needed.** The DHT is only one of pkarr's two paths; the relays carry resolution on
+  their own, at the same speed. With a proxy configured the SDK uses the relays only, so a proxy
+  that lacks both fails the lookup even where UDP would have reached the DHT.
+- **Every command that touches the homeserver pays ~1.5s.** The homeserver's record also names a
+  direct address, which the SDK tries first and a sandbox always drops, before falling back to
+  `homeserver.pubky.app`. The SDK caches that choice for a minute, but the cache lives in the
+  process, and each `loopky` invocation is a new one — so a sequence of commands belongs in
+  `loopky batch`, which pays it once. (pubky/pubky-homeserver#647 asks for the probe to be skipped
+  behind a proxy.)
+- **A proxy that intercepts TLS does not work yet.** The pubky SDK ships its own root
+  certificates and reads neither the system store nor `SSL_CERT_FILE`, so it rejects the proxy's
+  CA (exit 15, `tls_untrusted`); the fix is upstream (pubky/pubky-homeserver#648). Until then such
+  a sandbox needs Loopky's hosts exempted from inspection. The jar's JVM half — Nexus, `update` —
+  can be given the CA with `-Djavax.net.ssl.trustStore` through `JAVA_TOOL_OPTIONS` or
+  `LOOPKY_OPTS`, which a Claude Code cloud session already does; that does not reach the SDK, and
+  `doctor` reports the two disagreeing.
 - **A refusal is exit 14, `proxy_refused`** — never 5, which would tell an agent to retry a request
-  an allowlist will refuse every time. `doctor`, `tag trending` and `update` report it today; a
-  refused relay or homeserver still reads as 5 until the next `libpubkycore` bump carries the
-  proxy's answer through.
-
-With a proxy configured, the pubky SDK resolves over the pkarr relays **only** — so a proxy that
-lacks them fails the lookup even where UDP would have reached the DHT. Put the relays on the list,
-or in `NO_PROXY`.
+  an allowlist will refuse every time. A refused relay or homeserver reads as 14 once the bundled
+  `libpubkycore` carries the proxy's answer through (next bindings bump); until then, 5.
+- **Installing from inside a Claude Code session** goes through its GitHub proxy, which serves
+  release assets only for repositories attached to the session. A session on another repository
+  can get a 403 for the binary; attach `jvsena42/loopky`, or install in the environment's setup
+  script.
 
 Sign in on a machine with a phone and hand the sandbox `LOOPKY_SESSION` (see Environment): then
-`httprelay.pubky.app` is not needed at all. `cli/sandbox-sim/` reproduces all of this locally.
+`httprelay.pubky.app` is not needed at all.
 
 ## Exit codes
 
