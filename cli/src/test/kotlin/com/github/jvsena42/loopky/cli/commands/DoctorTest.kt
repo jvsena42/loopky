@@ -119,6 +119,27 @@ class DoctorTest {
         assert(error.message!!.startsWith("writes refused by the proxy: homeserver.pubky.app")) { error.message!! }
     }
 
+    /** Both problems at once — `codex-custom-readonly` with the proxy's CA trusted by the JVM. */
+    @Test
+    fun `a method block beside an SDK that cannot resolve names both`() = runTest {
+        val readOnly: suspend (String) -> WriteAnswer? = { WriteAnswer(403, "method PUT not allowed") }
+
+        val error = assertFailsWith<CliError> {
+            doctor(
+                Args.parse(arrayOf("doctor")),
+                client(Result.failure(RuntimeException("no responses"))),
+                environment,
+                DoctorProbes(reachable(), readOnly),
+                "http://proxy:3128",
+            )
+        }
+
+        assertEquals(ExitCode.ProxyRefused, error.exitCode)
+        val nextStep = error.data.toString()
+        assert("GET, HEAD and OPTIONS" in nextStep) { nextStep }
+        assert("pubky-homeserver#648" in nextStep) { nextStep }
+    }
+
     @Test
     fun `no write probe is sent when the homeserver's read already failed`() = runTest {
         var writes = 0

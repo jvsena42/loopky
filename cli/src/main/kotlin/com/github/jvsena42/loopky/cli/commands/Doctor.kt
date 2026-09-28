@@ -142,14 +142,22 @@ private fun exitFor(blocking: List<HostCheck>, hostKnown: Boolean, sdkDisagrees:
 /**
  * Addressed to an agent, which cannot change a sandbox's network itself: stop, and ask the human
  * for exactly this. Both products keep the setting per environment.
+ *
+ * A refusal outranks interception in the exit code, but when the SDK also cannot get through, that
+ * is said here too — otherwise the human fixes the one, re-runs, and only then meets the other.
  */
-private fun nextStep(exit: ExitCode, blocking: List<HostCheck>, allowlist: List<String>, sdkDisagrees: Boolean): String =
-    when (exit) {
+private fun nextStep(exit: ExitCode, blocking: List<HostCheck>, allowlist: List<String>, sdkDisagrees: Boolean): String {
+    val tls = "This proxy re-signs TLS, and the pubky SDK trusts only public certificate authorities, " +
+        "so loopky cannot work through it yet (pubky/pubky-homeserver#648). Ask the user to exempt " +
+        "these hosts from TLS inspection, or to run loopky where egress is not intercepted: " +
+        "${allowlist.joinToString(" ")}."
+    val alsoTls = if (sdkDisagrees) " Separately, the pubky SDK could not use relays this machine reaches: $tls" else ""
+    return when (exit) {
         ExitCode.ProxyRefused if blocking.none { it.status == REFUSED } ->
             "Reads reach the homeserver but its proxy refuses writes, so every deck and card change would " +
                 "fail. Ask the user to allow all HTTP methods in this sandbox's network settings, then run " +
                 "`loopky doctor` again. Codex: the environment's settings, Agent internet access, and turn off " +
-                "the restriction to GET, HEAD and OPTIONS — loopky writes with PUT and DELETE."
+                "the restriction to GET, HEAD and OPTIONS — loopky writes with PUT and DELETE.$alsoTls"
         ExitCode.ProxyRefused -> {
             val refused = blocking.filter { it.status == REFUSED }.map { it.host }
             "Ask the user to allow these hosts in this sandbox's network settings, then run `loopky doctor` " +
@@ -157,18 +165,15 @@ private fun nextStep(exit: ExitCode, blocking: List<HostCheck>, allowlist: List<
                 "Network access: Custom, keep the default domains, and add them under Allowed domains. " +
                 "Codex: the environment's settings, Agent internet access: On, and add them as allowed " +
                 "domains — leave the GET/HEAD/OPTIONS-only restriction off, since loopky writes with PUT " +
-                "and DELETE. The complete list for this machine: ${allowlist.joinToString(" ")}."
+                "and DELETE. The complete list for this machine: ${allowlist.joinToString(" ")}.$alsoTls"
         }
         ExitCode.TlsUntrusted ->
-            (if (sdkDisagrees) "The pubky SDK could not use relays this machine reaches. " else "") +
-                "This proxy re-signs TLS, and the pubky SDK trusts only public certificate authorities, " +
-                "so loopky cannot work through it yet (pubky/pubky-homeserver#648). Ask the user to exempt " +
-                "these hosts from TLS inspection, or to run loopky where egress is not intercepted: " +
-                "${allowlist.joinToString(" ")}."
+            (if (sdkDisagrees) "The pubky SDK could not use relays this machine reaches. " else "") + tls
         else ->
             "Nothing refused these hosts; they did not answer. Retry once; if it persists, the proxy or " +
                 "the network in front of it is down — nothing on the allowlist will change that."
     }
+}
 
 /**
  * One slow answer under load must not read as `unreachable` and exit 5 (#369), so a timed-out probe
