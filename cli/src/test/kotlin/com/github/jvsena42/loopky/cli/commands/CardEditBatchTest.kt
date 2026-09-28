@@ -69,6 +69,31 @@ class CardEditBatchTest {
         assertEquals(listOf("c2"), decks.upserted.map { it.id })
     }
 
+    /** A mistake visible in `argv` must not first ask the homeserver about the deck (#370). */
+    @Test
+    fun `an empty card id is refused before the deck is read`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck(cardCount = 3))
+
+        val error = assertFailsWith<CliError> {
+            cardEdit(Args.parse(arrayOf("card", "edit", "d1", "", "--front", "x")), decks, FakeCardRepository(deckCards)) {}
+        }
+
+        assertEquals(ExitCode.BadInput, error.exitCode)
+        assertTrue(decks.syncCalls.isEmpty())
+    }
+
+    @Test
+    fun `a file row without an id is refused before the deck is read`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck(cardCount = 3))
+
+        val error = assertFailsWith<CliError> {
+            cardEdit(editFile("""{"front":"uno"}"""), decks, FakeCardRepository(deckCards)) {}
+        }
+
+        assertEquals(ExitCode.Usage, error.exitCode)
+        assertTrue(decks.syncCalls.isEmpty())
+    }
+
     /**
      * Fail fast, with the homeserver untouched. The old order interleaved validation with writes,
      * so a bad row 400 left 399 applied and reported none of them.
