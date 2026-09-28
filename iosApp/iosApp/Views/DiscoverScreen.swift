@@ -34,6 +34,7 @@ struct DiscoverScreen: View {
                 viewModel?.onOpenDeck(authorPubky: author, deckId: deckId)
             },
             onRetryFollowing: { viewModel?.onRetryFollowing() },
+            onRetryTopics: { viewModel?.onRetryTopics() },
             onBrowseEndReached: { viewModel?.onBrowseEndReached() },
             onPeopleEndReached: { viewModel?.onPeopleEndReached() },
             onRetryBrowse: { viewModel?.onRetryBrowse() },
@@ -66,6 +67,7 @@ struct DiscoverScreen: View {
         guard let state = uiState else { return DiscoverViewState() }
         return DiscoverViewState(
             topics: state.visibleTopics.map { KotlinInterop.tagLabel($0) },
+            topicsFailed: state.topics.error != nil,
             people: section(state.people) { person in
                 let identity = IdentityData(person.identity)
                 return DiscoverPersonData(

@@ -148,6 +148,7 @@
     <string name="discover_title">Entdecken</string>
     <string name="discover_search">Suchen</string>
     <string name="discover_topics_title">Themen</string>
+    <string name="discover_topics_error">Themen konnten nicht geladen werden.</string>
     <string name="discover_people_title">Leute auf Loopky</string>
     <string name="discover_browse_title">Stapel entdecken</string>
     <string name="discover_browse_tag_title">Stapel mit dem Tag „%1$s“</string>

@@ -148,6 +148,7 @@
     <string name="discover_title">Scopri</string>
     <string name="discover_search">Cerca</string>
     <string name="discover_topics_title">Argomenti</string>
+    <string name="discover_topics_error">Impossibile caricare gli argomenti.</string>
     <string name="discover_people_title">Persone su Loopky</string>
     <string name="discover_browse_title">Scopri mazzi</string>
     <string name="discover_browse_tag_title">Mazzi con il tag “%1$s”</string>

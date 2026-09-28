@@ -149,6 +149,7 @@
     <string name="discover_title">見つける</string>
     <string name="discover_search">検索</string>
     <string name="discover_topics_title">トピック</string>
+    <string name="discover_topics_error">トピックを読み込めませんでした。</string>
     <string name="discover_people_title">Loopky のユーザー</string>
     <string name="discover_browse_title">デッキを見つける</string>
     <string name="discover_browse_tag_title">タグ「%1$s」のデッキ</string>

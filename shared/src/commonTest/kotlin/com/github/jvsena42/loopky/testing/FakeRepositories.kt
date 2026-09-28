@@ -1069,10 +1069,11 @@ class RecordingTagRepository : TagRepository {
     /** Deck topics the indexer would aggregate to; recorded so a test can pin the ask. */
     var deckTags: List<Tag> = emptyList()
     val deckTagRequests = mutableListOf<Pair<Int, Int>>()
+    var deckTagsError: Throwable? = null
 
     override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): Result<List<Tag>> {
         deckTagRequests.add(sampleSize to limit)
-        return Result.success(deckTags.take(limit))
+        return deckTagsError?.let { Result.failure(it) } ?: Result.success(deckTags.take(limit))
     }
 
     /** Indexer reads, canned per label. */

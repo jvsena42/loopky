@@ -152,6 +152,7 @@
     <string name="discover_title">探索</string>
     <string name="discover_search">搜尋</string>
     <string name="discover_topics_title">主題</string>
+    <string name="discover_topics_error">無法載入主題。</string>
     <string name="discover_people_title">Loopky 上的使用者</string>
     <string name="discover_browse_title">探索牌組</string>
     <string name="discover_browse_tag_title">標記為「%1$s」的牌組</string>

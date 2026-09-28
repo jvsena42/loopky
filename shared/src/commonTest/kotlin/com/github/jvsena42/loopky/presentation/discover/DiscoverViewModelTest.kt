@@ -323,6 +323,39 @@ class DiscoverViewModelTest {
         assertEquals(listOf(Tag("history"), Tag("spanish")), vm.state.value.topics.items)
     }
 
+    @Test
+    fun `an unreachable indexer shows the topics as failed rather than empty`() = runTest(mainDispatcher) {
+        seedFeed()
+        tagRepo.deckTagsError = RuntimeException("Unable to resolve host \"nexus.test\"")
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val topics = vm.state.value.topics
+        assertNotNull(topics.error)
+        assertFalse(topics.isLoading)
+        // The followed feed's labels never needed the indexer, so they stay beside the error.
+        assertEquals(listOf(Tag("spanish"), Tag("biology")), topics.items)
+    }
+
+    @Test
+    fun `retrying topics asks the indexer again and clears the error`() = runTest(mainDispatcher) {
+        tagRepo.deckTagsError = RuntimeException("boom")
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertNotNull(vm.state.value.topics.error)
+        val asked = tagRepo.deckTagRequests.size
+
+        tagRepo.deckTagsError = null
+        tagRepo.deckTags = listOf(Tag("history"))
+        vm.onRetryTopics()
+        advanceUntilIdle()
+
+        assertEquals(asked + 1, tagRepo.deckTagRequests.size)
+        assertNull(vm.state.value.topics.error)
+        assertEquals(listOf(Tag("history")), vm.state.value.topics.items)
+    }
+
     // ── tiles ────────────────────────────────────────────────────────────
 
     @Test

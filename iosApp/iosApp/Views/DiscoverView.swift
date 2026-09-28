@@ -43,6 +43,8 @@ struct DiscoverSection<Item> {
 
 struct DiscoverViewState {
     var topics: [String] = []
+    /// The indexer did not answer — distinct from `topics` being empty, which means nothing trends.
+    var topicsFailed = false
     var people = DiscoverSection<DiscoverPersonData>()
     var browse = DiscoverSection<DiscoverDeckData>()
     var following = DiscoverSection<DiscoverDeckData>()
@@ -62,6 +64,7 @@ struct DiscoverView: View {
     var onFollowTap: (String) -> Void = { _ in }
     var onDeckTap: (String, String) -> Void = { _, _ in }
     var onRetryFollowing: () -> Void = {}
+    var onRetryTopics: () -> Void = {}
     var onBrowseEndReached: () -> Void = {}
     var onPeopleEndReached: () -> Void = {}
     var onRetryBrowse: () -> Void = {}
@@ -82,6 +85,7 @@ struct DiscoverView: View {
                 header
                 if isGuest { guestBanner }
                 if !state.topics.isEmpty { topicRow }
+                if state.topicsFailed { topicsError }
                 // Picking a topic is an explicit question, so its answer leads. Unfiltered, browse
                 // is the fallback firehose and sits under the people and decks you chose — which
                 // costs a new account nothing, because the followed strip hides itself when empty.
@@ -184,6 +188,21 @@ struct DiscoverView: View {
                     proxy.scrollTo(first, anchor: .leading)
                 }
             }
+        }
+    }
+
+    /// One line rather than a `retryBlock`: topics are a filter above the content, and a full block
+    /// there would outweigh the decks it filters (#366).
+    private var topicsError: some View {
+        HStack(spacing: 8) {
+            Text("discover_topics_error")
+                .font(.system(size: 13))
+                .foregroundColor(LoopkyColor.foregroundMuted)
+                .accessibilityIdentifier("discover_topics_error")
+            Button("home_retry", action: onRetryTopics)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(LoopkyColor.accentPrimary)
+                .accessibilityIdentifier("discover_topics_retry")
         }
     }
 

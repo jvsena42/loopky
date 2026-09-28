@@ -141,6 +141,7 @@ fun DiscoverRoute(
         onFollowToggle = viewModel::onFollowToggle,
         onRefresh = viewModel::onRefresh,
         onRetryFollowing = viewModel::onRetryFollowing,
+        onRetryTopics = viewModel::onRetryTopics,
         onBrowseEndReached = viewModel::onBrowseEndReached,
         onPeopleEndReached = viewModel::onPeopleEndReached,
         onGridColumnsChanged = viewModel::onGridColumnsChanged,
@@ -163,6 +164,7 @@ private fun DiscoverScreen(
     onFollowToggle: (String) -> Unit,
     onRefresh: () -> Unit,
     onRetryFollowing: () -> Unit,
+    onRetryTopics: () -> Unit,
     onBrowseEndReached: () -> Unit,
     onPeopleEndReached: () -> Unit,
     onGridColumnsChanged: (Int) -> Unit,
@@ -224,7 +226,7 @@ private fun DiscoverScreen(
                     item(key = "guest_banner") { GuestSignInBanner(onSignIn = onSignIn) }
                 }
 
-                topicsSection(state, onTagSelected)
+                topicsSection(state, onTagSelected, onRetryTopics)
                 // Picking a topic is an explicit question, so its answer leads. Unfiltered, browse
                 // is the fallback firehose and sits under the people and decks you chose — which
                 // costs a new account nothing, because the followed strip hides itself when empty.
@@ -255,16 +257,24 @@ private val SEARCH_BAR_CLEARANCE = 72.dp
 private fun LazyListScope.topicsSection(
     state: DiscoverUiState,
     onTagSelected: (Tag?) -> Unit,
+    onRetryTopics: () -> Unit,
 ) {
     // No placeholder when there are no topics — an absent chip row reads as "nothing to filter by",
-    // which is exactly right, and an empty-state block for it would be noise.
-    if (state.visibleTopics.isEmpty()) return
-    item(key = "topics") {
-        TopicRow(
-            tags = state.visibleTopics,
-            selectedTags = state.selectedTags,
-            onTagSelected = onTagSelected,
-        )
+    // which is exactly right, and an empty-state block for it would be noise. A failed load is the
+    // exception: that row is not "nothing to filter by" but "couldn't ask" (#366).
+    if (state.visibleTopics.isNotEmpty()) {
+        item(key = "topics") {
+            TopicRow(
+                tags = state.visibleTopics,
+                selectedTags = state.selectedTags,
+                onTagSelected = onTagSelected,
+            )
+        }
+    }
+    if (state.topics.error != null) {
+        item(key = "topics_error") {
+            TopicsErrorLine(onRetry = onRetryTopics, modifier = Modifier.testTag("discover_topics_error"))
+        }
     }
 }
 
@@ -559,6 +569,7 @@ private fun DiscoverScreenPreview() {
             onFollowToggle = {},
             onRefresh = {},
             onRetryFollowing = {},
+            onRetryTopics = {},
             onBrowseEndReached = {},
             onPeopleEndReached = {},
             onGridColumnsChanged = {},
@@ -585,6 +596,7 @@ private fun DiscoverScreenEmptyBrowsePreview() {
             onFollowToggle = {},
             onRefresh = {},
             onRetryFollowing = {},
+            onRetryTopics = {},
             onBrowseEndReached = {},
             onPeopleEndReached = {},
             onGridColumnsChanged = {},
@@ -617,6 +629,7 @@ private fun DiscoverScreenGuestPreview() {
             onFollowToggle = {},
             onRefresh = {},
             onRetryFollowing = {},
+            onRetryTopics = {},
             onBrowseEndReached = {},
             onPeopleEndReached = {},
             onGridColumnsChanged = {},
