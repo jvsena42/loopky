@@ -220,6 +220,17 @@ then `11 -> 17 of 17, +4`, and the follower is on the second page. On staging (`
 (`bzbjrj…yhjzpo`) is shown. The Android carousel now draws a spinner in an extra end slot while a
 page is in flight, matching iOS.
 
+### 04 — Discover says its topics failed, offline (#366) — 2026-09-28 — ✅ PASS on Android; iOS not run
+
+Guest Discover, debug build (staging), Wi-Fi and mobile data disabled with `svc` before launch.
+The topic row used to be simply absent, which reads as "nothing trends". Now it shows
+"Couldn't load topics." with a Retry (`discover_topics_error`/`discover_topics_retry`) above the
+browse strip's own offline block. After re-enabling Wi-Fi, tapping that Retry loaded four topic chips
+and removed the line, and the browse error stayed as it was because each strip retries on its own.
+Checked on `Medium_Phone` (compact) and `Pixel_Tablet` in landscape (expanded) and portrait
+(medium). Discover has one layout at every width, capped by `contentPane(Wide)`, and the line sits
+at the pane's leading edge in all three. iOS was not built or driven: this machine is Linux.
+
 ### 26 — the stats bar on a deck you are not studying — 2026-09-23 — ✅ PASS
 
 `emulator-5554`, staging, on "Inglês para viajar de avião" (`jvsena42`, 551 cards, not owned and
