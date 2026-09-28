@@ -76,8 +76,24 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 printf 'loopky: downloading %s\n' "$ASSET" >&2
-curl -fsSL "$BASE/$ASSET" -o "$TMP/loopky" \
+# `-w` reports the last hop: a release URL redirects to GitHub's download host, and a refusal there
+# has a different fix from one on github.com.
+RESULT="$(curl -sSL "$BASE/$ASSET" -o "$TMP/loopky" -w '%{http_code} %{url_effective}')" \
     || die "could not download $BASE/$ASSET"
+STATUS="${RESULT%% *}"
+HOST="$(printf '%s' "${RESULT#* }" | sed -e 's|^[a-z]*://||' -e 's|[/:].*||')"
+case "$STATUS" in
+    2??) ;;
+    # GitHub does not refuse a public release; a proxy scoped to other repositories does (#365).
+    403) if [ "$HOST" = github.com ]; then
+            die "$BASE/$ASSET answered 403, so a proxy in front of GitHub refused it. In a Claude Code
+cloud session GitHub traffic goes through a proxy that reaches only the repositories attached to the
+session: attach $REPO to the environment, or install loopky in its setup script."
+        fi
+        die "a proxy refused $HOST (403), where GitHub serves release downloads from. Allow it
+alongside github.com." ;;
+    *) die "could not download $BASE/$ASSET (HTTP $STATUS)" ;;
+esac
 
 # The digest is checked when a tool for it exists and skipped, loudly, when none does. Failing the
 # install on a missing `sha256sum` would be worse than saying so: the sandbox this targets is

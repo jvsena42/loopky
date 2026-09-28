@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.cli.InstallMethod
 import com.github.jvsena42.loopky.cli.Installation
 import com.github.jvsena42.loopky.cli.SupportedHost
 import com.github.jvsena42.loopky.cli.UpdateChecker
+import com.github.jvsena42.loopky.cli.githubRefusedAdvice
 import com.github.jvsena42.loopky.data.nexus.HttpFetcher
 import com.github.jvsena42.loopky.data.nexus.HttpRequest
 import com.github.jvsena42.loopky.data.nexus.HttpResponse
@@ -39,10 +40,10 @@ import kotlin.test.assertTrue
  */
 class UpdateCommandTest {
 
-    private fun checker(body: String?, version: String = "0.8.0"): UpdateChecker {
+    private fun checker(body: String?, version: String = "0.8.0", status: Int = 200): UpdateChecker {
         val fetcher = object : HttpFetcher {
             override suspend fun send(request: HttpRequest): Result<HttpResponse> =
-                body?.let { Result.success(HttpResponse(200, it)) } ?: Result.failure(IOException("offline"))
+                body?.let { Result.success(HttpResponse(status, it)) } ?: Result.failure(IOException("offline"))
         }
         return UpdateChecker(
             configHome = Files.createTempDirectory("loopky-update-cmd"),
@@ -94,6 +95,25 @@ class UpdateCommandTest {
         val result = update(Args.parse(arrayOf("update")), checker(null), binary())
         assertFalse(field(result, "applied").toBoolean())
         assertEquals("null", result.data.jsonObject.getValue("latest").toString())
+    }
+
+    /** GitHub does not 403 a public release; a proxy scoped to other repositories does (#365). */
+    @Test
+    fun `a release page answering 403 is a proxy refusal with the way around it`() = runTest {
+        val error = assertFailsWith<CliError> {
+            update(Args.parse(arrayOf("update", "--check")), checker("Forbidden", status = 403), binary())
+        }
+        assertEquals(ExitCode.ProxyRefused, error.exitCode)
+        assertTrue("attach jvsena42/loopky" in error.message!!, error.message!!)
+        assertTrue("release-assets.githubusercontent.com" in error.message!!, error.message!!)
+    }
+
+    @Test
+    fun `a refused download host is named, not blamed on github`() {
+        val advice = githubRefusedAdvice("release-assets.githubusercontent.com")
+        assertTrue("release-assets.githubusercontent.com" in advice, advice)
+        assertFalse("attach" in advice, advice)
+        assertTrue("attach jvsena42/loopky" in githubRefusedAdvice("github.com"))
     }
 
     /**
