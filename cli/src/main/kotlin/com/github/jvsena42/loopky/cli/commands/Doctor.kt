@@ -44,6 +44,11 @@ data class DoctorResult(
     val allowlist: List<String>,
     /** False when the homeserver's host could not be learned, so the list above is missing it. */
     @SerialName("allowlist_complete") val allowlistComplete: Boolean,
+    /**
+     * What to do about it, addressed to the agent reading this: which hosts to ask the human for,
+     * and where each sandbox product keeps that setting. Null when nothing is wrong.
+     */
+    @SerialName("next_step") val nextStep: String? = null,
 )
 
 @Serializable
@@ -105,7 +110,15 @@ internal suspend fun doctor(
     }.flatMap { (target, outcome) -> followRedirects(target, outcome, probe) }
     val checks = withAssetCdn(probed, probe)
 
-    val report = DoctorResult(
+    val blocking = blockingChecks(checks, relaysWork = resolvedHost != null)
+    // These probes run on the JVM; the lookup ran in the SDK. The JVM reaching a relay the SDK
+    // could not use, behind a proxy, is the two stacks disagreeing — in practice a proxy re-signing
+    // TLS with a CA the JVM was given and the SDK's bundled roots lack. Reporting 0 there, as the
+    // JVM's view alone would, sends an agent on to commands that all fail.
+    val sdkDisagrees = proxy != null && lookup.isFailure &&
+        checks.any { it.host in PKARR_RELAYS.map(::hostOf) && it.status == REACHABLE }
+    val exit = exitFor(blocking, hostKnown = homeserverHost != null, sdkDisagrees = sdkDisagrees)
+    val base = DoctorResult(
         proxy = proxy,
         homeserver = homeserver,
         homeserverHost = homeserverHost,
@@ -113,20 +126,51 @@ internal suspend fun doctor(
         allowlist = checks.map { it.host }.distinct(),
         allowlistComplete = homeserverHost != null,
     )
-    val blocking = blockingChecks(checks, relaysWork = resolvedHost != null)
+    val report = base.copy(nextStep = exit?.let { nextStep(it, blocking, base.allowlist, sdkDisagrees) })
     val text = render(report, lookupFailure)
-    val exit = exitFor(blocking, hostKnown = homeserverHost != null) ?: return result(report, text)
+    if (exit == null) return result(report, text)
     // The summary first: a failure's text reaches stderr behind `loopky: `, which would otherwise
     // knock the table's first row out of line with the rest.
-    throw CliError(exit, "${summarize(blocking)}\n$text", cliJson.encodeToJsonElement(DoctorResult.serializer(), report))
+    throw CliError(
+        exit,
+        "${summarize(blocking, sdkDisagrees)}\n$text",
+        cliJson.encodeToJsonElement(DoctorResult.serializer(), report),
+    )
 }
 
-private fun exitFor(blocking: List<HostCheck>, hostKnown: Boolean): ExitCode? = when {
+private fun exitFor(blocking: List<HostCheck>, hostKnown: Boolean, sdkDisagrees: Boolean): ExitCode? = when {
     blocking.any { it.status == REFUSED } -> ExitCode.ProxyRefused
-    blocking.any { it.status == INTERCEPTED } -> ExitCode.TlsUntrusted
+    blocking.any { it.status == INTERCEPTED } || sdkDisagrees -> ExitCode.TlsUntrusted
     !hostKnown || blocking.any { it.status == UNREACHABLE } -> ExitCode.Network
     else -> null
 }
+
+/**
+ * Addressed to an agent, which cannot change a sandbox's network itself: stop, and ask the human
+ * for exactly this. Both products keep the setting per environment, and Codex's read-only option
+ * would pass `doctor` — every probe is a GET — and then refuse every write.
+ */
+private fun nextStep(exit: ExitCode, blocking: List<HostCheck>, allowlist: List<String>, sdkDisagrees: Boolean): String =
+    when (exit) {
+        ExitCode.ProxyRefused -> {
+            val refused = blocking.filter { it.status == REFUSED }.map { it.host }
+            "Ask the user to allow these hosts in this sandbox's network settings, then run `loopky doctor` " +
+                "again: ${refused.joinToString(" ")}. Claude Code on the web: the environment's settings, " +
+                "Network access: Custom, keep the default domains, and add them under Allowed domains. " +
+                "Codex: the environment's settings, Agent internet access: On, and add them as allowed " +
+                "domains — leave the GET/HEAD/OPTIONS-only restriction off, since loopky writes with PUT " +
+                "and DELETE. The complete list for this machine: ${allowlist.joinToString(" ")}."
+        }
+        ExitCode.TlsUntrusted ->
+            (if (sdkDisagrees) "The pubky SDK could not use relays this machine reaches. " else "") +
+                "This proxy re-signs TLS, and the pubky SDK trusts only public certificate authorities, " +
+                "so loopky cannot work through it yet (pubky/pubky-homeserver#648). Ask the user to exempt " +
+                "these hosts from TLS inspection, or to run loopky where egress is not intercepted: " +
+                "${allowlist.joinToString(" ")}."
+        else ->
+            "Nothing refused these hosts; they did not answer. Retry once; if it persists, the proxy or " +
+                "the network in front of it is down — nothing on the allowlist will change that."
+    }
 
 /** The asset CDN is only met through GitHub's redirect, which a refused github.com never issues. */
 private suspend fun withAssetCdn(checks: List<HostCheck>, probe: suspend (String) -> ProbeOutcome): List<HostCheck> {
@@ -148,9 +192,10 @@ private fun blockingChecks(checks: List<HostCheck>, relaysWork: Boolean): List<H
     return if (relaysOk) checks - relays.toSet() else checks
 }
 
-private fun summarize(blocking: List<HostCheck>): String {
+private fun summarize(blocking: List<HostCheck>, sdkDisagrees: Boolean): String {
     fun hosts(status: String) = blocking.filter { it.status == status }.map { it.host }
     return listOfNotNull(
+        SDK_DISAGREES.takeIf { sdkDisagrees },
         hosts(REFUSED).takeIf { it.isNotEmpty() }?.let { "refused by the proxy: ${it.joinToString(", ")}" },
         hosts(INTERCEPTED).takeIf { it.isNotEmpty() }?.let { "TLS intercepted: ${it.joinToString(", ")}" },
         hosts(UNREACHABLE).takeIf { it.isNotEmpty() }?.let { "unreachable: ${it.joinToString(", ")}" },
@@ -203,6 +248,7 @@ private fun render(report: DoctorResult, lookupFailure: String?): String = build
         appendLine("Allowlist (incomplete — the homeserver's host is missing; allow the pkarr relays and re-run):")
         append("            ${report.allowlist.joinToString(" ")}")
     }
+    report.nextStep?.let { append("\n\nNext step: $it") }
 }
 
 /**
@@ -264,6 +310,9 @@ private val KNOWN_HOMESERVER_HOSTS = mapOf(
     PubkyEnvironment.Production.defaultHomeserver to "homeserver.pubky.app",
     PubkyEnvironment.Staging.defaultHomeserver to "homeserver.staging.pubky.app",
 )
+
+private const val SDK_DISAGREES =
+    "the pubky SDK could not use the pkarr relays this machine reached — TLS intercepted by the proxy"
 
 private const val ASSET_CDN_HOST = "release-assets.githubusercontent.com"
 private const val ASSET_CDN_URL = "https://$ASSET_CDN_HOST/"

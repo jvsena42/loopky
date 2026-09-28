@@ -169,4 +169,40 @@ class DoctorTest {
         assertNull(icannTarget("not json"))
         assertEquals("homeserver.pubky.app", icannTarget(records))
     }
+
+    @Test
+    fun `a refusal tells the agent what to ask the human for, and where`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("nexus" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
+        }
+        val error = assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probe, proxy = "http://proxy:3128")
+        }
+        val report = error.data.toString()
+        assert("Ask the user to allow these hosts" in report && "nexus.pubky.app" in report) { report }
+        assert("Allowed domains" in report && "GET/HEAD/OPTIONS" in report) { report }
+        assert("Next step:" in error.message!!)
+    }
+
+    @Test
+    fun `nothing wrong means no next step`() = runTest {
+        val result = doctor(Args.parse(arrayOf("doctor")), client(), environment, reachable(), proxy = null)
+        assert(""""next_step":null""" in result.data.toString()) { result.data.toString() }
+    }
+
+    /** sandbox-sim's codex-custom with JVM_TRUSTS_PROXY_CA=1: the JVM passes, the SDK cannot. */
+    @Test
+    fun `the SDK failing relays the JVM reached, behind a proxy, is not a clean bill of health`() = runTest {
+        val error = assertFailsWith<CliError> {
+            doctor(
+                Args.parse(arrayOf("doctor")),
+                client(Result.failure(RuntimeException("No signed packet found: resolve query received no responses"))),
+                environment,
+                reachable(),
+                proxy = "http://proxy:3128",
+            )
+        }
+        assertEquals(ExitCode.TlsUntrusted, error.exitCode)
+        assert(error.message!!.startsWith("the pubky SDK could not use the pkarr relays"))
+    }
 }
