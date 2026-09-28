@@ -17,7 +17,11 @@
 # Code cloud session does through JAVA_TOOL_OPTIONS. SIM_SUMMARY=<file> also writes the rows there
 # as TSV — profile, command, exit, error code, ms — which is what check.sh compares (#364).
 set -euo pipefail
-[ -n "${SIM_SUMMARY:-}" ] && SIM_SUMMARY=$(realpath -m "$SIM_SUMMARY")
+# Absolute before the cd below. Not `realpath -m`: BSD realpath on macOS has no -m.
+case "${SIM_SUMMARY:-}" in
+  "" | /*) ;;
+  *) SIM_SUMMARY="$PWD/$SIM_SUMMARY" ;;
+esac
 cd "$(dirname "$0")"
 
 # Squid's dstdomain: `.example.com` is the domain and its subdomains, a bare name that host alone —

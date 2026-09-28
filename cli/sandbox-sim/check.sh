@@ -22,7 +22,9 @@ shift
 if [ $# -gt 0 ]; then
   profiles=("$@")
 else
-  mapfile -t profiles < <(grep -v '^#' "$expected" | cut -f1 | awk 'NF && !seen[$0]++')
+  # Not mapfile: macOS ships bash 3.2.
+  profiles=()
+  while IFS= read -r p; do profiles+=("$p"); done < <(grep -v '^#' "$expected" | cut -f1 | awk 'NF && !seen[$0]++')
 fi
 
 work=$(mktemp -d)
