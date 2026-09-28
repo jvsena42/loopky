@@ -764,6 +764,14 @@ in again would fail the same way). Worth checking before starting an hour-long i
   QR code is an encoding, not a protection. It is created `0600` and deleted once approval lands,
   but for the length of the approval window that file is a session anyone who can read it can
   take.
+- **An agent should show the human the link, not only the QR.** Someone driving a cloud session
+  from the Claude or ChatGPT app on a phone has Pubky Ring on *that* phone — and a phone cannot scan
+  its own screen. `login --json` puts the link on stdout as its `auth_url` event: show it in the
+  chat inside a code block, so it can be copied even where the app does not turn `pubkyauth://`
+  into a link, and tapped or pasted into Ring on the same device. Next to the QR, not instead of
+  it. The same rule as `--qr-out` applies: until Ring approves it the link is a credential, so it
+  goes to the human in the conversation and nowhere else — not into a commit, an issue, a log or a
+  file — and `--timeout` bounds how long it stays one.
 - **You are told when the client is stale, and never updated behind your back.** A newer release
   arrives as one line on stderr and as `update_available` in the `--json` envelope — null when
   there is nothing to say, otherwise `{version, schema, schema_changed}`. The last of those is
