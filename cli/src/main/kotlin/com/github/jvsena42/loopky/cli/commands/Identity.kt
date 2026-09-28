@@ -12,10 +12,12 @@ import com.github.jvsena42.loopky.cli.requireSession
 import com.github.jvsena42.loopky.cli.requireSessionSecretShape
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
+import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.AuthFlowHandle
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.data.repository.SignOutOutcome
 import com.github.jvsena42.loopky.data.storage.SecureSessionStore
+import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.Session
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
@@ -110,8 +112,14 @@ data class WhoamiResult(
      * There is no `expires_at` to report — the FFI's session payload carries no expiry, so a client
      * can only discover the wall, not plan around it. This is what an agent should check before
      * starting an hour-long import rather than 40 cards in (#165).
+     *
+     * `false` only when the homeserver refused the session; `null` when the question could not be
+     * asked — a proxy refusing the homeserver used to read as a dead session here, and sent agents
+     * to ask for a QR scan that fails the same way (#212). [sessionCheckError] says why.
      */
-    @SerialName("session_live") val sessionLive: Boolean,
+    @SerialName("session_live") val sessionLive: Boolean?,
+    /** Why [sessionLive] is null: an exit-code name and the failure. Null whenever it is not. */
+    @SerialName("session_check_error") val sessionCheckError: SessionCheckError? = null,
     /** Null, always, and deliberately — see [CLI_CAPABILITIES]. */
     @SerialName("display_name") val displayName: String? = null,
 )
@@ -284,7 +292,14 @@ suspend fun whoami(
     env: (String) -> String? = System::getenv,
 ): CommandResult {
     val session: Session = requireSession(identity, environment, env)
-    val live = pubkyClient.revalidateSession(session.sessionSecret).isSuccess
+    val check = pubkyClient.revalidateSession(session.sessionSecret)
+    val failure = check.exceptionOrNull()
+    val live = when {
+        failure == null -> true
+        failure.toErrorReason() in REFUSED_SESSION -> false
+        else -> null
+    }
+    val checkError = failure?.takeIf { live == null }?.let { SessionCheckError(checkFailureCode(it).json, it.message.orEmpty()) }
     val source = if (env("LOOPKY_SESSION").isNullOrBlank()) "file" else "env"
     return result(
         WhoamiResult(
@@ -297,6 +312,7 @@ suspend fun whoami(
             environment = environment.name,
             indexer = environment.indexer,
             sessionLive = live,
+            sessionCheckError = checkError,
         ),
         buildString {
             appendLine("Pubky:        ${session.identity.pubky}")
@@ -309,9 +325,32 @@ suspend fun whoami(
             appendLine("Session from: ${if (source == "env") "LOOPKY_SESSION" else "this machine"}")
             appendLine("Config home:  ${environment.configHome}")
             appendLine("Session in:   ${sessionStore.location}")
-            append("Session:      ${if (live) "live" else "NOT accepted by the homeserver — sign in again"}")
+            append(
+                when (live) {
+                    true -> "Session:      live"
+                    false -> "Session:      NOT accepted by the homeserver — sign in again"
+                    null -> "Session:      could not check (${checkError?.code}) — ${checkError?.message}"
+                },
+            )
         },
     )
+}
+
+@Serializable
+data class SessionCheckError(val code: String, val message: String)
+
+/** The reasons that mean the homeserver answered, and said no. */
+private val REFUSED_SESSION =
+    setOf(ErrorReason.SessionExpired, ErrorReason.NotSignedIn, ErrorReason.NoHomeserverAccount)
+
+/**
+ * Never `session_expired` for a check that did not complete: the shared classifier files a session
+ * round trip that could not be made as [ErrorReason.SessionUnreachable], which the exit table maps
+ * to 4 — the very answer this field exists not to give.
+ */
+private fun checkFailureCode(error: Throwable): ExitCode = when (val exit = ExitCode.of(error)) {
+    ExitCode.ProxyRefused, ExitCode.TlsUntrusted, ExitCode.ServerError -> exit
+    else -> ExitCode.Network
 }
 
 @Serializable
