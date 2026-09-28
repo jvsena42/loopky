@@ -568,8 +568,10 @@ What was measured (#212, `cli/sandbox-sim/`, and a real Claude Code cloud sessio
   own store, in the jar and the native binary alike (#362), so `tag trending` works there already;
   that does not reach the SDK, and `doctor` reports the two disagreeing.
 - **A refusal is exit 14, `proxy_refused`** — never 5, which would tell an agent to retry a request
-  an allowlist will refuse every time. A refused relay or homeserver reads as 14 once the bundled
-  `libpubkycore` carries the proxy's answer through (next bindings bump); until then, 5.
+  an allowlist will refuse every time. That includes a refused relay or homeserver on Linux and
+  Windows; the macOS build's `libpubkycore` does not carry the proxy's answer through yet, so there
+  a refused homeserver still reads as 5 (`login`'s relay check runs on the JVM and reads 14
+  everywhere).
 - **Installing from inside a Claude Code session** goes through its GitHub proxy, which serves
   release assets only for repositories attached to the session. A session on another repository
   can get a 403 for the binary; attach `jvsena42/loopky`, or install in the environment's setup

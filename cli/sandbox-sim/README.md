@@ -58,17 +58,18 @@ anywhere.
 
 ## What it found (2026-09-28)
 
-Exit codes, jar build, bundled `libpubkycore`.
+Exit codes, jar build, bundled `libpubkycore` at pubky-core-ffi-fork@243ac31 (#361). The native
+binary (`LOOPKY_DIST`) gives the same codes on `claude-trusted` and `claude-custom`.
 
 | | `import --dry-run` | `doctor` | `tag trending` | `login --timeout 5` |
 | --- | --- | --- | --- | --- |
 | claude-trusted | 0 | 14 | 14 | 14 |
 | claude-custom | 0 | 0 | 0 | 13 |
 | codex-common | 0 | 14 | 14 | 14 |
-| codex-custom | 0 | 15 | 0 | 5 |
-| codex-custom-readonly | 0 | 14 | 0 | 5 |
+| codex-custom | 0 | 15 | 0 | 15 |
+| codex-custom-readonly | 0 | 14 | 0 | 15 |
 | authenticated | 0 | 0 | 0 | 13 |
-| intercepting | 0 | 15 | 0 | 5 |
+| intercepting | 0 | 15 | 0 | 15 |
 | offline | 0 | 5 | 5 (15s) | 5 |
 
 - **The two defaults refuse Pubky; adding `doctor`'s hosts is the whole fix** where the proxy does
@@ -79,9 +80,15 @@ Exit codes, jar build, bundled `libpubkycore`.
   while the SDK still cannot resolve anything.
 - **`codex-custom-readonly`'s `doctor` reads 14, not 15**: with the proxy's CA trusted the JVM
   reaches the homeserver, and the unauthenticated `PUT` meets the method filter (`method_blocked`,
-  #363) before the SDK's certificate problem is the one worth reporting.
+  #363). Its `next_step` names the certificate problem as well, so fixing one does not only
+  uncover the other.
 - **`login` asks the relay before it shows a QR** (#360), with the same probe `doctor` uses, so a
-  refused relay reads 14 and an unreachable one 5. It used to read 13 offline, because the FFI's
-  relay resume keeps rejoining a relay it never reached until `--timeout`.
+  refused relay reads 14 and an unreachable one 5 — where it used to read 13 offline, because the
+  FFI's relay resume keeps rejoining a relay it never reached until `--timeout`. Past that probe,
+  the bundled FFI reports its error chain (pubky-core-ffi-fork#9), so an intercepted relay
+  handshake reads 15 rather than 5. That holds for the Linux and Windows rows; the macOS row has
+  not been rebuilt yet (#361).
+- No DHT errors reach stderr behind any proxy (pubky-core-ffi-fork#10). `offline` still shows a
+  few, since with no proxy configured the DHT is tried as on an open network.
 - `doctor`'s probes time out at 5s each, and a timed-out probe is asked once more before its host
   reads as unreachable (#369), so a 5 has already survived one retry.

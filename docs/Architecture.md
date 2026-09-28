@@ -2402,9 +2402,9 @@ else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
 
 - **pkarr needs no UDP.** Resolution races the DHT against the HTTP relays (`pkarr.pubky.app`,
   `pkarr.pubky.org`), and the relays answer alone in ~0.7s — the same as on an open network.
-  The FFI drops the DHT entirely when an HTTPS proxy is configured (pubky-core-ffi-fork; in the
-  bundled `libpubkycore` from the next bindings bump), because all it did there was log an ERROR
-  every two seconds onto the stderr of every command.
+  The FFI drops the DHT entirely when an HTTPS proxy is configured (pubky-core-ffi-fork#10),
+  because all it did there was log an ERROR every two seconds onto the stderr of every command.
+  The Linux and Windows rows carry it since #361; the macOS row has not been rebuilt yet.
 - **The homeserver is a fixed name after all.** Its pkarr record names a direct address *and* an
   ordinary domain (`homeserver.pubky.app` for production). `pubky` probes the direct address for
   1.5s — the probe does not go through the proxy, so a sandbox always fails it — then falls back
@@ -2418,10 +2418,12 @@ else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
   variables onto the JDK's properties at startup, and trending now fails rather than returning
   `[]`.
 - **A refusal is its own exit code**, 14 `proxy_refused` (§13.4), because 5 says "retry as-is" and
-  an allowlist answers the same every time. The JVM side classifies today; the Rust side (relay,
-  homeserver) does once the bundled `libpubkycore` reports its errors' source chain, from the same
-  bindings bump — the proxy's 403 sits two links below what `Display` prints, and until then it
-  reads as 5.
+  an allowlist answers the same every time. Both sides classify: the Rust side (relay,
+  homeserver) because `libpubkycore` reports its errors' full source chain
+  (pubky-core-ffi-fork#9) — the proxy's 403 sits two links below what `Display` prints. That is
+  true of the Linux and Windows rows since #361; on macOS, whose row predates it, a refused
+  homeserver still reads as 5 until that row is rebuilt. `login`'s relay check (#360) is a JVM
+  probe and reads 14 on every row.
 - **`loopky doctor` answers the host list** for the environment and homeserver at hand, since the
   homeserver's host comes from its own record. It needs no session: a sandbox without egress is
   exactly where signing in fails. It also says what to do — an agent cannot change its sandbox's
