@@ -148,6 +148,7 @@
     <string name="discover_title">Découvrir</string>
     <string name="discover_search">Rechercher</string>
     <string name="discover_topics_title">Thèmes</string>
+    <string name="discover_topics_error">Impossible de charger les thèmes.</string>
     <string name="discover_people_title">Personnes sur Loopky</string>
     <string name="discover_browse_title">Découvre des paquets</string>
     <string name="discover_browse_tag_title">Paquets avec le tag « %1$s »</string>

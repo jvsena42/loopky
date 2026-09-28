@@ -152,6 +152,7 @@
     <string name="discover_title">Khám phá</string>
     <string name="discover_search">Tìm kiếm</string>
     <string name="discover_topics_title">Chủ đề</string>
+    <string name="discover_topics_error">Không thể tải chủ đề.</string>
     <string name="discover_people_title">Mọi người trên Loopky</string>
     <string name="discover_browse_title">Khám phá bộ thẻ</string>
     <string name="discover_browse_tag_title">Bộ thẻ có nhãn “%1$s”</string>

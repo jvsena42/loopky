@@ -149,6 +149,7 @@
     <string name="discover_title">发现</string>
     <string name="discover_search">搜索</string>
     <string name="discover_topics_title">话题</string>
+    <string name="discover_topics_error">无法加载话题。</string>
     <string name="discover_people_title">Loopky 上的用户</string>
     <string name="discover_browse_title">发现卡组</string>
     <string name="discover_browse_tag_title">标签为“%1$s”的卡组</string>

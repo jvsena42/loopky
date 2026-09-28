@@ -152,6 +152,7 @@
     <string name="discover_title">Discover</string>
     <string name="discover_search">Search</string>
     <string name="discover_topics_title">Topics</string>
+    <string name="discover_topics_error">Couldn\'t load topics.</string>
     <string name="discover_people_title">People on Loopky</string>
     <string name="discover_browse_title">Discover decks</string>
     <string name="discover_browse_tag_title">Decks tagged “%1$s”</string>

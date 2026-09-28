@@ -149,6 +149,7 @@
     <string name="discover_title">탐색</string>
     <string name="discover_search">검색</string>
     <string name="discover_topics_title">주제</string>
+    <string name="discover_topics_error">주제를 불러오지 못했습니다.</string>
     <string name="discover_people_title">Loopky 사용자</string>
     <string name="discover_browse_title">덱 탐색</string>
     <string name="discover_browse_tag_title">“%1$s” 태그가 붙은 덱</string>

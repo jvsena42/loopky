@@ -148,6 +148,7 @@
     <string name="discover_title">Descobrir</string>
     <string name="discover_search">Buscar</string>
     <string name="discover_topics_title">Tópicos</string>
+    <string name="discover_topics_error">Não foi possível carregar os tópicos.</string>
     <string name="discover_people_title">Pessoas no Loopky</string>
     <string name="discover_browse_title">Descubra baralhos</string>
     <string name="discover_browse_tag_title">Baralhos com a tag “%1$s”</string>
