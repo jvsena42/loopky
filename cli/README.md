@@ -151,6 +151,7 @@ loopky whoami --json
 loopky logout
 
 loopky commands --json              # the whole surface as JSON. No session, no network.
+loopky doctor                       # every host this needs, through your proxy, as an allowlist
 
 loopky update --check            # is there a newer release?
 loopky update                    # fetch it, check its digest, replace this binary
@@ -514,7 +515,50 @@ file never has the problem.
 | `LOOPKY_ENV` | `staging` or `production`. `--env` wins. Defaults to production. |
 | `LOOPKY_CONFIG_HOME` | Where state lives. Defaults to `$XDG_CONFIG_HOME/loopky`, then `~/.config/loopky` (`~/Library/Application Support/loopky` on macOS, `%LOCALAPPDATA%\loopky` on Windows — `Local`, not `Roaming`, so a session secret is not copied to a domain profile server at logoff). Setting it also moves the session out of the macOS Keychain and back into a file — and on Windows, pointing either it or `XDG_CONFIG_HOME` at a roaming location (`%APPDATA%`, `%USERPROFILE%\.config`) puts the session back in the roaming profile. |
 | `LOOPKY_NO_UPDATE_CHECK` | Set to anything to never look for a newer release. The check is cached for a day, runs alongside the command, and can never fail it — but a pipeline that wants no surprises can switch it off. `--no-update-check` does the same for one invocation. |
+| `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY` | The proxy to go through, read by **both** HTTP stacks in the process, in reqwest's order: uppercase first, and a set-but-empty variable counts as set (falling back to `ALL_PROXY`). Credentials in the URL work, and are sent only on the tunnel's `CONNECT`. Only `http://` proxies: a `socks5://` or `https://` one is refused with a warning. See "Behind a proxy" below. |
 | `RUST_LOG` | The pubky SDK's own tracing, defaulted to `warn` — by the start script in the jar distribution and through libc in the binary, which has no start script. `RUST_LOG=debug` is the first thing to try when a homeserver call fails for no visible reason. |
+
+## Behind a proxy (agent sandboxes)
+
+A cloud agent sandbox usually reaches the network through an **allowlist proxy**, and its
+out-of-the-box list covers package managers, not Pubky. `loopky` works behind one once these hosts
+are on it (production):
+
+| Host | Needed for |
+| --- | --- |
+| `httprelay.pubky.app` | `login` — where the Ring approval arrives |
+| `pkarr.pubky.app`, `pkarr.pubky.org` | finding any homeserver (pkarr over HTTP) |
+| `homeserver.pubky.app` | every deck read and write |
+| `nexus.pubky.app` | `tag trending` and every indexer read |
+| `github.com`, `release-assets.githubusercontent.com` | install and `loopky update` |
+
+**`loopky doctor` prints this list for your setup rather than this README's**, asking each host
+through the configured proxy — it needs no session, and exits 14 naming what was refused. The
+homeserver row is the one worth checking there: it is read from your homeserver's own pkarr
+record, so an account on another homeserver has another host (`loopky doctor --homeserver
+<pubky>`), and staging has `nexus.staging.pubky.app` and its own homeserver.
+
+What was measured in a Squid allowlist container with everything else dropped (#212):
+
+- **UDP is not needed.** The DHT is only one of pkarr's two paths; the relays above carry
+  resolution on their own, at the same speed.
+- **The homeserver's first contact costs ~1.5s.** Its record also names a direct address, which
+  the client tries first and a sandbox always drops; after that it uses `homeserver.pubky.app` and
+  remembers the choice for a minute.
+- **A proxy that intercepts TLS does not work**, even with its CA trusted system-wide: the pubky
+  SDK ships its own root certificates and does not read `SSL_CERT_FILE`. That needs a change
+  upstream; until then such a sandbox needs these hosts exempted from interception.
+- **A refusal is exit 14, `proxy_refused`** — never 5, which would tell an agent to retry a request
+  an allowlist will refuse every time. `doctor`, `tag trending` and `update` report it today; a
+  refused relay or homeserver still reads as 5 until the next `libpubkycore` bump carries the
+  proxy's answer through.
+
+With a proxy configured, the pubky SDK resolves over the pkarr relays **only** — so a proxy that
+lacks them fails the lookup even where UDP would have reached the DHT. Put the relays on the list,
+or in `NO_PROXY`.
+
+Sign in on a machine with a phone and hand the sandbox `LOOPKY_SESSION` (see Environment): then
+`httprelay.pubky.app` is not needed at all. `cli/sandbox-sim/` reproduces all of this locally.
 
 ## Exit codes
 
