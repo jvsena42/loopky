@@ -6,3 +6,6 @@ homeserver.pubky.app
 nexus.pubky.app
 github.com
 release-assets.githubusercontent.com
+# Recommended, not required: card pictures. `doctor` reports these under `recommended`.
+upload.wikimedia.org
+commons.wikimedia.org

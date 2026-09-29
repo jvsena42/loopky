@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.cli
 
+import com.github.jvsena42.loopky.cli.commands.RECOMMENDED_HOSTS
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -30,5 +31,10 @@ class CommandHelpTest {
         cliCommands().forEach { assertEquals(it, commandFor(it.path)) }
         assertNull(commandFor("deck"))
         assertNull(commandFor(""))
+    }
+
+    @Test
+    fun `the usage block names the hosts doctor recommends`() {
+        RECOMMENDED_HOSTS.forEach { (host, _) -> assertContains(USAGE, host) }
     }
 }

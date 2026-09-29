@@ -40,8 +40,14 @@ data class DoctorResult(
     /** False when the homeserver's host could not be learned, so the list above is missing it. */
     @SerialName("allowlist_complete") val allowlistComplete: Boolean,
     /**
+     * Hosts worth allowing that no command needs: where card pictures come from. Probed like the
+     * rest, never part of [allowlist] and never able to fail the exit code.
+     */
+    val recommended: List<HostCheck> = emptyList(),
+    /**
      * What to do about it, addressed to the agent reading this: which hosts to ask the human for,
-     * and where each sandbox product keeps that setting. Null when nothing is wrong.
+     * and where each sandbox product keeps that setting. Null when nothing is wrong, recommended
+     * hosts included.
      */
     @SerialName("next_step") val nextStep: String? = null,
 )
@@ -99,9 +105,12 @@ internal suspend fun doctor(
         add(Target(environment.indexer, "tag trending and indexer reads"))
         add(Target(UpdateChecker.manifestUrl(), "install and loopky update"))
     }
-    val probed = coroutineScope {
-        targets.map { target -> async { target to probe(target.url) } }.awaitAll()
-    }.flatMap { (target, outcome) -> followRedirects(target, outcome, probe) }
+    val (probed, recommended) = coroutineScope {
+        val optional = async { probeRecommended(probe) }
+        val required = targets.map { target -> async { target to probe(target.url) } }.awaitAll()
+            .flatMap { (target, outcome) -> followRedirects(target, outcome, probe) }
+        required to optional.await()
+    }
     val checks = withAssetCdn(probed, probe).withWriteCheck(homeserverHost, probes.write)
 
     val blocking = blockingChecks(checks, relaysWork = resolvedHost != null)
@@ -119,8 +128,11 @@ internal suspend fun doctor(
         hosts = checks,
         allowlist = checks.map { it.host }.distinct(),
         allowlistComplete = homeserverHost != null,
+        recommended = recommended,
     )
-    val report = base.copy(nextStep = exit?.let { nextStep(it, blocking, base.allowlist, sdkDisagrees) })
+    val missingRecommended = recommended.filter { it.status != REACHABLE }.map { it.host }
+    val step = exit?.let { nextStep(it, blocking, base.allowlist, sdkDisagrees) }
+    val report = base.copy(nextStep = withRecommended(step, missingRecommended))
     val text = render(report, lookupFailure)
     if (exit == null) return result(report, text)
     // The summary first: a failure's text reaches stderr behind `loopky: `, which would otherwise
@@ -281,17 +293,25 @@ private fun render(report: DoctorResult, lookupFailure: String?): String = build
     appendLine("Proxy:      ${report.proxy ?: "none"}")
     appendLine("Homeserver: ${report.homeserver}")
     lookupFailure?.let { appendLine("            $it") }
-    val width = report.hosts.maxOf { it.host.length }
-    report.hosts.forEach { check ->
+    val width = (report.hosts + report.recommended).maxOf { it.host.length }
+    fun row(check: HostCheck) {
         val status = if (check.status == REACHABLE) check.status else check.status.uppercase()
         append("  ${status.padEnd(STATUS_WIDTH)} ${check.host.padEnd(width)}  ${check.neededFor}")
         appendLine(check.detail?.let { " — $it" }.orEmpty())
+    }
+    report.hosts.forEach(::row)
+    if (report.recommended.isNotEmpty()) {
+        appendLine("Recommended (optional):")
+        report.recommended.forEach(::row)
     }
     if (report.allowlistComplete) {
         append("Allowlist:  ${report.allowlist.joinToString(" ")}")
     } else {
         appendLine("Allowlist (incomplete — the homeserver's host is missing; allow the pkarr relays and re-run):")
         append("            ${report.allowlist.joinToString(" ")}")
+    }
+    if (report.recommended.isNotEmpty()) {
+        append("\nRecommended allowlist:  ${report.recommended.joinToString(" ") { it.host }}")
     }
     report.nextStep?.let { append("\n\nNext step: $it") }
 }

@@ -303,6 +303,44 @@ class DoctorTest {
         assert(""""next_step":null""" in result.data.toString()) { result.data.toString() }
     }
 
+    @Test
+    fun `the Wikimedia hosts are recommended, never required`() = runTest {
+        val result =
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(reachable()), proxy = null)
+
+        val report = result.data.toString()
+        assert(""""recommended":[""" in report && "commons.wikimedia.org" in report) { report }
+        val allowlist = report.substringAfter(""""allowlist":[""").substringBefore("]")
+        assert("wikimedia" !in allowlist) { allowlist }
+    }
+
+    @Test
+    fun `a refused recommended host passes, and the next step asks for it`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("wikimedia" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
+        }
+
+        val result =
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = "http://proxy:3128")
+
+        val report = result.data.toString()
+        assert("Optionally, also ask for upload.wikimedia.org commons.wikimedia.org" in report) { report }
+    }
+
+    @Test
+    fun `a required refusal still leads the next step, with the recommended hosts after it`() = runTest {
+        val probe: suspend (String) -> ProbeOutcome = { url ->
+            if ("nexus" in url || "wikimedia" in url) ProbeOutcome(REFUSED, "403", null, 1) else ProbeOutcome(REACHABLE, null, null, 1)
+        }
+        val error = assertFailsWith<CliError> {
+            doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(probe), proxy = "http://proxy:3128")
+        }
+
+        assertEquals(ExitCode.ProxyRefused, error.exitCode)
+        val step = error.data.toString().substringAfter(""""next_step":""")
+        assert(step.indexOf("nexus.pubky.app") < step.indexOf("Optionally")) { step }
+    }
+
     /** sandbox-sim's codex-custom with JVM_TRUSTS_PROXY_CA=1: the JVM passes, the SDK cannot. */
     @Test
     fun `the SDK failing relays the JVM reached, behind a proxy, is not a clean bill of health`() = runTest {
