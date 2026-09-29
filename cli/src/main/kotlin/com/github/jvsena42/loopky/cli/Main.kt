@@ -72,9 +72,7 @@ fun main(argv: Array<String>) {
 private fun run(argv: Array<String>): ExitCode {
     val args = runCatching { Args.parse(argv) }.getOrElse { error ->
         System.err.println("loopky: ${error.message}")
-        System.err.println("\n" + USAGE)
-        // Repeated below the block for the same reason as in [fail]: the manual buries it.
-        System.err.println("\nloopky: ${error.message}")
+        System.err.println("Try `loopky --help`.")
         return ExitCode.Usage
     }
 
@@ -91,6 +89,12 @@ private fun run(argv: Array<String>): ExitCode {
         val env = CliEnvironment.resolve(args)
         println(successEnvelope("commands", env.name, env.indexer, commandSurface().data))
         return ExitCode.Ok
+    }
+    if (args.has("help")) {
+        commandFor(args.verb)?.let { command ->
+            println(commandHelp(command))
+            return ExitCode.Ok
+        }
     }
     if (args.words.isEmpty() || args.has("help")) {
         println(USAGE)
@@ -333,13 +337,9 @@ private fun fail(
         println(failureEnvelope(command, env.name, env.indexer, error, notice.available))
     } else {
         System.err.println("loopky: ${error.message}")
-        if (error.exitCode == ExitCode.Usage) {
-            System.err.println("\n" + USAGE)
-            // And again underneath it. Sixty lines of manual scroll the one line that says what
-            // was actually wrong off the top of the terminal, and an agent capturing stderr reads
-            // the tail — so the whole output ended up saying nothing actionable (#257, item 5).
-            System.err.println("\nloopky: ${error.message}")
-        }
+        // The command's own synopsis, not the manual: an agent capturing stderr reads the tail, and
+        // hundreds of lines of manual buried the one that said what was wrong (#257, item 5).
+        if (error.exitCode == ExitCode.Usage) commandFor(command)?.let { System.err.println("\n" + commandHelp(it)) }
     }
     noteUpdate(notice)
 }

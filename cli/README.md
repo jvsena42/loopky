@@ -226,9 +226,9 @@ $ loopky card delete d1 c1
 loopky: Unknown command 'card delete'. `card` takes one of: list, add, edit, rm. Try `loopky --help`.
 ```
 
-The usage block still follows a usage error, with the message **repeated underneath it** — a
-terminal keeps its last lines, and sixty lines of manual is exactly how the one that mattered got
-scrolled away.
+A usage error is followed by **that command's own help** — its synopsis and options, generated
+from the same table — rather than the whole manual, which scrolled the one line that mattered
+away. `loopky <command> --help` prints the same thing; `loopky --help` is the full reference.
 
 ### Language decks
 
