@@ -391,129 +391,93 @@ internal val USAGE = """
 
     USAGE
       loopky <command> [options]
+      loopky <command> --help       that command's options
+      loopky commands --json        the whole surface as JSON: verbs, operands, flags, exit codes
 
     IDENTITY
       login [--export] [--qr-out FILE] [--url-only] [--timeout SECONDS]
-                                Print a QR code for Pubky Ring and wait for approval.
-                                --export also prints the session secret for LOOPKY_SESSION.
-                                --timeout bounds the wait and exits 13, which is what an
-                                unattended caller needs: killing the process instead skips the
-                                sweep that deletes a --qr-out file still holding a live auth URL.
+                                Print a QR code for Pubky Ring and wait for approval. --export also
+                                prints the session secret for LOOPKY_SESSION. --timeout exits 13
+                                when nobody approves in time.
       logout                    Forget the stored session.
-      whoami                    Pubky, homeserver, capabilities, environment, and whether the
-                                session is still accepted.
+      whoami                    Pubky, homeserver, capabilities, environment, session status.
       doctor [--homeserver <pubky>]
-                                Ask every host loopky needs, through the configured proxy, and
-                                print the allowlist. No session needed. Exits 14 if a proxy
-                                refused one, 5 if one was unreachable.
+                                Check every host loopky needs through the configured proxy and
+                                print the allowlist. No session needed. See NETWORK.
 
     DECKS
       deck list
       deck show <deckId>
-      deck create --title T [--description D] [--tag T]... [--cover-url URL]
-                  [--cover-emoji E] [--from-file F] [--check-images] [--dry-run]
-                  [--id DECKID] [--if-not-exists]
-                  [--listen] [--speak] [--type] [--reverse]
-                  [--front-lang BCP47] [--back-lang BCP47]
-                                --id publishes under an id you choose instead of a fresh one, so
-                                a run that was killed mid-flight is addressable; with
-                                --if-not-exists the deck that is already there is returned
-                                untouched and the result says created: false. That pair is the
-                                idempotent form — without it, an existing id is refused rather
-                                than published over, because a publish replaces the whole chunk
-                                table and would take the deck's cards with it.
-                                A declared pair also labels the deck — "spanish" plus the
-                                "language" umbrella — so someone learning it can find the deck.
-                                Ordinary tags you can remove. A deck with no pair gets neither.
-                                --dry-run runs all of that — the id check, this command’s own
-                                card-file reader, every row, --check-images — and stops before the
-                                publish. It is the pre-flight for a file you are about to publish
-                                with; import --dry-run reads a different format. Without --id
-                                there is no id to check, so it needs no session.
+      deck create --title T [--description D] [--tag T]... [--cover-url URL] [--cover-emoji E]
+                  [--from-file F] [--check-images] [--dry-run] [--id DECKID] [--if-not-exists]
+                  [--listen] [--speak] [--type] [--reverse] [--front-lang BCP47] [--back-lang BCP47]
+                                --id with --if-not-exists is the idempotent form: an existing deck
+                                is returned untouched (created: false). Without --if-not-exists an
+                                existing id is refused. A language pair also tags the deck
+                                ("spanish" plus "language"). --dry-run validates everything and
+                                publishes nothing.
       deck edit <deckId> [--title T] [--description D] [--cover-url URL] [--cover-emoji E]
                   [--tag T]... [--clear-tags] [--clear-cover]
-                  [--listen|--no-listen] [--speak|--no-speak]
-                  [--type|--no-type] [--reverse|--no-reverse]
-                  [--front-lang BCP47] [--back-lang BCP47]
-                                One manifest write; cards are never read or rewritten. A flag you
-                                do not pass leaves that field alone, `--description=` clears it,
-                                and --tag replaces the tag set rather than appending to it.
-                                Naming a pair reconciles its language labels, which is also how a
-                                deck published before they existed gains them: restate the pair.
+                  [--listen|--no-listen] [--speak|--no-speak] [--type|--no-type]
+                  [--reverse|--no-reverse] [--front-lang BCP47] [--back-lang BCP47]
+                                Metadata only; cards are untouched. An omitted flag leaves its field
+                                alone, `--description=` clears it, --tag replaces the whole set.
       deck delete <deckId>
       deck sync <deckId>
       deck compact <deckId>     Fold away the holes card deletes leave in the chunk table.
 
     CARDS
       card list <deckId> [--limit N] [--cursor TOKEN] [--missing-image|--has-image]
-                                Plain, it reads the whole deck. --limit/--cursor walk the manifest's
-                                chunk table and fetch only the records a page needs, which is what
-                                makes a 4,000-card deck affordable to iterate on; --json carries
-                                next_cursor while there is more. The two filters narrow what comes
-                                back and compose with both — there is no server-side filter to ask
-                                for instead, so without --limit they save the output, not the fetch.
+                                --limit/--cursor page through large decks; --json carries
+                                next_cursor while there is more.
       card add <deckId> --front F --back B [--front-image URL] [--back-image URL]
-                                Add --check-images to any of these to HEAD every distinct picture
-                                URL first. Warns, never refuses; see CARD IMAGES.
       card add <deckId> --from-file cards.tsv|cards.jsonl [--dry-run]
-                                A file is appended in groups of 100 — one chunk write and one
-                                manifest patch each, not one of both per card — so a large batch
-                                lands in seconds and reports N/M as it goes. --dry-run reads,
-                                validates and dedupes the whole file and writes nothing.
+                                Written 100 cards per request.
       card edit <deckId> <cardId> [--front F] [--back B] [--front-image URL] [--back-image URL]
       card edit <deckId> --from-file edits.jsonl
-                                A batch is idempotent, so re-running the same file is the way to
-                                pick one back up: a row already holding what it asks for is
-                                skipped, not rewritten. Everything is validated before anything is
-                                written, one refused row does not end the batch, and the result —
-                                on the failure envelope too — reports written / skipped / failed
-                                with the card id and reason for each failure.
+                                Idempotent: re-run the same file to resume. Reports written /
+                                skipped / failed per card.
       card rm <deckId> <cardId>
+                                card add and card edit also take --check-images; see CARD IMAGES.
 
     IMPORT
       import <file|-> --title T [--separator auto|tab|comma|semicolon|pipe|dash|colon|blank|markdown]
                       [--description D] [--tag T]... [--resume]
                       [--front-lang BCP47] [--back-lang BCP47]
       import <deck.apkg> --title T [--front-field N|name] [--back-field N|name]
-                      An Anki export. Same command, same parser spine; the fields are named, so
-                      --front-field/--back-field pick which two become the card. Numbers are
-                      1-based, matching the labels an unnamed field is shown under.
+                      An Anki export; the two fields become front and back (numbers are 1-based).
       import <file> --dry-run [--json] [--check-images]
-                      Report what would be published — for an .apkg, its field names with a
-                      sample of each, the note count, the dropped-note breakdown and what its
-                      pictures would spend. Writes nothing and needs no session.
+                      Report what would be published. Writes nothing, needs no session.
 
     DISCOVERY
-      tag trending [--limit N]  Read the Nexus indexer. No session, no capability.
+      tag trending [--limit N]  Read the Nexus indexer. No session needed.
 
     UPDATE
-      update                    Replace this binary with the newest release, after checking the
-                                digest published beside it. Refuses, with the right command, on a
-                                Homebrew or .deb install, in a container, and on the jar.
+      update                    Replace this binary with the newest release. Refuses (exit 11) on
+                                Homebrew, .deb, containers and the jar, naming the right command.
       update --check            Ask without doing.
 
     AGENTS
-      commands                  Print this surface as JSON on stdout: every verb, the operands it
-                                takes and their arity, its flags, whether it needs a session, and
-                                every exit code it can produce. Generated from the same table the
-                                completion scripts are, so it cannot describe a surface this
-                                binary does not have. `loopky --help --json` prints the same thing.
-                                Needs no session and no network.
+      commands                  This surface as JSON (same as `loopky --help --json`).
+      batch <file|->            Run many operations on one session — one JSON object per line,
+                                {"argv": ["card", "add", "<deckId>", "--front", "a", "--back", "b"]},
+                                with an optional "id" echoed back. Under --json each operation
+                                streams its own line. Keeps going after a failure unless
+                                --stop-on-error; exits with the first failure's code. Nothing rolls
+                                back — re-run it (card add, card edit and deck create --id
+                                --if-not-exists are idempotent).
 
-      --json shape              One line per result, and the command's own shape is always under
-                                "data" — never at the top level:
+      --json shape              One JSON object per result, the command's data always under "data":
 
                                   {"schema":1,"ok":true,"command":"card list","environment":"…",
                                    "indexer":"…","update_available":null,"data":{…}}
 
-                                A failure is the same object with "ok":false and an "error"
-                                {"code","exit","message"}, on stdout too, so one stream carries
-                                both outcomes. What "data" holds, for the reads worth piping:
+                                A failure is the same object with "ok":false and
+                                "error":{"code","exit","message"}, also on stdout.
 
                                   card list   data.cards[], data.count, data.card_count,
                                               data.next_cursor. A card is {"id","front":{"text",
-                                              "image":{"url","mime",…}},"back":{…}} — front is an
-                                              OBJECT with .text, not a string.
+                                              "image":{"url",…}},"back":{…}} — front is an OBJECT.
                                   deck list   data.decks[], data.count
                                   deck show   data.deck
                                   card add    data.written, data.skipped, data.cards[],
@@ -522,182 +486,87 @@ internal val USAGE = """
                                   import      data.deck, data.cards_written, data.image_checks[],
                                               data.image_advice[]
 
-                                Under --dry-run, deck create's data.created says whether the deck
-                                WOULD be published: with data.dry_run it distinguishes all four
-                                outcomes, so --id X --if-not-exists --dry-run answers "is this id
-                                free" in one field.
-
-                                A card file takes the flat {"front":"…"} shape AND that nested one,
-                                so `card list --json | jq -c .data.cards[] > f` and
-                                `card edit <deckId> --from-file f` is a round trip. See CARD FILES.
-
-      batch <file|->            Run a file of operations against one session — one JSON object per
-                                line, {"argv": ["card", "add", "deckid", "--front", "a",
-                                "--back", "b"]}, with an optional "id" echoed back. The bare array
-                                works too. Every homeserver command pays process start, the FFI
-                                load and the session round trip; a *sequence of different*
-                                commands is the one shape that had no amortised form, and it is
-                                the shape an agent produces. Each line is parsed and dispatched by
-                                the same code a command line is, so a batch can never accept
-                                something the CLI does not.
-
-                                Under --json each operation streams a line of its own —
-                                "event":"operation", carrying that command's whole result — and
-                                the final envelope summarises. A failed operation does not end the
-                                run unless --stop-on-error; the exit code is the first failure's,
-                                because session_expired and storage_full say different things
-                                about re-running the file. Nothing is transactional and nothing
-                                rolls back: re-run it. card add, card edit and
-                                deck create --id --if-not-exists are all idempotent.
-
     SHELL
-      completion bash|zsh|fish  Print a completion script on stdout, generated from this binary's
-                                own command table — so it cannot describe a surface the binary
-                                does not have. Nothing it offers touches the network: a deck id
-                                would be a homeserver round trip on a keypress.
+      completion bash|zsh|fish  Print a completion script. Regenerate it after an upgrade.
 
                                   eval "${'$'}(loopky completion bash)"        # in ~/.bashrc
                                   loopky completion zsh > "${'$'}{fpath[1]}/_loopky"
                                   loopky completion fish > ~/.config/fish/completions/loopky.fish
 
-                                Regenerate it after an upgrade; a stale script offers flags that
-                                are refused.
-
     GLOBAL
       --json                    Machine-readable output on stdout. Stable, versioned schema.
-      --dry-run                 Read and report; write nothing. On import, deck create and card add
-                                — each through its own path, so what it reports is what that
-                                command would do.
+      --dry-run                 Write nothing (import, deck create, card add).
       --env staging|production  Which network to talk to. Defaults to production.
       --no-update-check         Do not look for a newer release on this invocation.
       --verbose                 Debug logging on stderr.
       --help, --version
 
     ENVIRONMENT
-      LOOPKY_SESSION            A session secret. Read *before* the stored session, and the only
-                                way in on a sandbox that has no stored one. Mint it with
-                                `loopky login --export` on a machine with a human at it.
-      LOOPKY_ENV                staging | production. --env wins. Defaults to production.
-      LOOPKY_CONFIG_HOME        Where state lives. Defaults to ${'$'}XDG_CONFIG_HOME/loopky, then
-                                ~/.config/loopky — ~/Library/Application Support/loopky on macOS,
-                                %LOCALAPPDATA%\loopky on Windows. On macOS the session is in the
-                                login Keychain instead — unless this or XDG_CONFIG_HOME is set,
-                                either of which keeps everything under the directory it names. On
-                                Windows, pointing either at a roaming location (%APPDATA%,
-                                %USERPROFILE%\.config) puts the session back in the roaming profile
-                                and onto the domain's profile server at logoff.
-                                `loopky whoami` reports both.
-      LOOPKY_NO_UPDATE_CHECK    Set to anything to never look for a newer release. The check is
-                                cached for a day, runs alongside the command, and can never fail
-                                it — but a pipeline that wants no surprises can switch it off.
+      LOOPKY_SESSION            A session secret, read before the stored session. Mint it with
+                                `loopky login --export` where a human can approve.
+      LOOPKY_ENV                staging | production. --env wins.
+      LOOPKY_CONFIG_HOME        Where state lives; defaults to ${'$'}XDG_CONFIG_HOME/loopky or the
+                                platform's config directory. On macOS the session is in the
+                                Keychain unless this or XDG_CONFIG_HOME is set. `loopky whoami`
+                                reports both.
+      LOOPKY_NO_UPDATE_CHECK    Never look for a newer release.
+
+    NETWORK
+      Behind an allowlist proxy, these hosts must be allowed (production):
+
+        httprelay.pubky.app     login
+        pkarr.pubky.app         finding a homeserver (pkarr.pubky.org works instead)
+        pkarr.pubky.org
+        homeserver.pubky.app    every deck read and write
+        nexus.pubky.app         tag trending and indexer reads
+
+      Recommended, for card pictures:
+
+        upload.wikimedia.org    where Wikimedia images are served; --check-images HEADs them
+        commons.wikimedia.org   finding a picture and its URL
+
+      `loopky doctor` checks each one and prints the list for your homeserver and environment.
+      Exit 14 means a proxy refused a host: allowlisting it is the fix, retrying is not.
 
     CARD FILES
       TSV:   front <TAB> back <TAB> front_image_url <TAB> back_image_url   (last two optional)
       JSONL: {"id":"…","front":"…","back":"…","front_image_url":"…","back_image_url":"…"}
-             "id" is for `card edit`; a field that is absent is left unchanged.
-
-             A row may also be a card in the shape `card list --json` emits —
-             {"id":"…","front":{"text":"…","image":{"url":"…"}},"back":{…}} — so a deck can be
-             read, edited with jq and fed straight back. Absent still means unchanged; an
-             explicit null clears. An image with no url is a homeserver blob this format cannot
-             name, so it is left alone and reported.
-
-             That shape comes out of the envelope at data.cards[], not at the top level. See
-             "--json shape" under AGENTS for the whole of it.
+             "id" is for `card edit`; an absent field is left unchanged, an explicit null clears.
+             The nested shape `card list --json` emits (data.cards[]) is accepted too, so a deck
+             can be read, edited with jq and written back.
 
     CARD TEXT
-      A parenthesized aside is never part of the answer. Typing, Speak and Listen all drop it —
-      ASCII ( ) and full-width （ ） alike — while the card still SHOWS it. So it is the place for
-      what the reader should see but never has to say or type:
-
-        hola (informal)          usted (formal)          ねこ (neko)          猫（ねこ）
-
-      A register, a sense, a romanization or a kana reading goes in brackets; putting it in the
-      text proper makes it part of the expected answer, and a spoken "hola" misses "hola informal".
-      A side that is ENTIRELY parenthesized is kept whole, since it would otherwise have no answer.
+      A parenthesized aside is shown but never part of the answer — typing, Speak and Listen all
+      drop it:   hola (informal)     ねこ (neko)     猫（ねこ）
+      Put a register, sense or reading in brackets; otherwise it becomes part of the answer.
 
     CARD IMAGES
-      A card picture is a URL. Nothing is uploaded and no media quota is spent — but nothing is
-      fetched either, so this client cannot tell you the picture loads. It can only tell you what
-      is knowably wrong, and these two account for most of it:
+      A picture is an https URL; nothing is uploaded and nothing is fetched.
+        - https:// only. http:// is refused — neither app renders it.
+        - Wikimedia thumbnails exist only at 120, 250, 330, 500, 960, 1280 and 1920 px; any other
+          width is a blank card. Or drop /thumb/ and the NNNpx- prefix for the original.
+        - Only the final extension counts: …/Sign.svg/500px-Sign.svg.png is a PNG, …/Sign.svg is not.
+        - From the imageinfo API, strip the ?utm_… query and use upload.wikimedia.org as the host.
 
-        https:// only.  Android and iOS both refuse cleartext, so an http:// address is a card
-                        whose picture cannot render on either. Refused, not stored.
-
-        Wikimedia serves thumbnails at 120, 250, 330, 500, 960, 1280 and 1920 px and answers 400
-        for every other width, so .../thumb/…/800px-Name.jpg is a blank card on both apps. Drop
-        the /thumb/ segment and the NNNpx- prefix to get the full-size original, which is always
-        served. Warned about on stderr, never fatal — the list is theirs to change.
-
-        Only the FINAL extension is judged. Commons renders a TIFF or an SVG source to a raster
-        thumbnail and keeps the source extension in the middle of the URL, so
-        …/Cell.tif/lossy-page1-500px-Cell.tif.jpg and …/Sign.svg/500px-Sign.svg.png are both
-        ordinary pictures. …/Cell.tif and …/Sign.svg, ending there, are not.
-
-        From the imageinfo API, strip the ?utm_source=…&utm_campaign=imageinfo query it appends to
-        url and thumburl, and rewrite the thumb.wikimedia.org host it hands back to
-        upload.wikimedia.org — the rules above are written for that one.
-
-      Beyond that, prefer a host that serves images to anyone: some refuse an unfamiliar client
-      outright, and the result is the same blank card with nothing reporting it.
-
-      --check-images asks. One HEAD per DISTINCT URL, on deck create, card add, card edit and
-      import (including --dry-run, where it is worth the most). It reports the status and the content type of
-      everything that is not a 2xx image — a dead link, a renamed file, a host refusing an
-      unfamiliar client, or a .stl behind a perfectly ordinary-looking address. Opt-in because it
-      is the only flag here that makes requests of its own, and it warns rather than refusing: a
-      host having a bad minute must not be able to fail an import. Findings also travel in --json
-      as image_checks.
-
-      It separates WRONG from COULD NOT BE CHECKED, and the difference is the whole of its
-      usefulness at scale. A 429, a timeout or a 5xx says nothing about the picture, so it is
-      counted apart and marked unverified in --json rather than folded into "look wrong". Requests
-      run 3 at a time and a 429 is retried with backoff, because at eight in flight this check
-      rate-limited itself into 432 false findings on one 475-picture deck, burying the run's one
-      real finding under them. Neither bucket prints more than 20 lines; --json carries them all.
-      --check-images-concurrency N (up to 16) is there for a host that is not Wikimedia:
-      against Wikimedia, raising it measured slower as well as noisier — 250 URLs answer
-      clean in about 80 seconds as it stands.
-
-      What a rule can say WITHOUT asking any host — an undecodable format, a thumbnail width
-      Wikimedia does not serve — travels separately, as image_advice, on deck create, card add,
-      card edit and import. Reported whether or not --check-images was passed, which is why it is
-      two arrays rather than one: they answer different questions and only one of them is opt-in.
-      One row per DISTINCT URL, as above, each listing every card and side it is on:
-      {"url": "…", "where": ["Card 201 front image", …], "advice": "…"}. On stderr it is printed
-      last, after everything the network had to say, and capped at 20 entries like the buckets
-      above.
+      --check-images sends one HEAD per distinct URL and warns (never refuses) about anything that
+      is not a 2xx image. Rate limits and timeouts are reported as unverified, not as wrong.
+      --check-images-concurrency N (default 3, up to 16). Findings are in --json as image_checks;
+      rule-based warnings that need no request are always in image_advice.
 
     EXIT CODES
       0 ok                      6 not found
-      1 internal                7 storage full (507 — terminal, never retried)
+      1 internal                7 storage full (terminal, never retried)
       2 usage                   8 environment mismatch
       3 not signed in           9 bad input
       4 session expired        10 no build for this host
       5 network                11 update found but not applied (a managed install)
-                              12 the homeserver answered 5xx — not your input, and worth retrying
+                              12 the homeserver answered 5xx — worth retrying
                               13 login --timeout ran out before anyone approved
                               14 a proxy refused the host — allowlist it; retrying will not help
                               15 the certificate is not trusted — usually a proxy re-signing TLS
 
     NOTES
-      Sessions are stored as a mode-0600 file, not in an OS keyring. libsecret is usually absent
-      on the headless box this is built for, so a keyring default would fail exactly where the
-      tool is meant to work. What is stored is a capability-scoped, expiring session — never a
-      secret key, which never leaves Pubky Ring.
-
-      This client asks Ring for /pub/loopky/:rw and nothing else. It therefore cannot post,
-      follow, or edit a profile under any bug or any prompt injection, and there is no announce
-      flag to pass.
-
-      A newer release is reported on stderr and in the --json envelope's `update_available`,
-      never acted on by itself. The check is one cached-for-a-day HTTPS GET against the same
-      release page the installer uses, so it adds no host to an allowlist, and a check that fails
-      is silent rather than fatal.
-
-      An .apkg's pictures are the one thing this tool uploads bytes for, and it uploads them at
-      full resolution — it ships no image codec, where the apps shrink every picture to 1024px
-      JPEG. That is spent against a 1 GB homeserver quota nothing can read back, so `--dry-run`
-      reports the total first. An .apkg's own deck description and note tags are reported and
-      never adopted; pass them back as --description / --tag if they are right.
+      The session can write /pub/loopky/ and nothing else: no posts, follows or profile edits.
+      An .apkg's pictures are uploaded at full resolution against a 1 GB quota; --dry-run reports
+      the total first.
 """.trimIndent()
