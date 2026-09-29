@@ -21,7 +21,7 @@ Root cause was a panic in the pubky SDK's HTTPS client — its `icann_http` clie
 reqwest's default rustls config (rustls-platform-verifier), which on Android panics
 ("Expect rustls-platform-verifier to be initialized") because the native verifier component
 isn't present. The panic killed the auth-relay poller, surfacing as `RequestExpired`.
-Fixed by making the SDK pin bundled webpki roots for ICANN TLS (pubky/pubky-core#430),
+Fixed by making the SDK pin bundled webpki roots for ICANN TLS (pubky/pubky-homeserver#430),
 consumed via the FFI fork's `[patch]`. Surfaced by adding logcat tracing + a panic hook to
 the FFI (`init_logging`).
 
@@ -3302,7 +3302,7 @@ Chasing "I have to log in more frequently", which was suspected of #266. It is n
 touches no session code — but tracing it turned up two ways the app can throw a working credential
 away, and neither is visible from a green build.
 
-**Server-side expiry is not a thing.** `pubky-core`'s `SessionRepository` has no TTL column and no
+**Server-side expiry is not a thing.** `pubky-homeserver`'s `SessionRepository` has no TTL column and no
 sweep, `create_session_and_cookie` sets a 365-day cookie, and signing in elsewhere invalidates
 nothing. A session secret lives until something deletes it — so every "log in again" is the client's
 doing.
