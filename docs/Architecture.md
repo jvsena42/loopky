@@ -2405,7 +2405,6 @@ else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
   `pkarr.pubky.org`), and the relays answer alone in ~0.7s — the same as on an open network.
   The FFI drops the DHT entirely when an HTTPS proxy is configured (pubky-core-ffi-fork#10),
   because all it did there was log an ERROR every two seconds onto the stderr of every command.
-  The Linux and Windows rows carry it since #361; the macOS row has not been rebuilt yet.
 - **The homeserver is a fixed name after all.** Its pkarr record names a direct address *and* an
   ordinary domain (`homeserver.pubky.app` for production). `pubky` probes the direct address for
   1.5s — the probe does not go through the proxy, so a sandbox always fails it — then falls back
@@ -2421,10 +2420,8 @@ else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
 - **A refusal is its own exit code**, 14 `proxy_refused` (§13.4), because 5 says "retry as-is" and
   an allowlist answers the same every time. Both sides classify: the Rust side (relay,
   homeserver) because `libpubkycore` reports its errors' full source chain
-  (pubky-core-ffi-fork#9) — the proxy's 403 sits two links below what `Display` prints. That is
-  true of the Linux and Windows rows since #361; on macOS, whose row predates it, a refused
-  homeserver still reads as 5 until that row is rebuilt. `login`'s relay check (#360) is a JVM
-  probe and reads 14 on every row.
+  (pubky-core-ffi-fork#9) — the proxy's 403 sits two links below what `Display` prints.
+  `login`'s relay check (#360) is a JVM probe and reads 14 too.
 - **`loopky doctor` answers the host list** for the environment and homeserver at hand, since the
   homeserver's host comes from its own record. It needs no session: a sandbox without egress is
   exactly where signing in fails. It also says what to do — an agent cannot change its sandbox's
@@ -2438,12 +2435,15 @@ else — UDP included — is dropped rather than refused (`cli/sandbox-sim/`):
   Every other `doctor` probe is a `GET`, so it sends one unauthenticated `PUT` to the homeserver:
   a 401 is the homeserver, a 403 or 405 is a filter in front of it (`method_blocked`, exit 14, #363).
 
-Two things remain. A **TLS-intercepting** proxy fails on both stacks even with its CA trusted
-system-wide — the pubky SDK bundles its roots (exit 15, `tls_untrusted`), which is upstream work
-(pubky/pubky-homeserver#648). The JDK keeps its own store and reads neither variable, so
-`CertificateEnvironment` layers `SSL_CERT_FILE`/`SSL_CERT_DIR` over it at startup (#362) — the only
-route the native binary has, since it ignores `JAVA_TOOL_OPTIONS` — but that reaches only the
-JVM half, so `doctor` compares the two stacks rather than trusting the JVM's view. A
+A **TLS-intercepting** proxy works once `SSL_CERT_FILE` or `SSL_CERT_DIR` names its CA, and that
+takes one reader per stack, because neither reads the system store. The JDK keeps its own, so
+`CertificateEnvironment` layers the variables over it at startup (#362) — the only route the native
+binary has, since it ignores `JAVA_TOOL_OPTIONS`. The pubky SDK bundles Mozilla's roots, and
+`libpubkycore` adds the same certificates to both its ICANN client
+(`add_root_certificates_pem`, pubky/pubky-homeserver#649) and the relay client the fork builds
+itself (#384) — one certificate at a time, because the upstream call rejects a whole bundle on one
+it cannot use. Without them it is exit 15, `tls_untrusted`, and `doctor` still compares the two
+stacks rather than trusting the JVM's view. A
 **black-holed** relay used to make `login --timeout` report 13 ("nobody approved") rather than 5,
 because the FFI's grant resume (§13.10) keeps rejoining a relay it never reached; `login` now asks
 the relay with `doctor`'s probe before showing a QR and fails 5, 14 or 15 there (#360).

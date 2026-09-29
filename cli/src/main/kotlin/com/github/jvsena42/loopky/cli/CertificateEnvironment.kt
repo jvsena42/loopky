@@ -19,8 +19,8 @@ import javax.net.ssl.X509ExtendedTrustManager
  * Behind a TLS-intercepting proxy the proxy's CA is trusted system-wide and named by these variables,
  * but the JDK reads neither: the jar can be pointed at it with `-Djavax.net.ssl.trustStore`, the
  * native binary cannot, since it ignores `JAVA_TOOL_OPTIONS` (#362). Layered rather than replacing,
- * so a variable naming only the proxy's CA does not take the public roots away. The Rust half keeps
- * its bundled roots whatever this does — that is pubky/pubky-homeserver#648.
+ * so a variable naming only the proxy's CA does not take the public roots away. `libpubkycore` reads
+ * the same two variables the same way for the Rust half (#384).
  */
 internal class CertificateEnvironment private constructor(
     val certificates: List<X509Certificate>,

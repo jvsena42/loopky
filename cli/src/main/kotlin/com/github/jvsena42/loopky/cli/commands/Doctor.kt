@@ -147,10 +147,9 @@ private fun exitFor(blocking: List<HostCheck>, hostKnown: Boolean, sdkDisagrees:
  * is said here too — otherwise the human fixes the one, re-runs, and only then meets the other.
  */
 private fun nextStep(exit: ExitCode, blocking: List<HostCheck>, allowlist: List<String>, sdkDisagrees: Boolean): String {
-    val tls = "This proxy re-signs TLS, and the pubky SDK trusts only public certificate authorities, " +
-        "so loopky cannot work through it yet (pubky/pubky-homeserver#648). Ask the user to exempt " +
-        "these hosts from TLS inspection, or to run loopky where egress is not intercepted: " +
-        "${allowlist.joinToString(" ")}."
+    val tls = "This proxy re-signs TLS with a certificate authority loopky does not trust. Set SSL_CERT_FILE " +
+        "(or SSL_CERT_DIR) to the proxy's CA certificate and run `loopky doctor` again; if that is not " +
+        "possible, ask the user to exempt these hosts from TLS inspection: ${allowlist.joinToString(" ")}."
     val alsoTls = if (sdkDisagrees) " Separately, the pubky SDK could not use relays this machine reaches: $tls" else ""
     return when (exit) {
         ExitCode.ProxyRefused if blocking.none { it.status == REFUSED } ->
