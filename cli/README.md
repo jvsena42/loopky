@@ -226,9 +226,9 @@ $ loopky card delete d1 c1
 loopky: Unknown command 'card delete'. `card` takes one of: list, add, edit, rm. Try `loopky --help`.
 ```
 
-The usage block still follows a usage error, with the message **repeated underneath it** — a
-terminal keeps its last lines, and sixty lines of manual is exactly how the one that mattered got
-scrolled away.
+A usage error is followed by **that command's own help** — its synopsis and options, generated
+from the same table — rather than the whole manual, which scrolled the one line that mattered
+away. `loopky <command> --help` prints the same thing; `loopky --help` is the full reference.
 
 ### Language decks
 
@@ -534,6 +534,25 @@ once these hosts are added (production):
 | `nexus.pubky.app` | `tag trending` and every indexer read |
 | `github.com`, `release-assets.githubusercontent.com` | install and `loopky update` |
 
+Recommended, though no command needs them — an agent building a deck with pictures does:
+
+| Host | Needed for |
+| --- | --- |
+| `upload.wikimedia.org` | where Wikimedia card pictures are served, and what `--check-images` asks |
+| `commons.wikimedia.org` | finding a picture and its URL |
+
+Copy-paste, production:
+
+```text
+httprelay.pubky.app
+pkarr.pubky.app
+pkarr.pubky.org
+homeserver.pubky.app
+nexus.pubky.app
+upload.wikimedia.org
+commons.wikimedia.org
+```
+
 **Where the list goes is the human's to change, not the agent's.** Claude Code on the web: the
 environment's settings → *Network access: Custom*, keep the default domains, add these under
 *Allowed domains*. Codex: the environment's settings → *Agent internet access: On*, add these as
@@ -544,7 +563,8 @@ homeserver `method_blocked` and exits 14.
 
 **`loopky doctor` prints this list for the machine it runs on**, asking each host through the
 configured proxy, and ends with a `next_step` addressed to the agent: which hosts to ask the user
-for, and where. It needs no session. Exit 14 names what was refused; any other command's 14 or 15
+for, and where. The two Wikimedia hosts are probed and reported under `recommended`, never on the
+`allowlist` and never in the exit code. It needs no session. Exit 14 names what was refused; any other command's 14 or 15
 points at it. The homeserver row is read from your homeserver's own pkarr record, so an account on
 another homeserver has another host (`loopky doctor --homeserver <pubky>`); staging has
 `nexus.staging.pubky.app` and `homeserver.staging.pubky.app`.

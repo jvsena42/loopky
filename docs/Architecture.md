@@ -2358,9 +2358,9 @@ and failed with "Missing \<file\>" followed by sixty lines of manual. Nothing in
 the flag. `Args.requireKnownOptions` now checks what was typed against `cliCommands()` — the same
 table completion and `loopky commands` read, so it costs nothing to keep true — and the message
 names the flag, says which command it belongs to, and for the one substitution worth spelling out
-(a path-taking flag on a command whose file is an operand) says so outright. The usage block is
-still printed for a usage error, with the message **repeated underneath it**: a terminal keeps its
-last lines and an agent capturing stderr reads the tail.
+(a path-taking flag on a command whose file is an operand) says so outright. A usage error is
+followed by that command's help alone (`commandHelp`, from the same table), not the whole usage
+block: a terminal keeps its last lines and an agent capturing stderr reads the tail.
 
 **`--dry-run` goes through the command's own path.** It existed only on `import`, so pre-flighting
 a `deck create --from-file` meant running `import --dry-run` over the same file — a *different*
