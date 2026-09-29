@@ -76,30 +76,7 @@ private fun run(argv: Array<String>): ExitCode {
         return ExitCode.Usage
     }
 
-    // Version before help, and both before the empty-command check: `loopky --version` has no
-    // positional words, so the "you gave me nothing" branch would answer it with the usage block.
-    if (args.has("version")) {
-        println(VERSION)
-        return ExitCode.Ok
-    }
-    // `--help --json` is the same table `commands` emits, because an agent reaching for help
-    // through the machine channel is asking the same question. Bare `--json` with no verb is
-    // still a usage error: "you gave me nothing" is not a request for the manual.
-    if (args.has("help") && args.has("json")) {
-        val env = CliEnvironment.resolve(args)
-        println(successEnvelope("commands", env.name, env.indexer, commandSurface().data))
-        return ExitCode.Ok
-    }
-    if (args.has("help")) {
-        commandFor(args.verb)?.let { command ->
-            println(commandHelp(command))
-            return ExitCode.Ok
-        }
-    }
-    if (args.words.isEmpty() || args.has("help")) {
-        println(USAGE)
-        return if (args.has("help")) ExitCode.Ok else ExitCode.Usage
-    }
+    selfDescription(args)?.let { return it }
 
     Log.debugEnabled = args.has("verbose")
     val environment = CliEnvironment.resolve(args)
@@ -366,6 +343,36 @@ private const val COMPLETION_VERB = "completion"
 private const val COMMANDS_VERB = "commands"
 
 private val PRE_KOIN_VERBS = setOf(UPDATE_VERB, COMPLETION_VERB, COMMANDS_VERB)
+
+/** `--version`, `--help` and a bare `loopky`: answered before anything is resolved, or null to go on. */
+@Suppress("ReturnCount")
+private fun selfDescription(args: Args): ExitCode? {
+    // Version before help, and both before the empty-command check: `loopky --version` has no
+    // positional words, so the "you gave me nothing" branch would answer it with the usage block.
+    if (args.has("version")) {
+        println(VERSION)
+        return ExitCode.Ok
+    }
+    // `--help --json` is the same table `commands` emits, because an agent reaching for help
+    // through the machine channel is asking the same question. Bare `--json` with no verb is
+    // still a usage error: "you gave me nothing" is not a request for the manual.
+    if (args.has("help") && args.has("json")) {
+        val env = CliEnvironment.resolve(args)
+        println(successEnvelope("commands", env.name, env.indexer, commandSurface().data))
+        return ExitCode.Ok
+    }
+    if (args.has("help")) {
+        commandFor(args.verb)?.let { command ->
+            println(commandHelp(command))
+            return ExitCode.Ok
+        }
+    }
+    if (args.words.isEmpty() || args.has("help")) {
+        println(USAGE)
+        return if (args.has("help")) ExitCode.Ok else ExitCode.Usage
+    }
+    return null
+}
 
 /**
  * The two commands that run before Koin, and therefore before `libpubkycore` is loaded. Neither needs
