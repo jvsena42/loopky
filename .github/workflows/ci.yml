@@ -819,18 +819,14 @@ jobs:
 
   cli-sandbox-sim:
     # **The CLI behind the networks agent sandboxes give it (#364).** `cli/sandbox-sim` reproduces
-    # them in Docker — Claude Code's Trusted and Custom allowlists, a proxy wanting credentials, no
-    # egress at all — and this holds every row's exit code to `cli/sandbox-sim/expected.tsv`. Run
+    # them in Docker — Claude Code's Trusted and Custom allowlists, Codex's presets, a proxy wanting
+    # credentials, one intercepting TLS, no egress at all — and this holds every row's exit code to `cli/sandbox-sim/expected.tsv`. Run
     # against the jar *and* the binary because two of the findings it was built for were
     # native-only: native-image froze the JDK's proxy auth-scheme properties at build time, so the
     # binary took a 407 where the jar went through.
     #
     # **Linux only: the macOS and Windows native rows stay unverified behind a proxy.** A hosted
     # macOS or Windows runner has no Docker to put them behind one.
-    #
-    # The `codex-*` and `intercepting` profiles are left out, not pinned: every row of theirs fails
-    # the same way until the pubky SDK trusts the system store (pubky/pubky-homeserver#648), and a
-    # table of 15s would only have to be rewritten when it does.
     #
     # Most rows reach the production relay, pkarr and Nexus. `check.sh` runs a drifting profile a
     # second time before failing, because `doctor` gives each host 5s and one slow answer reads as

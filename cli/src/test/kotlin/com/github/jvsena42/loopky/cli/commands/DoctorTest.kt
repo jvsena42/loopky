@@ -137,7 +137,7 @@ class DoctorTest {
         assertEquals(ExitCode.ProxyRefused, error.exitCode)
         val nextStep = error.data.toString()
         assert("GET, HEAD and OPTIONS" in nextStep) { nextStep }
-        assert("pubky-homeserver#648" in nextStep) { nextStep }
+        assert("SSL_CERT_FILE" in nextStep) { nextStep }
     }
 
     @Test

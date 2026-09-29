@@ -560,18 +560,14 @@ What was measured (#212, `cli/sandbox-sim/`, and a real Claude Code cloud sessio
   process, and each `loopky` invocation is a new one — so a sequence of commands belongs in
   `loopky batch`, which pays it once. (pubky/pubky-homeserver#647 asks for the probe to be skipped
   behind a proxy.)
-- **A proxy that intercepts TLS does not work yet.** The pubky SDK ships its own root
-  certificates and reads neither the system store nor `SSL_CERT_FILE`, so it rejects the proxy's
-  CA (exit 15, `tls_untrusted`); the fix is upstream (pubky/pubky-homeserver#648). Until then such
-  a sandbox needs Loopky's hosts exempted from inspection. The JVM half — Nexus, `update`,
-  `--check-images` — trusts the certificates `SSL_CERT_FILE` and `SSL_CERT_DIR` name on top of its
-  own store, in the jar and the native binary alike (#362), so `tag trending` works there already;
-  that does not reach the SDK, and `doctor` reports the two disagreeing.
+- **A proxy that intercepts TLS works once its CA is named.** Both halves of the client — the pubky
+  SDK and the JVM side (Nexus, `update`, `--check-images`) — trust the certificates `SSL_CERT_FILE`
+  and `SSL_CERT_DIR` name on top of their own roots, in the jar and the native binary alike (#362,
+  #384). Without them the proxy's CA is rejected with exit 15, `tls_untrusted`; either point the
+  variables at it or exempt Loopky's hosts from inspection. A certificate in the bundle that cannot
+  be used is skipped with a warning rather than failing the rest.
 - **A refusal is exit 14, `proxy_refused`** — never 5, which would tell an agent to retry a request
-  an allowlist will refuse every time. That includes a refused relay or homeserver on Linux and
-  Windows; the macOS build's `libpubkycore` does not carry the proxy's answer through yet, so there
-  a refused homeserver still reads as 5 (`login`'s relay check runs on the JVM and reads 14
-  everywhere).
+  an allowlist will refuse every time, including a refused relay or homeserver.
 - **Installing from inside a Claude Code session** goes through its GitHub proxy, which serves
   release assets only for repositories attached to the session. A session on another repository
   can get a 403 for the binary; attach `jvsena42/loopky`, or install in the environment's setup
@@ -610,9 +606,9 @@ and stays 5.
 
 15 is a certificate this client does not trust, which in a sandbox means a proxy re-signing TLS
 with its own CA. Not 1, because nothing about it is a bug, and not 5, because an untrusted CA stays
-untrusted on the next attempt. The fix is on the proxy's side — exempt Loopky's hosts from
-interception. The JVM half already trusts whatever `SSL_CERT_FILE`/`SSL_CERT_DIR` name, so until
-pubky/pubky-homeserver#648 a 15 comes from the SDK half.
+untrusted on the next attempt. The fix is to name the proxy's CA with `SSL_CERT_FILE` or
+`SSL_CERT_DIR`, which both halves of the client trust, or to exempt Loopky's hosts from
+interception.
 
 13 is nobody approving a sign-in inside `--timeout`. *That process* is not signed in — deliberately
 not "nothing was stored", which it cannot promise: the await runs on a thread that is unobserved
