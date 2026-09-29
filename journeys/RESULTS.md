@@ -4004,3 +4004,37 @@ pass before it can be called verified.
 `adb emu rotate` all left `rotation=0`, as the QR run above found. The expanded width class was
 reached with `wm density 240` instead (1600px ÷ 240dpi = 1067dp), which is the same
 `currentWindowAdaptiveInfo` path, since the class is read from the window.
+
+## `libpubkycore` at pubky-core-ffi-fork@9e8dbec: pubky 0.14, `SSL_CERT_FILE`, every row (#361, #384) — ✅ PASS (2026-09-29)
+
+pubky 0.10 → 0.14 at pubky/pubky-homeserver#649, with `SSL_CERT_FILE`/`SSL_CERT_DIR` trusted by
+both the SDK's ICANN client and the fork's relay client. All seven rows are rebuilt on a Mac, so the
+macOS dylib and the iOS xcframework catch up with #382 as well. The Windows row comes from the
+fork's `desktop-windows.yml` run 36568447783.
+
+| Check | Result |
+| --- | --- |
+| `cargo test` in the fork | ✅ 45 passed, 2 of them new (env roots read and deduplicated; one unusable certificate costs nothing else) |
+| UniFFI bindings | ✅ `pubkycore.kt` and `pubkycore.swift` regenerate byte-identical, so no binding file changes |
+| Android arm64 16 KB alignment | ✅ upstream's `verify_android_page_size.sh` passes on all 64-bit ABIs |
+| Linux glibc floor | ✅ still `GLIBC_2.34` |
+| `:shared:jvmTest` (real macOS dylib), `:cli:test`, `:cli:installDist`, `:androidApp:assembleDebug` | ✅ 1,518 tests, `UniffiPubkyClientJvmTest` 4/4 |
+| Android, `Pixel_Tablet` (arm64), signed in as `ckm34u…` | ✅ `libpubkycore.so … ok`, the stored grant session exchanges, `put_with_session` goes out with no error. Home says "No decks yet", which is correct: the homeserver answers `Directory Not Found` for that account's `/pub/loopky/decks/` |
+| iOS, iPhone 17 simulator, signed in (cookie session) | ✅ session re-imported, home lists four decks including the 4,736-card one, a study card's image loads, and closing the session after a Good grade flushes `put_with_session` with no error |
+| macOS CLI (installDist), `SSL_CERT_FILE` = test CA + one malformed certificate | ✅ one `WARN pubkycore: ignoring a certificate … BadEncoding`, `doctor` exits 0 |
+| `cli/sandbox-sim`, all eight profiles, jar and Linux binary | ✅ jar and binary agree on every row. `intercepting` and `codex-custom` moved from 15 to `doctor` 0 · `tag trending` 0 · `login` 13, and no DHT errors behind any proxy. All profiles are now in `expected.tsv` |
+
+### Worth knowing
+
+**On an Apple Silicon Mac `run.sh` needs `DOCKER_DEFAULT_PLATFORM=linux/amd64`.** Without it the
+client container is arm64 Linux, and every row reads 10 `unsupported_host`. Squid then also needs
+its amd64 image pulled (`docker pull --platform linux/amd64 ubuntu/squid:latest`), or the allowlist
+profiles fail with "did not start" and no reason.
+
+**`build_android.sh` now installs cargo-ndk 3.5.4 over whatever is installed**, because that is
+upstream's pin, and it needs NDK 29.0.14206865 (`android sdk install "ndk;29.0.14206865"`).
+
+### Not verified here
+
+The "write behind a refusing proxy: 4 → 14" row from #361, which needs `LOOPKY_SESSION`. The macOS
+and Windows native binaries were not put behind a proxy; CI has no Docker on those runners.
