@@ -58,7 +58,6 @@ struct MainView: View {
         .navigationBarHidden(true)
     }
 
-    @ViewBuilder
     private var tabs: some View {
         // A native `TabView`, and on the iOS 26 SDK that is already Liquid Glass — the tab bar
         // floats over the content and samples it, so Loopky only tints it and never repaints it.
@@ -67,88 +66,52 @@ struct MainView: View {
         // #140 gave Android on expanded windows: at a regular width the same four destinations
         // become a sidebar, with the tab-bar morph and the drag-to-reorder iPad users expect, and
         // at a compact width — an iPhone, or this app in Slide Over — it is an ordinary tab bar.
-        // It needs the iOS 18 `Tab` API; iOS 17 gets the same four tabs, tags and order as a plain
-        // tab bar, so every deeplink and journey step lands in the same place on both.
-        if #available(iOS 18.0, *) {
-            TabView(selection: $selectedTab) {
-                Tab(LoopkyTab.study.title, systemImage: LoopkyTab.study.iconName, value: LoopkyTab.study) {
-                    studyTab
-                }
-                Tab(LoopkyTab.decks.title, systemImage: LoopkyTab.decks.iconName, value: LoopkyTab.decks) {
-                    decksTab
-                }
-                Tab(LoopkyTab.discover.title, systemImage: LoopkyTab.discover.iconName, value: LoopkyTab.discover) {
-                    discoverTab
-                }
-                Tab(LoopkyTab.profile.title, systemImage: LoopkyTab.profile.iconName, value: LoopkyTab.profile) {
-                    profileTab
-                }
+        // The destinations, their order and their tags are unchanged, so every deeplink and every
+        // journey step still lands where it did.
+        TabView(selection: $selectedTab) {
+            Tab(LoopkyTab.study.title, systemImage: LoopkyTab.study.iconName, value: LoopkyTab.study) {
+                HomeScreen(
+                    onOpenDeck: { onDeckTap($0, nil) },
+                    onCreateDeck: onCreateDeckTap,
+                    onBrowseExamples: onImportTap,
+                    onStartStudy: onStartStudy,
+                    onSignedOut: onSignedOut,
+                    // The library is a tab, not a push: "See all" over today's decks selects it,
+                    // the way Android's does.
+                    onSeeAllDecks: { selectedTab = .decks }
+                )
             }
-            .tabViewStyle(.sidebarAdaptable)
-            .modifier(TabChrome())
-        } else {
-            TabView(selection: $selectedTab) {
-                studyTab.legacyTab(.study)
-                decksTab.legacyTab(.decks)
-                discoverTab.legacyTab(.discover)
-                profileTab.legacyTab(.profile)
+
+            Tab(LoopkyTab.decks.title, systemImage: LoopkyTab.decks.iconName, value: LoopkyTab.decks) {
+                DecksScreen(
+                    onDeckTap: { onDeckTap($0, nil) },
+                    onImportTap: onImportTap,
+                    onImportFileTap: onImportFileTap,
+                    onCreateDeckTap: onCreateDeckTap
+                )
             }
-            .modifier(TabChrome())
+
+            Tab(LoopkyTab.discover.title, systemImage: LoopkyTab.discover.iconName, value: LoopkyTab.discover) {
+                DiscoverScreen(
+                    onOpenProfile: onOpenProfile,
+                    onOpenDeck: { deckId, author in onDeckTap(deckId, author) },
+                    onSearch: { isSearching = true }
+                )
+            }
+
+            Tab(LoopkyTab.profile.title, systemImage: LoopkyTab.profile.iconName, value: LoopkyTab.profile) {
+                ProfileScreen(
+                    onSignedOut: onSignedOut,
+                    onOpenFollows: onOpenFollows,
+                    onOpenSettings: onOpenSettings,
+                    onBackUpNow: onBackUpNow
+                )
+            }
         }
-    }
-
-    private var studyTab: some View {
-        HomeScreen(
-            onOpenDeck: { onDeckTap($0, nil) },
-            onCreateDeck: onCreateDeckTap,
-            onBrowseExamples: onImportTap,
-            onStartStudy: onStartStudy,
-            onSignedOut: onSignedOut,
-            // The library is a tab, not a push: "See all" over today's decks selects it,
-            // the way Android's does.
-            onSeeAllDecks: { selectedTab = .decks }
-        )
-    }
-
-    private var decksTab: some View {
-        DecksScreen(
-            onDeckTap: { onDeckTap($0, nil) },
-            onImportTap: onImportTap,
-            onImportFileTap: onImportFileTap,
-            onCreateDeckTap: onCreateDeckTap
-        )
-    }
-
-    private var discoverTab: some View {
-        DiscoverScreen(
-            onOpenProfile: onOpenProfile,
-            onOpenDeck: { deckId, author in onDeckTap(deckId, author) },
-            onSearch: { isSearching = true }
-        )
-    }
-
-    private var profileTab: some View {
-        ProfileScreen(
-            onSignedOut: onSignedOut,
-            onOpenFollows: onOpenFollows,
-            onOpenSettings: onOpenSettings,
-            onBackUpNow: onBackUpNow
-        )
-    }
-}
-
-private struct TabChrome: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .tint(LoopkyColor.accentPrimary)
-            // Tab screens render their own in-content titles, so hide the NavigationStack's empty
-            // navigation bar — otherwise it reserves space above each page title.
-            .navigationBarHidden(true)
-    }
-}
-
-private extension View {
-    func legacyTab(_ tab: LoopkyTab) -> some View {
-        tabItem { Label(tab.title, systemImage: tab.iconName) }.tag(tab)
+        .tabViewStyle(.sidebarAdaptable)
+        .tint(LoopkyColor.accentPrimary)
+        // Tab screens render their own in-content titles, so hide the NavigationStack's empty
+        // navigation bar — otherwise it reserves space above each page title.
+        .navigationBarHidden(true)
     }
 }

@@ -4065,22 +4065,3 @@ pubky-core-ffi-fork#14 (Linux row only). It resolves before spending the token, 
   exchange, because NDK 29 and a Mac were not available. The Windows DLL comes from the fork PR's
   CI run.
 - **Journey 01 was not re-run.** The app's `.so` is unchanged.
-
-## iOS deployment target 18.2 → 17.0 — 2026-09-30 — ✅ PASS (`iPhone 17` iOS 26.5, `iPhone 16` iOS 18.6)
-
-The 18.2 target was the project template's default. At 17.0 the only code that needed iOS 18 was
-`MainView`'s `Tab` API and `.sidebarAdaptable`, which stay on iOS 18+. iOS 17 gets a plain tab bar
-with the same four tabs and tags. Liquid Glass is gated on `#available(iOS 26.0, *)` and is not
-affected. `libpubkycore.a` targets 13.4, so it doesn't limit this.
-
-| Check | Result |
-| --- | --- |
-| Build at 16.0 | ❌ `symbolEffect` in `SpeakSheet` needs 17, so 17.0 is the floor without more gating |
-| Build at 17.0 | ✅ after the `MainView` fallback; no other availability errors |
-| Journey 01 restore (phrase) → tabs on iOS 26.5 | ✅ four tabs, Liquid Glass bar, Profile selects |
-| Same on iOS 18.6 with the fallback branch forced | ✅ four tabs render with the brand tint, Discover selects |
-
-### Not verified here
-
-- **A real iOS 17 runtime.** None is installed; the fallback was forced on 18.6 instead.
-- **iPad on iOS 17.** It gets the bottom tab bar rather than the #173 sidebar.
