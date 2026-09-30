@@ -3,8 +3,11 @@ type: llm
 weight: 2
 ---
 
-The response plans to import the file with `loopky import japanese-core-2000.apkg` and:
+Grade the response's plan for importing `japanese-core-2000.apkg` into Loopky. It PASSES when all four of these hold:
 
-- Runs `loopky import … --dry-run --json` first, and says it will check which fields became the front and back (overridable with `--front-field` / `--back-field`) and how many bytes of images will be uploaded against the quota.
-- Publishes with a `--title` only after that check.
-- Does not copy the Anki deck's own tags or description onto the published deck without reviewing them.
+1. It runs `loopky import japanese-core-2000.apkg --dry-run` (with or without `--json`) **before** any import without `--dry-run`.
+2. It says it will check, in the dry-run result, which Anki fields became the front and back. Mentioning `--front-field` / `--back-field` as the fix is enough, and so is describing the check in words.
+3. It says it will check the image size or quota before publishing (for example `images.bytes`, the upload size, or the 1 GB limit).
+4. The publishing import comes after the dry run and passes `--title`.
+
+Extra correct steps do **not** count against the response: installing the CLI, `loopky doctor`, `loopky login`, `--help`, verifying with `deck show` or `card list`, notes about language pairs, public decks or tags. Wording and ordering of the explanation don't matter either. FAIL only when one of the four points above is missing or contradicted.
