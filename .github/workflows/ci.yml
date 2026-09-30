@@ -318,7 +318,8 @@ jobs:
     # **The agent plugin under `plugins/` (#388), checked the way Claude Code loads it.** The skill's
     # commands, flags, exit codes and version are held against the binary by `AgentPluginTest` in
     # `:cli:test` (cli-linux); this checks the parts no JVM test can: the manifests as Claude Code
-    # parses them, and the install hook doing its one job in a simulated cloud container.
+    # parses them, Codex handing the model the same skill, and the install hook doing its one job
+    # in a simulated cloud container.
     # Ungated: it is cheap, and a skill that silently stopped loading is invisible otherwise.
     # Behavioural evals cost model calls, so they live in `plugin-evals.yml` instead.
     name: Agent plugin
@@ -356,6 +357,23 @@ jobs:
           npm install --global @anthropic-ai/claude-code
           claude plugin validate plugins/loopky --strict
           claude plugin validate . --strict
+
+      # Codex reads the same skill through `.codex-plugin/plugin.json` and `.agents/plugins/`.
+      # `debug prompt-input` renders what the model would be handed, with no login and no model
+      # call, so this asserts the skill really reaches a Codex session rather than that a JSON
+      # file parses. CODEX_HOME is throwaway: a runner has no Codex config of its own to protect.
+      - name: Codex installs the plugin and hands the model the skill
+        run: |
+          set -euo pipefail
+          npm install --global @openai/codex
+          export CODEX_HOME="$RUNNER_TEMP/codex-home"
+          mkdir -p "$CODEX_HOME"
+          codex plugin marketplace add "$PWD"
+          codex plugin add loopky@loopky
+          codex plugin list --json | jq -e '.installed[] | select(.pluginId == "loopky@loopky" and .enabled)'
+          (cd "$RUNNER_TEMP" && codex debug prompt-input "make me flashcards") > "$RUNNER_TEMP/codex-prompt.json"
+          grep -q 'loopky:loopky' "$RUNNER_TEMP/codex-prompt.json" \
+            || { echo "::error::Codex installed the plugin but the loopky skill is not in the model's prompt"; exit 1; }
 
       - name: The install hook is portable sh
         run: |

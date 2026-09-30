@@ -142,6 +142,58 @@ class AgentPluginTest {
         }
     }
 
+    @Test
+    fun `the Codex marketplace points at plugins that have a Codex manifest`() {
+        val marketplace = File(root, ".agents/plugins/marketplace.json")
+        assertTrue(marketplace.exists(), "no Codex marketplace at ${marketplace.relative()}")
+        marketplace.json()["plugins"]!!.jsonArray.forEach { entry ->
+            val path = entry.jsonObject["source"]!!.jsonObject["path"]!!.jsonPrimitive.content
+            assertTrue(File(root, path).resolve(".codex-plugin/plugin.json").exists(), "$path has no .codex-plugin/plugin.json")
+        }
+    }
+
+    /**
+     * The limits OpenAI's plugin directory refuses a submission over, and Codex's own on
+     * `defaultPrompt`. Checked here because the directory takes a ZIP and says so only at upload.
+     */
+    @Test
+    fun `a Codex manifest fits the directory's limits and its paths exist`() {
+        codexManifests().forEach { manifest ->
+            val name = manifest.relative()
+            val codex = manifest.json()
+            val ui = codex["interface"]!!.jsonObject
+            fun field(key: String) = ui[key]?.jsonPrimitive?.content.orEmpty()
+            assertTrue(field("displayName").length in 1..CODEX_NAME_MAX, "$name displayName")
+            assertTrue(field("shortDescription").length in 1..CODEX_SHORT_MAX, "$name shortDescription")
+            assertTrue(field("longDescription").length in 1..CODEX_LONG_MAX, "$name longDescription")
+            assertTrue(field("developerName").length in 1..CODEX_DEVELOPER_MAX, "$name developerName")
+            val prompts = ui["defaultPrompt"]!!.jsonArray.map { it.jsonPrimitive.content }
+            assertTrue(prompts.size <= CODEX_PROMPTS_MAX, "$name has ${prompts.size} default prompts")
+            prompts.forEach { assertTrue(it.length <= CODEX_PROMPT_MAX, "$name prompt is ${it.length} chars: $it") }
+            val paths = listOf("skills", "hooks").mapNotNull { codex[it]?.jsonPrimitive?.content } +
+                listOf("composerIcon", "logo").map(::field)
+            paths.forEach { path ->
+                assertTrue(path.startsWith("./"), "$name: $path must start with ./")
+                assertTrue(manifest.parentFile.parentFile.resolve(path).exists(), "$name: $path does not exist")
+            }
+        }
+    }
+
+    /** Codex reads the same skill; its manifest must describe the same plugin as Claude's. */
+    @Test
+    fun `the Claude and Codex manifests agree on the plugin`() {
+        codexManifests().forEach { codex ->
+            val claude = codex.parentFile.parentFile.resolve(".claude-plugin/plugin.json")
+            listOf("name", "version", "license", "repository").forEach { key ->
+                assertEquals(claude.json()[key], codex.json()[key], "$key in ${codex.relative()} and ${claude.relative()}")
+            }
+        }
+    }
+
+    private fun codexManifests(): List<File> =
+        File(root, "plugins").walk().filter { it.name == "plugin.json" && it.parentFile.name == ".codex-plugin" }.toList()
+            .also { assertTrue(it.isNotEmpty(), "no .codex-plugin/plugin.json under plugins/") }
+
     /** `loopky …` in inline code or at the start of a fenced line, as line number and words. */
     private fun invocations(skill: File): List<Pair<Int, List<String>>> =
         skill.text().lines().flatMapIndexed { index, line ->
@@ -174,6 +226,12 @@ class AgentPluginTest {
     private companion object {
         const val MAX_DESCRIPTION = 1024
         const val REPOSITORY_GIT = "https://github.com/jvsena42/loopky.git"
+        const val CODEX_NAME_MAX = 30
+        const val CODEX_SHORT_MAX = 30
+        const val CODEX_LONG_MAX = 4000
+        const val CODEX_DEVELOPER_MAX = 80
+        const val CODEX_PROMPTS_MAX = 3
+        const val CODEX_PROMPT_MAX = 128
         const val RELEASE_INSTALLER = "https://github.com/jvsena42/loopky/releases/latest/download/install.sh"
         const val RAW_WARNING = "never `raw.githubusercontent.com"
         val EXIT_ROW = Regex("""^\|\s*(\d+)\s*\|\s*([a-z_]+)\s*\|""")

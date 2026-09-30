@@ -86,7 +86,11 @@ tasks.withType<Test>().configureEach {
     systemProperty("loopky.repoRoot", rootDir.absolutePath)
     systemProperty("loopky.cliVersion", cliVersion)
     inputs.property("loopkyCliVersion", cliVersion)
-    inputs.files(rootProject.fileTree("plugins"), rootProject.fileTree(".claude-plugin"))
+    inputs.files(
+        rootProject.fileTree("plugins"),
+        rootProject.fileTree(".claude-plugin"),
+        rootProject.fileTree(".agents/plugins"),
+    )
         .withPathSensitivity(PathSensitivity.RELATIVE)
         .withPropertyName("agentPlugins")
 }
