@@ -52,5 +52,7 @@ trust prompt for nothing.
 binary does not have, when its exit-code table disagrees with `ExitCode`, or when the plugin's
 version drifts from `loopkyCliVersion`. CI also runs `claude plugin validate --strict`, installs the plugin into Codex and checks the
 skill reaches the model's prompt (`codex debug prompt-input`), runs the install hook in a simulated
-cloud container, and `evals/` holds behavioural cases run with
-`claude plugin eval`.
+cloud container. `evals/` holds behavioural cases for `claude plugin eval`: they cost API credit,
+so CI runs them once per release (beside the build, gating nothing) and on demand; run them
+locally with `claude plugin eval plugins/loopky --model sonnet --ablation none` before merging a
+skill change.

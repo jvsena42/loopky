@@ -105,7 +105,10 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
 
 ## Writing good cards
 
-- **One fact per card.** A back that needs "and" is two cards. Short fronts, short backs.
+- **One fact per card.** A back that needs "and" is two cards, and so is one with alternatives
+  (`vegetariano / vegetariana`): split it, or keep one form. Short fronts, short backs.
+- **Fix a card before showing the list, never annotate it.** If you notice a card breaks a rule
+  here, rewrite it; the user reviews cards, not caveats about them.
 - **Parenthesized asides are notes, not answers.** `hola (informal)`, `猫（ねこ）`: the card shows
   the note, but typing and Speak grade only `hola`/`猫`. Unbracketed, the note becomes part of the
   expected answer.

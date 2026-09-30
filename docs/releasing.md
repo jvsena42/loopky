@@ -16,6 +16,7 @@ runbook that walks it.
 | `install.sh`, `install.ps1`, `latest.json` | attached to the release — the two installers *at this tag*, and the manifest every installed `loopky` reads to learn it is stale |
 | `ghcr.io/<owner>/loopky:<version>` | pushed to the registry |
 | `Formula/loopky.rb` in `<owner>/homebrew-loopky` | pushed, if `HOMEBREW_TAP_TOKEN` is set |
+| Agent plugin eval report | the **`plugin-evals` workflow artifact**. The one place the paid `claude plugin eval` runs (~$0.40 on Sonnet, `ANTHROPIC_API_KEY`); it gates nothing, so a red *Agent plugin evals* job is read, not obeyed |
 
 `latest` — the GitHub release flag, the `:latest` image tag and the Homebrew formula — moves only
 for a final version. A pre-release tag (`v1.0.0-rc1`) leaves all three where they are, so
