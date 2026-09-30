@@ -62,6 +62,10 @@ jobs:
       # unless told not to, which is 46% of the bill ($0.67 of $1.46 on the first run) and answers
       # "how much does the skill help" — a question that does not change on a PR. "Does it still
       # work" is the with-plugin score alone. A manual run measures the baseline when asked.
+      #
+      # Sonnet as the agent: measured locally at 3 runs a case, 12/12 at $0.53 against the default
+      # model's 12/12 at ~$0.79. Haiku was 6/12 at $0.27 — it answers in one turn without loading
+      # the skill, so every run would read as a regression. The judges stay on Haiku (default).
       - name: Run the evals
         if: steps.key.outputs.present == 'true'
         env:
@@ -69,7 +73,7 @@ jobs:
         run: |
           set -euo pipefail
           npm install --global @anthropic-ai/claude-code
-          claude plugin eval plugins/loopky --trust-plugin --no-publish --ablation "$ABLATION" \
+          claude plugin eval plugins/loopky --trust-plugin --no-publish --ablation "$ABLATION" --model sonnet \
             --runs 3 --threshold 0.8 --max-cost-usd 5 \
             --json "$RUNNER_TEMP/evals.json" --report "$RUNNER_TEMP/evals.html"
 
