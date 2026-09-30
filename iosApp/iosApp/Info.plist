@@ -2,42 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.github.jvsena42.loopky.media-rehost</string>
+		<string>com.github.jvsena42.loopky.deck-compaction</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.github.jvsena42.loopky.login</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>loopky</string>
-			</array>
-		</dict>
-	</array>
-	<!--
-	  Makes Loopky's Documents folder visible in Files and over Finder, so an .apkg can be dropped
-	  in and imported without going through a share sheet — the same way Anki's own iOS app works.
-	  `OpeningDocumentsInPlace` means the picker hands back the original file rather than a copy,
-	  which is why the reader takes a security-scoped URL.
-	-->
-	<!--
-	  Lets Loopky appear in "Open with" for a deck file, which is how an Anki export usually
-	  arrives — a chat attachment or a Mail download, not something already sitting in Files.
-	  Android has the same entry point via ACTION_VIEW / ACTION_SEND (`ImportFileIntent`).
-	  `.apkg` has no registered UTType, so it is declared here as a zip-conforming type.
-	-->
-	<!--
-	  Speak (pronunciation practice) needs both, and iOS terminates the app on the first request if
-	  either is missing. Two separate prompts: recognition happens on Apple's terms, and the
-	  microphone is what feeds it.
-	-->
-	<key>NSCameraUsageDescription</key>
-	<string>Loopky uses the camera to read a QR code holding someone's pubky, so you can find them without typing it.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Loopky listens while you practise saying a card out loud, and stops as soon as you have answered.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Loopky turns what you say into text to check your pronunciation against the card. Nothing is stored.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -53,22 +24,49 @@
 			</array>
 		</dict>
 	</array>
-	<!--
-	  A recovery file has no registered UTType either, and the export picker needs one: given only
-	  `public.data` it strips the extension off the suggested name, so "recovery.pkarr" is offered
-	  as "recovery" and saved without the extension the user needs to recognise it later.
-	-->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.github.jvsena42.loopky.login</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>loopky</string>
+			</array>
+		</dict>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>pubkyring</string>
+		<string>pubkyauth</string>
+	</array>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Loopky uses the camera to read a QR code holding someone's pubky, so you can find them without typing it.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Loopky listens while you practise saying a card out loud, and stops as soon as you have answered.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Loopky turns what you say into text to check your pronunciation against the card. Nothing is stored.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>processing</string>
+	</array>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>com.github.jvsena42.loopky.pkarr</string>
-			<key>UTTypeDescription</key>
-			<string>Pubky recovery file</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Pubky recovery file</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.github.jvsena42.loopky.pkarr</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -81,14 +79,14 @@
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>com.github.jvsena42.loopky.apkg</string>
-			<key>UTTypeDescription</key>
-			<string>Anki deck</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.zip-archive</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Anki deck</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.github.jvsena42.loopky.apkg</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -97,26 +95,6 @@
 				</array>
 			</dict>
 		</dict>
-	</array>
-	<key>UIFileSharingEnabled</key>
-	<true/>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array>
-		<string>com.github.jvsena42.loopky.media-rehost</string>
-		<string>com.github.jvsena42.loopky.deck-compaction</string>
-	</array>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>pubkyring</string>
-		<!-- The scheme the auth deeplinks actually use, and the one IosPubkyRingPresence
-		     probes. Without it canOpenURL answers false on every device. -->
-		<string>pubkyauth</string>
-	</array>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>processing</string>
 	</array>
 </dict>
 </plist>

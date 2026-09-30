@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Apple's privacy manifest. Required since spring 2024; a build without one draws
+	  ITMS-91053/91061 on upload.
+
+	  The answers below follow PRIVACY.md, which is the source of truth for them. Keep the
+	  two in step: the Loopky project runs no servers, ships no analytics, crash reporting
+	  or advertising SDKs, and holds no account.
+
+	  Note the scope of "collect". Your decks and review state DO leave the device — they
+	  are written to your Pubky homeserver — but they go to the homeserver operator under
+	  your own key, not to the developer, and Loopky retains nothing. That is a
+	  third-party service you direct the app to write to, which is a different question
+	  from the App Store Connect "App Privacy" nutrition label. Answer that questionnaire
+	  separately, from sections 4 and 5 of PRIVACY.md.
+	-->
+
+	<!-- No tracking as Apple defines it: no linking to third-party data for ads or
+	     measurement, and no data brokers. PRIVACY.md §2. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- Nothing is collected by the developer: there is no Loopky backend to collect it
+	     into. PRIVACY.md §2 and §12. -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<!--
+	  Required-reason APIs. One category applies, verified by grepping iosMain and iosApp
+	  for every listed category: only NSUserDefaults is reached.
+
+	  IosAppPreferences, IosPendingReviewStore and IosStudyProgressStore all use
+	  NSUserDefaults, each namespaced by PREFERENCES_NAME and read only by this app —
+	  which is exactly reason CA92.1.
+
+	  No file-timestamp, disk-space, system-boot-time or active-keyboard API is used. If
+	  that changes, this array has to change with it; nothing in the build reports a
+	  missing entry, and it surfaces as an upload-time rejection instead.
+	-->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

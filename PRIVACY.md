@@ -1,6 +1,6 @@
 # Loopky Privacy Policy
 
-**Last updated:** 23 August 2026
+**Last updated:** 30 August 2026
 
 Loopky is a flashcards app built on [Pubky](https://pubky.org). This policy describes what happens
 to your information when you use it.
@@ -107,7 +107,7 @@ has its own operator and its own privacy practices.
 | **Pubky Nexus indexer** (`nexus.pubky.app`) | Search, discovery, trending topics, profile pictures | Your search terms, the public keys and decks you look up, your IP address |
 | **Homegate** (`homegate.pubky.app`) | Signing up for a new homeserver account only | Your phone number if you verify by SMS, or Lightning payment details if you pay. Your phone number is handled by Homegate and is never stored by Loopky |
 | **Unsplash** (`api.unsplash.com`) | Only when you search for a picture from the web | Your search terms and your IP address, under [Unsplash's privacy policy](https://unsplash.com/privacy) |
-| **Google Play** | Only if you tap to install Pubky Ring from the backup screen | Standard Play Store request |
+| **Google Play** or the **App Store** | Only if you tap to install Pubky Ring from the backup screen | A standard store request, to whichever store your device uses |
 
 Loopky does not contact any of these to report on you. It contacts them to do the thing you asked
 for.
@@ -125,16 +125,24 @@ The **Speak** practice mode records audio so you can practise pronunciation.
 - The permission is requested the first time you use Speak, and Speak is optional. Declining it
   leaves the rest of the app working normally.
 
-Depending on your device settings, your device's speech recognition may itself run in the cloud
-rather than on-device. That processing is governed by your device manufacturer's or Google's
-privacy policy, not this one.
+Depending on your device and its settings, your device's speech recognition may itself run in the
+cloud rather than on-device — on iOS through Apple's speech recognition, on Android through
+Google's. Loopky does not force either mode, so which one you get is your platform's decision. That
+processing is governed by Apple's or Google's privacy policy, not this one.
 
 ---
 
-## 7. Photos and images
+## 7. Camera, photos and images
 
-Choosing a picture for a card uses the Android system photo picker, which hands Loopky only the one
-image you select. Loopky requests no storage or gallery permission.
+**The camera is used for one thing: reading a QR code that holds someone's pubky**, so you can add
+them without typing a long key by hand. Loopky reads only the text decoded from the code. No photo
+or video is captured, saved or uploaded, and the camera runs only while that scanner is open. The
+permission is requested the first time you open it, and scanning is optional — you can always type
+or paste a pubky instead.
+
+Choosing a picture for a card uses the system photo picker — `PhotosPicker` on iOS, the Android
+photo picker on Android. Both run outside Loopky and hand it only the one image you select, so
+Loopky requests no gallery or storage permission on either platform.
 
 Images you attach to a published deck are uploaded to your homeserver and are public along with the
 deck.

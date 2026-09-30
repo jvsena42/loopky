@@ -41,3 +41,6 @@ play/
 
 # `claude plugin eval` writes its reports beside the cases.
 plugins/*/evals/results/
+
+# Per-developer iOS signing (TEAM_ID); see iosApp/Configuration/Config.xcconfig
+iosApp/Configuration/Local.xcconfig
