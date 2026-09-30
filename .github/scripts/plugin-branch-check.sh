@@ -5,7 +5,7 @@
 #
 # Plugin directories download a repository's whole archive, and this one's is ~112 MiB against a
 # 50 MiB limit — so the directory is pointed at `plugin`, a branch holding nothing but the plugin.
-# Nothing else in the build reads that branch, so this is what stops it drifting silently:
+# `release.yml` runs this right after it moves the branch:
 #
 #   1. its plugins/loopky is byte-identical to the tag's;
 #   2. it holds nothing else but its README, which is what keeps it small;

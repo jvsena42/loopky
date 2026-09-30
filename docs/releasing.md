@@ -16,7 +16,7 @@ runbook that walks it.
 | `install.sh`, `install.ps1`, `latest.json` | attached to the release — the two installers *at this tag*, and the manifest every installed `loopky` reads to learn it is stale |
 | `ghcr.io/<owner>/loopky:<version>` | pushed to the registry |
 | `Formula/loopky.rb` in `<owner>/homebrew-loopky` | pushed, if `HOMEBREW_TAP_TOKEN` is set |
-| The `plugin` branch | moved to this release's `plugins/loopky/`, for a final version only. It is what Anthropic's plugin directory downloads: the repository's own archive (~112 MiB) is over its 50 MiB limit. `plugin-branch.yml` checks it daily against the latest release |
+| The `plugin` branch | moved to this release's `plugins/loopky/`, for a final version only. It is what Anthropic's plugin directory downloads: the repository's own archive (~112 MiB) is over its 50 MiB limit. the same job checks the pushed branch against the tag and validates the archive GitHub serves |
 | Agent plugin eval report | the **`plugin-evals` workflow artifact**. The one place the paid `claude plugin eval` runs (~$0.40 on Sonnet, `ANTHROPIC_API_KEY`); it gates nothing, so a red *Agent plugin evals* job is read, not obeyed |
 
 `latest` — the GitHub release flag, the `:latest` image tag and the Homebrew formula — moves only
