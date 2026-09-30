@@ -38,3 +38,6 @@ play/
 
 # Personal Claude Code permissions — per-developer, not project config.
 .claude/settings.json
+
+# `claude plugin eval` writes its reports beside the cases.
+plugins/*/evals/results/

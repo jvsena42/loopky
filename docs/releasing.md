@@ -75,14 +75,18 @@ nowhere. The run summary says so on every release where the token is missing.
 
 ## Cutting a release
 
-1. Bump the four numbers on a `chore/version-<x.y.z>` branch and merge the PR. `main` is protected;
+1. Bump the version numbers on a `chore/version-<x.y.z>` branch and merge the PR. `main` is protected;
    nothing is committed to it directly.
    - `androidApp/build.gradle.kts` — `versionName`, and `versionCode` + 1
    - `iosApp/Configuration/Config.xcconfig` — `MARKETING_VERSION`, and `CURRENT_PROJECT_VERSION` to
      the **same number as the new `versionCode`**
    - `gradle.properties` — `loopkyCliVersion`
+   - `plugins/loopky/.claude-plugin/plugin.json` and `plugins/loopky/.codex-plugin/plugin.json` — the
+     agent plugin's `version`, which `/plugin update` compares; the `version` in `.claude-plugin/marketplace.json`; and
+     `source.ref` in it and in `.agents/plugins/marketplace.json` to the new tag
+     (`v<x.y.z>`), which is the copy of the skill users install (`AgentPluginTest` fails until they match)
 
-   The `check-version` job compares all four against the tag before anything is built. Half a bump
+   The `check-version` job compares all of them against the tag before anything is built. Half a bump
    is the normal way this fails and the tag is already public by then, so it reports every mismatch
    at once rather than one per re-tag.
 

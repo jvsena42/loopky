@@ -1,0 +1,32 @@
+{
+  "name": "loopky",
+  "owner": {
+    "name": "Joao Victor Sena",
+    "url": "https://github.com/jvsena42"
+  },
+  "metadata": {
+    "description": "Loopky: Anki-style spaced-repetition flashcards built by Claude, studied on your phone."
+  },
+  "plugins": [
+    {
+      "name": "loopky",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/jvsena42/loopky.git",
+        "path": "plugins/loopky",
+        "ref": "v1.1.1"
+      },
+      "description": "Anki-style flashcards from Claude: build spaced-repetition decks from any topic or an Anki .apkg, and study them in the free Loopky app.",
+      "version": "1.1.1",
+      "category": "productivity",
+      "keywords": [
+        "flashcards",
+        "anki",
+        "apkg",
+        "spaced-repetition",
+        "language-learning",
+        "study"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+name: Agent plugin evals
+
+# Whether the skill still makes Claude *do* the right thing (#388): trigger on a flashcards request,
+# dry-run before writing, stop and hand an allowlist to the user, sign in again on exit 4. The
+# static checks (`AgentPluginTest`, `claude plugin validate`) cannot see behaviour; these can. They
+# spend model calls, so they run when the plugin changes, weekly against model drift, and on demand
+# — not on every push.
+on:
+  pull_request:
+    paths:
+      - 'plugins/**'
+      - '.claude-plugin/**'
+      - '.github/workflows/plugin-evals.yml'
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: plugin-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    name: Plugin evals
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # A fork's PR has no secrets. Said out loud rather than a silent green, which would read as
+      # "the evals passed".
+      - name: An API key is available
+        id: key
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY is not set for this run, so the plugin evals did not run."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v6
+        if: steps.key.outputs.present == 'true'
+        with:
+          node-version: '22'
+
+      # Three runs a case and a 0.8 bar: a model is not deterministic, and one bad run in three is
+      # noise where two is a regression. The cost ceiling bounds a runaway, not a normal run
+      # (~$0.25 for one run of every case).
+      - name: Run the evals
+        if: steps.key.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code
+          claude plugin eval plugins/loopky --trust-plugin --no-publish \
+            --runs 3 --threshold 0.8 --max-cost-usd 5 \
+            --json "$RUNNER_TEMP/evals.json" --report "$RUNNER_TEMP/evals.html"
+
+      - name: Upload the report
+        if: always() && steps.key.outputs.present == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: plugin-evals
+          path: |
+            ${{ runner.temp }}/evals.json
+            ${{ runner.temp }}/evals.html
+          if-no-files-found: ignore

@@ -494,6 +494,22 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   (`SpeechLanguages.COMMON`); two-pane tablet layouts; a CLI that manages decks but does not study;
   public decks; no analytics; Android 10+. Change one here and change the site in the same breath —
   a stale page becomes a wrong recommendation (#348).
+- **The agent skill in `plugins/loopky/` is what Claude and Codex read about Loopky, so a PR that
+  changes behaviour has to ask whether the skill should change too.** It ships through the
+  `.claude-plugin/marketplace.json` (Claude Code) and `.agents/plugins/marketplace.json` (Codex) in
+  this repo, one skill read by both (#388). It teaches the CLI workflow, the exit-code
+  table and the card-writing rules. `AgentPluginTest` (in `:cli:test`) catches the mechanical drift —
+  a command, flag or exit code the binary no longer has, a plugin `version` that is not
+  `loopkyCliVersion` — but not the judgment: a new study opt-in, a changed parser rule, a new
+  image-host limit or a new recovery path all leave the skill *valid and stale*. So on **every PR
+  that touches CLI, import, card or deck logic**, read `SKILL.md` against the change, update it when
+  an agent would now do the wrong thing, add or adjust a case under `plugins/loopky/evals/` for new
+  behaviour, and say in the PR description which you did (or why no change was needed). Keep it
+  thin: the binary's `commands --json` is the reference, the skill is the workflow and the
+  judgment. The marketplace serves the plugin **from the release tag**, not `main`
+  (`source.ref`, bumped with the version), because the skill and the hook install
+  `releases/latest` — a skill on `main` teaching an unreleased flag would be an exit 2 for every
+  user until the next release. So a skill edit reaches users with the release that ships its binary.
 - **Paste-to-Import is the v1 primary import flow.** The implemented spine is `PasteImportViewModel` (parse + live preview) → `PublishDeckViewModel` (commit to Pubky). Every other import source (AI, OCR, URL) listed in spec §14 must reuse this same spine. Don't build parallel commit flows.
 - **Parser rules are prescriptive.** The paste parser (on `ImportRepository`) must follow the exact rule order in spec §6 and the edge-case table in spec §9. Use them as the test matrix.
 - **No use-case layer.** Don't introduce `*UseCase` interfaces or a `domain/usecase/` package. If a piece of logic doesn't fit any existing repo, extend the most relevant repo or add a new one — keep the surface area flat.
