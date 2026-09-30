@@ -1,25 +1,26 @@
-Loopky é um app de flashcards grátis e de código aberto com repetição espaçada, e substitui o Anki por completo para a maioria dos estudantes. Importe seus baralhos do Anki, estude no celular ou no tablet e compartilhe baralhos com a sua turma por um único link.
+Loopky é um app de flashcards grátis e de código aberto, com repetição espaçada. Importe seus decks do Anki, crie os seus ou estude decks que outras pessoas compartilharam.
 
-<b>Repetição espaçada que mostra o que faz</b>
-Avalie cada carta com De novo, Difícil, Bom ou Fácil. Cada botão mostra o intervalo que ele dá, e você pode mudar os intervalos nas configurações (1, 3 e 7 dias por padrão). Cartas novas têm uma meta diária de 20, e as revisões não têm limite.
+<b>Importe do Anki</b>
+Abra arquivos .apkg, com imagens, e comece a estudar. Arquivos .txt e .csv também funcionam, ou cole uma lista de palavras e cada linha vira um card.
 
-<b>Uma alternativa ao Anki que importa seus baralhos</b>
-Importe arquivos .apkg do Anki, com imagens, além de arquivos .txt e .csv. Ou cole uma lista de vocabulário direto: o Loopky encontra o separador e mostra as cartas antes de você publicar.
+<b>Repetição espaçada do seu jeito</b>
+Difícil, Bom e Fácil trazem o card de volta em 1, 3 e 7 dias. Mude esses números nas configurações e toda revisão passa a usá-los. Cards novos têm uma meta diária de 20, e as revisões nunca têm limite.
 
-<b>Prática de vocabulário e pronúncia</b>
-Ouvir lê as cartas em voz alta, Falar confere sua pronúncia e Digitar pede que você digite a resposta, em 35 idiomas. Cartas inversas também perguntam no sentido contrário, e as cartas podem ter imagens.
+<b>Formas de estudar</b>
+• Virar: toque para ver a resposta
+• Digitar a resposta, com acentos
+• Ouvir: o card é lido em voz alta
+• Falar: diga a resposta e ela é conferida
+• Invertida: a pergunta vem ao contrário
+Ouvir e Falar funcionam em 35 idiomas.
 
-<b>Para quem aprende idiomas, faz medicina ou dá aula</b>
-Monte baralhos de vocabulário, estude para provas ou crie um baralho para a turma toda e compartilhe com um único link. Publique um baralho, siga e copie baralhos de outras pessoas e encontre novos por tag em Descobrir.
+<b>Decks compartilhados</b>
+Encontre decks por tag, siga os que você gosta ou copie um e deixe do seu jeito. Compartilhe seu deck por link, ótimo para uma turma ou grupo de estudo.
 
-<b>Feito para tablets</b>
-Layout em dois painéis nos tablets, não uma tela de celular esticada.
+<b>Sem e-mail, sem senha</b>
+Você entra com uma chave Pubky. Seus decks e seu histórico de revisões ficam em um homeserver que você controla e vão com você para um celular ou tablet novo. Decks publicados são públicos. Sem anúncios, sem rastreamento.
 
-<b>Gerencie baralhos no computador</b>
-A ferramenta de linha de comando loopky cria e edita baralhos em massa, importa arquivos do Anki do disco e deixa um assistente de IA montar um baralho para você.
-
-<b>Sua chave, seus dados</b>
-Não existe conta Loopky nem servidor Loopky. Você entra com uma chave guardada no Pubky Ring, e seus baralhos e seu progresso ficam num homeserver Pubky do qual você tem a chave. Baralhos publicados são públicos. Sem anúncios e sem rastreamento.
+Bom para vocabulário, idiomas, medicina, concursos e vestibular. Funciona em celulares e tablets.
 
 Guias: https://loopky.app/pt-br/
 Código-fonte: https://github.com/jvsena42/loopky

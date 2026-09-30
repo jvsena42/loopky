@@ -1,1 +1,1 @@
-Free flashcards with spaced repetition. Import Anki decks, study, share by link.
+Spaced repetition flashcards. Import Anki decks.

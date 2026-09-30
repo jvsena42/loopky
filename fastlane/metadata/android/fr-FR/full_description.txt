@@ -1,25 +1,26 @@
-Loopky est une appli de flashcards gratuite et open source avec répétition espacée, qui remplace complètement Anki pour la plupart des apprenants. Importez vos paquets Anki, révisez sur téléphone ou tablette, et partagez des paquets avec votre classe par un seul lien.
+Loopky est une app de flashcards gratuite et open source, avec répétition espacée. Importez vos decks Anki, créez les vôtres ou révisez des decks partagés par d'autres.
 
-<b>Une répétition espacée qui vous dit ce qu'elle fait</b>
-Notez chaque carte avec Encore, Difficile, Bien ou Facile. Chaque bouton affiche l'intervalle qu'il donne, et vous pouvez changer les intervalles dans les réglages (1, 3 et 7 jours par défaut). Les nouvelles cartes ont un objectif de 20 par jour, et les révisions ne sont jamais limitées.
+<b>Importez depuis Anki</b>
+Ouvrez vos fichiers .apkg, images comprises, et commencez à réviser. Les fichiers .txt et .csv fonctionnent aussi, ou collez une liste de mots : chaque ligne devient une carte.
 
-<b>Une alternative à Anki qui importe vos paquets</b>
-Importez des fichiers Anki .apkg, images comprises, ainsi que des fichiers .txt et .csv. Ou collez directement une liste de vocabulaire : Loopky trouve le séparateur et vous montre les cartes avant de publier.
+<b>La répétition espacée à votre rythme</b>
+Difficile, Correct et Facile ramènent une carte dans 1, 3 et 7 jours. Changez ces valeurs dans les réglages et chaque révision les suit. Les nouvelles cartes ont un objectif de 20 par jour, et les révisions ne sont jamais plafonnées.
 
-<b>Vocabulaire et prononciation</b>
-Écouter lit les cartes à voix haute, Parler vérifie votre prononciation et Écrire vous demande de taper la réponse, en 35 langues. Les cartes inversées vous interrogent aussi dans l'autre sens, et les cartes peuvent contenir des images.
+<b>Plusieurs façons de réviser</b>
+• Retourner : touchez pour voir la réponse
+• Écrire la réponse, accents compris
+• Écouter : la carte est lue à voix haute
+• Parler : dites la réponse, elle est vérifiée
+• Inversée : la question dans l'autre sens
+Écouter et Parler fonctionnent dans 35 langues.
 
-<b>Pour les langues, les études de médecine et les enseignants</b>
-Créez des paquets de vocabulaire, préparez vos examens, ou faites un paquet pour toute une classe et partagez-le avec un seul lien. Publiez un paquet, suivez et copiez les paquets des autres, et trouvez-en de nouveaux par tag dans Découvrir.
+<b>Decks partagés</b>
+Trouvez des decks par tag, suivez ceux qui vous plaisent ou copiez-en un pour l'adapter. Partagez votre deck avec un lien, pratique pour une classe ou un groupe d'étude.
 
-<b>Pensée pour les tablettes</b>
-Un affichage sur deux volets sur tablette, pas un écran de téléphone étiré.
+<b>Ni e-mail, ni mot de passe</b>
+Vous vous connectez avec une clé Pubky. Vos decks et votre historique de révision sont sur un homeserver que vous contrôlez, et vous suivent sur un nouveau téléphone ou une tablette. Les decks publiés sont publics. Sans pub, sans statistiques d'usage.
 
-<b>Gérez vos paquets depuis votre ordinateur</b>
-L'outil en ligne de commande loopky crée et modifie des paquets en masse, importe des fichiers Anki depuis le disque, et permet à un assistant IA de créer un paquet pour vous.
-
-<b>Votre clé, vos données</b>
-Il n'y a ni compte Loopky ni serveur Loopky. Vous vous connectez avec une clé conservée dans Pubky Ring, et vos paquets et votre progression sont stockés sur un homeserver Pubky dont vous détenez la clé. Les paquets publiés sont publics. Ni publicité ni statistiques d'usage.
+Idéal pour le vocabulaire, les langues, les études de médecine et les examens. Sur téléphone et tablette.
 
 Guides : https://loopky.app/fr/
 Code source : https://github.com/jvsena42/loopky
