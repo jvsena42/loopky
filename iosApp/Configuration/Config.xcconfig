@@ -1,7 +1,34 @@
+// Your Apple Developer Team ID, from developer.apple.com → Membership.
+// Ten characters, e.g. A1B2C3D4E5. Needed to sign a device build or archive;
+// a simulator build works without it.
+//
+// Never commit a real value here. Set it in Local.xcconfig beside this file, which is
+// gitignored and included at the end so it overrides this line: `TEAM_ID=A1B2C3D4E5`.
 TEAM_ID=
 
-PRODUCT_NAME=Loopky
-PRODUCT_BUNDLE_IDENTIFIER=com.github.jvsena42.loopky.Loopky$(TEAM_ID)
+// The app's permanent identity on the App Store.
+//
+// This is deliberately NOT derived from TEAM_ID. The Kotlin Multiplatform template
+// ships it as `...Loopky$(TEAM_ID)`, which keeps two developers' dev builds from
+// colliding but makes the bundle identifier change the moment TEAM_ID is filled in —
+// silently breaking the match with the App Store Connect record and every provisioning
+// profile. It is fixed here instead.
+//
+// Change it only BEFORE the app record exists in App Store Connect. After that it is
+// permanent: a new identifier is a new app, with no path to move testers or reviews.
+//
+// Matches Android's applicationId exactly. It also makes the identifiers already in
+// Info.plist real children of it rather than merely looking like them: the two
+// BGTaskScheduler ids, the `...loopky.login` URL name, and the `.apkg` / `.pkarr` UTIs
+// were all written as `com.github.jvsena42.loopky.*` while the bundle was
+// `...loopky.Loopky`, so none of them actually nested under it.
+PRODUCT_BUNDLE_IDENTIFIER=com.github.jvsena42.loopky
 
+PRODUCT_NAME=Loopky
+
+// MARKETING_VERSION is what testers see. CURRENT_PROJECT_VERSION must be unique for
+// every upload to App Store Connect, and is kept equal to Android's versionCode.
 CURRENT_PROJECT_VERSION=40
 MARKETING_VERSION=1.2.4
+
+#include? "Local.xcconfig"

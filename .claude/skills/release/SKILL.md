@@ -60,8 +60,8 @@ merge commit.
    public by the time the job runs, and being told about one number, re-tagging, and being told
    about the next is the same public mistake made twice.
 
-   `Config.xcconfig` is tracked in git and its `TEAM_ID` is intentionally empty — a locally filled
-   `TEAM_ID` must never be committed. Verify by inspecting **added lines only**:
+   `Config.xcconfig` is tracked in git and its `TEAM_ID` is intentionally empty — a real one lives
+   in the gitignored `Local.xcconfig` beside it, and must never be committed. Verify by inspecting **added lines only**:
    `git diff | grep -E "^\+[^+]"` must show exactly the five version lines and nothing else. Do not
    grep the whole diff: `TEAM_ID=` sits a few lines above the version block, so it always appears
    as an unchanged context line and a naive grep aborts the release on every run.
