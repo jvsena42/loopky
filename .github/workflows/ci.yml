@@ -387,6 +387,7 @@ jobs:
           set -euo pipefail
           sh -n plugins/loopky/hooks/install-loopky.sh
           shellcheck --shell=sh plugins/loopky/hooks/install-loopky.sh
+          shellcheck --shell=sh .github/scripts/plugin-branch-check.sh
 
       # Against the latest *release*, which is what a user's session gets — so this also catches
       # the installer or the release assets going wrong, not only the hook.
