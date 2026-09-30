@@ -4038,3 +4038,30 @@ upstream's pin, and it needs NDK 29.0.14206865 (`android sdk install "ndk;29.0.1
 
 The "write behind a refusing proxy: 4 → 14" row from #361, which needs `LOOPKY_SESSION`. The macOS
 and Windows native binaries were not put behind a proxy; CI has no Docker on those runners.
+
+## `loopky login` keeps a Ring approval through a pkarr blip, and says what failed (#389) — ✅ PASS on Linux (2026-09-30)
+
+The cookie sign-in used to spend Ring's approval and resolve the homeserver in one FFI call. When
+both pkarr relays timed out, pubky fell back to POSTing to `_pubky.<key>`, which a proxy refuses.
+The CLI then reported that as an allowlist problem (exit 14). libpubkycore is now at
+pubky-core-ffi-fork#14 (Linux row only). It resolves before spending the token, gives the relays
+10s when they are the only resolver, and names both outcomes. The CLI maps them to the new exit 16
+`homeserver_unresolved` or to exit 6, never to 14.
+
+| Check | Result |
+| --- | --- |
+| Relay latency, measured with curl | a cached key ~0.75s; a key the relay has not cached ~3.1s on both relays, past pkarr's 2s default. That is the transient failure in the issue |
+| Fork `cargo test --lib` | ✅ all pass, 5 new unit tests |
+| Fork live tests inside `sandbox-sim` behind Squid (claude-custom list, direct egress dropped) | ✅ a key with a record reaches `homeserver.pubky.app` over ICANN, and Squid logs no `_pubky.` CONNECT. An unpublished key ends as `No homeserver found for …` after 4 attempts, with the relays' 404 at ~3.5s instead of a 2s timeout |
+| Linux glibc floor | ✅ `GLIBC_2.30` (built in `rust:1-bullseye`; a host build on glibc 2.39 had raised it to 2.38) |
+| `:shared:jvmTest` (real Linux .so), `:cli:test`, `detektAll`, `:cli:installDist` | ✅ |
+| `cli/sandbox-sim/check.sh jar`, all eight profiles | ✅ matches `expected.tsv`, no DHT noise behind any proxy |
+
+### Not verified here
+
+- **A real Ring approval through a blocking proxy.** It needs a phone, and a relay outage timed
+  to land after the approval.
+- **Android, macOS, iOS and Windows rows.** Android, macOS and iOS still run the old cookie
+  exchange, because NDK 29 and a Mac were not available. The Windows DLL comes from the fork PR's
+  CI run.
+- **Journey 01 was not re-run.** The app's `.so` is unchanged.
