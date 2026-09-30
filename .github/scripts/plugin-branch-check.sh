@@ -35,7 +35,7 @@ fi
 STRAYS=$(git ls-tree -r --name-only "$BRANCH" | grep -vE '^(README\.md|plugins/loopky/.+)$' || true)
 if [ -n "$STRAYS" ]; then
   fail "$BRANCH carries files outside plugins/loopky, and every one of them is downloaded by the directory:"
-  printf '  %s\n' $STRAYS >&2
+  printf '%s\n' "$STRAYS" | sed 's/^/  /' >&2
 else
   echo "ok: $BRANCH holds only README.md and plugins/loopky"
 fi
