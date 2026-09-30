@@ -48,6 +48,25 @@ internal fun Throwable.isNoHomeserverRecord(): Boolean =
     message?.lowercase()?.contains("no homeserver found") == true
 
 /**
+ * pkarr could not turn the homeserver's key into an address: both relays timed out, or the DHT
+ * did not answer (#389). Two wordings reach here. The fork's own, from a sign-in that resolves
+ * before it spends Ring's approval. And a proxy refusing to tunnel to a `_pubky.<key>` or bare-key
+ * host, which is what an unresolved name looks like from an older binary: that name means nothing
+ * outside pkarr, so the proxy cannot have allowed it — reading it as an allowlist problem sends
+ * the user to change a network policy `loopky doctor` finds nothing wrong with.
+ *
+ * Ahead of [isNetworkFailure] and of the CLI's proxy-refusal check, both of which also match it.
+ */
+internal fun Throwable.isHomeserverUnresolved(): Boolean {
+    val msg = message?.lowercase() ?: return false
+    return "homeserver could not be resolved" in msg ||
+        ("tunnel error" in msg && PKARR_HOST_URL.containsMatchIn(msg))
+}
+
+/** A request URL whose host is a pkarr name — `_pubky.<z32>` or a bare 52-character z32 key. */
+private val PKARR_HOST_URL = Regex("https://(_pubky\\.)?[ybndrfg8ejkmcpqxot1uwisza345h769]{52}(?=[/:)?\\s]|$)")
+
+/**
  * The request never reached the homeserver: no connectivity, DNS failure, TLS problem or
  * timeout. Distinct from a homeserver that answered with an error, and the difference matters
  * — Pubky is the only source of truth, so "we couldn't reach it" must never be rendered as
@@ -166,6 +185,9 @@ fun Throwable.toErrorReason(): ErrorReason = when {
     // homeserver record" and "the DHT did not answer" through the same call, and only the first
     // is a fact about the user's key. See the note on isNoHomeserverRecord.
     isNoHomeserverRecord() -> ErrorReason.NoHomeserverAccount
+    // Ahead of the transport classifier, which its wording also matches: a pkarr lookup that did not
+    // answer is not the device being offline (#389).
+    isHomeserverUnresolved() -> ErrorReason.HomeserverLookupFailed
     // Checked ahead of the transient classifiers on purpose. Nothing they match collides with the
     // 507 body *today*, but "quota" is the word a future bandwidth limit will also reach for, and
     // reading a full disk as "the server is busy" would retry against it forever.
