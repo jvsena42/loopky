@@ -1,0 +1,63 @@
+name: Plugin branch
+
+# The `plugin` branch is what Anthropic's plugin directory downloads and follows (#388): the full
+# repository's archive is over its size limit, so the directory reads a branch holding only
+# `plugins/loopky/`. `release.yml` is the only writer, once per final release. This is the check
+# between releases, because nothing else reads that branch: a hand edit, a failed release job or a
+# release that skipped it would leave the directory serving a skill that does not match the binary
+# `releases/latest` installs, with nothing reporting it.
+#
+# Free — no model calls — so it runs daily and on demand.
+on:
+  schedule:
+    - cron: '41 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: The plugin branch is the latest release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Fetch the branch and the latest release
+        id: refs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git fetch origin plugin
+          TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          echo "latest release: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Same plugin, nothing else, small, right version
+        run: .github/scripts/plugin-branch-check.sh "${{ steps.refs.outputs.tag }}" origin/plugin
+
+      # What the directory itself downloads, rather than what git says the branch holds.
+      - name: GitHub serves a small archive with the plugin in it
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/plugin.tar.gz" \
+            "https://codeload.github.com/$GITHUB_REPOSITORY/tar.gz/refs/heads/plugin"
+          SIZE=$(wc -c < "$RUNNER_TEMP/plugin.tar.gz")
+          echo "served archive: $SIZE bytes"
+          test "$SIZE" -lt $((10 * 1024 * 1024)) || { echo "::error::the served archive is $SIZE bytes"; exit 1; }
+          mkdir "$RUNNER_TEMP/served"
+          tar -xzf "$RUNNER_TEMP/plugin.tar.gz" -C "$RUNNER_TEMP/served" --strip-components=1
+          test -f "$RUNNER_TEMP/served/plugins/loopky/.claude-plugin/plugin.json"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: The served plugin validates as the directory would
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code
+          claude plugin validate "$RUNNER_TEMP/served/plugins/loopky" --strict
