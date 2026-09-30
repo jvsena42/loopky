@@ -314,6 +314,78 @@ jobs:
           path: '**/build/reports/tests/'
           if-no-files-found: ignore
 
+  agent-plugin:
+    # **The agent plugin under `plugins/` (#388), checked the way Claude Code loads it.** The skill's
+    # commands, flags, exit codes and version are held against the binary by `AgentPluginTest` in
+    # `:cli:test` (cli-linux); this checks the parts no JVM test can: the manifests as Claude Code
+    # parses them, and the install hook doing its one job in a simulated cloud container.
+    # Ungated: it is cheap, and a skill that silently stopped loading is invisible otherwise.
+    # Behavioural evals cost model calls, so they live in `plugin-evals.yml` instead.
+    name: Agent plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The mechanical drift fails `AgentPluginTest`; the judgment cannot be tested (CLAUDE.md,
+      # "The agent skill …"). So a PR that changes what the CLI or the import/deck logic does, and
+      # leaves the skill alone, gets a visible annotation asking whether that was deliberate. A
+      # warning, never a failure: most such changes need no skill edit.
+      - name: A logic change asks about the skill
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          FILES=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || true)
+          LOGIC='^(cli/src/main/|shared/src/commonMain/kotlin/com/github/jvsena42/loopky/(data|domain)/)'
+          if printf '%s\n' "$FILES" | grep -qE "$LOGIC" && ! printf '%s\n' "$FILES" | grep -q '^plugins/'; then
+            echo "::warning title=Agent skill not touched::This PR changes CLI or import/deck logic and leaves plugins/loopky/skills/loopky/SKILL.md alone. Check whether an agent following the skill would now do the wrong thing, and say so in the PR description."
+          fi
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      # `--strict` fails on unrecognised fields and missing metadata that the runtime would only
+      # tolerate — which is what a directory reviewer checks for.
+      - name: The plugin and the marketplace validate
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code
+          claude plugin validate plugins/loopky --strict
+          claude plugin validate . --strict
+
+      - name: The install hook is portable sh
+        run: |
+          set -euo pipefail
+          sh -n plugins/loopky/hooks/install-loopky.sh
+          shellcheck --shell=sh plugins/loopky/hooks/install-loopky.sh
+
+      # Against the latest *release*, which is what a user's session gets — so this also catches
+      # the installer or the release assets going wrong, not only the hook.
+      - name: The install hook installs in a cloud container, and nowhere else
+        env:
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          HOOK="$PWD/plugins/loopky/hooks/install-loopky.sh"
+          export HOME="$RUNNER_TEMP/hook-home" CLAUDE_ENV_FILE="$RUNNER_TEMP/hook-env"
+          mkdir -p "$HOME"; : > "$CLAUDE_ENV_FILE"
+
+          sh "$HOOK"
+          test ! -e "$HOME/.local/bin/loopky" || { echo "::error::the hook installed outside a cloud session"; exit 1; }
+
+          CLAUDE_CODE_REMOTE=true sh "$HOOK" | tee "$RUNNER_TEMP/hook-out"
+          "$HOME/.local/bin/loopky" --version
+          grep -q "Installed loopky" "$RUNNER_TEMP/hook-out"
+          grep -qF "$HOME/.local/bin" "$CLAUDE_ENV_FILE"
+
+          # Idempotent: a resumed session must neither reinstall nor stack PATH lines.
+          CLAUDE_CODE_REMOTE=true sh "$HOOK" | grep -q "loopky is installed"
+          test "$(wc -l < "$CLAUDE_ENV_FILE")" -eq 1
+
   cli-windows:
     # **The third row (#301).** `win32-x86-64/pubkycore.dll` is in the jar and `SupportedHost` has
     # a Windows entry, so this runs the FFI rather than working around its absence. It is also the
