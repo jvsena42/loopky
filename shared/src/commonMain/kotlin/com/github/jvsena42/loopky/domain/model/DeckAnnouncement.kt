@@ -77,8 +77,8 @@ data class DeckAnnouncement(
                 ?: DEFAULT_ICON
             val headline = when (kind) {
                 Kind.Created -> "$icon I published a new deck on Loopky: $title"
-                Kind.Followed -> "$icon Now following the Loopky deck: $title$by"
-                Kind.Cloned -> "$icon Cloned the Loopky deck: $title$by into my library"
+                Kind.Followed -> "$icon Now following $title$by"
+                Kind.Cloned -> "$icon Cloned $title$by into my library"
             }
             val cover = coverImageUrl?.let { "\n\n$it" }.orEmpty()
             return "$headline$cover\n\n$deckUrl"

@@ -31,11 +31,11 @@ class DeckAnnouncementTest {
         // "pubky" + the whole key is what Nexus indexes as a mention and pubky.app renders as a
         // link to the profile — so the author hears about it, not just the announcer's followers.
         assertTrue(
-            followed.contains("Now following the Loopky deck: \"Kanji N5\" by pubky$AUTHOR"),
+            followed.contains("Now following \"Kanji N5\" by pubky$AUTHOR"),
             followed,
         )
         assertTrue(
-            cloned.contains("Cloned the Loopky deck: \"Kanji N5\" by pubky$AUTHOR into my library"),
+            cloned.contains("Cloned \"Kanji N5\" by pubky$AUTHOR into my library"),
             cloned,
         )
     }
@@ -57,7 +57,7 @@ class DeckAnnouncementTest {
         val deck = testDeck(title = "Kanji N5")
         val content = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, authorPubky = "  ").content
 
-        assertTrue(content.contains("deck: \"Kanji N5\"\n"), content)
+        assertTrue(content.contains("following \"Kanji N5\"\n"), content)
         assertTrue(!content.contains(" by "), content)
     }
 
