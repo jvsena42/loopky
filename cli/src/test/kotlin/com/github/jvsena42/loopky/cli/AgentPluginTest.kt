@@ -119,9 +119,26 @@ class AgentPluginTest {
             marketplace.json()["plugins"]!!.jsonArray.forEach { entry ->
                 val plugin = entry.jsonObject
                 assertEquals(cliVersion, plugin["version"]?.jsonPrimitive?.content, "${marketplace.relative()} ${plugin["name"]}")
-                val source = plugin["source"]!!.jsonPrimitive.content
-                assertTrue(File(root, source).resolve(".claude-plugin/plugin.json").exists(), "$source has no plugin.json")
+                val source = plugin["source"]!!.jsonObject
+                val path = source["path"]!!.jsonPrimitive.content
+                assertTrue(File(root, path).resolve(".claude-plugin/plugin.json").exists(), "$path has no plugin.json")
             }
+        }
+    }
+
+    /**
+     * The skill a user gets must be the one released with the binary they install. `SKILL.md` is
+     * tested against this commit's surface, but the hook and the skill install `releases/latest`;
+     * served from `main`, a skill teaching an unreleased flag would send every agent into exit 2
+     * until the next release. Pinned to the tag, the two ship together.
+     */
+    @Test
+    fun `the marketplace serves the plugin from the release tag`() {
+        File(root, ".claude-plugin/marketplace.json").json()["plugins"]!!.jsonArray.forEach { entry ->
+            val source = entry.jsonObject["source"]!!.jsonObject
+            assertEquals("git-subdir", source["source"]?.jsonPrimitive?.content, "source kind")
+            assertEquals(REPOSITORY_GIT, source["url"]?.jsonPrimitive?.content, "source url")
+            assertEquals("v$cliVersion", source["ref"]?.jsonPrimitive?.content, "source ref")
         }
     }
 
@@ -156,6 +173,7 @@ class AgentPluginTest {
 
     private companion object {
         const val MAX_DESCRIPTION = 1024
+        const val REPOSITORY_GIT = "https://github.com/jvsena42/loopky.git"
         const val RELEASE_INSTALLER = "https://github.com/jvsena42/loopky/releases/latest/download/install.sh"
         const val RAW_WARNING = "never `raw.githubusercontent.com"
         val EXIT_ROW = Regex("""^\|\s*(\d+)\s*\|\s*([a-z_]+)\s*\|""")

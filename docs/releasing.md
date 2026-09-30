@@ -81,7 +81,8 @@ nowhere. The run summary says so on every release where the token is missing.
    - `iosApp/Configuration/Config.xcconfig` — `MARKETING_VERSION`, and `CURRENT_PROJECT_VERSION` to
      the **same number as the new `versionCode`**
    - `gradle.properties` — `loopkyCliVersion`
-   - `plugins/loopky/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` — the agent
+   - `plugins/loopky/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` — the marketplace's `source.ref` to the new tag
+     (`v<x.y.z>`), which is the copy of the skill users install, and the agent
      plugin's `version`, which `/plugin update` compares (`AgentPluginTest` fails until they match)
 
    The `check-version` job compares all of them against the tag before anything is built. Half a bump

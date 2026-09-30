@@ -505,7 +505,10 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   an agent would now do the wrong thing, add or adjust a case under `plugins/loopky/evals/` for new
   behaviour, and say in the PR description which you did (or why no change was needed). Keep it
   thin: the binary's `commands --json` is the reference, the skill is the workflow and the
-  judgment.
+  judgment. The marketplace serves the plugin **from the release tag**, not `main`
+  (`source.ref`, bumped with the version), because the skill and the hook install
+  `releases/latest` — a skill on `main` teaching an unreleased flag would be an exit 2 for every
+  user until the next release. So a skill edit reaches users with the release that ships its binary.
 - **Paste-to-Import is the v1 primary import flow.** The implemented spine is `PasteImportViewModel` (parse + live preview) → `PublishDeckViewModel` (commit to Pubky). Every other import source (AI, OCR, URL) listed in spec §14 must reuse this same spine. Don't build parallel commit flows.
 - **Parser rules are prescriptive.** The paste parser (on `ImportRepository`) must follow the exact rule order in spec §6 and the edge-case table in spec §9. Use them as the test matrix.
 - **No use-case layer.** Don't introduce `*UseCase` interfaces or a `domain/usecase/` package. If a piece of logic doesn't fit any existing repo, extend the most relevant repo or add a new one — keep the surface area flat.

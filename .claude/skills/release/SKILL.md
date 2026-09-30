@@ -46,7 +46,8 @@ merge commit.
    - `gradle.properties` — `loopkyCliVersion` to the numeric version. This is the **single source**
      for `loopky --version` (compiled in by `:cli:generateCliVersion`), the `.deb`'s `Version:`,
      and the container image tag.
-   - `plugins/loopky/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` — the agent
+   - `plugins/loopky/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` — the marketplace's `source.ref` to the new tag
+     (`v<x.y.z>`), which is the copy of the skill users install, and the agent
      plugin's `version`, to the same numeric version. `/plugin update` compares it, so a stale one
      leaves every installed copy of the skill where it was; `AgentPluginTest` fails until it matches.
 
