@@ -377,6 +377,11 @@ jobs:
           sh "$HOOK"
           test ! -e "$HOME/.local/bin/loopky" || { echo "::error::the hook installed outside a cloud session"; exit 1; }
 
+          # A failed download must say so and touch nothing. Under `curl | sh` it reported success.
+          CLAUDE_CODE_REMOTE=true LOOPKY_INSTALLER_URL=https://github.com/jvsena42/loopky/releases/latest/download/missing.sh \
+            sh "$HOOK" | grep -q "Installing loopky failed"
+          test ! -e "$HOME/.local/bin/loopky" && test ! -s "$CLAUDE_ENV_FILE"
+
           CLAUDE_CODE_REMOTE=true sh "$HOOK" | tee "$RUNNER_TEMP/hook-out"
           "$HOME/.local/bin/loopky" --version
           grep -q "Installed loopky" "$RUNNER_TEMP/hook-out"

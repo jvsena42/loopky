@@ -35,9 +35,14 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 0
 fi
 
-if curl -fsSL "$INSTALLER" | sh >&2; then
+# Downloaded first, never `curl | sh`: without pipefail a failed download pipes nothing into `sh`,
+# which exits 0, and the session would be told loopky is installed when nothing was fetched.
+tmp=$(mktemp) || exit 0
+trap 'rm -f "$tmp"' EXIT
+if curl -fsSL "$INSTALLER" -o "$tmp" && sh "$tmp" >&2 \
+  && version=$("$BIN_DIR/loopky" --version --no-update-check 2>/dev/null); then
   persist_path
-  echo "Installed $(PATH="$BIN_DIR:$PATH" loopky --version --no-update-check 2>/dev/null) to $BIN_DIR."
+  echo "Installed $version to $BIN_DIR."
 else
   echo "Installing loopky failed. If github.com answered 403, attach jvsena42/loopky to this session or install it in the environment's setup script; otherwise follow the loopky skill's install step."
 fi
