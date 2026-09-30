@@ -1,1 +1,1 @@
-Spaced repetition flashcards. Import Anki decks. No email or password.
+Spaced repetition flashcards. Import Anki decks.

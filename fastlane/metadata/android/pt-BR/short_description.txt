@@ -1,1 +1,1 @@
-Flashcards com repetição espaçada. Importe decks do Anki. Sem e-mail nem senha.
+Flashcards com repetição espaçada. Importe decks do Anki.

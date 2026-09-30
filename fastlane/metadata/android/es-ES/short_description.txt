@@ -1,1 +1,1 @@
-Flashcards con repetición espaciada. Importa mazos de Anki. Sin email ni clave.
+Flashcards con repetición espaciada. Importa mazos de Anki.

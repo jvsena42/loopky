@@ -1,1 +1,1 @@
-Flashcard con ripetizione dilazionata. Import da Anki. Senza email né password.
+Flashcard con ripetizione dilazionata. Importa i tuoi mazzi Anki.
