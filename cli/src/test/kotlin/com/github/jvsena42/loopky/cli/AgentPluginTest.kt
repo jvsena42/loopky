@@ -96,14 +96,53 @@ class AgentPluginTest {
         }
     }
 
-    /** The installer is the release's; `main`'s would pipe an unreviewed moving target into `sh`. */
+    /**
+     * Plugin directories flag any file — skill, README, script — that downloads code and runs it in
+     * one step (RUNTIME_FETCH_EXEC), because what runs can change after review (#405). The skill
+     * installs through the scripts it ships instead.
+     */
     @Test
-    fun `everything that installs uses the release installer`() {
-        val installers = skills + File(root, "plugins").walk().filter { it.extension == "sh" }
-        installers.forEach { file ->
-            val text = file.text()
-            assertTrue("raw.githubusercontent.com" !in text.replace(RAW_WARNING, ""), "${file.relative()} installs from main")
-            if ("install.sh" in text) assertTrue(RELEASE_INSTALLER in text, "${file.relative()} lacks $RELEASE_INSTALLER")
+    fun `nothing in a plugin downloads and runs code in one step`() {
+        File(root, "plugins").walk().filter { it.isFile && it.extension in TEXT_EXTENSIONS }.forEach { file ->
+            file.text().lines().forEachIndexed { index, line ->
+                assertTrue(FETCH_AND_RUN.none { it.containsMatchIn(line) }, "${file.relative()}:${index + 1} fetches and runs: $line")
+            }
+            // An eval rubric names the host to forbid it; what the agent follows must not use it.
+            if ("evals" !in file.relativeTo(root).invariantSeparatorsPath.split("/")) {
+                assertTrue("raw.githubusercontent.com" !in file.text().replace(RAW_WARNING, ""), "${file.relative()} installs from main")
+            }
+        }
+    }
+
+    @Test
+    fun `the installers a skill names are shipped and executable`() {
+        skills.forEach { skill ->
+            val named = SHIPPED_SCRIPT.findAll(skill.text()).map { it.groupValues[1] }.toSet()
+            assertEquals(setOf("install.sh", "install.ps1"), named, "${skill.relative()} names these installers")
+            named.forEach {
+                assertTrue(skill.resolveSibling("scripts/$it").isFile, "${skill.relative()} names scripts/$it, which is not shipped")
+            }
+            assertTrue(skill.resolveSibling("scripts/install.sh").canExecute(), "scripts/install.sh is not executable")
+        }
+    }
+
+    /**
+     * The plugin's installers are its own, since the release's carry the one-liner in their text,
+     * but they must fetch exactly the assets the release installers do from the same release.
+     */
+    @Test
+    fun `the shipped installers fetch what the release installers fetch`() {
+        skills.forEach { skill ->
+            listOf("install.sh", "install.ps1").forEach { name ->
+                val shipped = skill.resolveSibling("scripts/$name").text()
+                val release = File(root, "cli/$name").text()
+                assertEquals(assets(release), assets(shipped), "assets in scripts/$name")
+                assertTrue(
+                    RELEASE_DOWNLOADS in shipped && REPOSITORY in shipped,
+                    "scripts/$name does not download $REPOSITORY's latest release",
+                )
+                assertTrue(".sha256" in shipped, "scripts/$name does not verify the published checksum")
+            }
         }
     }
 
@@ -222,6 +261,8 @@ class AgentPluginTest {
     /** A Windows checkout may carry CRLF, which the frontmatter split would otherwise trip on. */
     private fun File.text(): String = readText().replace("\r\n", "\n")
 
+    private fun assets(text: String): Set<String> = ASSET.findAll(text).map { it.value }.toSet()
+
     private fun File.json(): JsonObject = Json.parseToJsonElement(readText()).jsonObject
 
     private fun File.relative(): String = relativeTo(root).path
@@ -235,8 +276,17 @@ class AgentPluginTest {
         const val CODEX_DEVELOPER_MAX = 80
         const val CODEX_PROMPTS_MAX = 3
         const val CODEX_PROMPT_MAX = 128
-        const val RELEASE_INSTALLER = "https://github.com/jvsena42/loopky/releases/latest/download/install.sh"
-        const val RAW_WARNING = "never `raw.githubusercontent.com"
+        const val RAW_WARNING = "never install from `raw.githubusercontent.com"
+        const val RELEASE_DOWNLOADS = "/releases/latest/download"
+        const val REPOSITORY = "jvsena42/loopky"
+        val TEXT_EXTENSIONS = setOf("md", "sh", "ps1", "json", "txt", "yaml", "yml")
+        val FETCH_AND_RUN = listOf(
+            Regex("""\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(sh|bash|zsh)\b"""),
+            Regex("""\b(irm|iwr|Invoke-RestMethod|Invoke-WebRequest)\b[^|]*\|\s*(iex|Invoke-Expression)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\b(sh|bash)\s+-c\s+"?\$\((curl|wget)"""),
+        )
+        val SHIPPED_SCRIPT = Regex("""scripts[/\\](install\.(?:sh|ps1))""")
+        val ASSET = Regex("""loopky-(?:linux|macos|windows)-[a-z0-9-]+(?:\.exe)?""")
         val EXIT_ROW = Regex("""^\|\s*(\d+)\s*\|\s*([a-z_]+)\s*\|""")
         val INLINE_CODE = Regex("`([^`]+)`")
         val QUOTED = Regex("\"[^\"]*\"")
