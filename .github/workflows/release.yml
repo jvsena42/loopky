@@ -868,6 +868,92 @@ jobs:
             echo "   \`gh release edit $VERSION --notes-file <file>\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  plugin-branch:
+    # **The copy of the agent plugin that plugin directories download (#388).** They fetch a
+    # repository's whole archive, and this one's is ~112 MiB against a 50 MiB limit, so Anthropic's
+    # directory is pointed at `plugin`: a branch holding only `plugins/loopky/` and a README. The
+    # directory follows that branch, so this job is the only thing that moves it, once per final
+    # release, after `latest` has moved — the same gate as Homebrew, and the same reason: the
+    # directory's copy of the skill must describe the binary `releases/latest` installs.
+    #
+    # Commits on top of the branch rather than recreating it, so its history is one commit per
+    # release. `plugin-branch-check.sh` then holds the pushed branch to the tag, and the last two
+    # steps check what the directory itself will download. Checked here and nowhere else, because
+    # this job is the branch's only writer — never edit it by hand.
+    name: Plugin branch
+    needs: mark-latest
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Should this run?
+        id: guard
+        run: |
+          case "${VERSION#v}" in
+            *[!0-9.]*)
+              echo 'go=false' >> "$GITHUB_OUTPUT"
+              echo "$VERSION is a pre-release — leaving the plugin branch where it is" ;;
+            *) echo 'go=true' >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - uses: actions/checkout@v7
+        if: steps.guard.outputs.go == 'true'
+        with:
+          fetch-depth: 0
+
+      - name: Copy the plugin onto the branch
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          git fetch origin plugin
+          git worktree add "$RUNNER_TEMP/plugin" origin/plugin
+          rsync -a --delete plugins/loopky/ "$RUNNER_TEMP/plugin/plugins/loopky/"
+          cd "$RUNNER_TEMP/plugin"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The plugin is unchanged since the last release — nothing to push"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "plugin: loopky ${VERSION#v}, copied from $VERSION"
+          git push origin HEAD:plugin
+
+      - name: The branch is the release, and small
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          git fetch origin plugin
+          .github/scripts/plugin-branch-check.sh "$VERSION" origin/plugin
+
+      # What the directory itself downloads, rather than what git says the branch holds.
+      - name: GitHub serves a small archive with the plugin in it
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/plugin.tar.gz" \
+            "https://codeload.github.com/$GITHUB_REPOSITORY/tar.gz/refs/heads/plugin"
+          SIZE=$(wc -c < "$RUNNER_TEMP/plugin.tar.gz")
+          echo "served archive: $SIZE bytes"
+          test "$SIZE" -lt $((10 * 1024 * 1024)) || { echo "::error::the served archive is $SIZE bytes"; exit 1; }
+          mkdir "$RUNNER_TEMP/served"
+          tar -xzf "$RUNNER_TEMP/plugin.tar.gz" -C "$RUNNER_TEMP/served" --strip-components=1
+          test -f "$RUNNER_TEMP/served/plugins/loopky/.claude-plugin/plugin.json"
+
+      - uses: actions/setup-node@v6
+        if: steps.guard.outputs.go == 'true'
+        with:
+          node-version: '22'
+
+      # No model calls: validation is local, so this spends no API credit.
+      - name: The served plugin validates as the directory would
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code
+          claude plugin validate "$RUNNER_TEMP/served/plugins/loopky" --strict
+          echo "> **Plugin branch** now serves loopky ${VERSION#v} to plugin directories." >> "$GITHUB_STEP_SUMMARY"
+
   homebrew:
     # The macOS delivery channel, and the one thing about a release that lives in another
     # repository — a tap is its own repo (`<owner>/homebrew-loopky`), so this needs a token the

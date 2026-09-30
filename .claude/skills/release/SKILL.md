@@ -140,6 +140,10 @@ merge commit.
     `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION`, `loopkyCliVersion`, the path to the `.aab`
     waiting for the Play Console, and the install one-liner from `cli/README.md`.
 
+    Say out loud whether the `plugin` branch moved: the *Plugin branch* job copies
+    `plugins/loopky/` there and checks it against the tag. It is what Anthropic's plugin directory
+    downloads, so a skipped or red job leaves the directory serving the previous skill.
+
     Say out loud whether the Homebrew tap was updated. The workflow pushes it when
     `HOMEBREW_TAP_TOKEN` is set and warns in the run summary when it is not — "Homebrew not
     updated, no tap token" is a fine outcome to report and a bad one to leave implied, because

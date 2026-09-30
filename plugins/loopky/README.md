@@ -28,15 +28,15 @@ Then ask for what you want to learn: *"Make me 30 Spanish flashcards for orderin
 - **`skills/loopky`** — when to reach for Loopky and the workflow. It deliberately does not copy
   the command reference: `loopky commands --json` is the source of truth for flags, result shapes
   and exit codes, and the skill points there.
-- **A SessionStart hook** that installs `loopky` in Claude Code on the web containers
-  (`CLAUDE_CODE_REMOTE=true`) and does nothing anywhere else. It uses the release's installer from
-  `github.com`, which the web's default *Trusted* network level allows.
+The plugin ships **no hooks**. The skill installs `loopky` when it is missing, from the release's
+installer on `github.com`. A hook that did it at session start would download and run code before
+the user asked for anything, which plugin directories hold for review. In a cloud environment
+(Claude Code on the web, Codex), putting the install line in the environment's setup script saves
+that step, with the hosts `loopky doctor` lists added to its allowlist:
 
-On Codex the install hook is left out (`hooks/codex-hooks.json` is empty): a Codex cloud
-environment's agent phase has no internet by default, so `loopky` belongs in the environment's
-setup script — `curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh`
-— with the hosts `loopky doctor` lists added to its allowlist. Locally a hook would only raise a
-trust prompt for nothing.
+```shell
+curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh
+```
 
 ## What it cannot do for you
 
@@ -51,8 +51,7 @@ trust prompt for nothing.
 `cli/src/test/.../AgentPluginTest.kt` fails the build when the skill names a command or flag the
 binary does not have, when its exit-code table disagrees with `ExitCode`, or when the plugin's
 version drifts from `loopkyCliVersion`. CI also runs `claude plugin validate --strict`, installs the plugin into Codex and checks the
-skill reaches the model's prompt (`codex debug prompt-input`), runs the install hook in a simulated
-cloud container. `evals/` holds behavioural cases for `claude plugin eval`: they cost API credit,
+skill reaches the model's prompt (`codex debug prompt-input`). `evals/` holds behavioural cases for `claude plugin eval`: they cost API credit,
 so CI runs them once per release (beside the build, gating nothing) and on demand; run them
 locally with `claude plugin eval plugins/loopky --model sonnet --ablation none` before merging a
 skill change.

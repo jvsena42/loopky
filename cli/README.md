@@ -10,8 +10,8 @@ cards, and studying happens on your phone or tablet.
   prompt to copy and paste into your assistant at [loopky.app/#cli](https://loopky.app/#cli).
 - **Claude Code plugin:** `/plugin marketplace add jvsena42/loopky`, then
   `/plugin install loopky@loopky`. It carries the `loopky` skill (`plugins/loopky/`) — the
-  workflow, exit-code handling and card-writing rules — and installs the binary in Claude Code on
-  the web. Codex installs the same plugin: `codex plugin marketplace add jvsena42/loopky`, then
+  workflow, exit-code handling and card-writing rules — and the skill installs the binary when it
+  is missing. Codex installs the same plugin: `codex plugin marketplace add jvsena42/loopky`, then
   `codex plugin add loopky@loopky`. `AgentPluginTest` fails the build when the skill names a command, flag or exit code this
   binary does not have, so a surface change here comes with a skill change.
 - **The commands that prompt relies on:** `loopky login`, `loopky commands --json`,
