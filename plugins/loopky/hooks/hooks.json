@@ -1,0 +1,17 @@
+{
+  "description": "Install the loopky CLI in Claude Code on the web containers, where every session starts from a fresh image.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/install-loopky.sh\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
