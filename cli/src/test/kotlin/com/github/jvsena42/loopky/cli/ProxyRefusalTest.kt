@@ -85,4 +85,36 @@ class ProxyRefusalTest {
         )
         assertEquals(ExitCode.TlsUntrusted, ExitCode.of(error))
     }
+
+    @Test
+    fun `a refused tunnel to a pkarr name is an unresolved homeserver, not an allowlist gap`() {
+        // The message #389 reported, verbatim but for the key.
+        val error = RuntimeException(
+            "Auth approval failed: Request failed: HTTP transport error: error sending request for url " +
+                "(https://_pubky.3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo/session): client error " +
+                "(Connect): tunnel error: unsuccessful",
+        )
+        assertEquals(ExitCode.HomeserverUnresolved, ExitCode.of(error))
+    }
+
+    @Test
+    fun `the fork's unresolved sign-in is an unresolved homeserver`() {
+        val error = RuntimeException(
+            "Auth approval failed: Homeserver could not be resolved: pkarr found no endpoint for " +
+                "_pubky.3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo after 4 attempts over 11s " +
+                "(relay request timed out). Ring's approval was received but expires unused; start a new " +
+                "sign-in and approve it again.",
+        )
+        assertEquals(ExitCode.HomeserverUnresolved, ExitCode.of(error))
+    }
+
+    @Test
+    fun `a refused tunnel to a real host is still a proxy refusal, whatever resource it serves`() {
+        val error = RuntimeException(
+            "Failed to get pubky://3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo/pub/loopky/decks/: " +
+                "error sending request for url (https://homeserver.pubky.app/pub/loopky/decks/): " +
+                "client error (Connect): tunnel error: unsuccessful",
+        )
+        assertEquals(ExitCode.ProxyRefused, ExitCode.of(error))
+    }
 }

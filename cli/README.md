@@ -613,6 +613,7 @@ Sign in on a machine with a phone and hand the sandbox `LOOPKY_SESSION` (see Env
 | | | 13 | `login --timeout` ran out |
 | | | 14 | a proxy refused the host |
 | | | 15 | the certificate is not trusted |
+| | | 16 | pkarr could not resolve the homeserver |
 
 `loopky commands --json` carries this table — name, number and a line of what to do about it —
 along with the subset each command can actually produce. That last part is worth reading for its
@@ -630,7 +631,16 @@ untrusted on the next attempt. The fix is to name the proxy's CA with `SSL_CERT_
 `SSL_CERT_DIR`, which both halves of the client trust, or to exempt Loopky's hosts from
 interception.
 
-13 is nobody approving a sign-in inside `--timeout`. *That process* is not signed in — deliberately
+16 is pkarr failing to turn the homeserver's key into an address — both relays timed out, or the
+DHT did not answer. Not 14: it used to surface as a proxy refusing to tunnel to `_pubky.<key>`, a
+name that means nothing outside pkarr, and sent people to change an allowlist `loopky doctor` then
+found nothing wrong with (#389). It is transient — a relay that missed a key answers the next
+lookup from its cache — so retry; for `login` that means scanning a new code, because the approval
+it received has expired unused. Behind a proxy the relays are the only resolver, and a lookup waits
+up to 10s for one rather than pkarr's default 2s, which a relay asking the DHT on a miss (~3s)
+routinely overran.
+
+13 is no session arriving inside `--timeout`: nobody approved, or an approval was still being exchanged (resolving the homeserver can take up to two minutes, #389). *That process* is not signed in — deliberately
 not "nothing was stored", which it cannot promise: the await runs on a thread that is unobserved
 rather than stopped, so an approval landing as the process exits still persists a session. `loopky
 whoami` answers it. The code that was on screen is spent either way — the FFI's auth flow is a

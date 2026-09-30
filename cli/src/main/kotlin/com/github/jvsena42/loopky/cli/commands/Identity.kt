@@ -306,7 +306,10 @@ internal suspend fun AuthFlowHandle.completeWithin(seconds: Int?): Result<Sessio
         // in the moment between here and `exitProcess` still writes. Saying so is better than
         // asserting the opposite: an agent told a lie about its own credential state has no way to
         // find out. `whoami` is cheap and answers it.
-        "Nobody approved the sign-in within ${seconds}s, so this process is not signed in. If " +
+        // Not "nobody approved": since #389 an approval is followed by up to two minutes of
+        // homeserver resolution, and a short --timeout can land inside it.
+        "No session arrived within ${seconds}s — nobody approved, or the approval was still being " +
+            "exchanged for a session — so this process is not signed in. If " +
             "approval lands as it exits the session may still be stored — `loopky whoami` says. " +
             "The code that was on screen is spent either way — the FFI's auth flow is single-use " +
             "— so run `loopky login` again rather than retrying.",
@@ -379,7 +382,7 @@ private val REFUSED_SESSION =
  * to 4 — the very answer this field exists not to give.
  */
 private fun checkFailureCode(error: Throwable): ExitCode = when (val exit = ExitCode.of(error)) {
-    ExitCode.ProxyRefused, ExitCode.TlsUntrusted, ExitCode.ServerError -> exit
+    ExitCode.ProxyRefused, ExitCode.TlsUntrusted, ExitCode.ServerError, ExitCode.HomeserverUnresolved -> exit
     else -> ExitCode.Network
 }
 

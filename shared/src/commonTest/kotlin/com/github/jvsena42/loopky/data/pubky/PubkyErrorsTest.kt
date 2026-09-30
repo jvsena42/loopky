@@ -30,6 +30,48 @@ class PubkyErrorsTest {
     }
 
     @Test
+    fun classifiesAnUnresolvedHomeserverAsALookupFailureNotOffline() {
+        // #389: the relays timed out, and the fork says so rather than trying the `_pubky` name.
+        val fork = PubkyError(
+            "Auth approval failed: Homeserver could not be resolved: pkarr found no endpoint for " +
+                "_pubky.3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo after 4 attempts over 11s " +
+                "(relay request timed out).",
+        )
+        // An older binary sent the `_pubky` name to the proxy, which can only refuse it.
+        val proxied = PubkyError(
+            "Auth approval failed: Request failed: HTTP transport error: error sending request for url " +
+                "(https://_pubky.3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo/session): " +
+                "client error (Connect): tunnel error: unsuccessful",
+        )
+
+        assertEquals(ErrorReason.HomeserverLookupFailed, fork.toErrorReason())
+        assertEquals(ErrorReason.HomeserverLookupFailed, proxied.toErrorReason())
+    }
+
+    @Test
+    fun aSignInForAKeyWithNoRecordIsNoAccountNotALookupFailure() {
+        // Retrying cannot help, so it must not read as the transient lookup failure above.
+        val noRecord = PubkyError(
+            "Auth approval failed: No homeserver found for " +
+                "_pubky.3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo: pkarr has no record for it " +
+                "after 4 attempts over 11s. Ring's approval was received but expires unused.",
+        )
+
+        assertEquals(ErrorReason.NoHomeserverAccount, noRecord.toErrorReason())
+    }
+
+    @Test
+    fun aRefusedTunnelToARealHostIsNotALookupFailure() {
+        val refused = PubkyError(
+            "Failed to get pubky://3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo/pub/loopky/decks/: " +
+                "error sending request for url (https://homeserver.pubky.app/pub/loopky/decks/): " +
+                "client error (Connect): tunnel error: unsuccessful",
+        )
+
+        assertEquals(ErrorReason.Offline, refused.toErrorReason())
+    }
+
+    @Test
     fun classifiesThePlatformHttpStacksOfflineWordings() {
         // Verbatim from a device with wifi and data off (#321). None of these come through the FFI,
         // so none of them matched until the indexer's failures started reaching the UI: Discover

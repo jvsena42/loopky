@@ -142,6 +142,23 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
      * store passed as `-Djavax.net.ssl.trustStore`.
      */
     TlsUntrusted(15, "tls_untrusted", "the certificate is not trusted - usually a proxy re-signing TLS; exempt the host from interception"),
+
+    /**
+     * pkarr could not resolve the homeserver's key to an address (#389): both relays timed out, or
+     * the DHT did not answer.
+     *
+     * Not [Network], whose promise is a host that could not be reached — here there was no host to
+     * reach yet. And above all not [ProxyRefused]: an unresolved name used to surface as a proxy
+     * refusing to tunnel to `_pubky.<key>`, which sent a human to change a network policy that
+     * `loopky doctor` then found nothing wrong with. Transient: a relay that missed a key answers
+     * the next lookup from its cache. For `login` the approval is spent, so retrying means a new
+     * code to scan.
+     */
+    HomeserverUnresolved(
+        16,
+        "homeserver_unresolved",
+        "pkarr could not resolve the homeserver - transient, retry; not an allowlist problem",
+    ),
     ;
 
     companion object {
@@ -154,6 +171,8 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
          * same thing.
          */
         fun of(error: Throwable): ExitCode = when {
+            // First: a proxy refusing a `_pubky.<key>` tunnel is this, not an allowlist gap.
+            error.toErrorReason() == ErrorReason.HomeserverLookupFailed -> HomeserverUnresolved
             error.isProxyRefusal() -> ProxyRefused
             error.isUntrustedCertificate() -> TlsUntrusted
             else -> fromReason(error)
@@ -165,8 +184,9 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
             ErrorReason.Offline,
             ErrorReason.AuthRelayUnreachable,
             ErrorReason.ServerBusy,
-            ErrorReason.HomeserverLookupFailed,
             -> Network
+
+            ErrorReason.HomeserverLookupFailed -> HomeserverUnresolved
 
             ErrorReason.NotFound, ErrorReason.NoHomeserverAccount -> NotFound
             ErrorReason.StorageFull -> StorageFull

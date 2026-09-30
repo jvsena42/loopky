@@ -571,6 +571,7 @@ internal val USAGE = """
                               13 login --timeout ran out before anyone approved
                               14 a proxy refused the host — allowlist it; retrying will not help
                               15 the certificate is not trusted — usually a proxy re-signing TLS
+                              16 pkarr could not resolve the homeserver — retry; not an allowlist problem
 
     NOTES
       The session can write /pub/loopky/ and nothing else: no posts, follows or profile edits.
