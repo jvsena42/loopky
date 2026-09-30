@@ -318,8 +318,9 @@ jobs:
     # **The agent plugin under `plugins/` (#388), checked the way Claude Code loads it.** The skill's
     # commands, flags, exit codes and version are held against the binary by `AgentPluginTest` in
     # `:cli:test` (cli-linux); this checks the parts no JVM test can: the manifests as Claude Code
-    # parses them, Codex handing the model the same skill, and the install hook doing its one job
-    # in a simulated cloud container.
+    # parses them, and Codex handing the model the same skill. The plugin ships no hooks: a hook that
+    # installs a binary holds a directory submission for review (#405), and the skill installs
+    # `loopky` itself.
     # Ungated: it is cheap, and a skill that silently stopped loading is invisible otherwise.
     # Behavioural evals cost model calls, so they live in `plugin-evals.yml` instead.
     name: Agent plugin
@@ -382,40 +383,11 @@ jobs:
           grep -q 'loopky:loopky' "$RUNNER_TEMP/codex-prompt.json" \
             || { echo "::error::Codex installed the plugin but the loopky skill is not in the model's prompt"; exit 1; }
 
-      - name: The install hook is portable sh
+      - name: The plugin branch check is portable sh
         run: |
           set -euo pipefail
-          sh -n plugins/loopky/hooks/install-loopky.sh
-          shellcheck --shell=sh plugins/loopky/hooks/install-loopky.sh
+          sh -n .github/scripts/plugin-branch-check.sh
           shellcheck --shell=sh .github/scripts/plugin-branch-check.sh
-
-      # Against the latest *release*, which is what a user's session gets — so this also catches
-      # the installer or the release assets going wrong, not only the hook.
-      - name: The install hook installs in a cloud container, and nowhere else
-        env:
-          LOOPKY_NO_UPDATE_CHECK: '1'
-        run: |
-          set -euo pipefail
-          HOOK="$PWD/plugins/loopky/hooks/install-loopky.sh"
-          export HOME="$RUNNER_TEMP/hook-home" CLAUDE_ENV_FILE="$RUNNER_TEMP/hook-env"
-          mkdir -p "$HOME"; : > "$CLAUDE_ENV_FILE"
-
-          sh "$HOOK"
-          test ! -e "$HOME/.local/bin/loopky" || { echo "::error::the hook installed outside a cloud session"; exit 1; }
-
-          # A failed download must say so and touch nothing. Under `curl | sh` it reported success.
-          CLAUDE_CODE_REMOTE=true LOOPKY_INSTALLER_URL=https://github.com/jvsena42/loopky/releases/latest/download/missing.sh \
-            sh "$HOOK" | grep -q "Installing loopky failed"
-          test ! -e "$HOME/.local/bin/loopky" && test ! -s "$CLAUDE_ENV_FILE"
-
-          CLAUDE_CODE_REMOTE=true sh "$HOOK" | tee "$RUNNER_TEMP/hook-out"
-          "$HOME/.local/bin/loopky" --version
-          grep -q "Installed loopky" "$RUNNER_TEMP/hook-out"
-          grep -qF "$HOME/.local/bin" "$CLAUDE_ENV_FILE"
-
-          # Idempotent: a resumed session must neither reinstall nor stack PATH lines.
-          CLAUDE_CODE_REMOTE=true sh "$HOOK" | grep -q "loopky is installed"
-          test "$(wc -l < "$CLAUDE_ENV_FILE")" -eq 1
 
   cli-windows:
     # **The third row (#301).** `win32-x86-64/pubkycore.dll` is in the jar and `SupportedHost` has
