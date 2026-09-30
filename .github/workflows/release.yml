@@ -124,6 +124,15 @@ jobs:
             exit 1
           fi
 
+  plugin-evals:
+    # The agent skill's behavioural evals (#388), once per release and nowhere else, because they
+    # spend API credit. Beside the build rather than in front of it: nothing `needs` this job, so a
+    # flaky judge can never hold back a release — a red row here is read, not obeyed.
+    name: Agent plugin evals
+    needs: check-version
+    uses: ./.github/workflows/plugin-evals.yml
+    secrets: inherit
+
   android:
     # The signed APK and the Play bundle, built from the tagged commit rather than from whatever a
     # laptop happened to have checked out.

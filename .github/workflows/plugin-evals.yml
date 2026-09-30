@@ -2,18 +2,20 @@ name: Agent plugin evals
 
 # Whether the skill still makes Claude *do* the right thing (#388): trigger on a flashcards request,
 # dry-run before writing, stop and hand an allowlist to the user, sign in again on exit 4. The
-# static checks (`AgentPluginTest`, `claude plugin validate`) cannot see behaviour; these can. They
-# spend model calls, so they run when the skill or its cases change, weekly against model drift, and
-# on demand — not on every push. Only the skill and the cases can change what the model does, so a
-# README, icon, manifest or hook edit does not pay for a run.
+# static checks (`AgentPluginTest`, `claude plugin validate`) cannot see behaviour; these can.
+#
+# **Paid, so it runs once per release and on demand — never on a PR or a schedule.** `release.yml`
+# calls it beside the build, and it gates nothing there: a nondeterministic LLM eval must not be
+# able to stop an app release, and the plugin ships with the tag either way. A red job in the
+# release run is the signal. Check a skill change before merging it with `claude plugin eval
+# plugins/loopky --model sonnet --ablation none` locally, which bills a subscription, not the key.
 on:
-  pull_request:
-    paths:
-      - 'plugins/loopky/skills/**'
-      - 'plugins/loopky/evals/**'
-      - '.github/workflows/plugin-evals.yml'
-  schedule:
-    - cron: '17 6 * * 1'
+  workflow_call:
+    inputs:
+      baseline:
+        description: 'Also run every case without the plugin'
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       baseline:
@@ -38,8 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # A fork's PR has no secrets. Said out loud rather than a silent green, which would read as
-      # "the evals passed".
+      # Said out loud rather than a silent green, which would read as "the evals passed".
       - name: An API key is available
         id: key
         run: |
@@ -60,8 +61,8 @@ jobs:
       #
       # No baseline arm by default. `plugin eval` runs every case a second time without the plugin
       # unless told not to, which is 46% of the bill ($0.67 of $1.46 on the first run) and answers
-      # "how much does the skill help" — a question that does not change on a PR. "Does it still
-      # work" is the with-plugin score alone. A manual run measures the baseline when asked.
+      # "how much does the skill help" — a question that does not change between releases. "Does it
+      # still work" is the with-plugin score alone. A manual run measures the baseline when asked.
       #
       # Sonnet as the agent: measured locally at 3 runs a case, 12/12 at $0.53 against the default
       # model's 12/12 at ~$0.79. Haiku was 6/12 at $0.27 — it answers in one turn without loading
@@ -69,7 +70,7 @@ jobs:
       - name: Run the evals
         if: steps.key.outputs.present == 'true'
         env:
-          ABLATION: ${{ (github.event_name == 'workflow_dispatch' && inputs.baseline) && 'with-without' || 'none' }}
+          ABLATION: ${{ inputs.baseline && 'with-without' || 'none' }}
         run: |
           set -euo pipefail
           npm install --global @anthropic-ai/claude-code
