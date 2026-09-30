@@ -19,15 +19,18 @@ guessing, and trust them over anything here.
 
 ## Workflow
 
-1. **Install, if `loopky --version` fails.**
+1. **Install, if `loopky --version` fails,** with the installer shipped in this skill's `scripts/`
+   folder (paths are relative to the skill's directory):
 
    ```shell
-   curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh
+   sh scripts/install.sh
    ```
 
-   Windows: `irm https://github.com/jvsena42/loopky/releases/latest/download/install.ps1 | iex`.
-   It lands in `~/.local/bin`; add that to `PATH` if the shell cannot find it. Use the release URL,
-   never `raw.githubusercontent.com/.../main/...`.
+   Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install.ps1`.
+   It downloads the latest release binary, checks its published SHA-256, and puts it in
+   `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\loopky`); add that to `PATH` if the shell
+   cannot find it, then run `loopky --version`. Never pipe a downloaded script into a shell, and
+   never install from `raw.githubusercontent.com`.
 
 2. **Read the surface:** `loopky commands --json`. No session, no network.
 
