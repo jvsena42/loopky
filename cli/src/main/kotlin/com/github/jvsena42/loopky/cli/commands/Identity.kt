@@ -379,7 +379,7 @@ private val REFUSED_SESSION =
  * to 4 — the very answer this field exists not to give.
  */
 private fun checkFailureCode(error: Throwable): ExitCode = when (val exit = ExitCode.of(error)) {
-    ExitCode.ProxyRefused, ExitCode.TlsUntrusted, ExitCode.ServerError -> exit
+    ExitCode.ProxyRefused, ExitCode.TlsUntrusted, ExitCode.ServerError, ExitCode.HomeserverUnresolved -> exit
     else -> ExitCode.Network
 }
 

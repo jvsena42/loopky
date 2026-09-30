@@ -127,6 +127,7 @@ private fun CliCommand.exitCodes(): List<ExitCode> = buildList {
         add(ExitCode.ProxyRefused)
         add(ExitCode.TlsUntrusted)
         add(ExitCode.ServerError)
+        add(ExitCode.HomeserverUnresolved)
         add(ExitCode.UnsupportedHost)
     }
     if (!local && needsSession) {
