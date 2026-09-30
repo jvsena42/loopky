@@ -368,7 +368,14 @@ jobs:
           npm install --global @openai/codex
           export CODEX_HOME="$RUNNER_TEMP/codex-home"
           mkdir -p "$CODEX_HOME"
-          codex plugin marketplace add "$PWD"
+          # The real marketplace serves the last release tag, which may predate this PR's plugin, so
+          # install from a copy whose source is this checkout.
+          MP="$RUNNER_TEMP/codex-marketplace"
+          mkdir -p "$MP/.agents/plugins"
+          ln -s "$PWD/plugins" "$MP/plugins"
+          jq '.plugins[].source = {"source": "local", "path": "./plugins/loopky"}' \
+            .agents/plugins/marketplace.json > "$MP/.agents/plugins/marketplace.json"
+          codex plugin marketplace add "$MP"
           codex plugin add loopky@loopky
           codex plugin list --json | jq -e '.installed[] | select(.pluginId == "loopky@loopky" and .enabled)'
           (cd "$RUNNER_TEMP" && codex debug prompt-input "make me flashcards") > "$RUNNER_TEMP/codex-prompt.json"

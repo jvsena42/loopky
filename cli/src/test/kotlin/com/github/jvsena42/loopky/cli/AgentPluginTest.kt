@@ -133,12 +133,15 @@ class AgentPluginTest {
      * until the next release. Pinned to the tag, the two ship together.
      */
     @Test
-    fun `the marketplace serves the plugin from the release tag`() {
-        File(root, ".claude-plugin/marketplace.json").json()["plugins"]!!.jsonArray.forEach { entry ->
-            val source = entry.jsonObject["source"]!!.jsonObject
-            assertEquals("git-subdir", source["source"]?.jsonPrimitive?.content, "source kind")
-            assertEquals(REPOSITORY_GIT, source["url"]?.jsonPrimitive?.content, "source url")
-            assertEquals("v$cliVersion", source["ref"]?.jsonPrimitive?.content, "source ref")
+    fun `both marketplaces serve the plugin from the release tag`() {
+        listOf(".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json").map { File(root, it) }.forEach { marketplace ->
+            marketplace.json()["plugins"]!!.jsonArray.forEach { entry ->
+                val source = entry.jsonObject["source"]!!.jsonObject
+                val where = marketplace.relative()
+                assertEquals("git-subdir", source["source"]?.jsonPrimitive?.content, "$where source kind")
+                assertEquals(REPOSITORY_GIT, source["url"]?.jsonPrimitive?.content, "$where source url")
+                assertEquals("v$cliVersion", source["ref"]?.jsonPrimitive?.content, "$where source ref")
+            }
         }
     }
 
