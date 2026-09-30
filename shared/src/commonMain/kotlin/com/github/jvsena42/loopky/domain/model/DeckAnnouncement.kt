@@ -145,17 +145,18 @@ private fun Deck.previewableCoverUrl(): String? {
     val ref = coverImageRef ?: return null
     val url = ref.url ?: return null
     val allowed = PREVIEW_PROTOCOLS.any { url.startsWith("$it://") }
-    return url.takeIf { allowed && it.length <= MAX_ATTACHMENT_URL_LENGTH }
+    return url.takeIf { allowed && it.length <= MAX_COVER_URL_LENGTH }
 }
 
 /** Only what a browser can fetch; see [previewableCoverUrl]. */
 private val PREVIEW_PROTOCOLS = listOf("https", "http")
 
 /**
- * Kept at pubky-app-specs' `post_attachment_url_max_length` even though the URL now travels in
- * the body: a cover URL long enough to trip that limit is long enough to swamp the post.
+ * Sized for the body, not pubky-app-specs' 200-character `post_attachment_url_max_length`: the
+ * URL no longer travels as an attachment, and Unsplash's `urls.regular` sits right at 200, so that
+ * cap silently dropped real covers by a single character.
  */
-private const val MAX_ATTACHMENT_URL_LENGTH = 200
+private const val MAX_COVER_URL_LENGTH = 500
 
 /**
  * The title-initial fallback the deck screens draw when a deck has no emoji — which the editor

@@ -140,8 +140,18 @@ class DeckAnnouncementTest {
     }
 
     @Test
+    fun `an unsplash cover url just over 200 characters is kept`() {
+        val deck = testDeck(coverImageRef = testCoverImage().copy(path = "", sha256 = "", url = UNSPLASH_COVER))
+
+        val announcement = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Created)
+
+        assertEquals(UNSPLASH_COVER, announcement.coverImageUrl)
+        assertTrue(announcement.content.contains(UNSPLASH_COVER), announcement.content)
+    }
+
+    @Test
     fun `an over-long cover url is dropped rather than swamping the post`() {
-        val long = "https://img.test/" + "q".repeat(200)
+        val long = "https://img.test/" + "q".repeat(500)
         val deck = testDeck(coverImageRef = testCoverImage().copy(path = "", sha256 = "", url = long))
 
         assertNull(DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Created).coverImageUrl)
@@ -210,6 +220,12 @@ class DeckAnnouncementTest {
 
         /** A real 52-character z-base-32 key: a mention only renders for an exact one. */
         const val AUTHOR = "3jubjyq4fkh4dq38exrpuo8we6xta8a6rhxnjjzyoo7j4r3f4rjo"
+
+        /** A real deck's cover, 201 characters — one over the cap that used to drop it. */
+        const val UNSPLASH_COVER = "https://images.unsplash.com/photo-1455540904194-fc101941273a" +
+            "?crop=entropy&cs=tinysrgb&fit=max&fm=jpg" +
+            "&ixid=M3w5Nzk3NzV8MHwxfHNlYXJjaHw2fHxlbmdsaXNofGVufDB8fHx8MTc4ODI2MDk1NXww" +
+            "&ixlib=rb-4.1.0&q=80&w=1080"
 
         /** `post_short_content_max_length` in pubky-app-specs. */
         const val SHORT_CONTENT_LIMIT = 2_000
