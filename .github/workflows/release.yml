@@ -96,6 +96,8 @@ jobs:
           PLUGIN=$(jq -r .version plugins/loopky/.claude-plugin/plugin.json | trim)
           MARKET=$(jq -r '.plugins[] | select(.name == "loopky") | .version' .claude-plugin/marketplace.json | trim)
           expect "version (plugins/loopky/.claude-plugin/plugin.json)" "$PLUGIN" "$NUM"
+          CODEX=$(jq -r .version plugins/loopky/.codex-plugin/plugin.json | trim)
+          expect "version (plugins/loopky/.codex-plugin/plugin.json)" "$CODEX" "$NUM"
           expect "loopky version (.claude-plugin/marketplace.json)" "$MARKET" "$NUM"
           # The ref is what users actually install: the plugin as it was at this tag (#395).
           REF=$(jq -r '.plugins[] | select(.name == "loopky") | .source.ref' .claude-plugin/marketplace.json | trim)
