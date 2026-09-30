@@ -38,6 +38,30 @@ In a cloud environment (Claude Code on the web, Codex), installing `loopky` in t
 setup script saves that step. See [Install](https://github.com/jvsena42/loopky/tree/main/cli#install)
 in the CLI README, and add the hosts `loopky doctor` lists to the environment's allowlist.
 
+## Data and services
+
+The plugin declares no connectors. What leaves your machine goes through the `loopky` CLI the skill
+runs, and only to the services below. The Loopky project runs no server of its own and receives
+none of it. The full policy is [PRIVACY.md](https://github.com/jvsena42/loopky/blob/main/PRIVACY.md).
+
+| Service | When | What reaches it |
+| --- | --- | --- |
+| **Your Pubky homeserver** (`homeserver.pubky.app` by default) | Every deck read and write | The decks and cards you publish, your public key, your session, your IP address |
+| **Pubky auth relay** (`httprelay.pubky.app`) | `loopky login` only | The encrypted approval from Pubky Ring, your IP address |
+| **pkarr relays** (`pkarr.pubky.app`, `pkarr.pubky.org`) | Finding your homeserver | The public key being looked up, your IP address |
+| **Pubky Nexus** (`nexus.pubky.app`) | `tag trending` and other indexer reads | What is looked up, your IP address |
+| **GitHub** (`github.com`, `release-assets.githubusercontent.com`) | Installing, `loopky update`, and a once-a-day version check | A download request, your IP address |
+| **Image hosts** named in your cards | Only with `--check-images` | One `HEAD` request per picture URL, your IP address |
+
+**Retention.** Nothing is retained by the Loopky project. Your decks stay on your homeserver until
+you delete them (`loopky deck delete`). **Published decks and tags are public**: there are no
+private decks. The session secret is stored on your machine only (the macOS Keychain, or a
+file only your user can read), and `loopky logout` removes it.
+
+**Personal data.** The CLI reads no names, emails or addresses. Its session can write only Loopky's
+own data (`/pub/loopky/`), so it can't read or change your profile. What you put on a card is
+published as written, so don't put personal details in a deck.
+
 ## What it cannot do for you
 
 - **Add hosts to a sandbox's network allowlist.** In a cloud session, `loopky` needs the Pubky hosts
