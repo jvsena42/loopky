@@ -10,7 +10,7 @@
         "source": "git-subdir",
         "url": "https://github.com/jvsena42/loopky.git",
         "path": "./plugins/loopky",
-        "ref": "v1.2.1"
+        "ref": "v1.2.2"
       },
       "policy": {
         "installation": "AVAILABLE",
