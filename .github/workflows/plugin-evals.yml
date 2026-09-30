@@ -56,8 +56,11 @@ jobs:
         with:
           node-version: '22'
 
-      # Three runs a case and a 0.8 bar: a model is not deterministic, and one bad run in three is
-      # noise where two is a regression. The cost ceiling bounds a runaway, not a normal run.
+      # Three runs a case and a 0.6 bar: a model is not deterministic, and one bad run in three is
+      # noise where two is a regression. A case scores the mean of its runs, so one failed run is
+      # 0.67 and two are 0.33 — the bar sits between. It was 0.8, which failed a case on one run: a
+      # single judge's vote turned v1.2.0's and v1.2.2's release runs red on answers that met every
+      # criterion. The cost ceiling bounds a runaway, not a normal run.
       #
       # No baseline arm by default. `plugin eval` runs every case a second time without the plugin
       # unless told not to, which is 46% of the bill ($0.67 of $1.46 on the first run) and answers
@@ -75,7 +78,7 @@ jobs:
           set -euo pipefail
           npm install --global @anthropic-ai/claude-code
           claude plugin eval plugins/loopky --trust-plugin --no-publish --ablation "$ABLATION" --model sonnet \
-            --runs 3 --threshold 0.8 --max-cost-usd 5 \
+            --runs 3 --threshold 0.6 --max-cost-usd 5 \
             --json "$RUNNER_TEMP/evals.json" --report "$RUNNER_TEMP/evals.html"
 
       - name: Upload the report
