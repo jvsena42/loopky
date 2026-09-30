@@ -3,17 +3,23 @@ name: Agent plugin evals
 # Whether the skill still makes Claude *do* the right thing (#388): trigger on a flashcards request,
 # dry-run before writing, stop and hand an allowlist to the user, sign in again on exit 4. The
 # static checks (`AgentPluginTest`, `claude plugin validate`) cannot see behaviour; these can. They
-# spend model calls, so they run when the plugin changes, weekly against model drift, and on demand
-# — not on every push.
+# spend model calls, so they run when the skill or its cases change, weekly against model drift, and
+# on demand — not on every push. Only the skill and the cases can change what the model does, so a
+# README, icon, manifest or hook edit does not pay for a run.
 on:
   pull_request:
     paths:
-      - 'plugins/**'
-      - '.claude-plugin/**'
+      - 'plugins/loopky/skills/**'
+      - 'plugins/loopky/evals/**'
       - '.github/workflows/plugin-evals.yml'
   schedule:
     - cron: '17 6 * * 1'
   workflow_dispatch:
+    inputs:
+      baseline:
+        description: 'Also run every case without the plugin, to measure how much the skill helps (doubles the cost)'
+        type: boolean
+        default: true
 
 concurrency:
   group: plugin-evals-${{ github.ref }}
@@ -50,14 +56,20 @@ jobs:
           node-version: '22'
 
       # Three runs a case and a 0.8 bar: a model is not deterministic, and one bad run in three is
-      # noise where two is a regression. The cost ceiling bounds a runaway, not a normal run
-      # (~$0.25 for one run of every case).
+      # noise where two is a regression. The cost ceiling bounds a runaway, not a normal run.
+      #
+      # No baseline arm by default. `plugin eval` runs every case a second time without the plugin
+      # unless told not to, which is 46% of the bill ($0.67 of $1.46 on the first run) and answers
+      # "how much does the skill help" — a question that does not change on a PR. "Does it still
+      # work" is the with-plugin score alone. A manual run measures the baseline when asked.
       - name: Run the evals
         if: steps.key.outputs.present == 'true'
+        env:
+          ABLATION: ${{ (github.event_name == 'workflow_dispatch' && inputs.baseline) && 'with-without' || 'none' }}
         run: |
           set -euo pipefail
           npm install --global @anthropic-ai/claude-code
-          claude plugin eval plugins/loopky --trust-plugin --no-publish \
+          claude plugin eval plugins/loopky --trust-plugin --no-publish --ablation "$ABLATION" \
             --runs 3 --threshold 0.8 --max-cost-usd 5 \
             --json "$RUNNER_TEMP/evals.json" --report "$RUNNER_TEMP/evals.html"
 
