@@ -28,15 +28,15 @@ Then ask for what you want to learn: *"Make me 30 Spanish flashcards for orderin
 - **`skills/loopky`** — when to reach for Loopky and the workflow. It deliberately does not copy
   the command reference: `loopky commands --json` is the source of truth for flags, result shapes
   and exit codes, and the skill points there.
-The plugin ships **no hooks**. The skill installs `loopky` when it is missing, from the release's
-installer on `github.com`. A hook that did it at session start would download and run code before
-the user asked for anything, which plugin directories hold for review. In a cloud environment
-(Claude Code on the web, Codex), putting the install line in the environment's setup script saves
-that step, with the hosts `loopky doctor` lists added to its allowlist:
+The plugin ships **no hooks**. When `loopky` is missing, the skill runs the installer shipped in
+`skills/loopky/scripts/` (`install.sh`, and `install.ps1` on Windows): it downloads the latest
+release binary, verifies its published SHA-256 and moves it into place, and runs nothing it
+downloaded. A hook that did it at session start would download code before the user asked for
+anything, which plugin directories hold for review.
 
-```shell
-curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh
-```
+In a cloud environment (Claude Code on the web, Codex), installing `loopky` in the environment's
+setup script saves that step. See [Install](https://github.com/jvsena42/loopky/tree/main/cli#install)
+in the CLI README, and add the hosts `loopky doctor` lists to the environment's allowlist.
 
 ## What it cannot do for you
 
