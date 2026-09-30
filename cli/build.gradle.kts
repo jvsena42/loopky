@@ -81,6 +81,14 @@ application {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    // `AgentPluginTest` holds the agent plugin under `plugins/` against this binary's surface and
+    // version (#388), so a change to either side has to rerun it.
+    systemProperty("loopky.repoRoot", rootDir.absolutePath)
+    systemProperty("loopky.cliVersion", cliVersion)
+    inputs.property("loopkyCliVersion", cliVersion)
+    inputs.files(rootProject.fileTree("plugins"), rootProject.fileTree(".claude-plugin"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("agentPlugins")
 }
 
 /**
