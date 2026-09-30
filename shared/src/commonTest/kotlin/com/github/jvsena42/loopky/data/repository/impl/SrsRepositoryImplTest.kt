@@ -75,6 +75,10 @@ class SrsRepositoryImplTest {
         pendingReviews = journal,
         settingsRepository = settings,
         studyProgress = progressStore,
+        // The default scope runs `flushAsync` on Dispatchers.Default, where it wrote to
+        // FakePubkyClient's plain map while the test thread was listing it (a
+        // ConcurrentModificationException in CI). Inline, the flush finishes before the call returns.
+        scope = CoroutineScope(Dispatchers.Unconfined),
     )
 
     private val dayMs = 86_400_000L
