@@ -386,6 +386,14 @@ jobs:
       # The installers the skill runs instead of piping a download into a shell (#405). Run for
       # real against the latest release, so an asset rename or a checksum format change fails here
       # rather than in a user's session; the PowerShell one is parsed, since no Windows row runs it.
+      # Anthropic's directory runs lints `claude plugin validate` does not, and publishes neither
+      # the rules nor a way to run them. This approximates the ones it has applied to this plugin,
+      # so a PR sees them before a release puts them in front of the directory. Its levels are the
+      # directory's: an error fails here as it fails submission; a warning is an annotation, since
+      # the directory shows it to reviewers rather than refusing (#388).
+      - name: The plugin passes the directory's lints (approximation)
+        run: python3 .github/scripts/plugin_directory_lint.py plugins/loopky
+
       - name: The skill's shipped installers work
         env:
           LOOPKY_NO_UPDATE_CHECK: '1'
