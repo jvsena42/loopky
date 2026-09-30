@@ -91,6 +91,12 @@ jobs:
             fi
           }
           expect "loopkyCliVersion (gradle.properties)" "$CLI" "$NUM"
+          # The agent plugin's version is what `/plugin update` compares, so a stale one means
+          # nobody's installed skill ever moves (#388). `AgentPluginTest` pins it to the line above.
+          PLUGIN=$(jq -r .version plugins/loopky/.claude-plugin/plugin.json | trim)
+          MARKET=$(jq -r '.plugins[] | select(.name == "loopky") | .version' .claude-plugin/marketplace.json | trim)
+          expect "version (plugins/loopky/.claude-plugin/plugin.json)" "$PLUGIN" "$NUM"
+          expect "loopky version (.claude-plugin/marketplace.json)" "$MARKET" "$NUM"
           expect "versionName (androidApp/build.gradle.kts)" "$NAME" "$NUM"
           expect "MARKETING_VERSION (iosApp/Configuration/Config.xcconfig)" "$MARKETING" "$NUM"
           # Checked on its own first: it is the *expected* side of the comparison below, and

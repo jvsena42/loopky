@@ -37,7 +37,7 @@ merge commit.
 
 3. **Create the release branch**: `git switch -c chore/version-<numeric_version>` off `main`.
 
-4. **Bump the four numbers (one commit)**:
+4. **Bump the version numbers (one commit)**:
    - `androidApp/build.gradle.kts` — `versionName` to the numeric version, `versionCode` + 1.
    - `iosApp/Configuration/Config.xcconfig` — `MARKETING_VERSION` to the numeric version and
      `CURRENT_PROJECT_VERSION` to the **same number as the new Android `versionCode`**, keeping the
@@ -46,8 +46,11 @@ merge commit.
    - `gradle.properties` — `loopkyCliVersion` to the numeric version. This is the **single source**
      for `loopky --version` (compiled in by `:cli:generateCliVersion`), the `.deb`'s `Version:`,
      and the container image tag.
+   - `plugins/loopky/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` — the agent
+     plugin's `version`, to the same numeric version. `/plugin update` compares it, so a stale one
+     leaves every installed copy of the skill where it was; `AgentPluginTest` fails until it matches.
 
-   `release.yml`'s first job compares all four against the tag and refuses to build anything when
+   `release.yml`'s first job compares all of them against the tag and refuses to build anything when
    they disagree, because the alternative is worse: a `v0.8.0` release whose binary answers
    `loopky 0.1.0`, and `install.sh` ends by printing `--version`, so the wrong number is the first
    thing a new user sees. It reports **every** mismatch rather than the first — the tag is already
