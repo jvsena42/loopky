@@ -1,6 +1,9 @@
 // Your Apple Developer Team ID, from developer.apple.com → Membership.
 // Ten characters, e.g. A1B2C3D4E5. Needed to sign a device build or archive;
 // a simulator build works without it.
+//
+// Never commit a real value here. Set it in Local.xcconfig beside this file, which is
+// gitignored and included at the end so it overrides this line: `TEAM_ID=A1B2C3D4E5`.
 TEAM_ID=
 
 // The app's permanent identity on the App Store.
@@ -27,3 +30,5 @@ PRODUCT_NAME=Loopky
 // every upload to App Store Connect, and is kept equal to Android's versionCode.
 CURRENT_PROJECT_VERSION=40
 MARKETING_VERSION=1.2.4
+
+#include? "Local.xcconfig"
