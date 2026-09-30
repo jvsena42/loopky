@@ -1,6 +1,6 @@
 {
   "name": "loopky",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Anki-style spaced-repetition flashcards from Codex: build a deck from any topic, import an Anki .apkg or a TSV, add pictures and a language pair for listening and speaking practice, then study it in the free Loopky app on Android and iOS.",
   "author": {
     "name": "Joao Victor Sena",
@@ -11,7 +11,6 @@
   "license": "MIT",
   "keywords": ["flashcards", "anki", "anki-alternative", "apkg", "spaced-repetition", "srs", "language-learning", "vocabulary", "study", "exam-prep", "quiz", "memorization", "loopky", "pubky"],
   "skills": "./skills/",
-  "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "Loopky",
     "shortDescription": "Anki-style flashcards",
