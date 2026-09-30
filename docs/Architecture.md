@@ -1233,7 +1233,7 @@ Two jobs use it: the media re-host sweep (#53) and chunk compaction (#51, §8.4)
 |---|---|---|
 | Mechanism | `WorkManager` unique `OneTimeWorkRequest` (`KEEP`) | `BGProcessingTaskRequest` via `BGTaskScheduler` |
 | Constraints | `UNMETERED` + battery-not-low | `requiresNetworkConnectivity` |
-| Retry | `Result.retry()`, exponential backoff | re-submits itself on completion *and* expiry |
+| Retry | `Result.retry()`, exponential backoff | re-submits on expiry, and on completion only when a deck is unfinished; never after a 507 |
 | Registration | none — `work-runtime` merges its own `InitializationProvider` | `register()` from `doInitKoin`, before launch completes |
 | Manifest | none | `Info.plist`: `BGTaskSchedulerPermittedIdentifiers` + `UIBackgroundModes: [processing]` |
 
@@ -1246,8 +1246,10 @@ Two things that are easy to get wrong:
   merged manifest — that initialises WorkManager twice. The default `WorkerFactory` is enough
   because workers resolve from Koin rather than through their constructors.
 
-The iOS implementation is **written but unverified** — the iOS app has never been driven against a
-real homeserver.
+The iOS implementation is **unverified on a device**. On a simulator both handlers register, and
+every submission is refused with `BGTaskSchedulerErrorCodeUnavailable` (error 1), so no task has
+been observed running there. The refusal is logged, never raised. The next check needs a device:
+submit, then trigger the task from the debugger with `_simulateLaunchForTaskWithIdentifier:`.
 
 ### 9.7 Swift export, measured (#273 §4)
 

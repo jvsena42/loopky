@@ -1,10 +1,18 @@
 package com.github.jvsena42.loopky.platform
 
+import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
+import com.github.jvsena42.loopky.domain.model.Deck
+import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.value
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,14 +21,14 @@ import platform.BackgroundTasks.BGProcessingTaskRequest
 import platform.BackgroundTasks.BGTask
 import platform.BackgroundTasks.BGTaskScheduler
 import platform.Foundation.NSDate
+import platform.Foundation.NSError
 import platform.Foundation.dateWithTimeIntervalSinceNow
 
 /**
  * [BackgroundTasks] over `BGTaskScheduler`.
  *
- * **Unverified.** The iOS app has never been driven against a real homeserver (see CLAUDE.md), so
- * this compiles and is wired but has not been observed running. Treat it as a first draft rather
- * than a working feature; the Android path is the one with evidence behind it.
+ * **Unverified on a device.** A simulator registers the handlers but refuses every submission
+ * (`BGTaskSchedulerErrorCodeUnavailable`), so no task has been observed running.
  *
  * iOS differs from WorkManager in two ways that shape this:
  * - The handler must be registered **before the app finishes launching**, hence [register] being
@@ -81,10 +89,7 @@ class IosBackgroundTasks(
             setRequiresExternalPower(false)
             setEarliestBeginDate(NSDate.dateWithTimeIntervalSinceNow(EARLIEST_BEGIN_SECONDS))
         }
-        // Throws if the identifier is not permitted in Info.plist, or on a simulator without the
-        // capability. A failure to schedule must not take the caller — a clone — down with it.
-        runCatching { BGTaskScheduler.sharedScheduler.submitTaskRequest(request, null) }
-            .onFailure { Log.e(TAG, "scheduleMediaRehost: submit failed — ${it.message}", it) }
+        submit(request)
     }
 
     override fun scheduleDeckCompaction() {
@@ -93,44 +98,53 @@ class IosBackgroundTasks(
             setRequiresExternalPower(false)
             setEarliestBeginDate(NSDate.dateWithTimeIntervalSinceNow(EARLIEST_BEGIN_SECONDS))
         }
-        runCatching { BGTaskScheduler.sharedScheduler.submitTaskRequest(request, null) }
-            .onFailure { Log.e(TAG, "scheduleDeckCompaction: submit failed — ${it.message}", it) }
-    }
-
-    private fun runCompaction(task: BGTask) = run(task, ::scheduleDeckCompaction) {
-        decks.decksPendingCompaction().forEach { deck ->
-            decks.compactDeck(deck.id)
-                .onFailure { Log.e(TAG, "compaction of ${deck.id} failed — ${it.message}", it) }
-        }
-    }
-
-    private fun runSweep(task: BGTask) = run(task, ::scheduleMediaRehost) {
-        decks.decksPendingRehost().forEach { deck ->
-            decks.rehostPendingMedia(deck.id)
-                .onFailure { Log.e(TAG, "sweep of ${deck.id} failed — ${it.message}", it) }
-        }
+        submit(request)
     }
 
     /**
-     * Run [work] as a `BGTask`: signed in first, always asking for another pass through
-     * [reschedule], and cancellable from the expiration handler.
-     *
-     * iOS gives a processing task a few minutes and then pulls the plug, so cancelling is what
-     * keeps the work interruptible; the persisted cursor (re-host) and the fact that each merge
-     * commits on its own (compaction) are what make that survivable. And unlike WorkManager there
-     * is no `retry()` — a submitted request is consumed once it runs — so a pass stopped by its
-     * budget would otherwise never be picked up again.
+     * `submitTaskRequest:error:` reports through its `NSError**` and never throws, so the error
+     * pointer is the only way to see a refusal — an identifier missing from `Info.plist`, or
+     * `BGTaskSchedulerErrorCodeUnavailable` on a simulator. A refusal is logged, never raised: the
+     * caller is a clone or a delete, and failing to schedule must not fail it.
      */
-    private fun run(task: BGTask, reschedule: () -> Unit, work: suspend () -> Unit) {
+    private fun submit(request: BGProcessingTaskRequest) = memScoped {
+        val error = alloc<ObjCObjectVar<NSError?>>()
+        val accepted = BGTaskScheduler.sharedScheduler.submitTaskRequest(request, error.ptr)
+        if (accepted) {
+            Log.d(TAG, "submit: ${request.identifier} accepted")
+        } else {
+            Log.e(TAG, "submit: ${request.identifier} refused — ${error.value?.localizedDescription}")
+        }
+    }
+
+    private fun runCompaction(task: BGTask) = run(task, ::scheduleDeckCompaction) {
+        passOver(decks.decksPendingCompaction()) { id -> decks.compactDeck(id).map { it.complete } }
+    }
+
+    private fun runSweep(task: BGTask) = run(task, ::scheduleMediaRehost) {
+        passOver(decks.decksPendingRehost()) { id -> decks.rehostPendingMedia(id).map { it.complete } }
+    }
+
+    /**
+     * Run [work] as a `BGTask`: signed in first, and cancellable from the expiration handler.
+     *
+     * A submitted request is consumed once it runs and there is no `retry()`, so [reschedule] is
+     * how a pass asks for another — but only when [work] says one is needed, mirroring the Android
+     * workers' `retry()`/`success()`. Rescheduling unconditionally kept a processing task pending
+     * forever, signed out or with nothing to do. A full quota never reschedules (§8.5).
+     */
+    private fun run(task: BGTask, reschedule: () -> Unit, work: suspend () -> Boolean) {
         val job = scope.launch {
             // runSuspendCatching, not runCatching: the expiration handler cancels this job, and a
             // plain runCatching would swallow that and go on to reschedule and report success —
             // both of which the handler has already done.
-            runSuspendCatching {
-                if (identity.loadPersistedSession() == null) return@runSuspendCatching
-                work()
-            }.onFailure { Log.e(TAG, "run: FAILED — ${it.message}", it) }
-            reschedule()
+            val again = runSuspendCatching {
+                identity.loadPersistedSession() != null && work()
+            }.getOrElse {
+                Log.e(TAG, "run: FAILED — ${it.message}", it)
+                it.toErrorReason() != ErrorReason.StorageFull
+            }
+            if (again) reschedule()
             task.setTaskCompletedWithSuccess(true)
         }
         task.expirationHandler = {
@@ -139,6 +153,23 @@ class IosBackgroundTasks(
             reschedule()
             task.setTaskCompletedWithSuccess(false)
         }
+    }
+
+    /** Whether any deck wants another pass. A 507 on one deck stops the whole pass without one. */
+    private suspend fun passOver(pending: List<Deck>, pass: suspend (String) -> Result<Boolean>): Boolean {
+        var unfinished = false
+        for (deck in pending) {
+            val complete = pass(deck.id).getOrElse { err ->
+                if (err.toErrorReason() == ErrorReason.StorageFull) {
+                    Log.e(TAG, "passOver: out of storage on ${deck.id} — giving up", err)
+                    return false
+                }
+                Log.e(TAG, "passOver: ${deck.id} failed — ${err.message}", err)
+                false
+            }
+            if (!complete) unfinished = true
+        }
+        return unfinished
     }
 
     private companion object {
