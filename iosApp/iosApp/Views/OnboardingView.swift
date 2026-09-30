@@ -6,9 +6,12 @@ import SwiftUI
 struct OnboardingView: View {
     var isWorking: Bool = false
     var errorMessage: String?
+    /// The deeplink was fired and the wait has run long: the spinning button needs a way out.
+    var stillWaiting: Bool = false
     var onSignInTapped: () -> Void = {}
     var onRestoreTapped: () -> Void = {}
     var onCreatePubkyTapped: () -> Void = {}
+    var onCancelTapped: () -> Void = {}
     /// A live authorisation whose approval has to happen on another device. Rendered inline in the
     /// sign-in column at expanded width; on narrower windows `OnboardingScreen` raises the same
     /// panel as a sheet and leaves this nil.
@@ -68,6 +71,7 @@ struct OnboardingView: View {
             RingScanPanel(
                 authUrl: scan.authUrl,
                 ringInstalledHere: scan.ringInstalledHere,
+                stillWaiting: scan.stillWaiting,
                 onOpenRingHere: scan.onOpenRingHere,
                 onGetRing: scan.onGetRing,
                 onCancel: scan.onCancel
@@ -113,18 +117,32 @@ struct OnboardingView: View {
             .shadow(color: LoopkyColor.shadowAccent, radius: 24, x: 0, y: 8)
             .disabled(isWorking)
 
-            // The second door, presented as a matched pair with Ring rather than a footnote:
-            // someone arriving with a recovery phrase has as much right to the front of the
-            // screen as someone arriving with the app.
-            Button(action: onRestoreTapped) {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.down.doc")
-                    Text("onboarding_restore")
+            // Ring was opened over the deeplink, so this is the only way out of the wait — and a
+            // signer that does not send the user back leaves them on a button still spinning (#299).
+            // In the restore button's place, which is disabled for the whole wait, so the column
+            // does not grow and squeeze the hero.
+            if stillWaiting {
+                StillWaitingNote()
+                Button(action: onCancelTapped) {
+                    Text("onboarding_qr_cancel")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(LoopkyColor.foregroundMuted)
                 }
+                .accessibilityIdentifier("onboarding_signin_cancel")
+            } else {
+                // The second door, presented as a matched pair with Ring rather than a footnote:
+                // someone arriving with a recovery phrase has as much right to the front of the
+                // screen as someone arriving with the app.
+                Button(action: onRestoreTapped) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "arrow.down.doc")
+                        Text("onboarding_restore")
+                    }
+                }
+                .buttonStyle(.loopkySoft)
+                .disabled(isWorking)
+                .accessibilityIdentifier("onboarding_restore")
             }
-            .buttonStyle(.loopkySoft)
-            .disabled(isWorking)
-            .accessibilityIdentifier("onboarding_restore")
 
             Text("onboarding_no_email_notice")
                 .font(.system(size: 13))
@@ -154,6 +172,7 @@ struct OnboardingView: View {
 struct RingScanPrompt {
     let authUrl: String
     let ringInstalledHere: Bool
+    let stillWaiting: Bool
     var onOpenRingHere: () -> Void
     var onGetRing: () -> Void
     var onCancel: () -> Void

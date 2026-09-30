@@ -5,6 +5,7 @@ import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
 import com.github.jvsena42.loopky.testing.FakePubkyRingPresence
 import com.github.jvsena42.loopky.testing.fakeSession
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -21,6 +22,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -91,17 +93,48 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun approvingOpensRingAndThenNavigatesHome() = runTest {
+    fun approvingNavigatesHome() = runTest {
         identityRepo.completionResult = Result.success(fakeSession())
         val vm = viewModel()
-        val effects = collectEffects(vm)
 
         vm.onSignInClick()
         advanceUntilIdle()
 
         assertIs<OnboardingUiState.Success>(vm.state.value)
+    }
+
+    @Test
+    fun signingInNeverOpensRingOnItsOwn() = runTest {
+        // Ring answering `pubkyauth://` here says only that some app does, not that it holds this
+        // user's key — deeplinking on that guess walked past the QR, which is the one way in for a
+        // key that lives in Ring on the user's other phone.
+        ringPresence.installed = true
+        identityRepo.completionNeverReturns = true
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+
+        vm.onSignInClick(RingHandoff.ThisDevice)
+        runCurrent()
+
+        val awaiting = assertIs<OnboardingUiState.AwaitingApproval>(vm.state.value)
+        assertTrue(awaiting.ringInstalledHere)
+        assertTrue(effects.none { it is OnboardingEffect.OpenDeeplink })
+    }
+
+    @Test
+    fun theOpenHereEscapeHatchReusesTheLiveAuthorisation() = runTest {
+        // A fresh beginSignIn would invalidate the code the user may already be pointing a phone at.
+        identityRepo.completionNeverReturns = true
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+
+        vm.onSignInClick(RingHandoff.ThisDevice)
+        runCurrent()
+        vm.onOpenRingOnThisDevice()
+        runCurrent()
+
         assertEquals(identityRepo.authUrl, (effects.first() as OnboardingEffect.OpenDeeplink).url)
-        assertTrue(effects.contains(OnboardingEffect.NavigateHome))
+        assertEquals(expected = 1, actual = identityRepo.beginSignInCount)
     }
 
     @Test
@@ -136,24 +169,54 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun aRingThatNeverAnswersEndsInAnErrorRatherThanASpinnerThatNeverResolves() = runTest {
-        // `await_auth_approval` blocks with no timeout of its own, and Ring posts nothing to the
-        // relay when it declines — so without a bound the user waits forever with no way back.
+    fun aRingThatNeverAnswersIsToldItIsStillWaitingRatherThanFailed() = runTest {
+        // Ring posts nothing when it declines, so nothing may ever arrive — but the screen must not
+        // end the wait on a timer, because an approval still can (#299).
         identityRepo.completionNeverReturns = true
         val vm = viewModel()
 
         vm.onSignInClick()
-        advanceTimeBy(2 * 60 * 1000L)
+        advanceTimeBy(60 * 1000L)
         runCurrent()
-        assertIs<OnboardingUiState.AwaitingApproval>(
-            vm.state.value,
-            "two minutes is still within the window — approving can mean writing down a recovery phrase",
-        )
+        assertFalse(assertIs<OnboardingUiState.AwaitingApproval>(vm.state.value).stillWaiting)
 
+        advanceTimeBy(60 * 1000L)
+        runCurrent()
+        assertTrue(assertIs<OnboardingUiState.AwaitingApproval>(vm.state.value).stillWaiting)
+
+        vm.onCancelSignIn()
+        runCurrent()
+        assertIs<OnboardingUiState.Idle>(vm.state.value)
+    }
+
+    @Test
+    fun anApprovalThatArrivesLateStillSignsIn() = runTest {
+        // Seen on a device: Android froze Loopky behind the signer, the approval was collected four
+        // minutes later, and the old three-minute deadline threw it away (#299).
+        val approval = CompletableDeferred<Unit>()
+        identityRepo.completionGate = approval
+        identityRepo.completionResult = Result.success(fakeSession())
+        val vm = viewModel()
+
+        vm.onSignInClick()
+        advanceTimeBy(5 * 60 * 1000L)
+        runCurrent()
+        approval.complete(Unit)
         advanceUntilIdle()
 
-        val state = assertIs<OnboardingUiState.Error>(vm.state.value)
-        // Not AuthRelayUnreachable: the relay is usually fine and simply has nothing to deliver.
-        assertEquals(ErrorReason.AuthFailed, state.reason)
+        assertIs<OnboardingUiState.Success>(vm.state.value)
+    }
+
+    @Test
+    fun aPersistedSessionIsReportedInStateWithNoCollectorAttached() = runTest {
+        // Nothing collects `effects` here, as on a cold start whose screen has not subscribed yet
+        // or whose activity is being recreated: the way home must still be readable afterwards.
+        val vm = OnboardingViewModel(
+            identityRepository = FakeIdentityRepository(session = fakeSession()),
+            ringPresence = ringPresence,
+        )
+        advanceUntilIdle()
+
+        assertIs<OnboardingUiState.Success>(vm.state.value)
     }
 }

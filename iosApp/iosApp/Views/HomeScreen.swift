@@ -12,6 +12,7 @@ struct HomeScreen: View {
     var onBrowseExamples: () -> Void = {}
     var onStartStudy: () -> Void = {}
     var onSignedOut: () -> Void = {}
+    var onSeeAllDecks: () -> Void = {}
 
     @State private var viewModel: HomeViewModel?
     @State private var uiState: HomeUiState?
@@ -25,7 +26,8 @@ struct HomeScreen: View {
             onCreateDeck: { viewModel?.onCreateDeckClick() },
             onBrowseExamples: { viewModel?.onBrowseExamplesClick() },
             onStartStudy: { viewModel?.onStartStudyClick() },
-            onOpenDeck: { viewModel?.onDeckClick(deckId: $0) }
+            onOpenDeck: { viewModel?.onDeckClick(deckId: $0) },
+            onSeeAllDecks: { viewModel?.onSeeAllDecksClick() }
         )
         .onAppear { attach() }
         .onDisappear { detach() }
@@ -65,11 +67,14 @@ struct HomeScreen: View {
                         title: deck.title,
                         cardCount: Int(deck.cardCount),
                         dueCount: Int(deck.dueCount),
-                        coverInitial: KotlinInterop.charToString(deck.coverInitial),
+                        newCount: Int(deck.newCount),
+                        countsKnown: content.countsKnown,
+                        coverEmoji: deck.coverEmoji,
                         coverImage: deck.coverImage,
                         authorPubky: deck.authorPubky
                     )
-                }
+                },
+                countsKnown: content.countsKnown
             ))
         case let error as HomeUiStateError:
             return .error(ErrorCopy.message(for: error.reason))
@@ -96,6 +101,8 @@ struct HomeScreen: View {
                 onOpenDeck(navigate.deckId)
             case is HomeEffectNavigateToOnboarding:
                 onSignedOut()
+            case is HomeEffectNavigateAllDecks:
+                onSeeAllDecks()
             default:
                 break
             }

@@ -14,12 +14,30 @@ console-reports:
   active: true
 
 complexity:
+  LargeClass:
+    active: true
+    excludes:
+      # The widest interface in the app, and the count is the interface's rather than a cohesion
+      # problem: one class owns publish, single-card edits, batched appends, delete, move, media
+      # re-hosting, compaction, listing, sync, following and cloning — because every one of them
+      # is a manifest read-modify-write that has to serialize behind the same per-deck lock
+      # (Architecture.md §8.0). The parts that could leave already have: `DeckMediaSweeper` and
+      # `AccountEraser` are collaborators, and `CardChunking` owns the chunk arithmetic.
+      #
+      # The real seam is the "following someone else's deck" block, and `DeckRepository`'s own
+      # KDoc records why it is not taken: `listFollowed` has to merge with `listOwned` behind one
+      # `changes` flow, and `DiscoveryRepository` already depends on this one. Splitting it means
+      # deciding where that flow lives, which is the `core`/`presentation` question (#54, open
+      # question 5), not a lint fix.
+      - '**/data/repository/impl/DeckRepositoryImpl.kt'
   LongParameterList:
     active: true
     ignoreAnnotated: ['Composable', 'Preview']
     excludes:
       - '**/commonTest/**'
-      - '**/androidUnitTest/**'
+      - '**/androidHostTest/**'
+      - '**/jvmTest/**'
+      - '**/src/test/kotlin/**'
       - '**/testing/**'
       # Seven injected collaborators, not a parameter-object smell: the widest repository in the
       # app plus an injectable coroutine scope, which exists so a test can await a deletion that
@@ -37,8 +55,14 @@ complexity:
     thresholdInObjects: 15
     thresholdInEnums: 15
     excludes:
+      # A test class's function count is how much behaviour it pins down, not a cohesion problem.
+      # Splitting one to satisfy a threshold makes the suite harder to read for nothing.
+      - '**/commonTest/**'
+      - '**/androidHostTest/**'
+      - '**/jvmTest/**'
+      - '**/src/test/kotlin/**'
       - '**/data/pubky/PubkyClient.kt'
-      - '**/data/pubky/AndroidPubkyClient.kt'
+      - '**/data/pubky/UniffiPubkyClient.kt'
       # Same reason as the two above: a wide interface, and the count is the interface's, not a
       # cohesion problem in the implementation.
       - '**/data/repository/impl/DiscoveryRepositoryImpl.kt'
@@ -53,15 +77,19 @@ complexity:
       # repository interfaces; the rule counts per declaration, so they are unaffected.
       - '**/data/repository/Repositories.kt'
       - '**/commonTest/**'
-      - '**/androidUnitTest/**'
+      - '**/androidHostTest/**'
       - '**/testing/**'
 
 exceptions:
   TooGenericExceptionCaught:
     active: true
     excludes:
-      - '**/data/pubky/AndroidPubkyClient.kt'
+      - '**/data/pubky/UniffiPubkyClient.kt'
       - '**/data/pubky/IosPubkyClient.kt'
+      # The CLI's one process-level boundary. Anything that escapes a command has to become an
+      # exit code rather than a stack trace and a status of 0 — which is exactly what catching
+      # narrowly here would produce for the failure nobody predicted.
+      - '**/cli/Main.kt'
 
 empty-blocks:
   EmptyFunctionBlock:
@@ -81,7 +109,13 @@ naming:
     excludes:
       - '**/Platform.android.kt'
       - '**/Platform.ios.kt'
+      - '**/Platform.jvm.kt'
       - '**/domain/model/Media.kt'
+      # A CLI command file is named for the command it implements. The command is a function; the
+      # class in it is that function's `--json` result, and naming the file after the result would
+      # make the surface harder to navigate, not easier.
+      - '**/cli/commands/*.kt'
+      - '**/cli/Runtime.kt'
   ConstructorParameterNaming:
     active: true
     excludes:
@@ -91,6 +125,13 @@ naming:
       - '**/data/unsplash/*.kt'
 
 style:
+  ThrowsCount:
+    active: true
+    max: 2
+    excludes:
+      # A CLI command's throws *are* its contract: each one is a distinct exit code an agent
+      # branches on, so collapsing them into one would collapse the codes with them.
+      - '**/cli/commands/*.kt'
   MagicNumber:
     active: true
     ignoreAnnotated: ['Composable', 'Preview']
@@ -105,10 +146,12 @@ style:
     ignoreRanges: true
     ignoreHashCodeFunction: true
     excludes:
-      - '**/data/pubky/Hashing.android.kt'
+      - '**/data/pubky/Hashing.jvm.kt'
       - '**/data/pubky/Hashing.ios.kt'
       - '**/commonTest/**'
-      - '**/androidUnitTest/**'
+      - '**/androidHostTest/**'
+      - '**/jvmTest/**'
+      - '**/src/test/kotlin/**'
       - '**/testing/**'
   UnusedPrivateMember:
     active: true
@@ -177,6 +220,8 @@ Compose:
     active: true
   ContentEmitterReturningValues:
     active: true
+  ContentSlotReused:
+    active: true
   ContentTrailingLambda:
     active: true
   DefaultsVisibility:
@@ -215,11 +260,17 @@ Compose:
     active: false
   PreviewAnnotationNaming:
     active: true
+  # Off, as it is in the rule set's own defaults: it requires every preview to be named
+  # `…Preview`/`Preview…`, which is a naming convention rather than a Compose correctness rule.
+  PreviewNaming:
+    active: false
   PreviewPublic:
     active: true
   RememberContentMissing:
     active: true
-  RememberStateMissing:
+  # The rule id, not the class name — `RememberStateMissingCheck` registers itself as
+  # `RememberMissing`, so the old spelling here configured nothing and the rule ran on its default.
+  RememberMissing:
     active: true
   UnstableCollections:
     active: false

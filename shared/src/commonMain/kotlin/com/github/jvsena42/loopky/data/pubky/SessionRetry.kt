@@ -4,57 +4,91 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 /**
- * Returns true if this failure looks like a session-expired error from the homeserver.
- * The FFI surfaces this as a [PubkyError] with a message containing "session" plus
- * one of the common verbs. We match defensively on substrings because the FFI error
- * text is not a stable API contract.
+ * Whether the homeserver refused this session, so that only a new sign-in will fix it.
+ *
+ * **The fork answers this directly now.** It classifies from the typed `pubky::Error` — a `401`, a
+ * `403`, an `Error::Authentication` — and prefixes exactly those with `"Session rejected"`; every
+ * other session failure keeps its old wording, and *not* carrying the marker is what says "retry"
+ * (pubky/pubky-core-ffi#31). Everything below that check is the fallback for a binary that predates
+ * it, matched defensively on substrings because the FFI's error text is not a stable API contract.
  *
  * **A transport failure is never an expiry, however it is worded.** Offline, the FFI reports
- * `"Failed to import session: Request failed: HTTP transport error: error sending request for
- * url (…/session)"` — which contains both "session" and "import" and so matched here. The request
- * never reached the homeserver, so nothing can be concluded about the session; treating it as an
- * expiry told an offline user to sign in with Pubky Ring again, and `requiresReauth` would have
- * signed them out over a dropped connection. Checked first, because the wording overlaps.
+ * `"Failed to import session: Request failed: HTTP transport error…"` — which contains both "session"
+ * and "import". The request never reached the homeserver, so nothing can be concluded about the
+ * session; treating it as an expiry told an offline user to sign in again, and `requiresReauth` would
+ * have signed them out over a dropped connection. Checked first, because the wording overlaps.
  *
- * **A homeserver that answered with a status is never an expiry either**, for the same reason and
- * with the same wording problem: the FFI wraps *whatever* went wrong while importing the session
- * as `"Failed to import session: …"`, so a 429 arrived here reading as an expiry. That was worse
- * than a bad label. [withWriteRetry] routes an expiry into [SessionRevalidator.revalidate], which
- * is itself a homeserver call — so it hit the same rate limit, failed, and returned terminally,
- * never reaching the backoff branch that exists precisely for a 429. Deleting a deck, which fires
- * one session-authenticated delete per record, tripped this every time and reported "session
- * expired" for a session that was fine.
+ * **When the homeserver named a status, the status is the whole answer.** The FFI wraps *whatever*
+ * went wrong while importing the session as `"Failed to import session: …"`, so a 429 read as an
+ * expiry — and [withWriteRetry] routes an expiry into [SessionRevalidator.revalidate], itself a
+ * homeserver call, which hit the same rate limit and returned terminally without ever reaching the
+ * backoff branch that exists for a 429. Only `401`/`403` mean the session was refused; every other
+ * status is trouble at the far end, and reading a `500` or a proxy's `502` as an expiry is not a
+ * mislabelling but a loss — `signOut` revokes the session on the homeserver and clears the local key
+ * with it, so a transient five-hundred permanently destroys credentials that were working.
  */
 internal fun Throwable.isSessionExpired(): Boolean {
     if (this !is PubkyError) return false
     val msg = message?.lowercase() ?: return false
+    // The marker first, because it is the one answer here that was not inferred: the fork decided
+    // it from the typed `pubky::Error`. It names the two rejections nothing else can see — an
+    // `Error::Authentication`, which carries no status, and a rejection reported under a write's
+    // own verb (jvsena42/pubky-core-ffi-fork#5, pubky/pubky-core-ffi#31).
+    return SESSION_REJECTED in msg || looksRefused(msg)
+}
+
+/**
+ * The pre-marker fallback, kept separate so the guessing is not mistaken for the knowing above.
+ * Reached for a binary that predates the marker, which any given device may still be carrying.
+ */
+private fun PubkyError.looksRefused(msg: String): Boolean {
     if (isNetworkFailure() || isRateLimited() || isQuotaExceeded()) return false
+    // The status decides it whenever the homeserver named one, in both directions. 401 and 403 are
+    // the two the fork itself treats as a rejected session (`is_session_rejected`), and they are an
+    // expiry even when the wording below is absent — a write that 401s after the cached session was
+    // already re-imported comes back as "Failed to put …", naming no session at all.
+    status?.let { return it == HTTP_UNAUTHORIZED || it == HTTP_FORBIDDEN }
     return "session" in msg &&
         ("import" in msg || "expired" in msg || "invalid" in msg)
 }
 
 /**
- * Public helper for ViewModels: returns true when a repository failure means the stored
- * session could not be refreshed and the user has to sign in again. Repos already retry
- * once via [putWithSessionRetry] and friends, so by the time a failure reaches a ViewModel
- * a session-expired error is terminal.
+ * The fork's marker for the one failure a new sign-in fixes, lowercased for the comparison above.
+ *
+ * Matched as a substring rather than a prefix because it is carried into an operation's own message
+ * too — a rejection that survives the FFI's retry is reported as "Session rejected: Failed to put:
+ * …", the write's wording intact behind it.
+ */
+private const val SESSION_REJECTED = "session rejected"
+
+private const val HTTP_UNAUTHORIZED = 401
+private const val HTTP_FORBIDDEN = 403
+
+/**
+ * For ViewModels: true when the stored session could not be refreshed and the user has to sign in
+ * again. Repos already retry once, so by the time a failure reaches a ViewModel an expiry is terminal.
  */
 fun Throwable.requiresReauth(): Boolean = isSessionExpired()
 
 /**
- * Run a session-authenticated write, retrying the two failures that are worth retrying.
+ * Run a session-authenticated write, retrying the three failures worth retrying.
  *
- * **Session expiry:** revalidate once and try again. The secret is read from [session] on each
- * attempt rather than captured, so the retry naturally picks up the refreshed one.
+ * **Session expiry:** revalidate once and try again. The secret is read from [session] on each attempt
+ * rather than captured, so the retry picks up the refreshed one.
  *
- * **Rate limiting:** back off and retry, up to [MAX_RATE_LIMIT_RETRIES] times with an
- * exponentially growing delay. Measured behaviour, not speculation — a homeserver returns 429
- * when a publish pushes several writes at once, and without this a large import fails outright
- * partway through. The failure is transient and the request well-formed, so surfacing it to the
- * user would be wrong.
+ * **Rate limiting:** back off up to [MAX_RATE_LIMIT_RETRIES] times. Measured, not speculative — a
+ * homeserver returns 429 when a publish pushes several writes at once, and without this a large import
+ * fails outright partway through.
  *
- * **Not** retried: a 507 out-of-storage. It is terminal until the user deletes something, so a
- * retry chain against it only spends time reaching the same answer.
+ * **An unreachable session round trip:** re-import once, then try again. This is #165 — every
+ * authenticated write opens with `POST https://_pubky.<pubky>/session`, and when that fails it takes
+ * down the whole write path while reads keep working. [SessionRevalidator.revalidate] is the one lever
+ * the client has, so it is worth exactly one attempt; its own failure is **not** terminal here, unlike
+ * an expiry, because the request never reached the homeserver either time. Bounded at one recovery
+ * because each attempt costs a ~5s connect timeout, and a wedge surviving that needs the user — which
+ * is what `ErrorReason.SessionUnreachable` is for.
+ *
+ * **Not** retried: a 507 out-of-storage, which is terminal until the user deletes something.
  *
  * [attempt] must re-read the session secret itself; it is invoked afresh for every try.
  */
@@ -64,6 +98,7 @@ private suspend fun withWriteRetry(
     attempt: suspend (secret: String) -> Result<String>,
 ): Result<String> {
     var revalidated = false
+    var recovered = false
     var backoff = INITIAL_BACKOFF_MS
     var rateLimitRetries = 0
 
@@ -83,6 +118,16 @@ private suspend fun withWriteRetry(
             // Never retried, and asserted here rather than relied on: 507 is terminal until the
             // user frees space, so backing off against it only delays the same failure (#91).
             error.isQuotaExceeded() -> return result
+
+            // Deliberately below the expiry branch and above the transient ones: the wording
+            // overlaps an expiry (both are "Failed to import session: …") and the cause overlaps
+            // being offline, and it is neither. Re-import once, then try the write again whether
+            // or not that worked — see the note above (#165).
+            error.isSessionUnreachable() && !recovered -> {
+                recovered = true
+                revalidator.revalidate()
+                delay(backoff)
+            }
 
             error.isRateLimited() && rateLimitRetries < MAX_RATE_LIMIT_RETRIES -> {
                 rateLimitRetries++
@@ -130,13 +175,14 @@ internal suspend fun PubkyClient.deleteWithSessionRetry(
 }
 
 /**
- * Enough to ride out a burst without leaving the user staring at a stalled progress bar.
+ * Enough to ride out a burst without leaving the user at a stalled progress bar.
  *
- * 8 rather than 5 because a *sweep* is not a publish. Deleting a 9,000-card deck is ~90 records,
- * and the FFI re-imports and revalidates the session on every authenticated call, so the sweep
- * costs the homeserver several times its own length in requests. Measured on device: the 5-retry
- * budget (~8s) ran out mid-sweep and the delete failed; the deck stayed, and retrying only
- * repeated it. With jitter, the doubling chain now spans ~64s in the worst case.
+ * 8 rather than 5 because a *sweep* is not a publish: deleting a 9,000-card deck is ~90 records back to
+ * back, and on device the 5-retry budget (~8s) ran out mid-sweep — the delete failed and retrying only
+ * repeated it. With jitter the chain spans ~64s at worst.
+ *
+ * Kept at 8 after #105 halved the request count: the budget is insurance against a threshold that is
+ * not ours to know, and an unused retry costs nothing where one too few is a deck that will not delete.
  */
 private const val MAX_RATE_LIMIT_RETRIES = 8
 

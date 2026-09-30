@@ -1,0 +1,651 @@
+package com.github.jvsena42.loopky.ui.discover
+
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
+import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberSearchBarState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.github.jvsena42.loopky.R
+import com.github.jvsena42.loopky.domain.model.ErrorReason
+import com.github.jvsena42.loopky.domain.model.PubkyIdentity
+import com.github.jvsena42.loopky.domain.model.Tag
+import com.github.jvsena42.loopky.presentation.auth.SignInReason
+import com.github.jvsena42.loopky.presentation.discover.DiscoverDeck
+import com.github.jvsena42.loopky.presentation.discover.DiscoverEffect
+import com.github.jvsena42.loopky.presentation.discover.DiscoverUiState
+import com.github.jvsena42.loopky.presentation.discover.DiscoverViewModel
+import com.github.jvsena42.loopky.presentation.discover.SectionState
+import com.github.jvsena42.loopky.ui.components.GuestSignInBanner
+import com.github.jvsena42.loopky.ui.components.LoadMoreFooter
+import com.github.jvsena42.loopky.ui.components.LoopkyErrorBlock
+import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
+import com.github.jvsena42.loopky.ui.components.errorMessage
+import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.contentPane
+import com.github.jvsena42.loopky.ui.layout.deckGridColumns
+import com.github.jvsena42.loopky.ui.search.DiscoverSearchBar
+import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
+import kotlinx.coroutines.flow.collectLatest
+import org.koin.compose.viewmodel.koinViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DiscoverRoute(
+    onOpenProfile: (String) -> Unit = {},
+    onOpenDeck: (deckId: String, author: String?) -> Unit = { _, _ -> },
+    /**
+     * Discover is the whole app for a signed-out visitor, so it carries the standing offer to
+     * sign in. Passed down rather than read off the state because the *shell* decides it: only
+     * the guest shell has no tab bar to hold that offer somewhere else.
+     */
+    isGuest: Boolean = false,
+    onSignIn: () -> Unit = {},
+) {
+    val viewModel = koinViewModel<DiscoverViewModel>()
+    val searchBarState = rememberSearchBarState()
+
+    val context = LocalContext.current
+    var signInPrompt by remember { mutableStateOf<SignInReason?>(null) }
+    val currentOpenProfile by rememberUpdatedState(onOpenProfile)
+    val currentOpenDeck by rememberUpdatedState(onOpenDeck)
+    var followError by remember { mutableStateOf<ErrorReason?>(null) }
+
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collectLatest { effect ->
+            when (effect) {
+                // Search is a bar on this screen since it stopped being a route: the CTA at the
+                // foot of an empty browse section raises it rather than leaving for it.
+                DiscoverEffect.OpenSearch -> searchBarState.animateToExpanded()
+                is DiscoverEffect.OpenProfile -> currentOpenProfile(effect.pubky)
+                is DiscoverEffect.OpenDeck -> currentOpenDeck(effect.deckId, effect.authorPubky)
+                is DiscoverEffect.ShowFollowError -> followError = effect.reason
+                is DiscoverEffect.RequireSignIn -> signInPrompt = effect.reason
+            }
+        }
+    }
+
+    // Resolved here rather than in the effect collector: errorMessage is @Composable.
+    followError?.let { reason ->
+        val message = errorMessage(reason)
+        LaunchedEffect(reason, message) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            followError = null
+        }
+    }
+
+    signInPrompt?.let { reason ->
+        SignInPromptDialog(
+            reason = reason,
+            onSignIn = {
+                signInPrompt = null
+                onSignIn()
+            },
+            onDismiss = { signInPrompt = null },
+        )
+    }
+
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    DiscoverScreen(
+        state = state,
+        isGuest = isGuest,
+        onSignIn = onSignIn,
+        onTagSelected = viewModel::onTagSelected,
+        onSearch = viewModel::onSearch,
+        searchBar = {
+            DiscoverSearchBar(
+                onOpenProfile = onOpenProfile,
+                onOpenDeck = onOpenDeck,
+                onSignIn = onSignIn,
+                state = searchBarState,
+            )
+        },
+        onOpenAuthor = viewModel::onOpenAuthor,
+        onOpenDeck = viewModel::onOpenDeck,
+        onFollowToggle = viewModel::onFollowToggle,
+        onRefresh = viewModel::onRefresh,
+        onRetryFollowing = viewModel::onRetryFollowing,
+        onRetryTopics = viewModel::onRetryTopics,
+        onBrowseEndReached = viewModel::onBrowseEndReached,
+        onPeopleEndReached = viewModel::onPeopleEndReached,
+        onGridColumnsChanged = viewModel::onGridColumnsChanged,
+        onRetryBrowse = viewModel::onRetryBrowse,
+        onRetryBrowsePage = viewModel::onRetryBrowsePage,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DiscoverScreen(
+    state: DiscoverUiState,
+    isGuest: Boolean,
+    onSignIn: () -> Unit,
+    onTagSelected: (Tag?) -> Unit,
+    onSearch: () -> Unit,
+    searchBar: @Composable () -> Unit,
+    onOpenAuthor: (String) -> Unit,
+    onOpenDeck: (String, String) -> Unit,
+    onFollowToggle: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onRetryFollowing: () -> Unit,
+    onRetryTopics: () -> Unit,
+    onBrowseEndReached: () -> Unit,
+    onPeopleEndReached: () -> Unit,
+    onGridColumnsChanged: (Int) -> Unit,
+    onRetryBrowse: () -> Unit,
+    onRetryBrowsePage: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("discover_screen")
+            .background(LoopkyTheme.colors.surfacePrimary)
+            .windowInsetsPadding(WindowInsets.statusBars),
+    ) {
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            // A LazyColumn rather than a scrolling Column: strips settle at different times, and
+            // item keys keep one landing from recomposing the others.
+            // Computed out here: the section builders below are LazyListScope extensions, not
+            // composables, so they cannot read the window themselves and take the count instead.
+            val deckColumns = deckGridColumns()
+            val tileActions = DeckTileActions(onOpenDeck = onOpenDeck, onOpenAuthor = onOpenAuthor)
+            val browseActions = BrowseActions(
+                onTagSelected = onTagSelected,
+                onSearch = onSearch,
+                onEndReached = onBrowseEndReached,
+                onRetry = onRetryBrowse,
+                onRetryPage = onRetryBrowsePage,
+            )
+            // A page is counted in rows, so the ViewModel has to know how wide the grid is: twelve
+            // tiles is six rows on a phone and three on a tablet. Reported rather than read, because
+            // the width class is an Android concern and it changes on rotation and split-screen.
+            val reportColumns by rememberUpdatedState(onGridColumnsChanged)
+            LaunchedEffect(deckColumns) { reportColumns(deckColumns) }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .contentPane(PaneWidth.Wide),
+                // The box floats over this list rather than sitting above it, so the top padding
+                // is what keeps the first row from starting underneath it. Everything below simply
+                // passes behind the pill on the way up, which is the point: the way in stays put
+                // and costs no height.
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = SEARCH_BAR_CLEARANCE,
+                    bottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                item(key = "header") { DiscoverHeader() }
+
+                // Above the topics, below the search bar: first thing on the page, and it scrolls
+                // away with everything else rather than pinning itself over the content a visitor
+                // came to look at.
+                if (isGuest) {
+                    item(key = "guest_banner") { GuestSignInBanner(onSignIn = onSignIn) }
+                }
+
+                topicsSection(state, onTagSelected, onRetryTopics)
+                // Picking a topic is an explicit question, so its answer leads. Unfiltered, browse
+                // is the fallback firehose and sits under the people and decks you chose — which
+                // costs a new account nothing, because the followed strip hides itself when empty.
+                if (state.selectedTags.isNotEmpty()) {
+                    browseSection(state, deckColumns, tileActions, browseActions)
+                }
+                peopleSection(state, onOpenAuthor, onFollowToggle, onPeopleEndReached)
+                followingSection(state, deckColumns, tileActions, onRetryFollowing)
+                if (state.selectedTags.isEmpty()) {
+                    browseSection(state, deckColumns, tileActions, browseActions)
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .contentPane(PaneWidth.Wide)
+                .padding(horizontal = 20.dp),
+        ) {
+            searchBar()
+        }
+    }
+}
+
+/** Room above the first row for the floating search box, which reserves no height of its own. */
+private val SEARCH_BAR_CLEARANCE = 72.dp
+
+private fun LazyListScope.topicsSection(
+    state: DiscoverUiState,
+    onTagSelected: (Tag?) -> Unit,
+    onRetryTopics: () -> Unit,
+) {
+    // No placeholder when there are no topics — an absent chip row reads as "nothing to filter by",
+    // which is exactly right, and an empty-state block for it would be noise. A failed load is the
+    // exception: that row is not "nothing to filter by" but "couldn't ask" (#366).
+    if (state.visibleTopics.isNotEmpty()) {
+        item(key = "topics") {
+            TopicRow(
+                tags = state.visibleTopics,
+                selectedTags = state.selectedTags,
+                onTagSelected = onTagSelected,
+            )
+        }
+    }
+    if (state.topics.error != null) {
+        item(key = "topics_error") {
+            TopicsErrorLine(onRetry = onRetryTopics, modifier = Modifier.testTag("discover_topics_error"))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+private fun LazyListScope.peopleSection(
+    state: DiscoverUiState,
+    onOpenAuthor: (String) -> Unit,
+    onFollowToggle: (String) -> Unit,
+    onEndReached: () -> Unit,
+) {
+    // Hidden entirely once it settles empty: an empty people strip on a young network is not
+    // information, and the browse strip below is the better thing to be looking at.
+    if (state.people.isEmpty) return
+    item(key = "people_header") {
+        SectionHeader(text = stringResource(R.string.discover_people_title))
+    }
+    if (state.people.isLoading) {
+        item(key = "people_loading") {
+            SectionSpinner(modifier = Modifier.testTag("discover_people_loading"))
+        }
+        return
+    }
+    item(key = "people") {
+        // A carousel rather than a plain `horizontalScroll`: it snaps a tile to the leading edge
+        // instead of parking one half off it, and the item leaving the row is masked as it goes,
+        // which is the same "there is more this way" the topic row draws by hand.
+        //
+        // Uncontained, not multi-browse: the browsing variant squeezes the tiles at the keylines,
+        // and a squeezed tile here is a name cut mid-word — the exact thing that reads as a
+        // clipping bug rather than an invitation.
+        // The page in flight takes one extra slot at the end, so the spinner sits where the next
+        // tile will land rather than below a row the reader is scrolling sideways.
+        val carouselState = rememberCarouselState {
+            state.people.items.size + if (state.people.isLoadingMore) 1 else 0
+        }
+        HorizontalUncontainedCarousel(
+            state = carouselState,
+            itemWidth = PERSON_TILE_WIDTH,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(PERSON_TILE_HEIGHT)
+                .testTag("discover_people_row"),
+            itemSpacing = 12.dp,
+        ) { index ->
+            val person = state.people.items.getOrNull(index)
+            if (person == null) {
+                Box(
+                    modifier = Modifier.fillMaxSize().testTag("discover_people_loading_more"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SectionSpinner()
+                }
+                return@HorizontalUncontainedCarousel
+            }
+            // A carousel has no footer to hang a sentinel off, so the trigger rides the tiles: ask
+            // once the reader is within a tile of the end, which is early enough that the next page
+            // lands before the row runs out under their finger.
+            if (index >= state.people.items.lastIndex - PEOPLE_PREFETCH_DISTANCE) {
+                LaunchedEffect(index, state.people.cursor) { onEndReached() }
+            }
+            PersonTile(
+                person = person,
+                onOpenProfile = { onOpenAuthor(person.identity.pubky) },
+                onFollowToggle = { onFollowToggle(person.identity.pubky) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** How close to the end of the people row asking for the next page starts. */
+private const val PEOPLE_PREFETCH_DISTANCE = 1
+
+/** [PersonTile]'s own width — the carousel gives each slot exactly the tile it holds. */
+private val PERSON_TILE_WIDTH = 148.dp
+
+/** Avatar, name, pubky and the follow pill, plus the tile's own padding. */
+private val PERSON_TILE_HEIGHT = 186.dp
+
+/** Browse's own callbacks, kept together so the section takes one parameter for the three. */
+private data class BrowseActions(
+    val onTagSelected: (Tag?) -> Unit,
+    val onSearch: () -> Unit,
+    val onEndReached: () -> Unit,
+    val onRetry: () -> Unit,
+    val onRetryPage: () -> Unit,
+)
+
+private fun LazyListScope.browseSection(
+    state: DiscoverUiState,
+    columns: Int,
+    tiles: DeckTileActions,
+    browseActions: BrowseActions,
+) {
+    // Everything browse found is already in the follow strip below, so this section has nothing
+    // left to show — and "No decks tagged X yet" is a claim about the world that is false while
+    // the deck it denies sits right underneath it.
+    //
+    // With a tag selected the header stays regardless: it names the query and carries Clear, so
+    // it is worth a section of its own even with no rows under it. Unfiltered it is a bare label
+    // over nothing, so the section goes entirely.
+    val coveredByFollowed = state.browseFullyCoveredByFollowed
+    val selectedTags = state.selectedTags
+    if (coveredByFollowed && selectedTags.isEmpty()) return
+
+    item(key = "browse_header") {
+        SectionHeader(
+            text = browseTitle(selectedTags),
+            trailing = if (selectedTags.isEmpty()) {
+                null
+            } else {
+                { ClearTagButton(onClick = { browseActions.onTagSelected(null) }) }
+            },
+        )
+    }
+    val browse = state.browseExcludingFollowed
+    if (browse.isLoading) {
+        item(key = "browse_loading") { SectionSpinner(modifier = Modifier.testTag("discover_browse_loading")) }
+    }
+    // Ahead of the empty block, and the reason `isEmpty` requires `error == null`: "Nothing
+    // published here yet" is a claim about the network, and a device that could not reach the
+    // indexer has not earned the right to make it (#321).
+    browse.error?.let { reason ->
+        item(key = "browse_error") {
+            LoopkyErrorBlock(
+                reason = reason,
+                onRetry = browseActions.onRetry,
+                modifier = Modifier.testTag("discover_browse_error"),
+            )
+        }
+    }
+    if (browse.isEmpty && !coveredByFollowed) {
+        item(key = "browse_empty") {
+            BrowseEmptyBlock(selectedTags = selectedTags, onSearch = browseActions.onSearch)
+        }
+    }
+    deckRows(
+        section = browse,
+        columns = columns,
+        keyPrefix = "browse",
+        tileTestTag = "discover_deck_tile",
+        actions = tiles,
+    )
+    // A failed page keeps the decks above it and offers the retry in their place.
+    browse.pageError?.let { reason ->
+        item(key = "browse_page_error") {
+            LoopkyErrorBlock(
+                reason = reason,
+                onRetry = browseActions.onRetryPage,
+                modifier = Modifier.testTag("discover_browse_page_error"),
+            )
+        }
+    }
+    if (browse.hasMore && browse.pageError == null) {
+        item(key = "browse_more") {
+            LoadMoreFooter(isLoading = browse.isLoadingMore, onLoadMore = browseActions.onEndReached)
+        }
+    }
+}
+
+@Composable
+private fun browseTitle(tags: List<Tag>): String = when (tags.size) {
+    0 -> stringResource(R.string.discover_browse_title)
+    1 -> stringResource(R.string.discover_browse_tag_title, tags.single().value)
+    else -> stringResource(
+        R.string.discover_browse_tags_title,
+        tags.map { stringResource(R.string.discover_tag_quoted, it.value) }
+            .joinToString(stringResource(R.string.discover_tag_list_separator)),
+    )
+}
+
+private fun LazyListScope.followingSection(
+    state: DiscoverUiState,
+    columns: Int,
+    actions: DeckTileActions,
+    onRetryFollowing: () -> Unit,
+) {
+    // Silent while it is empty: someone who follows nobody should see browse, not a reminder that
+    // they follow nobody. It only appears once it has decks, or something to report.
+    if (state.following.items.isEmpty() && state.following.error == null) return
+
+    item(key = "following_header") {
+        SectionHeader(
+            text = stringResource(R.string.discover_following_title),
+            modifier = Modifier.testTag("discover_following_section"),
+        )
+    }
+    state.following.error?.let { reason ->
+        item(key = "following_error") {
+            LoopkyErrorBlock(reason = reason, onRetry = onRetryFollowing)
+        }
+    }
+    deckRows(
+        section = state.following,
+        columns = columns,
+        keyPrefix = "following",
+        tileTestTag = "discover_following_tile",
+        actions = actions,
+    )
+}
+
+private fun LazyListScope.deckRows(
+    section: SectionState<DiscoverDeck>,
+    columns: Int,
+    keyPrefix: String,
+    tileTestTag: String,
+    actions: DeckTileActions,
+) {
+    val rows = section.items.chunked(columns)
+    items(
+        items = rows,
+        key = { row -> keyPrefix + ":" + row.joinToString(",") { "${it.authorPubky}/${it.id}" } },
+    ) { row ->
+        DeckRow(
+            decks = row,
+            columns = columns,
+            onOpenDeck = actions.onOpenDeck,
+            onOpenAuthor = actions.onOpenAuthor,
+            tileTestTag = tileTestTag,
+        )
+    }
+}
+
+/** Drops the topic filter and goes back to browsing everything. */
+@Composable
+private fun ClearTagButton(onClick: () -> Unit) {
+    val pillShape = RoundedCornerShape(50)
+    Text(
+        text = stringResource(R.string.discover_clear_tag),
+        color = LoopkyTheme.colors.accentPrimary,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.W700,
+        modifier = Modifier
+            .testTag("discover_clear_tag")
+            .clip(pillShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    )
+}
+
+/**
+ * The title alone. The magnifier that used to sit opposite it is gone: it opened a route, and the
+ * search box it opened is now standing above this row all the time.
+ */
+@Composable
+private fun DiscoverHeader() {
+    Text(
+        text = stringResource(R.string.discover_title),
+        color = LoopkyTheme.colors.foregroundPrimary,
+        fontSize = 28.sp,
+        lineHeight = 34.sp,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+private fun previewDeck(id: String, title: String, emoji: String, author: String, name: String) =
+    DiscoverDeck(
+        id = id,
+        authorPubky = author,
+        title = title,
+        cardCount = 24,
+        coverEmoji = emoji,
+        author = PubkyIdentity(author, name, null, null),
+        tags = listOf("spanish"),
+    )
+
+@Preview
+@Composable
+private fun DiscoverScreenPreview() {
+    LoopkyTheme {
+        DiscoverScreen(
+            state = DiscoverUiState(
+                topics = SectionState(items = listOf(Tag("spanish"), Tag("biology"))),
+                browse = SectionState(
+                    items = listOf(
+                        previewDeck("1", "Spanish basics", "📚", "abc123def456ghi", "Ada"),
+                        previewDeck("2", "Biology 101", "🧬", "def456ghi789jkl", "Grace"),
+                    ),
+                ),
+                following = SectionState(
+                    items = listOf(previewDeck("3", "Chess openings", "♟️", "ghi789jkl012mno", "Alan")),
+                ),
+            ),
+            isGuest = false,
+            onSignIn = {},
+            onTagSelected = {},
+            onSearch = {},
+            searchBar = {},
+            onOpenAuthor = {},
+            onOpenDeck = { _, _ -> },
+            onFollowToggle = {},
+            onRefresh = {},
+            onRetryFollowing = {},
+            onRetryTopics = {},
+            onBrowseEndReached = {},
+            onPeopleEndReached = {},
+            onGridColumnsChanged = {},
+            onRetryBrowse = {},
+            onRetryBrowsePage = {},
+        )
+    }
+}
+
+/** The state a brand-new account lands on before anything has been published network-wide. */
+@Preview
+@Composable
+private fun DiscoverScreenEmptyBrowsePreview() {
+    LoopkyTheme {
+        DiscoverScreen(
+            state = DiscoverUiState(),
+            isGuest = false,
+            onSignIn = {},
+            onTagSelected = {},
+            onSearch = {},
+            searchBar = {},
+            onOpenAuthor = {},
+            onOpenDeck = { _, _ -> },
+            onFollowToggle = {},
+            onRefresh = {},
+            onRetryFollowing = {},
+            onRetryTopics = {},
+            onBrowseEndReached = {},
+            onPeopleEndReached = {},
+            onGridColumnsChanged = {},
+            onRetryBrowse = {},
+            onRetryBrowsePage = {},
+        )
+    }
+}
+
+/** Discover as a signed-out visitor sees it: the same content, plus the way in. */
+@Preview
+@Composable
+private fun DiscoverScreenGuestPreview() {
+    LoopkyTheme {
+        DiscoverScreen(
+            state = DiscoverUiState(
+                isSignedIn = false,
+                topics = SectionState(items = listOf(Tag("spanish"), Tag("biology"))),
+                browse = SectionState(
+                    items = listOf(previewDeck("1", "Spanish basics", "📚", "abc123def456ghi", "Ada")),
+                ),
+            ),
+            isGuest = true,
+            onSignIn = {},
+            onTagSelected = {},
+            onSearch = {},
+            searchBar = {},
+            onOpenAuthor = {},
+            onOpenDeck = { _, _ -> },
+            onFollowToggle = {},
+            onRefresh = {},
+            onRetryFollowing = {},
+            onRetryTopics = {},
+            onBrowseEndReached = {},
+            onPeopleEndReached = {},
+            onGridColumnsChanged = {},
+            onRetryBrowse = {},
+            onRetryBrowsePage = {},
+        )
+    }
+}
+
+/**
+ * The two ways out of a deck tile — into the deck, or into whoever wrote it.
+ *
+ * Carried together because they always are: every section that renders tiles forwards both,
+ * unchanged, to the row beneath it.
+ */
+private data class DeckTileActions(
+    val onOpenDeck: (String, String) -> Unit,
+    val onOpenAuthor: (String) -> Unit,
+)

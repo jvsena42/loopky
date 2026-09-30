@@ -1,0 +1,36 @@
+<journey name="A session Loopky cannot reach — recovery, honest copy, and a way out">
+  <description>
+    Every authenticated write opens with `POST https://_pubky.&lt;pubky&gt;/session`. On device that
+    round trip starts failing after an hour or so and takes the whole write path with it while
+    reads keep working (#165). Three things were wrong with how the app met that:
+
+      1. nothing retried it, so the app parked there until a manual sign-out/sign-in;
+      2. the FFI's wording matched `isNetworkFailure`, so publish said "check your connection"
+         about a connection that was measurably fine;
+      3. the deck editor rendered the throwable's own message — `Failed to import session:
+         Request failed: HTTP transport error: error sending request for url (…/session)` —
+         in place of the card list, the only place the real cause appeared at all.
+
+    Reproducing the real thing means waiting an hour, so drive it with a fault injection instead.
+    In `AndroidPubkyClient`, make the three `*WithSession` writes return, after the first dozen
+    calls, `PubkyError("Failed to import session: Request failed: HTTP transport error: error
+    sending request for url (https://_pubky.rc3omrqq/session)")` — that exact wording is what the
+    classifier keys on. Letting the first calls through leaves one signed-in run able to publish a
+    real deck first. **Revert the injection before committing.**
+
+    Requires a signed-in session (journey 01, or restore per journey 20).
+  </description>
+  <actions>
+    <action>With the injection built in, publish a small deck from Paste-to-Import — it must succeed, so the later failures are the wedge and not a broken build</action>
+    <action>Open the deck → Edit deck → Save, repeating until logcat shows `Loopky/DeckEditorVM: save: FAILED`</action>
+    <action>Verify logcat shows `Loopky/SessionRevalidator: revalidating session` between the two write attempts — the write is retried once through a fresh session import, not reported on the first failure</action>
+    <action>Scroll the editor to the foot of the card list and verify the error reads "Couldn't save this deck. Loopky couldn't re-establish your session. It's not your connection — try again."</action>
+    <action>Verify the error contains no URL, no "HTTP transport error", and no other FFI diagnostic text</action>
+    <action>Verify the copy does NOT tell the user to check their connection — that is the offline message, and this is not offline</action>
+    <action>Verify an element with resource-id "deck_editor_sign_in_again" is present below the message</action>
+    <action>Tap it and verify the app signs out and lands on the onboarding screen</action>
+    <action>Sign in again, then repeat the failure on the publish flow: Paste-to-Import → triage → Publish deck</action>
+    <action>Verify the publish error reads "Couldn't publish this deck." followed by the same session copy, and that "publish_sign_in_again" is offered beside it</action>
+    <action>Repeat the editor check on the Pixel_Tablet AVD in both orientations (`user_rotation 0` = expanded 1280dp, `1` = medium 800dp) — the error row is inside the editor's `contentPane(Reading)` column and must stay capped with the cards, not stretch the width of the pane</action>
+  </actions>
+</journey>

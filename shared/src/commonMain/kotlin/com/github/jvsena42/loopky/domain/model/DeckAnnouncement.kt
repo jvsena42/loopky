@@ -15,12 +15,13 @@ data class DeckAnnouncement(
     val kind: Kind,
     val deckTitle: String,
     val deckUri: PubkyUri,
+    val deckUrl: String,
     /**
-     * The original author's display name, for [Kind.Followed] and [Kind.Cloned] — a clone credits
-     * whoever it forked. Omitted from the text when unresolved: a bare 52-character pubky in a
-     * post body is noise, and the URI already names the account.
+     * The original author's pubky, for [Kind.Followed] and [Kind.Cloned] — a clone credits
+     * whoever it forked. Written into [content] as a **mention**, so the credit reaches the person
+     * being credited rather than only the announcer's own followers.
      */
-    val authorName: String? = null,
+    val authorPubky: String? = null,
     /** The deck's cover emoji, which opens the post in place of the generic fallback. */
     val coverEmoji: String? = null,
     /**
@@ -41,54 +42,57 @@ data class DeckAnnouncement(
     enum class Kind { Created, Followed, Cloned }
 
     /**
-     * The post body: a headline, the deck's `pubky://` address, and the cover's image URL.
+     * The post body: a headline, the cover's image URL, and the deck's `https://loopky.app` link.
      *
-     * **The URI is deliberately left bare, and it will not be clickable everywhere.** pubky.app
-     * renders post content as markdown, and neither of the two things that could linkify it does:
-     * remark-gfm's autolink literals cover only `http(s)`, `www.` and `mailto`, and a CommonMark
-     * autolink (`<pubky://…>`) survives the parse only to have its `href` blanked by
-     * react-markdown's `defaultUrlTransform`, which allows `https?|ircs?|mailto|xmpp` and nothing
-     * else. No public HTTPS gateway maps a `pubky://` record to a browsable page either, so there
-     * is no form of this link that is both clickable *and* correct on the web. It stays the
-     * canonical address: Loopky's own deep-link filter opens it, and so does any client that
-     * linkifies unknown schemes.
+     * **The deck goes in as [deckUrl], not as [deckUri].** pubky.app renders content as markdown
+     * and linkifies only `http(s)`, so a `pubky://` address there is inert text; the web link is
+     * clickable, opens Loopky as an App Link where it is installed, and a preview page where it is
+     * not. [deckUri] still travels in the post's `embed`, for clients that read the record.
      *
-     * **The cover URL is in the body because that is the only place a reader's client will look.**
-     * pubky.app resolves a post's `attachments` strictly as pubky.app *file records* and renders
-     * nothing for any other URI, but it runs the first `http(s)` link in the *content* through an
-     * OpenGraph probe and renders an image content-type inline. Same reason the URI above is safe
-     * to leave first: nothing linkifies `pubky://`, so the cover is the first link found.
+     * **The cover comes before the link, because only the first link is previewed.** pubky.app
+     * resolves `attachments` strictly as its own file records, but runs the first `http(s)` link in
+     * the content through an OpenGraph probe and renders an image content-type inline. The deck's
+     * own cover is a better preview than the site's generic card, which is what a static page can
+     * offer; with no cover, that card is what shows.
      *
-     * The title and author name are truncated because they are not always the user's own:
-     * announcing a follow or a clone quotes another account's manifest, and pubky-app-specs
-     * rejects a post over `post_short_content_max_length` (2,000 characters). A post that fails
-     * validation is written and then never indexed, which is the one failure mode with no visible
-     * symptom.
+     * **The author is credited as a mention, which is why the key is written out in full.** Nexus
+     * scans post content for [MENTION_PREFIX] followed by exactly 52 characters of z-base-32,
+     * writes a MENTIONED edge and notifies that account, and pubky.app renders the pair as a link
+     * to their profile. A display name could not do that: it is self-declared and changeable. The
+     * deck link carries the key as `author=`, which is not the prefix, so it is not a second one.
+     *
+     * The title is truncated because it is not always the user's own: announcing a follow or a
+     * clone quotes another account's manifest, and pubky-app-specs rejects a post over
+     * `post_short_content_max_length` (2,000 characters). A post that fails validation is written
+     * and then never indexed, which is the one failure mode with no visible symptom.
      */
     val content: String
         get() {
-            val by = authorName?.trim()?.takeIf { it.isNotEmpty() }
-                ?.let { " by ${it.ellipsized(MAX_AUTHOR_LENGTH)}" }
+            val by = authorPubky?.trim()
+                ?.takeIf { Pubky.isKey(it) }
+                ?.let { " by $MENTION_PREFIX$it" }
                 .orEmpty()
-            val title = deckTitle.trim().ellipsized(MAX_TITLE_LENGTH)
-            val icon = coverEmoji?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_ICON
+            val title = "\"" + deckTitle.trim().ellipsized(MAX_TITLE_LENGTH) + "\""
+            val icon = coverEmoji?.trim()?.takeIf { it.isNotEmpty() && !it.isTitleInitial() }
+                ?: DEFAULT_ICON
             val headline = when (kind) {
                 Kind.Created -> "$icon I published a new deck on Loopky: $title"
-                Kind.Followed -> "$icon Now following the Loopky deck $title$by"
-                Kind.Cloned -> "$icon Cloned the Loopky deck $title$by into my library"
+                Kind.Followed -> "$icon Now following $title$by"
+                Kind.Cloned -> "$icon Cloned $title$by into my library"
             }
             val cover = coverImageUrl?.let { "\n\n$it" }.orEmpty()
-            return "$headline\n\n${deckUri.value}$cover"
+            return "$headline$cover\n\n$deckUrl"
         }
 
     companion object {
         /** Everything an announcement says about a deck comes off the deck itself. */
-        fun of(deck: Deck, kind: Kind, authorName: String? = null): DeckAnnouncement =
+        fun of(deck: Deck, kind: Kind, authorPubky: String? = null): DeckAnnouncement =
             DeckAnnouncement(
                 kind = kind,
                 deckTitle = deck.title,
                 deckUri = deck.pubkyUri,
-                authorName = authorName,
+                deckUrl = deck.webUrl,
+                authorPubky = authorPubky,
                 coverEmoji = deck.coverEmoji,
                 coverImageUrl = deck.previewableCoverUrl(),
                 tags = deck.announceableTags(),
@@ -96,7 +100,15 @@ data class DeckAnnouncement(
 
         private const val DEFAULT_ICON = "📚"
         private const val MAX_TITLE_LENGTH = 120
-        private const val MAX_AUTHOR_LENGTH = 40
+
+        /**
+         * What turns a key in a post body into a mention. `pk:` does the same and is deprecated
+         * upstream, so new posts use this one. Anything that is not an exact key is left out
+         * entirely rather than written as plain text: the prefix only reads as a mention when a
+         * whole key follows it, and `pubky` in front of a near-miss mentions nobody while looking
+         * like it should.
+         */
+        private const val MENTION_PREFIX = "pubky"
     }
 }
 
@@ -133,17 +145,25 @@ private fun Deck.previewableCoverUrl(): String? {
     val ref = coverImageRef ?: return null
     val url = ref.url ?: return null
     val allowed = PREVIEW_PROTOCOLS.any { url.startsWith("$it://") }
-    return url.takeIf { allowed && it.length <= MAX_ATTACHMENT_URL_LENGTH }
+    return url.takeIf { allowed && it.length <= MAX_COVER_URL_LENGTH }
 }
 
 /** Only what a browser can fetch; see [previewableCoverUrl]. */
 private val PREVIEW_PROTOCOLS = listOf("https", "http")
 
 /**
- * Kept at pubky-app-specs' `post_attachment_url_max_length` even though the URL now travels in
- * the body: a cover URL long enough to trip that limit is long enough to swamp the post.
+ * Sized for the body, not pubky-app-specs' 200-character `post_attachment_url_max_length`: the
+ * URL no longer travels as an attachment, and Unsplash's `urls.regular` sits right at 200, so that
+ * cap silently dropped real covers by a single character.
  */
-private const val MAX_ATTACHMENT_URL_LENGTH = 200
+private const val MAX_COVER_URL_LENGTH = 500
+
+/**
+ * The title-initial fallback the deck screens draw when a deck has no emoji — which the editor
+ * saves back as `cover_emoji` — rather than an emoji the author picked. Only a lone letter:
+ * `ℹ️` is a letter too, but its variation selector makes it two chars, so it still opens the post.
+ */
+private fun String.isTitleInitial(): Boolean = length == 1 && single().isLetter()
 
 private const val ELLIPSIS = "…"
 

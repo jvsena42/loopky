@@ -44,7 +44,7 @@ struct EditCardView: View {
             // still reaches both edges of an iPad and only the content inside is bounded.
             .contentPane()
         }
-        .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+        .loopkyScreenBackground()
         .navigationBarHidden(true)
         .sheet(isPresented: $pickingFront) {
             ImagePickerSheet(

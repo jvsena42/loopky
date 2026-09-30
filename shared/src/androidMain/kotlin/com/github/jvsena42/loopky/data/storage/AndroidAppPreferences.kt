@@ -3,9 +3,11 @@ package com.github.jvsena42.loopky.data.storage
 import android.content.Context
 import android.content.SharedPreferences
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.domain.model.AppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
@@ -52,6 +54,44 @@ class AndroidAppPreferences(context: Context) : AppPreferences {
             prefs.edit().putString(KEY_CACHED_STUDY_SETTINGS, json).apply()
         }
         _cachedStudySettings.update { json }
+    }
+
+    private val _themeMode = MutableStateFlow(
+        prefs.getString(KEY_THEME_MODE, null)?.let(AppTheme::fromNameOrSystem) ?: DEFAULT_THEME_MODE,
+    )
+    override val themeMode: StateFlow<AppTheme> = _themeMode.asStateFlow()
+
+    override suspend fun setThemeMode(theme: AppTheme) {
+        // Published before the write, unlike the rest: the caller repaints the whole app off this
+        // flow, and a repaint that waits on the IO dispatcher is a visible lag on the tap.
+        _themeMode.update { theme }
+        withContext(Dispatchers.IO) {
+            prefs.edit().putString(KEY_THEME_MODE, theme.name).apply()
+        }
+    }
+
+    private val _nameNudgeDismissed = MutableStateFlow(
+        prefs.getBoolean(KEY_NAME_NUDGE_DISMISSED, DEFAULT_NAME_NUDGE_DISMISSED),
+    )
+    override val nameNudgeDismissed: Flow<Boolean> = _nameNudgeDismissed.asStateFlow()
+
+    override suspend fun setNameNudgeDismissed(dismissed: Boolean) {
+        withContext(Dispatchers.IO) {
+            prefs.edit().putBoolean(KEY_NAME_NUDGE_DISMISSED, dismissed).apply()
+        }
+        _nameNudgeDismissed.update { dismissed }
+    }
+
+    private val _avatarNudgeDismissed = MutableStateFlow(
+        prefs.getBoolean(KEY_AVATAR_NUDGE_DISMISSED, DEFAULT_AVATAR_NUDGE_DISMISSED),
+    )
+    override val avatarNudgeDismissed: Flow<Boolean> = _avatarNudgeDismissed.asStateFlow()
+
+    override suspend fun setAvatarNudgeDismissed(dismissed: Boolean) {
+        withContext(Dispatchers.IO) {
+            prefs.edit().putBoolean(KEY_AVATAR_NUDGE_DISMISSED, dismissed).apply()
+        }
+        _avatarNudgeDismissed.update { dismissed }
     }
 }
 

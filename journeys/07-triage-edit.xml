@@ -3,6 +3,13 @@
     The Review-cards triage step (spec §5.5, design U92Nh): paste a list, edit one card's
     front/back text in triage, keep the rest, publish, and confirm the edit persisted in the
     deck. Requires a signed-in session (run journey 01 first).
+
+    Two steps here are load-bearing and were both wrong until 2026-09-01, because this journey
+    had been scripted and never run. The **re-read** step: `updateRow` stores the edit beside the
+    parse, and `currentDraft()` used to hand back the raw rows, so triage kept showing the text
+    the card had before it was fixed and only the published deck ever carried the change. And the
+    **edit entry point** did not exist on iOS at all — the effect was emitted into a `default`
+    with nothing listening.
   </description>
   <actions>
     <action>Launch the Loopky app and verify the Home screen is shown</action>
@@ -16,7 +23,9 @@
     <action>Clear the field with resource-id "triage_edit_front" and type "buenos dias"</action>
     <action>Clear the field with resource-id "triage_edit_back" and type "good morning"</action>
     <action>Tap the element with resource-id "triage_edit_save"</action>
-    <action>Verify the triage screen is shown again and the first card front now reads "buenos dias" (resource-id: triage_front)</action>
+    <action>Verify the triage screen is shown again and the first card front now reads "buenos dias" (resource-id: triage_front) — NOT the original "hola", which is what a draft read without its edits applied shows</action>
+    <action>Tap "triage_edit" again and verify the fields open on "buenos dias"/"good morning", not on the original text</action>
+    <action>Leave the editor without saving and verify the card still reads "buenos dias"</action>
     <action>Tap the element with resource-id "triage_keep" to keep the first card</action>
     <action>Tap the element with resource-id "triage_keep" to keep the second card and advance to Publish</action>
     <action>Enter "Greetings ES" into the field with resource-id "publish_title"</action>

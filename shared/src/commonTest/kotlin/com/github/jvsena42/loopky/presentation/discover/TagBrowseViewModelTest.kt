@@ -18,6 +18,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TagBrowseViewModelTest {
@@ -97,5 +98,32 @@ class TagBrowseViewModelTest {
         assertEquals("Ada Lovelace", state.decks.first { it.authorPubky == "stranger1" }.author.displayName)
         // No profile published — the tile keeps the pubky rather than blanking out.
         assertNull(state.decks.first { it.authorPubky == "stranger2" }.author.displayName)
+    }
+
+    @Test
+    fun `an unreachable indexer is an error rather than an empty tag`() = runTest(mainDispatcher) {
+        // "No decks tagged X yet" is a claim about the network, and a device that never reached
+        // the indexer has heard nothing about it (#321).
+        discovery.globalError = RuntimeException("Unable to resolve host \"nexus.test\"")
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value is TagBrowseUiState.Error, "was ${vm.state.value}")
+    }
+
+    @Test
+    fun `retry reloads after the indexer comes back`() = runTest(mainDispatcher) {
+        discovery.globalError = RuntimeException("boom")
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertTrue(vm.state.value is TagBrowseUiState.Error)
+
+        discovery.globalError = null
+        discovery.globalDecks = listOf(testDeck(id = "d1", tags = listOf(Tag("spanish"))))
+        vm.onRetry()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value is TagBrowseUiState.Content, "was ${vm.state.value}")
     }
 }

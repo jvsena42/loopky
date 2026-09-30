@@ -10,11 +10,22 @@
     <action>Tap the element with resource-id "deck_study" to start a session</action>
     <action>Verify a study card is shown with a position indicator like "1 of 3" and the card front text visible</action>
     <action>Tap the element with resource-id "study_card" to reveal the answer</action>
+    <action>Verify the flip buzzed once. On an emulator there is no actuator to feel, so read it back with `adb shell dumpsys vibrator_manager | grep loopky` — a ContextClick (constant=6) attributed to com.github.jvsena42.loopky. Tap the already-flipped card again and verify NO second entry appears: a tap that changed nothing must not buzz</action>
     <action>Verify the card back is revealed and four grade buttons are shown (resource-ids: study_again, study_hard, study_good, study_easy)</action>
     <action>Tap the element with resource-id "study_good"</action>
     <action>Verify the session advanced to the next card ("2 of 3")</action>
     <action>Reveal each remaining card (study_card) and grade it with study_good</action>
     <action>Verify a session-complete state is shown (summary or return affordance)</action>
+    <action>Verify the session ended on a single Confirm (constant=16) and that the LAST grade did not also tick — the final tap's acknowledgement is the completion's own buzz, because two a few milliseconds apart read as one smeared one</action>
     <action>Tap the element with resource-id "study_close" and verify the app returns to the previous screen</action>
+
+    <action>Open the deck editor (deck_edit), turn on "Type the answer" (publish_type_toggle), Save, and start a session again</action>
+    <action>Tap the card to flip it and verify the answer input (study_type_input) is on the card back with Check (study_type_check) and Give up (study_give_up) under it, and that the keyboard is up — `adb shell dumpsys input_method | grep mInputShown` reads true</action>
+    <action>Type a wrong answer and tap study_type_check: verify study_type_miss names the miss, the typed text is still in the field, and no grade button is offered</action>
+    <action>Tap study_give_up, then grade with study_good, and verify the next card's FRONT is shown with no keyboard over it — poll `adb shell dumpsys input_method | grep mInputShown` for ~2s after the grade and verify it never reads true. The outgoing card used to draw the incoming card's input while it faded out, and its focus request raised the keyboard over a front with nothing to type into</action>
+    <action>Repeat the flip → give up → grade cycle for several cards and verify the keyboard never appears on a front</action>
+    <action>Verify the keyboard comes up only once the card has finished turning, not halfway through it, and that the turn itself does not judder — `adb shell dumpsys gfxinfo com.github.jvsena42.loopky reset`, flip, and after ~750 ms expect ~44 frames rendered rather than ~21, with no frame near 400 ms</action>
+    <action>Verify the card does not move: read `study_card`'s bounds with `adb shell uiautomator dump` on the front, while answering with the keyboard up, and again once the grades are shown — all three must be identical. Check the input, Check and Give up all sit above the keyboard while answering</action>
+    <action>Turn "Type the answer" back off</action>
   </actions>
 </journey>

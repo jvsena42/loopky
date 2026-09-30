@@ -10,9 +10,12 @@ import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.pubky.IosPubkyClientAdapter
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.RawPubkyClient
+import com.github.jvsena42.loopky.data.repository.ImportRepository
 import com.github.jvsena42.loopky.data.repository.MediaRepository
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.IosAppPreferences
+import com.github.jvsena42.loopky.data.storage.IosDeckCacheStore
 import com.github.jvsena42.loopky.data.storage.IosLocalKeyStore
 import com.github.jvsena42.loopky.data.storage.IosPendingReviewStore
 import com.github.jvsena42.loopky.data.storage.IosSecureSessionStore
@@ -26,16 +29,20 @@ import com.github.jvsena42.loopky.data.storage.SignupTokenStore
 import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
 import com.github.jvsena42.loopky.data.unsplash.UnsplashClient
+import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.avatarDisplayUrl
+import com.github.jvsena42.loopky.domain.model.frontBackOf
 import com.github.jvsena42.loopky.platform.BackgroundTasks
 import com.github.jvsena42.loopky.platform.IosBackgroundTasks
 import com.github.jvsena42.loopky.platform.IosMediaProcessor
+import com.github.jvsena42.loopky.platform.IosPasswordManagerPresence
 import com.github.jvsena42.loopky.platform.IosPubkyRingPresence
 import com.github.jvsena42.loopky.platform.IosSpeaker
 import com.github.jvsena42.loopky.platform.MediaProcessor
+import com.github.jvsena42.loopky.platform.PasswordManagerPresence
 import com.github.jvsena42.loopky.platform.PubkyRingPresence
 import com.github.jvsena42.loopky.platform.Speaker
 import com.github.jvsena42.loopky.presentation.backup.BackupFileViewModel
@@ -89,18 +96,15 @@ import org.koin.mp.KoinPlatform
  * saves in Settings, and never shown to them. Blank is fine; web image search then reports that a
  * key is needed instead of failing silently.
  *
- * [nexusBaseUrl] is the Pubky Nexus indexer, which differs between environments — Swift passes
- * staging under `#if DEBUG` and production otherwise. No default, so a release build cannot
- * silently fall back to staging (#42).
- *
- * [pubkyEnvironmentName] is a [PubkyEnvironment] name, picked the same `#if DEBUG` way. It decides
- * which Homegate mints signup tokens *and* which homeserver those tokens are valid on — an
- * unrecognised name resolves to production, because a token minted against the wrong environment
- * is rejected and, being single-use, is gone.
+ * [pubkyEnvironmentName] is a [PubkyEnvironment] name, picked `#if DEBUG` in `iOSApp.swift`. It
+ * decides which Homegate mints signup tokens, which homeserver those tokens are valid on, and
+ * which Nexus indexer the social half of the app reads (#205) — an unrecognised name resolves to
+ * production, because a token minted against the wrong environment is rejected and, being
+ * single-use, is gone. One name rather than a name plus an indexer URL, so a release build cannot
+ * end up reading one network while publishing to another (#42).
  */
 fun doInitKoin(
     rawPubkyClient: RawPubkyClient,
-    nexusBaseUrl: String,
     unsplashFallbackKey: String,
     pubkyEnvironmentName: String,
 ) {
@@ -108,7 +112,7 @@ fun doInitKoin(
     startKoin {
         modules(
             sharedModule,
-            iosPlatformModule(rawPubkyClient, nexusBaseUrl, unsplashFallbackKey, environment),
+            iosPlatformModule(rawPubkyClient, unsplashFallbackKey, environment),
         )
     }
     // BGTaskScheduler rejects a handler registered after the app has finished launching, so this
@@ -118,25 +122,26 @@ fun doInitKoin(
 
 private fun iosPlatformModule(
     rawPubkyClient: RawPubkyClient,
-    nexusBaseUrl: String,
     unsplashFallbackKey: String,
     pubkyEnvironment: PubkyEnvironment,
 ): Module = module {
     single<PubkyClient> { IosPubkyClientAdapter(rawPubkyClient) }
     single<HttpFetcher> { IosHttpFetcher() }
-    single { NexusClient(http = get(), baseUrl = nexusBaseUrl) }
+    single { NexusClient(http = get(), baseUrl = pubkyEnvironment.nexusBaseUrl) }
     single { pubkyEnvironment }
     single { HomegateClient(http = get(), baseUrl = pubkyEnvironment.homegateBaseUrl) }
     single<SecureSessionStore> { IosSecureSessionStore() }
     single<AppPreferences> { IosAppPreferences() }
     single<PendingReviewStore> { IosPendingReviewStore() }
     single<StudyProgressStore> { IosStudyProgressStore() }
+    single<DeckCacheStore> { IosDeckCacheStore() }
     single<UnsplashKeyStore> { IosUnsplashKeyStore() }
     single<SignupTokenStore> { IosSignupTokenStore() }
     single<LocalKeyStore> { IosLocalKeyStore() }
     single { UnsplashClient(http = get(), keyStore = get(), fallbackKey = unsplashFallbackKey) }
     single<Speaker> { IosSpeaker() }
     single<MediaProcessor> { IosMediaProcessor() }
+    single<PasswordManagerPresence> { IosPasswordManagerPresence() }
     single<PubkyRingPresence> { IosPubkyRingPresence() }
     single<BackgroundTasks> { IosBackgroundTasks(identityProvider = { get() }, decksProvider = { get() }) }
 }
@@ -147,6 +152,13 @@ private fun iosPlatformModule(
 @Suppress("TooManyFunctions")
 object IosDependencies {
     private val koin: Koin get() = KoinPlatform.getKoin()
+
+    /**
+     * Device preferences, for the app root — which reads `themeMode` to pick its palette before
+     * any screen exists to own a ViewModel. Settings writes the same value through
+     * [SettingsViewModel].
+     */
+    fun appPreferences(): AppPreferences = koin.get()
 
     fun onboardingViewModel(): OnboardingViewModel = koin.get()
 
@@ -214,6 +226,37 @@ object IosDependencies {
     fun bulkImportViewModel(): BulkImportViewModel = koin.get()
 
     fun triageViewModel(): TriageViewModel = koin.get()
+
+    /**
+     * One draft row, as the triage card editor needs it.
+     *
+     * Reaches for [ImportRepository] rather than a ViewModel, which is what Android's
+     * `TriageEditCardRoute` does and for the same reason: the draft is already in memory, an edit
+     * is a field write, and there is no async work for a ViewModel to own. Returns null when the
+     * draft has been cleared under the screen — the publish step clears it — so the caller can
+     * leave rather than edit a row that is gone.
+     */
+    fun triageRow(rowIndex: Int): TriageRowEdit? {
+        val repository = koin.get<ImportRepository>()
+        val draft = repository.currentDraft() ?: return null
+        val row = draft.rows.firstOrNull { it.index == rowIndex } ?: return null
+        val (front, back) = draft.frontBackOf(row)
+        return TriageRowEdit(
+            front = front,
+            back = back,
+            frontImage = repository.rowImage(rowIndex, isFront = true),
+            backImage = repository.rowImage(rowIndex, isFront = false),
+        )
+    }
+
+    fun updateTriageRow(rowIndex: Int, front: String, back: String) {
+        koin.get<ImportRepository>().updateRow(rowIndex, front, back)
+    }
+
+    /** A null [image] clears the side, which is how the picker's Remove is expressed. */
+    fun setTriageRowImage(rowIndex: Int, isFront: Boolean, image: DraftCardImage?) {
+        koin.get<ImportRepository>().setRowImage(rowIndex, isFront, image)
+    }
 
     fun imageSheetViewModel(): ImageSheetViewModel = koin.get()
 
@@ -296,3 +339,16 @@ object IosDependencies {
         viewModel.viewModelScope.cancel()
     }
 }
+
+/**
+ * A triage row's two sides and their pictures, for the iOS card editor.
+ *
+ * Its own type rather than a `Pair` plus two lookups: a `Pair` crosses as `KotlinPair` with erased
+ * `Any?` components, so the front and back would arrive at SwiftUI as values needing a cast.
+ */
+data class TriageRowEdit(
+    val front: String,
+    val back: String,
+    val frontImage: DraftCardImage?,
+    val backImage: DraftCardImage?,
+)

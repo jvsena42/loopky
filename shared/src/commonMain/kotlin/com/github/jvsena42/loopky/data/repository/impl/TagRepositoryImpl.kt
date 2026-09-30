@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
 import com.github.jvsena42.loopky.data.nexus.NexusClient
+import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.PubkyUris
@@ -110,10 +111,10 @@ class TagRepositoryImpl(
         Unit
     }
 
-    override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): List<Tag> {
+    override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): Result<List<Tag>> {
         val resources = nexus.resourcesByTag(ReservedTags.DECK.value, sampleSize)
             .onFailure { Log.w(TAG, "trendingDeckTags: FAILED — ${it.message}") }
-            .getOrElse { emptyList() }
+            .getOrElse { return Result.failure(it) }
 
         val decksPerLabel = mutableMapOf<String, Int>()
         val taggersPerLabel = mutableMapOf<String, Int>()
@@ -135,21 +136,29 @@ class TagRepositoryImpl(
         // deck from owning the whole chip row. Tagger sum breaks ties, then the label itself so
         // the order is stable — the indexer's own ordering is not, and at this corpus size most
         // ties are 1-vs-1.
-        return decksPerLabel.entries
+        return Result.success(decksPerLabel.entries
             .sortedWith(
                 compareByDescending<Map.Entry<String, Int>> { it.value }
                     .thenByDescending { taggersPerLabel[it.key] ?: 0 }
                     .thenBy { it.key },
             )
             .take(limit)
-            .map { Tag(it.key) }
+            .map { Tag(it.key) },
+        )
     }
 
-    override suspend fun taggedSubjects(tag: Tag, limit: Int): List<TaggedSubject> {
+    override suspend fun taggedSubjects(
+        tag: Tag,
+        limit: Int,
+        skip: Int,
+        sorting: NexusResourceSorting,
+    ): List<TaggedSubject> {
         val label = sanitizeLabel(tag).getOrElse { return emptyList() }
-        return nexus.resourcesByTag(label, limit)
+        // Propagated, not swallowed — see the contract. An unreachable indexer must never reach a
+        // screen as "nothing published".
+        return nexus.resourcesByTag(label, limit, skip, sorting)
             .onFailure { Log.w(TAG, "taggedSubjects('$label'): FAILED — ${it.message}") }
-            .getOrElse { emptyList() }
+            .getOrThrow()
             .map { resource ->
                 // Prefer the count for *this* label; the resource-level count spans every label
                 // on the subject, and the per-label entry can be missing if the tag list was cut.

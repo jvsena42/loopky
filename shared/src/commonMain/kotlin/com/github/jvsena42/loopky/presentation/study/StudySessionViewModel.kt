@@ -19,6 +19,7 @@ import com.github.jvsena42.loopky.domain.model.SpeakMatcher
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.SrsState
 import com.github.jvsena42.loopky.domain.model.TypedAnswerOutcome
+import com.github.jvsena42.loopky.platform.SpeechError
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.Job
@@ -34,18 +35,15 @@ import kotlinx.coroutines.launch
 /**
  * Drives the spaced-repetition study loop.
  *
- * [deckId] `null` studies every due card across owned decks (Home "Start studying"); a non-null
- * value studies one deck (DeckDetail). Grading delegates to [SrsRepository.review], which owns the
- * SM-2-lite scheduler — the VM only sequences the queue and tracks reveal/progress.
+ * [deckId] `null` studies every due card across owned decks; a non-null value studies one deck.
+ * Grading delegates to [SrsRepository.review], which owns the scheduler — the VM only sequences
+ * the queue and tracks reveal/progress.
  *
- * [isPreview] is the other mode: a sample of a deck nobody has kept, for a visitor with no account
- * or a reader looking at a stranger's deck. It shares this whole class — the flip, the images,
- * Listen, Speak and typing are the thing worth trying, and reimplementing them beside a
- * cut-down copy is how the two drift apart. What it does not share is the scheduler: nothing is
- * graded, nothing is buffered and nothing is flushed, so it needs no session. Every
- * [SrsRepository] call below is therefore behind this flag, and the four grade buttons are
- * replaced by a plain "Next" — offering a difficulty for a review that will not be stored is a
- * button that lies about what it did.
+ * [isPreview] is a sample of a deck nobody has kept, for a visitor with no account or a reader
+ * looking at a stranger's deck. It shares this whole class deliberately; what it does not share is
+ * the scheduler, so it needs no session. Every [SrsRepository] call below is behind that flag, and
+ * the grade buttons become a plain "Next" — offering a difficulty for a review that will not be
+ * stored is a button that lies about what it did.
  */
 @Suppress("TooManyFunctions", "LongParameterList")
 class StudySessionViewModel(
@@ -57,9 +55,8 @@ class StudySessionViewModel(
     private val identityRepository: IdentityRepository,
     private val isPreview: Boolean = false,
     /**
-     * Whose homeserver the previewed deck lives on. Only a preview needs it: a real session
-     * studies decks that are already in the cache, while a preview is routinely the very first
-     * thing that touches this deck.
+     * Whose homeserver the previewed deck lives on. Only a preview needs it: a real session studies
+     * decks already in the cache, while a preview is routinely the first thing to touch this deck.
      */
     private val previewAuthorPubky: String? = null,
 ) : ViewModel() {
@@ -69,13 +66,21 @@ class StudySessionViewModel(
     private val _effects = MutableSharedFlow<StudySessionEffect>(extraBufferCapacity = 4)
     val effects: SharedFlow<StudySessionEffect> = _effects.asSharedFlow()
 
+    /**
+     * `tryEmit`, not a launched `emit`: a haptic belongs to the moment of the tap, so one that has
+     * to queue for buffer space is worse dropped than fired late against the next card.
+     */
+    private fun haptic(pattern: StudyHaptic) {
+        _effects.tryEmit(StudySessionEffect.Haptic(pattern))
+    }
+
     private var queue: List<StudyPresentation> = emptyList()
     private var index = 0
     private var revealed = false
 
     /**
-     * Cards graded this session, not presentations shown. A deck studied both ways puts each card
-     * in the queue twice, and "You reviewed 24 cards" for twelve cards would be a plain miscount.
+     * Cards graded, not presentations shown. A deck studied both ways queues each card twice, and
+     * "You reviewed 24 cards" for twelve cards would be a plain miscount.
      */
     private val gradedCardIds = mutableSetOf<String>()
     private var deckTitle = ""
@@ -84,25 +89,19 @@ class StudySessionViewModel(
     private var typedAnswer: String = ""
 
     /**
-     * Whether the answer is actually legible right now.
-     *
-     * Not the same question as [revealed]: on a typing card the flip is never blocked — tapping
-     * turns the card as it always has — but the words on the back stay masked until the answer is
-     * checked or given up on. Anything that acts on "the side facing the user" has to ask this
-     * rather than [revealed], or Listen would read out the very answer the mask is hiding.
+     * Whether the answer is actually legible right now — not the same question as [revealed]. On a
+     * typing card the flip is never blocked, but the back stays masked until it is checked or given
+     * up on, so anything acting on "the side facing the user" must ask this or read out the answer
+     * the mask is hiding.
      */
     private val answerVisible: Boolean get() = revealed && typePhase !is TypePhase.Answering
 
-    /** The card being shown, and which way round. Null once the queue is exhausted. */
     private val current: StudyPresentation? get() = queue.getOrNull(index)
 
     /**
-     * The two faces as this presentation shows them.
-     *
-     * Every question about "the front" or "the back" of the card on screen has to come through
-     * here, because on a reversed presentation they are the other way round. Reading
-     * `card.front` / `card.back` directly is how a reversed card ends up graded against the side
-     * it just showed you, or read aloud in the wrong language.
+     * The two faces as this presentation shows them. Every question about "the front" or "the back"
+     * must come through here: on a reversed presentation they are the other way round, and reading
+     * `card.front`/`card.back` is how a card gets graded against the side it just showed you.
      */
     private val promptSide: CardSide?
         get() = current?.let { if (it.reversed) it.card.back else it.card.front }
@@ -111,11 +110,9 @@ class StudySessionViewModel(
         get() = current?.let { if (it.reversed) it.card.front else it.card.back }
 
     /**
-     * The forward half of a card whose reverse is still ahead in this session.
-     *
-     * [base] is the review state the pair started from — where the reverse has to be scheduled
-     * from if it goes worse, since the forward grade is already written and applying a second one
-     * on top of it would compound two reviews out of one.
+     * The forward half of a card whose reverse is still ahead. [base] is the state the pair started
+     * from — where the reverse schedules from if it goes worse, since applying a second grade on
+     * top of the written forward one would compound two reviews out of one.
      */
     private data class PairInFlight(val base: SrsState?, val forwardGrade: SrsGrade)
 
@@ -126,18 +123,15 @@ class StudySessionViewModel(
     private var speakTarget: SpeakTarget? = null
 
     /**
-     * Why buffered reviews are not reaching the homeserver, if they are not. Held on the VM rather
-     * than only in the state because [emitCurrent] rebuilds the state on every card, and a warning
-     * the user has not acted on must not vanish when they grade the next one.
+     * Why buffered reviews are not reaching the homeserver. Held on the VM rather than only in the
+     * state because [emitCurrent] rebuilds the state on every card, and a warning the user has not
+     * acted on must not vanish when they grade the next one.
      */
     private var syncError: ErrorReason? = null
 
     /**
-     * Whether anyone is signed in, resolved once for a preview and unused otherwise.
-     *
-     * It decides what the end of a preview *offers*, not whether the preview runs: a guest is
-     * asked for an account, while a signed-in reader sampling a stranger's deck is told to follow
-     * or clone it. Both are true statements about how to keep the progress they just made.
+     * Resolved once for a preview, unused otherwise. It decides what the end of a preview *offers*
+     * — an account for a guest, follow-or-clone for a signed-in reader — not whether it runs.
      */
     private var isSignedIn = false
 
@@ -146,19 +140,16 @@ class StudySessionViewModel(
     private var gradeJob: Job? = null
 
     /**
-     * The goal celebration is on screen.
-     *
-     * Held on the VM as well as in the state because [emitCurrent] rebuilds the state for every
-     * card — the same reason [syncError] is. Whether it may be shown *at all* is not this flag's
-     * business: that lives in [com.github.jvsena42.loopky.domain.model.DailyStudyProgress], so it
-     * survives leaving the screen and resets with the day.
+     * The goal celebration is on screen. On the VM as well as in the state for the same reason as
+     * [syncError]. Whether it may be shown *at all* lives in [DailyStudyProgress], so it survives
+     * leaving the screen and resets with the day.
      */
     private var goalReached = false
 
     init {
         load()
-        // The flush that fails is usually the one started as this screen goes away, so the
-        // repository replays its last failure — a collector attaching here still learns about it.
+        // The failing flush is usually the one started as this screen goes away, so the repository
+        // replays its last failure — a collector attaching here still learns about it.
         viewModelScope.launch {
             srsRepository.flushFailures.collect { reason ->
                 Log.e(TAG, "flush failed — $reason")
@@ -203,15 +194,12 @@ class StudySessionViewModel(
     }
 
     /**
-     * Lay [cards] out as the presentations this session will show.
+     * Lay [cards] out as the presentations this session will show — ordinarily one apiece, but a
+     * deck opted into both directions gets each card again, reversed, a few presentations behind
+     * itself. "Shortly after, in the same session" rather than a stored date, because review state
+     * is keyed by card id and a per-direction due time would need a direction-aware key (§8.7).
      *
-     * Ordinarily one apiece. A deck opted into both directions gets each card a second time,
-     * reversed, a few presentations behind itself — "shortly after, in the same session" rather
-     * than a stored date, because review state is keyed by card id and a per-direction due time
-     * would mean a direction-aware key (see `docs/Architecture.md §8.7`).
-     *
-     * A preview never pairs: nothing there is graded, and doubling a ten-card sample only makes
-     * the offer at the end take twice as long to reach.
+     * A preview never pairs: nothing is graded, and doubling a ten-card sample only delays the offer.
      */
     private suspend fun sequence(cards: List<Card>): List<StudyPresentation> {
         if (isPreview || cards.isEmpty()) return cards.map { StudyPresentation(it) }
@@ -229,12 +217,9 @@ class StudySessionViewModel(
     }
 
     /**
-     * The first [PREVIEW_CARDS] cards of one deck, in the author's own study order.
-     *
-     * A fetch rather than a cache read, and remote-capable: a preview is usually the first thing
-     * that has ever touched this deck on this device. Capped because a preview is a sample — the
-     * point is to reach the end and be asked, not to hand someone a 400-card deck they cannot
-     * keep their place in.
+     * The first [PREVIEW_CARDS] cards of one deck, in the author's own order. A fetch rather than a
+     * cache read, and remote-capable: a preview is usually the first thing to touch this deck on
+     * this device. Capped because the point is to reach the end and be asked.
      */
     private suspend fun previewQueue(): List<Card> {
         val id = requireNotNull(deckId) { "A preview is always of a single deck" }
@@ -248,16 +233,15 @@ class StudySessionViewModel(
     fun onReveal() {
         if (!revealed) {
             revealed = true
+            haptic(StudyHaptic.Tick)
             emitCurrent()
         }
     }
 
-    /**
-     * Move on in a preview. The counterpart to [onGrade] — same advance, no scheduling — because
-     * there is no review to record and no difficulty worth asking about.
-     */
+    /** The counterpart to [onGrade] — same advance, no scheduling, since nothing is recorded. */
     fun onNextCard() {
         if (!isPreview || gradeJob?.isActive == true) return
+        tapHaptic()
         current?.let { gradedCardIds += it.card.id }
         advanceIndex()
         emitCurrent()
@@ -266,19 +250,19 @@ class StudySessionViewModel(
     fun onGrade(grade: SrsGrade) {
         if (isPreview || gradeJob?.isActive == true) return
         val presentation = current ?: return
+        tapHaptic()
         gradeJob = viewModelScope.launch {
             gradeResultFor(presentation, grade)
                 .onFailure { err ->
                     Log.e(TAG, "grade: FAILED — ${err.message}", err)
-                    // The automatic every-FLUSH_EVERY flush comes back through here, so this is
-                    // where a full quota first becomes visible mid-session rather than only when
-                    // the screen closes. The grade itself is buffered either way; the card still
-                    // advances, and the banner says the writing is what stopped (#91).
+                    // The automatic every-FLUSH_EVERY flush comes back through here, so a full
+                    // quota becomes visible mid-session rather than only when the screen closes.
+                    // The grade is buffered either way and the card still advances (#91).
                     syncError = err.toErrorReason()
                 }
             gradedCardIds += presentation.card.id
-            // Ordered as it always was: the celebration asks whether there is a card *behind* it
-            // to keep studying, so it has to run once the index has already moved on.
+            // Ordered as it always was: the celebration asks whether there is a card *behind* it to
+            // keep studying, so it has to run once the index has already moved on.
             advanceIndex()
             celebrateGoalIfOwed()
             emitCurrent()
@@ -286,14 +270,12 @@ class StudySessionViewModel(
     }
 
     /**
-     * Write the grade for one presentation, which for a paired card is not one write per tap.
+     * Write the grade for one presentation — which for a paired card is not one write per tap.
      *
-     * Both directions of a card share its single review state, so the pair is scheduled from
-     * whichever direction went worse. The forward half is written as it happens — a session
-     * abandoned before the reverse keeps it, which is the whole reason it is not deferred. When
-     * the reverse then comes back **worse**, the card is re-scheduled from where the pair started;
-     * when it comes back equal or better there is nothing to write, because the forward result
-     * already says what the pair is worth.
+     * Both directions share one review state, so the pair is scheduled from whichever went worse.
+     * The forward half is written as it happens, so a session abandoned before the reverse keeps
+     * it; a worse reverse re-schedules from where the pair started, and an equal or better one
+     * writes nothing.
      */
     private suspend fun gradeResultFor(
         presentation: StudyPresentation,
@@ -308,19 +290,26 @@ class StudySessionViewModel(
             if (hasReverseAhead(card.id)) pairs[card.id] = PairInFlight(base, grade)
             return result.map { }
         }
-        // No pair recorded means no forward half was graded — defensive only, since a reverse is
-        // always emitted behind its own card. Grading it as an ordinary review is the honest
-        // fallback: the card was answered, and something has to schedule it.
+        // Defensive only — a reverse is always emitted behind its own card. Grading it as an
+        // ordinary review is the honest fallback: the card was answered, and something must
+        // schedule it.
         val pair = pairs.remove(card.id) ?: return srsRepository.review(card, grade).map { }
         if (grade >= pair.forwardGrade) return Result.success(Unit)
         return srsRepository.reviewFrom(card, pair.base, grade).map { }
     }
 
-    /** Whether this card's reverse is still to come, so a forward grade is worth pairing. */
     private fun hasReverseAhead(cardId: String): Boolean =
         queue.drop(index + 1).any { it.reversed && it.card.id == cardId }
 
-    /** Point at the next card and clear everything the current one accumulated. */
+    /**
+     * Acknowledge a tap that moves the queue on — unless it is the last card, whose acknowledgement
+     * is the completion's own Success a moment later. Two buzzes that close together read as one
+     * smeared one rather than as two events.
+     */
+    private fun tapHaptic() {
+        if (index < queue.lastIndex) haptic(StudyHaptic.Tick)
+    }
+
     private fun advanceIndex() {
         index++
         revealed = false
@@ -329,25 +318,18 @@ class StudySessionViewModel(
     }
 
     /**
-     * Show the celebration if today has earned one and not seen it yet.
+     * The queue is untouched — the card behind the celebration is already the next one, and "Keep
+     * studying" simply dismisses it. Marked as shown the moment it goes up, not when it is
+     * dismissed: a process killed while it is on screen has still shown it.
      *
-     * The queue is untouched — the card behind the celebration is already the next one, and
-     * "Keep studying" simply dismisses it. This says "you have done what you set out to do today";
-     * it does not stop anyone doing more.
-     *
-     * Marked as shown the moment it goes up, not when it is dismissed: the point of persisting it
-     * is that the user sees it once a day, and a process killed while it is on screen has still
-     * shown it.
+     * A goal met on the session's last card is celebrated over "All done!" rather than skipped:
+     * skipping left it owed, so it popped up one card into the *next* session instead.
      */
     private suspend fun celebrateGoalIfOwed() {
         val goal = settingsRepository.studySettings.value.settings.newCardsPerDayGoal
         if (!srsRepository.dailyProgress.value.owesGoalCelebration(goal)) return
-        // The celebration renders over a card, so there has to be one. Grading the last card of a
-        // session straight past the goal goes to the "All done!" screen instead, which says the
-        // same thing in its own line — and marking it shown here would spend the day's one
-        // celebration on a screen that never appeared.
-        if (queue.getOrNull(index) == null) return
         goalReached = true
+        haptic(StudyHaptic.Celebration)
         goalCelebration = GoalCelebration(
             newCardsToday = srsRepository.dailyProgress.value.newCards,
             goal = goal,
@@ -358,11 +340,14 @@ class StudySessionViewModel(
 
     private var goalCelebration: GoalCelebration? = null
 
-    /** "Keep studying" — dismiss the celebration and carry on with the card already underneath. */
     fun onContinueAfterGoal() {
         goalReached = false
         _state.update { current ->
-            (current as? StudySessionUiState.Reviewing)?.copy(goalCelebration = null) ?: current
+            when (current) {
+                is StudySessionUiState.Reviewing -> current.copy(goalCelebration = null)
+                is StudySessionUiState.Complete -> current.copy(goalCelebration = null)
+                else -> current
+            }
         }
     }
 
@@ -379,13 +364,13 @@ class StudySessionViewModel(
     /**
      * Compare what was typed against the card's back.
      *
-     * Only a **correct** answer opens the card. Anything else says so and leaves you answering,
-     * with what you wrote still in the field: handing over the answer the moment you slip turns
-     * one typo into a lost card, and a near miss is a hint to fix an accent, not a verdict. The
-     * way out of a card you genuinely cannot answer is [onGiveUp], which is always right there.
+     * Only a **correct** answer opens the card. Anything else says so and leaves you answering with
+     * what you wrote still in the field: handing the answer over on the first slip turns one typo
+     * into a lost card, and a near miss is a hint to fix an accent, not a verdict. [onGiveUp] is
+     * the way out.
      *
-     * No grade is chosen here either way. The matcher's strictness decides what to *say*, never
-     * what to schedule; picking Again/Hard/Good/Easy stays the user's, exactly as after a tap-flip.
+     * No grade is chosen here either way — the matcher's strictness decides what to *say*, never
+     * what to schedule.
      */
     fun onCheckAnswer() {
         // A check landing after the queue advanced would otherwise grade the next card's text.
@@ -399,27 +384,27 @@ class StudySessionViewModel(
         if (outcome == TypedAnswerOutcome.Correct) {
             typePhase = TypePhase.Correct(typed)
             revealed = true
+            haptic(StudyHaptic.Success)
         } else {
-            // `revealed` is deliberately untouched: if the card was already flipped it stays
-            // flipped, still showing the input — a miss changes what is said, not what is shown.
+            haptic(StudyHaptic.Warning)
+            // `revealed` is deliberately untouched: a card already flipped stays flipped, still
+            // showing the input — a miss changes what is said, not what is shown.
             typePhase = TypePhase.Answering(lastMiss = TypeMiss(typed, outcome))
         }
         emitCurrent()
     }
 
     /**
-     * Show the answer and nothing else.
-     *
-     * Always available while answering, with no confirm step and no penalty: this is the escape
-     * hatch that keeps a stuck card from trapping a session. It deliberately does not choose,
-     * pre-select or highlight a difficulty — a "you clearly meant Again" nudge would quietly turn
-     * an escape into a punishment, and the grade is not this button's to guess.
+     * Show the answer and nothing else. Always available while answering, with no confirm and no
+     * penalty. It deliberately does not pre-select or highlight a difficulty — a "you clearly meant
+     * Again" nudge would turn an escape hatch into a punishment.
      */
     fun onGiveUp() {
         if (gradeJob?.isActive == true) return
         if (typePhase !is TypePhase.Answering) return
         typePhase = TypePhase.GaveUp
         revealed = true
+        haptic(StudyHaptic.Tick)
         emitCurrent()
     }
 
@@ -428,7 +413,7 @@ class StudySessionViewModel(
         typedAnswer = ""
     }
 
-    /** Start pronunciation practice for the side facing the user (gated on the deck's speak opt-in). */
+    /** Pronunciation practice for the side facing the user (gated on the deck's speak opt-in). */
     fun onSpeakTest() {
         val s = _state.value
         if (s !is StudySessionUiState.Reviewing || !s.speakEnabled) return
@@ -436,13 +421,14 @@ class StudySessionViewModel(
     }
 
     fun onSpeechResult(text: String) {
-        // Graded against what was captured when listening began, not against whichever side is
-        // facing now: the answer arrives asynchronously, and a card flipped in the meantime would
-        // otherwise mark a correct utterance wrong against the opposite side's text.
+        // Graded against what was captured when listening began, not whichever side faces now: the
+        // answer arrives asynchronously, and a card flipped meanwhile would mark a correct
+        // utterance wrong against the opposite side's text.
         val target = speakTarget ?: return
-        // The target's own language, not the deck's front: it decides which language's number
-        // words "10" may be spoken as, and the two sides of a card rarely share one.
+        // The target's own language, not the deck's front: it decides which language's number words
+        // "10" may be spoken as, and the two sides of a card rarely share one.
         val result = SpeakMatcher.match(text, target.expected, target.languageTag)
+        haptic(if (result.correct) StudyHaptic.Success else StudyHaptic.Warning)
         setSpeakPhase(
             if (result.correct) {
                 SpeakPhase.Correct(result.heard)
@@ -452,9 +438,19 @@ class StudySessionViewModel(
         )
     }
 
-    fun onSpeechError() {
-        // Treat recognition errors (no match, timeout, etc.) as a dismissal back to the card.
-        setSpeakPhase(SpeakPhase.Idle)
+    /**
+     * A recognition that produced no answer is *reported*, never dismissed. Closing the sheet on
+     * an error is indistinguishable from the app having dropped the tap, and the common Android
+     * errors — nothing matched, the engine busy on a fast retry, no model for the deck's declared
+     * language — are exactly the ones the reader can act on.
+     *
+     * Late errors after a dismissal are dropped, like a late result: [speakTarget] is null once
+     * the sheet is gone, so nothing can reopen it.
+     */
+    fun onSpeechError(reason: SpeechError) {
+        val target = speakTarget ?: return
+        haptic(StudyHaptic.Failure)
+        setSpeakPhase(SpeakPhase.Failed(reason = reason, expected = target.expected))
     }
 
     /** Another go at the same target — never re-derived, so a retry cannot change what it grades. */
@@ -466,9 +462,8 @@ class StudySessionViewModel(
 
     /**
      * What a pronunciation attempt grades against: the side facing the user, and *that side's*
-     * language. Null when the side has no text to say, or when the deck never declared a pair —
-     * given no language the recognizer would transcribe with the reader's own locale's model,
-     * which is why `speakEnabled` folds in `speechReady`.
+     * language. Null when the side has no text, or the deck declared no pair — given no language
+     * the recognizer would transcribe with the reader's own locale's model.
      */
     private fun targetFor(s: StudySessionUiState.Reviewing): SpeakTarget? {
         // promptSide/answerSide, not card.front/card.back: on a reversed presentation the face in
@@ -481,6 +476,9 @@ class StudySessionViewModel(
 
     private fun startRecognition(target: SpeakTarget) {
         speakTarget = target
+        // The one cue that the microphone is open: the sheet is the same sheet, and there is no
+        // sound to confirm it.
+        haptic(StudyHaptic.Tick)
         setSpeakPhase(SpeakPhase.Listening(target.expected))
         viewModelScope.launch {
             _effects.emit(
@@ -503,21 +501,17 @@ class StudySessionViewModel(
     }
 
     /**
-     * Read the side currently facing the user, in *that side's* language — the front and back of a
-     * vocabulary card are routinely different ones.
-     *
-     * Gated here and not only in the UI: like the announce gate, the check belongs on the action,
-     * so a deck that never declared its languages cannot be read aloud in the reader's accent.
-     *
-     * What is read is the phrase, not the card's editorial asides — see [AnswerMatcher.stripParentheticals].
+     * Read the side facing the user, in *that side's* language — the two sides of a vocabulary card
+     * are routinely different ones. Gated here and not only in the UI, like the announce gate, so a
+     * deck that declared no languages cannot be read aloud in the reader's accent. What is read is
+     * the phrase, not the card's editorial asides (see [AnswerMatcher.stripParentheticals]).
      */
     fun onSpeak() {
         val s = _state.value
         if (s !is StudySessionUiState.Reviewing || !s.listenEnabled) return
-        // answerVisible, not revealed: on a flipped-but-masked typing card the back is on screen
-        // but hidden, and reading it aloud would hand over the answer the mask is withholding.
-        // Parenthesized asides are dropped for the same reason the matchers drop them: "(formal)"
-        // is a note about the card, and an engine handed it reads the note out as a word.
+        // answerVisible, not revealed: on a flipped-but-masked typing card the back is on screen but
+        // hidden, and reading it aloud would hand over the answer the mask is withholding.
+        // Parenthesized asides are dropped for the same reason the matchers drop them.
         val text = (if (answerVisible) answerSide?.text else promptSide?.text)
             ?.let(AnswerMatcher::stripParentheticals)
             ?.takeIf { it.isNotBlank() }
@@ -528,9 +522,8 @@ class StudySessionViewModel(
 
     fun onClose() {
         // flushAsync, not a launch here: viewModelScope is cancelled in onCleared(), so a flush
-        // started as this screen goes away would be killed before it finished — losing exactly
-        // the reviews it was meant to save. A preview has graded nothing, and flushing under a
-        // visitor with no session would fail on "Not signed in".
+        // started as this screen goes away would be killed before it saved the reviews it exists
+        // for. A preview has graded nothing and has no session to flush under.
         if (!isPreview) srsRepository.flushAsync()
         viewModelScope.launch { _effects.emit(StudySessionEffect.Close) }
     }
@@ -541,7 +534,6 @@ class StudySessionViewModel(
         super.onCleared()
     }
 
-    /** Record a sync failure and reflect it into whatever state is on screen right now. */
     private fun setSyncError(reason: ErrorReason) {
         syncError = reason
         _state.update { current ->
@@ -553,7 +545,7 @@ class StudySessionViewModel(
         }
     }
 
-    /** The user has read the sync warning. Clears it from the screen, not from the buffer. */
+    /** Clears the warning from the screen, not from the buffer. */
     fun onDismissSyncError() {
         syncError = null
         _state.update { current ->
@@ -580,9 +572,8 @@ class StudySessionViewModel(
         val prompt = if (reversed) card.back else card.front
         val answer = if (reversed) card.front else card.back
         viewModelScope.launch {
-            // The repository owns this: the first-review intervals are a user setting, so labels
-            // computed here would need a SettingsRepository of their own and could drift from what
-            // grading actually writes.
+            // The repository owns this: the intervals are a user setting, so labels computed here
+            // could drift from what grading actually writes.
             val labels = intervalLabelsFor(presentation)
             val title = deckTitle.ifBlank { resolveDeckTitle(card.deckId) }.ifBlank { card.deckId }
             val deck = deckRepository.getLocal(card.deckId)
@@ -604,9 +595,9 @@ class StudySessionViewModel(
                 speakPhase = speakPhase,
                 typePhase = typePhase,
                 typedAnswer = typedAnswer,
-                // Swapped with the sides: the language belongs to the face, not to the slot, and a
-                // reversed Spanish card read with the front's English voice is the exact failure
-                // the declared pair exists to prevent.
+                // Swapped with the sides: the language belongs to the face, not the slot. A reversed
+                // Spanish card read with the front's English voice is the failure the declared pair
+                // exists to prevent.
                 frontLang = if (reversed) deck?.backLang else deck?.frontLang,
                 backLang = if (reversed) deck?.frontLang else deck?.backLang,
                 deckId = card.deckId,
@@ -619,13 +610,13 @@ class StudySessionViewModel(
     }
 
     /**
-     * The queue is exhausted.
-     *
-     * A preview stops here: nothing was graded, so there is nothing to flush, no next-due date to
-     * name and no daily tally to add to. What it says instead is how to keep the progress it did
-     * not — which is the whole reason the preview exists.
+     * The queue is exhausted. A preview stops here — nothing was graded, so there is nothing to
+     * flush and no next-due date to name; what it says instead is how to keep the progress it did
+     * not record.
      */
     private fun emitComplete() {
+        // The celebration has already buzzed for this grade; a Success on top smears into it.
+        if (!goalReached) haptic(StudyHaptic.Success)
         if (isPreview) {
             _state.update {
                 StudySessionUiState.Complete(
@@ -636,11 +627,16 @@ class StudySessionViewModel(
             }
             return
         }
-        // Queue exhausted — persist the session's reviews.
         srsRepository.flushAsync()
-        _state.update { StudySessionUiState.Complete(gradedCardIds.size, syncError = syncError) }
-        // After the state, not before: the congrats screen must not wait on a lookup, and
-        // nextDueAt is cache-only but still suspending.
+        _state.update {
+            StudySessionUiState.Complete(
+                gradedCardIds.size,
+                syncError = syncError,
+                goalCelebration = goalCelebration.takeIf { goalReached },
+            )
+        }
+        // After the state, not before: the congrats screen must not wait on a lookup, and nextDueAt
+        // is cache-only but still suspending.
         viewModelScope.launch {
             val nextDue = runSuspendCatching { srsRepository.nextDueAt() }
                 .onFailure { Log.e(TAG, "nextDueAt: FAILED — ${it.message}", it) }
@@ -659,10 +655,9 @@ class StudySessionViewModel(
     /**
      * What the four grade buttons should say they will do.
      *
-     * On the reverse half of a pair that is not simply "what would this grade schedule": the pair
-     * lands on the worse of its two directions, so every grade above the forward one would in
-     * fact write the forward one's interval. Capping the labels keeps the buttons honest, at the
-     * cost of two of them sometimes reading the same.
+     * On the reverse half of a pair that is not simply what the grade would schedule: the pair lands
+     * on the worse direction, so every grade above the forward one would in fact write the forward
+     * one's interval. Capping keeps the buttons honest, at the cost of two sometimes reading alike.
      */
     private suspend fun intervalLabelsFor(
         presentation: StudyPresentation,
@@ -674,23 +669,16 @@ class StudySessionViewModel(
     }
 
     /**
-     * Where the presented card should sit in the typing flow, given what the deck opted into.
+     * Where the presented card sits in the typing flow, given what the deck opted into.
      *
-     * A card with nothing typable on the back has nothing to type against, and one with no prompt
-     * at all has nothing to type *from*. Either way it silently falls back to the ordinary
-     * tap-to-reveal — an image-only answer, which Anki imports produce, must never put up an
-     * input with nothing to match.
+     * A card with nothing typable on the back, or no prompt to type from, falls back to ordinary
+     * tap-to-reveal — an image-only answer, which Anki imports produce, must never put up an input
+     * with nothing to match. Asked about the sides as *presented*, so a reversed card is judged on
+     * the face the reader types towards.
      *
-     * Asked about the sides as *presented*, so a reversed card is judged on the face the reader
-     * will actually be typing towards rather than on the card's own back.
-     *
-     * The back test is [AnswerMatcher.isTypable], deliberately not `isNotBlank()`. A back of
-     * `"—"`, `"..."` or a lone emoji is not blank but normalizes to nothing, so no answer can
-     * ever match it — and since a wrong Check no longer reveals, such a card would be a dead end
-     * with Give up as its only exit.
-     *
-     * Otherwise the phase already in progress is kept; [TypePhase.Off] doubles as the fresh-card
-     * state, so that is where a new card starts answering.
+     * The back test is [AnswerMatcher.isTypable], deliberately not `isNotBlank()`: a back of `"—"`
+     * or a lone emoji is not blank but normalizes to nothing, so nothing could ever match it — and
+     * since a wrong Check no longer reveals, such a card would be a dead end.
      */
     private fun typePhaseFor(prompt: CardSide, answer: CardSide, deck: Deck?): TypePhase {
         val eligible = deck?.typeEnabled == true &&
@@ -704,9 +692,8 @@ class StudySessionViewModel(
     }
 
     /**
-     * Resolves a deck title for the header. Tries the in-memory cache first ([DeckRepository.getLocal]);
-     * on a cold cache it falls back to [DeckRepository.listOwned] once, which fetches + caches owned
-     * decks, so a session opened without the deck pre-loaded still shows the name.
+     * Tries the in-memory cache, then falls back to [DeckRepository.listOwned] once, so a session
+     * opened without the deck pre-loaded still shows a name.
      */
     private suspend fun resolveDeckTitle(id: String): String {
         deckRepository.getLocal(id)?.title?.takeIf { it.isNotBlank() }?.let { return it }
@@ -723,8 +710,8 @@ class StudySessionViewModel(
         private const val TAG = "Loopky/StudyVM"
 
         /**
-         * How many cards a preview serves. A sample, not a session: the end of it is where the
-         * offer to keep going lives, so it has to be reachable in a couple of minutes.
+         * How many cards a preview serves. A sample, not a session: the offer to keep going lives
+         * at the end of it, so it has to be reachable in a couple of minutes.
          */
         internal const val PREVIEW_CARDS = 10
     }
@@ -739,90 +726,77 @@ sealed interface StudySessionUiState {
     data class Reviewing(
         val deckTitle: String,
         /**
-         * A sample of a deck nobody has kept: nothing here is graded or stored. The four SRS
-         * buttons are replaced by a plain "Next", and the screen says so — see
-         * [StudySessionViewModel].
+         * A sample of a deck nobody has kept: nothing is graded or stored. The SRS buttons become a
+         * plain "Next", and the screen says so.
          */
         val isPreview: Boolean = false,
         /**
-         * Today's new-card goal has just been met, so the celebration is on screen.
-         *
-         * A congratulation, not a stop sign: the queue behind it is unchanged and the next card is
-         * already loaded, so "Keep studying" costs nothing but a dismissal. Null the rest of the
-         * time, which is almost always — it is shown once a day.
+         * Today's new-card goal has just been met. A congratulation, not a stop sign: the queue
+         * behind it is unchanged, so "Keep studying" costs only a dismissal. Shown once a day.
          */
         val goalCelebration: GoalCelebration? = null,
         val position: Int,
         val total: Int,
         /**
-         * This presentation is the card the other way round: its back is the prompt.
-         *
-         * Not a different card and not a different review state — the deck opted into being
-         * studied both ways, and the pair is graded once (see [StudySessionViewModel]). The screen
-         * says so, because a deck whose two sides look alike gives no other signal that the
-         * question changed direction.
+         * This presentation is the card the other way round: its back is the prompt. Not a different
+         * card and not a different review state — the pair is graded once. The screen says so,
+         * because a deck whose sides look alike gives no other signal the direction changed.
          */
         val reversed: Boolean = false,
         val frontText: String,
         val backText: String,
         /**
-         * The prompt, shown small above the answer on the card back — as the author wrote it.
-         * Not uppercased: a deck whose two sides differ only in case would have the back's label
-         * spell out its own answer.
+         * The prompt, shown small above the answer on the card back — as the author wrote it. Not
+         * uppercased: a deck whose sides differ only in case would have the label spell out its own
+         * answer.
          */
         val backLabel: String?,
         val revealed: Boolean,
         val intervals: Map<SrsGrade, String>,
         /**
-         * Both already fold in the deck's `speechReady`: with no declared language pair the OS
-         * engines fall back to the reader's locale, so the features are not offered at all.
+         * Both fold in the deck's `speechReady`: with no declared language pair the OS engines fall
+         * back to the reader's locale, so the features are not offered at all.
          */
         val listenEnabled: Boolean = false,
         val speakEnabled: Boolean = false,
         val speakPhase: SpeakPhase = SpeakPhase.Idle,
         /**
-         * Where this card is in the type-the-answer flow, or [TypePhase.Off] when the deck has
-         * not opted in — or when this particular card cannot be typed. See [answerHidden].
+         * Where this card is in the type-the-answer flow, or [TypePhase.Off] when the deck has not
+         * opted in — or when this card cannot be typed. See [answerHidden].
          */
         val typePhase: TypePhase = TypePhase.Off,
-        /** What is in the input, held here so it survives the state rebuild every reveal causes. */
+        /** Held here so it survives the state rebuild every reveal causes. */
         val typedAnswer: String = "",
-        /** BCP-47 tags for the two sides, non-null whenever [listenEnabled]/[speakEnabled] are. */
+        /** BCP-47 tags, non-null whenever [listenEnabled]/[speakEnabled] are. */
         val frontLang: String? = null,
         val backLang: String? = null,
         val deckId: String = "",
-        /** The deck's author — media on a followed deck lives on their homeserver, not yours. */
+        /** Media on a followed deck lives on the author's homeserver, not yours. */
         val authorPubky: String = "",
-        /** Front-side image, shown as a circular avatar on the card back. */
+        /** Shown as a circular avatar on the card back. */
         val frontImageRef: MediaRef.Image? = null,
         /**
-         * Back-side image — the answer itself, when the answer is a picture.
-         *
-         * Stored, published and editable since cards gained media, but never surfaced here, so a
-         * card whose answer is a diagram revealed a blank face. An Anki import puts pictures
-         * exactly there (#96), which is what made the gap worth closing.
+         * The answer itself, when the answer is a picture. Stored and editable since cards gained
+         * media but never surfaced here, so a card whose answer is a diagram revealed a blank face
+         * — which is exactly where an Anki import puts pictures (#96).
          */
         val backImageRef: MediaRef.Image? = null,
         /**
          * Set when graded reviews are not reaching the homeserver. Not an [Error]: the session
-         * carries on and the reviews are buffered and journalled, so blanking the card the user is
-         * mid-way through would cost them more than the warning is worth.
+         * carries on and the reviews are buffered and journalled, so blanking the card mid-way
+         * would cost more than the warning is worth.
          */
         val syncError: ErrorReason? = null,
     ) : StudySessionUiState {
         /**
-         * The card may be flipped, but the answer on it is masked.
-         *
-         * The flip itself is never blocked by typing — tapping turns the card as it always has.
-         * What typing withholds is the word, not the gesture.
+         * The card may be flipped, but the answer on it is masked. Typing withholds the word, not
+         * the gesture.
          */
         val answerHidden: Boolean get() = typePhase is TypePhase.Answering
 
         /**
-         * Whether the four SRS buttons belong on screen.
-         *
-         * [revealed] alone is not enough once the answer can be revealed-but-masked: grading a
-         * card you have not been shown the answer to is not a judgement about anything.
+         * [revealed] alone is not enough once the answer can be revealed-but-masked: grading a card
+         * you have not been shown the answer to is not a judgement about anything.
          */
         val gradesAvailable: Boolean get() = revealed && !answerHidden && !isPreview
 
@@ -838,13 +812,14 @@ sealed interface StudySessionUiState {
         val isSignedIn: Boolean = false,
         val syncError: ErrorReason? = null,
         /**
-         * When the next card comes up. "All done! 🎊 / You reviewed 4 cards." said nothing about
-         * what happens next, which made an empty queue read as a dead end rather than as earned
-         * (#101 §5). Null when nothing is scheduled at all.
+         * When the next card comes up. Without it an empty queue read as a dead end rather than as
+         * earned (#101 §5). Null when nothing is scheduled at all.
          */
         val nextDueAtMillis: Long? = null,
         val newCardsToday: Int = 0,
         val newCardsGoal: Int = DEFAULT_NEW_CARDS_PER_DAY,
+        /** The goal was met on the last card. Covers the summary, with nothing left to keep studying. */
+        val goalCelebration: GoalCelebration? = null,
     ) : StudySessionUiState
 
     data class Error(val reason: ErrorReason) : StudySessionUiState
@@ -853,10 +828,10 @@ sealed interface StudySessionUiState {
 /** What the goal celebration says. Its own type so the screen needs no arithmetic. */
 data class GoalCelebration(val newCardsToday: Int, val goal: Int)
 
-/** Pronunciation-practice sheet state for the current card back. */
 /** The text and language one pronunciation attempt is measured against. */
 private data class SpeakTarget(val expected: String, val languageTag: String)
 
+/** Pronunciation-practice sheet state for the current card back. */
 sealed interface SpeakPhase {
     data object Idle : SpeakPhase
 
@@ -869,41 +844,49 @@ sealed interface SpeakPhase {
 
     data class Correct(val heard: String) : SpeakPhase
     data class Wrong(val heard: String, val expected: String) : SpeakPhase
+
+    /**
+     * Recognition ended without an attempt to grade. Carries [expected] so a retry keeps prompting
+     * with the same target the failed listen was for.
+     */
+    data class Failed(val reason: SpeechError, val expected: String) : SpeakPhase {
+        /** Neither a refused permission nor a missing language model changes by trying again. */
+        val retryable: Boolean
+            get() = reason !in
+                setOf(SpeechError.Permission, SpeechError.Unavailable, SpeechError.LanguageUnavailable)
+    }
 }
 
 /**
- * Where the current card sits in the type-the-answer flow (#115).
- *
- * The flip is orthogonal to all of this: a card can be turned face-up in any phase. What the
- * phase decides is whether the answer on that face is legible.
+ * Where the current card sits in the type-the-answer flow (#115). The flip is orthogonal: a card
+ * can be turned face-up in any phase. What the phase decides is whether that face is legible.
  */
 sealed interface TypePhase {
     /** The deck has not opted in, or this card cannot be typed. Tap-to-reveal, exactly as before. */
     data object Off : TypePhase
 
     /**
-     * Input on screen, answer hidden. The only phase in which Give up is offered — and the phase
-     * a rejected attempt stays in, which is why [lastMiss] lives here rather than on a phase of
-     * its own. Null until something has been submitted and turned down.
+     * Input on screen, answer hidden. The only phase offering Give up, and the phase a rejected
+     * attempt stays in — which is why [lastMiss] lives here rather than on a phase of its own.
      */
     data class Answering(val lastMiss: TypeMiss? = null) : TypePhase
 
     /**
-     * Typed correctly, so the back is now on show. The only Check outcome that opens the card —
-     * and it still picks no SRS grade, so the matcher's strictness cannot reach a card's `dueAt`.
+     * Typed correctly, so the back is on show. The only Check outcome that opens the card — and it
+     * still picks no SRS grade, so the matcher's strictness cannot reach a card's `dueAt`.
      */
     data class Correct(val typed: String) : TypePhase
 
     /**
-     * The user asked for the answer. Carries nothing on purpose: giving up reveals the back and
-     * says not one word more about how the card should be graded.
+     * Carries nothing on purpose: giving up reveals the back and says not one word about how the
+     * card should be graded.
      */
     data object GaveUp : TypePhase
 }
 
 /**
- * An attempt that was turned down, kept so the screen can say how near it came while the card
- * stays shut. [outcome] is never [TypedAnswerOutcome.Correct] — that one opens the card instead.
+ * An attempt that was turned down, kept so the screen can say how near it came while the card stays
+ * shut. [outcome] is never [TypedAnswerOutcome.Correct] — that one opens the card instead.
  */
 data class TypeMiss(val typed: String, val outcome: TypedAnswerOutcome)
 
@@ -915,4 +898,44 @@ sealed interface StudySessionEffect {
         val languageTag: String,
     ) : StudySessionEffect
     data object Close : StudySessionEffect
+
+    /**
+     * Buzz the phone. An effect rather than something the screens do on tap, because whether a tap
+     * *did* anything is known here and nowhere else — a grade arriving while the previous one is
+     * still writing, a Check on an untypable card and a second reveal are all ignored, and a buzz
+     * for one of those tells the reader something happened when nothing did.
+     */
+    data class Haptic(val pattern: StudyHaptic) : StudySessionEffect
+}
+
+/**
+ * The study loop's haptic vocabulary. Five patterns, kept few because telling them apart is the
+ * whole point — and for the same reason neither platform may collapse two of them.
+ *
+ * PascalCase like every enum that crosses to Swift here: Kotlin exports entries lowercased with the
+ * separators dropped, so a SCREAMING_SNAKE entry crosses under a name nothing can predict.
+ */
+enum class StudyHaptic {
+    /** The card moved: flipped, graded, given up on, or the microphone opened. */
+    Tick,
+
+    /** Right — a correct check, a correct utterance, the session finished. */
+    Success,
+
+    /**
+     * The day's goal, and nothing smaller. Longer and louder than [Success] on purpose: it fires
+     * once a day against a card that was going to buzz anyway, and a celebration that feels like
+     * an ordinary correct answer is not a celebration.
+     */
+    Celebration,
+
+    /** Wrong, but the reader's turn continues: a missed check, a mispronounced word. */
+    Warning,
+
+    /**
+     * The app could not do the thing at all — a listen that produced no answer. Distinct from
+     * [Warning] on both platforms: `.error` against `.warning` on iOS, a fading three-pulse
+     * stutter against one blunt pulse on Android.
+     */
+    Failure,
 }

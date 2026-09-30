@@ -24,6 +24,6 @@ PRODUCT_BUNDLE_IDENTIFIER=com.github.jvsena42.loopky
 PRODUCT_NAME=Loopky
 
 // MARKETING_VERSION is what testers see. CURRENT_PROJECT_VERSION must be unique for
-// every upload to App Store Connect — bump it per upload, not per release.
-CURRENT_PROJECT_VERSION=13
-MARKETING_VERSION=0.6.1
+// every upload to App Store Connect, and is kept equal to Android's versionCode.
+CURRENT_PROJECT_VERSION=40
+MARKETING_VERSION=1.2.4

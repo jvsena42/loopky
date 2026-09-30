@@ -52,6 +52,7 @@ class DeckEditorViewModelTest {
     private val discoveryRepo = FakeDiscoveryRepository()
     private val preferences = FakeAppPreferences()
     private val cardRepo = FakeCardRepository()
+    private val mediaRepo = FakeMediaRepository()
 
     private val mainDispatcher = StandardTestDispatcher()
 
@@ -140,7 +141,7 @@ class DeckEditorViewModelTest {
         deckRepository = deckRepo,
         cardRepository = cardRepo,
         identityRepository = identityRepo,
-        mediaRepository = FakeMediaRepository(),
+        mediaRepository = mediaRepo,
         discoveryRepository = discoveryRepo,
         appPreferences = preferences,
     )

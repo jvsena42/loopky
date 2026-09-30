@@ -1,0 +1,26 @@
+Loopky es una app de flashcards gratuita y de código abierto, con repetición espaciada. Importa tus mazos de Anki, crea los tuyos o estudia mazos que otras personas han compartido.
+
+<b>Importa desde Anki</b>
+Abre archivos .apkg, con imágenes, y empieza a estudiar. También sirven los archivos .txt y .csv, o pega una lista de palabras y cada línea se convierte en una tarjeta.
+
+<b>Repetición espaciada a tu medida</b>
+Difícil, Bien y Fácil vuelven a mostrar la tarjeta en 1, 3 y 7 días. Cambia esos números en los ajustes y cada repaso los usa. Las tarjetas nuevas tienen un objetivo diario de 20, y los repasos no tienen límite.
+
+<b>Formas de estudiar</b>
+• Girar: toca para ver la respuesta
+• Escribir la respuesta, con tildes
+• Escuchar: la tarjeta se lee en voz alta
+• Hablar: di la respuesta y se comprueba
+• Invertida: la pregunta al revés
+Escuchar y Hablar funcionan en 35 idiomas.
+
+<b>Mazos compartidos</b>
+Busca mazos por etiqueta, sigue los que te gusten o copia uno y hazlo tuyo. Comparte tu mazo con un enlace, ideal para una clase o un grupo de estudio.
+
+<b>Sin email, sin contraseña</b>
+Inicias sesión con una clave Pubky. Tus mazos y tu historial de repasos están en un homeserver que controlas, así que te siguen a un móvil o tablet nuevo. Los mazos publicados son públicos. Sin anuncios, sin analíticas.
+
+Ideal para vocabulario, idiomas, medicina, oposiciones y exámenes. Funciona en móviles y tablets.
+
+Guías: https://loopky.app/es/
+Código fuente: https://github.com/jvsena42/loopky

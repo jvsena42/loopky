@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.presentation.decks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
@@ -13,6 +14,7 @@ import com.github.jvsena42.loopky.domain.model.CardSide
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckAnnouncement
 import com.github.jvsena42.loopky.domain.model.DeckLimits
+import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.FormError
 import com.github.jvsena42.loopky.domain.model.LanguageTags
 import com.github.jvsena42.loopky.domain.model.MediaRef
@@ -20,6 +22,7 @@ import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.SpeechLanguages
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.inStudyOrder
+import com.github.jvsena42.loopky.domain.model.remoteImageRef
 import com.github.jvsena42.loopky.presentation.share.DeckSharePrompt
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.epochMillis
@@ -37,27 +40,27 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * The deck editor: metadata, plus a **paged** view of the deck's cards.
  *
  * Two rules follow from Anki-sized decks (#52), and the rest of this class is their consequence:
  *
- * 1. **The card list is a window, never the deck.** Cards arrive one chunk record at a time as the
- *    user scrolls. A 20k-card deck must not become 20,000 `EditableCardModel`s the moment the
- *    screen opens.
- * 2. **Saving an existing deck writes the manifest only.** Since the list is a window, rebuilding
- *    the deck's cards from it would delete everything not yet paged in. Card mutations therefore
- *    do not wait for Save at all: they go straight through [DeckRepository.upsertCard] (from the
- *    card editor) and [DeckRepository.moveCard], each of which touches one or two chunks.
+ * 1. **The card list is a window, never the deck.** Cards arrive one chunk at a time as the user
+ *    scrolls; a 20k-card deck must not become 20,000 `EditableCardModel`s when the screen opens.
+ * 2. **Saving an existing deck writes the manifest only.** Rebuilding the deck's cards from a
+ *    window would delete everything not yet paged in, so card mutations do not wait for Save:
+ *    they go straight through [DeckRepository.upsertCard] and [DeckRepository.moveCard].
  *
  * A deck that does not exist yet ([deckId] null) is the exception on both counts — it has nowhere
- * to write incrementally, so its cards stay in memory and Save publishes them. That deck is small
- * by construction: it has only the cards typed into this screen.
+ * to write incrementally, and it is small by construction.
  */
 // Seven collaborators because the editor writes a deck end to end: manifest, cards, cover upload,
 // the author it stamps, and — since #39 — the announcement it offers on a create.
 @Suppress("TooManyFunctions", "LongParameterList")
+@OptIn(ExperimentalEncodingApi::class)
 class DeckEditorViewModel(
     private val deckId: String?,
     private val deckRepository: DeckRepository,
@@ -79,8 +82,8 @@ class DeckEditorViewModel(
 
     /**
      * The deck as last read. Saving rewrites the whole manifest, so the fields the editor does not
-     * expose (cover image, Listen/Speak, provenance) — and the chunk table, which only the card
-     * writes move — must be carried forward from here or they are destroyed on the homeserver.
+     * expose (cover, Listen/Speak, provenance) — and the chunk table, which only the card writes
+     * move — must be carried forward from here or they are destroyed on the homeserver.
      */
     private var loadedDeck: Deck? = null
 
@@ -92,8 +95,8 @@ class DeckEditorViewModel(
 
     /**
      * Serializes the writes behind [onMoveCard]. Each move resolves its destination from the
-     * manifest's chunk counts, so two in flight at once would both plan against the pre-move
-     * table and the second would land in the wrong place.
+     * manifest's chunk counts, so two in flight would both plan against the pre-move table and the
+     * second would land in the wrong place.
      */
     private val moveLock = Mutex()
 
@@ -113,6 +116,11 @@ class DeckEditorViewModel(
                 DeckEditorUiState(
                     isNew = false,
                     coverEmoji = deck.coverEmoji ?: deck.title.firstOrNull()?.toString() ?: "",
+                    // The cover this screen is about to edit. A remote cover is its URL; a
+                    // homeserver blob has none, so loadCoverBlob fetches its bytes below. Without
+                    // both, the one screen that can *replace* a cover is the one screen that
+                    // cannot show you the cover you are replacing (#166).
+                    coverImageUrl = deck.coverImageRef?.url,
                     title = deck.title,
                     description = deck.description ?: "",
                     tags = deck.tags.map { tag -> tag.value },
@@ -133,20 +141,40 @@ class DeckEditorViewModel(
             }
             pageOrder = deck.chunks.sortedBy { it.n }.map { it.n }
             pagesLoaded = 0
+            // Off loadJob deliberately: a child would keep it active, and onLoadMoreCards
+            // refuses to page while it is.
+            viewModelScope.launch { loadCoverBlob(deck) }
             if (pageOrder.isEmpty()) loadWholeDeck(deck) else appendNextPage(deck)
         }
     }
 
     /**
-     * Read every card in one go, for a deck whose manifest carries no chunk table.
-     *
-     * Only decks published before the chunked layout look like this, and they are small — the
-     * layout landed before any Anki-sized import could. Without page boundaries there is nothing
-     * to page along, so this is the old whole-deck read, kept for exactly those decks.
+     * Folds a homeserver blob cover's Base64 bytes into the state. Remote (URL) covers need no fetch,
+     * and a cover picked since the load wins, so this drops its result rather than overwriting one.
+     */
+    private suspend fun loadCoverBlob(deck: Deck) {
+        val ref = deck.coverImageRef?.takeIf { !it.isRemote } ?: return
+        val bytes = mediaRepository.get(deck.authorPubky, deck.id, ref)
+            .onFailure { Log.e(TAG, "loadCoverBlob: FAILED — ${it.message}", it) }
+            .getOrNull() ?: return
+        val encoded = Base64.encode(bytes)
+        _state.update { s ->
+            if (s.coverImageUrl != null || s.coverPendingBytes != null) s else s.copy(coverImageBase64 = encoded)
+        }
+    }
+
+    /**
+     * Read every card in one go, for a deck whose manifest carries no chunk table. Only decks
+     * published before the chunked layout look like this, and they are small — there are no page
+     * boundaries to page along, so this is the old whole-deck read kept for exactly those decks.
      */
     private suspend fun loadWholeDeck(deck: Deck) {
+        var reason: ErrorReason? = null
         val cards = cardRepository.fetchByDeck(deck)
-            .onFailure { err -> Log.e(TAG, "loadWholeDeck: FAILED — ${err.message}", err) }
+            .onFailure { err ->
+                Log.e(TAG, "loadWholeDeck: FAILED — ${err.message}", err)
+                reason = err.toErrorReason()
+            }
             .getOrNull()
             ?.inStudyOrder()
         _state.update { s ->
@@ -155,7 +183,7 @@ class DeckEditorViewModel(
                 totalCards = maxOf(deck.cardCount, cards?.size ?: 0),
                 isLoadingCards = false,
                 hasMoreCards = false,
-                error = if (cards == null) CARDS_LOAD_FAILED else s.error,
+                error = reason?.let { DeckEditorError(DeckEditorOp.LoadCards, it) } ?: s.error,
             )
         }
     }
@@ -182,7 +210,12 @@ class DeckEditorViewModel(
                 // hasMoreCards is left alone: the page is still there to try again for, and
                 // clearing it would tell the list the deck ends here.
                 Log.e(TAG, "appendNextPage: chunk $chunk FAILED — ${err.message}", err)
-                _state.update { it.copy(isLoadingCards = false, error = CARDS_LOAD_FAILED) }
+                _state.update {
+                    it.copy(
+                        isLoadingCards = false,
+                        error = DeckEditorError(DeckEditorOp.LoadCards, err.toErrorReason()),
+                    )
+                }
             }
     }
 
@@ -198,13 +231,11 @@ class DeckEditorViewModel(
     }
 
     /**
-     * Re-read the pages already on screen, for when the screen comes back to the foreground.
+     * Re-read the pages already on screen when the screen returns to the foreground.
      *
-     * The card editor is a separate screen writing straight through to the repository, so on the
-     * way back this list is showing each card as it was before that edit — and a card added or
-     * deleted there has moved the deck's totals and chunk table. Only the pages already paged in
-     * are re-read; the tail stays where it was, so returning from a card edit does not silently
-     * re-download the rest of a 20k-card deck.
+     * The card editor is a separate screen writing straight through to the repository, so on the way
+     * back this list shows each card as it was before that edit. Only the pages already paged in are
+     * re-read, so returning from a card edit does not re-download the rest of a 20k-card deck.
      */
     fun onResume() {
         if (deckId == null || loadJob?.isActive == true) return
@@ -238,10 +269,9 @@ class DeckEditorViewModel(
     }
 
     /**
-     * Stopped at the cap rather than accepted and rejected on save: the title field is one line
-     * that scrolls horizontally, so an over-long title hides its own beginning while being typed
-     * and the error names a number the user cannot see themselves approaching. The counter beside
-     * the field does that job, the way the description below it already works.
+     * Stopped at the cap rather than accepted and rejected on save: the title field is one line that
+     * scrolls horizontally, so an over-long title hides its own beginning while being typed and the
+     * error names a number the user cannot see themselves approaching. The counter does that job.
      */
     fun onTitleChanged(text: String) {
         val capped = text.take(DeckLimits.TITLE_MAX_LENGTH)
@@ -275,13 +305,10 @@ class DeckEditorViewModel(
     }
 
     /**
-     * Add a card. On an existing deck this hands straight over to the card editor, which writes
-     * the card through `upsertCard` when it is saved.
-     *
-     * It cannot be a blank row in this list any more: the list no longer holds the whole deck, so
-     * there is no full publish left to sweep such a row up into. A deck that does not exist yet
-     * has no `upsertCard` to call either, so there the blank row is still the only option — and
-     * Save publishes whatever was typed into it.
+     * Add a card. On an existing deck this hands straight to the card editor, which writes through
+     * `upsertCard` when saved — it cannot be a blank row here any more, because the list no longer
+     * holds the whole deck and there is no full publish to sweep such a row into. A deck that does
+     * not exist yet has no `upsertCard` to call, so there the blank row is still the only option.
      */
     fun onAddCard() {
         val currentDeckId = deckId
@@ -301,29 +328,41 @@ class DeckEditorViewModel(
 
     /**
      * A cover could previously only be set while publishing — the editor's cover box was not
-     * tappable, so an existing deck's cover could never be changed. Mirrors the identical pair
-     * on [com.github.jvsena42.loopky.presentation.importflow.PublishDeckViewModel].
+     * tappable, so an existing deck's cover could never be changed. Mirrors the identical pair on
+     * [PublishDeckViewModel].
      */
     fun onCoverWebSelected(url: String) {
-        _state.update { it.copy(coverImageUrl = url, coverPendingBytes = null, coverPendingMime = null) }
+        _state.update {
+            it.copy(
+                coverImageUrl = url,
+                coverImageBase64 = null,
+                coverPendingBytes = null,
+                coverPendingMime = null,
+            )
+        }
     }
 
     fun onCoverGallerySelected(bytes: ByteArray, mime: String) {
-        _state.update { it.copy(coverImageUrl = null, coverPendingBytes = bytes, coverPendingMime = mime) }
+        _state.update {
+            it.copy(
+                coverImageUrl = null,
+                coverImageBase64 = null,
+                coverPendingBytes = bytes,
+                coverPendingMime = mime,
+            )
+        }
     }
 
     /**
-     * Move a card one position, or straight to [to] — the "move to position…" affordance a deck
-     * too big to drag through needs.
+     * Move a card one position, or straight to [to] — the affordance a deck too big to drag needs.
      *
-     * Persisted immediately rather than on Save, through [DeckRepository.moveCard], which rewrites
-     * only the chunks the move touches. The list moves first and is put back if the write fails:
-     * a reorder that waited on the homeserver would feel broken at every deck size.
+     * Persisted immediately through [DeckRepository.moveCard], which rewrites only the chunks the
+     * move touches. The list moves first and is put back if the write fails: a reorder that waited
+     * on the homeserver would feel broken at every deck size.
      *
-     * [from] indexes the loaded list, which is a prefix of the deck, so it is also the card's
-     * study position. [to] is a position anywhere in the **deck** — a destination past the loaded
-     * window is the whole point of the affordance, and the row simply leaves the window rather
-     * than sitting at a position this list cannot show.
+     * [from] indexes the loaded list, which is a prefix of the deck, so it is also the card's study
+     * position. [to] is a position anywhere in the **deck**, so a destination past the loaded window
+     * simply takes the row out of the window.
      */
     fun onMoveCard(from: Int, to: Int) {
         val cards = _state.value.cards
@@ -350,7 +389,9 @@ class DeckEditorViewModel(
                     .onSuccess { loadedDeck = it }
                     .onFailure { err ->
                         Log.e(TAG, "onMoveCard: FAILED — ${err.message}", err)
-                        _state.update { it.copy(error = MOVE_FAILED) }
+                        _state.update {
+                            it.copy(error = DeckEditorError(DeckEditorOp.MoveCard, err.toErrorReason()))
+                        }
                         reloadLoadedPages()
                     }
             }
@@ -385,9 +426,9 @@ class DeckEditorViewModel(
     }
 
     /**
-     * Picking a language also labels the deck with it — `"spanish"`, an ordinary tag the author
-     * can still remove — so a stranger learning that language can find the deck. The label the
-     * previous pick contributed goes in the same step; see [LanguageTags.retag].
+     * Picking a language also labels the deck with it — `"spanish"`, an ordinary tag the author can
+     * remove — so a stranger learning that language can find the deck. The label the previous pick
+     * contributed goes in the same step; see [LanguageTags.retag].
      */
     fun onFrontLangSelected(tag: String) {
         _state.update {
@@ -415,7 +456,7 @@ class DeckEditorViewModel(
      */
     private fun validateForSave(s: DeckEditorUiState): Boolean {
         if (s.title.isBlank()) {
-            _state.update { it.copy(error = "Title is required.") }
+            _state.update { it.copy(titleError = FormError.TitleRequired) }
             return false
         }
         val titleError = titleErrorFor(s.title)
@@ -448,7 +489,12 @@ class DeckEditorViewModel(
             val session = runSuspendCatching { identityRepository.currentSession() }.getOrNull()
                 ?: runSuspendCatching { identityRepository.loadPersistedSession() }.getOrNull()
             val authorPubky = session?.identity?.pubky ?: run {
-                _state.update { it.copy(isSaving = false, error = "Not signed in.") }
+                _state.update {
+                    it.copy(
+                        isSaving = false,
+                        error = DeckEditorError(DeckEditorOp.Save, ErrorReason.NotSignedIn),
+                    )
+                }
                 return@launch
             }
 
@@ -459,7 +505,8 @@ class DeckEditorViewModel(
             // orphan the chunk it patched.
             val existing = deckId?.let { deckRepository.getLocal(it) ?: loadedDeck }
             val cards = if (deckId == null) newDeckCards(s.cards, actualDeckId, now) else emptyList()
-            val cover = resolveCoverImage(s, actualDeckId, mediaRepository) ?: existing?.coverImageRef
+            val cover = resolveCoverImage(s, actualDeckId, mediaRepository, existing?.coverImageRef)
+                ?: existing?.coverImageRef
             val deck = buildDeck(s, authorPubky, actualDeckId, existing, cards, now, cover)
 
             writeDeck(deck, cards, isCreate = deckId == null)
@@ -470,18 +517,49 @@ class DeckEditorViewModel(
                     settle(saved, isCreate = deckId == null)
                 }
                 .onFailure { err ->
+                    // The reason, never `err.message`: this is where the FFI's own
+                    // "Failed to import session: Request failed: HTTP transport error: error
+                    // sending request for url (https://_pubky.…/session)" was rendered to users,
+                    // in the card list, as the only place the real cause appeared at all (#165).
                     Log.e(TAG, "save: FAILED — ${err.message}", err)
-                    _state.update { it.copy(isSaving = false, error = err.message ?: "Save failed.") }
+                    _state.update {
+                        it.copy(
+                            isSaving = false,
+                            error = DeckEditorError(DeckEditorOp.Save, err.toErrorReason()),
+                        )
+                    }
                 }
         }
     }
 
     /**
-     * Leave the editor, offering to announce the deck first when this save *created* it (#39).
+     * The escape hatch offered beside a session failure: end the session and go sign in again.
      *
-     * [isCreate] keys off the constructor's `deckId` being null, which is the editor's only honest
-     * "new deck" signal: an edit saves the manifest again every time, so announcing from the
-     * success path unconditionally would post again every time someone fixed a typo.
+     * Explicit, never automatic. A `SessionUnreachable` write failed without the homeserver ever
+     * answering, so the app has no grounds to end a session that may still be good — but a fresh
+     * sign-in was the only thing that ever cleared it on device (#165).
+     *
+     * The sign-out is best-effort: `signOut` refuses when it would destroy the only copy of an
+     * un-backed-up local key, and that refusal must stand — but it is no reason to withhold the
+     * sign-in screen, since signing in again *replaces* the session without clearing the old one.
+     */
+    fun onSignInAgainClick() {
+        viewModelScope.launch {
+            Log.d(TAG, "onSignInAgainClick: signing out to re-authenticate")
+            runSuspendCatching { identityRepository.signOut() }
+            _effects.emit(DeckEditorEffect.NavigateToOnboarding)
+        }
+    }
+
+    /** Clear a failure the user has read, so the next attempt starts from a clean screen. */
+    fun onDismissError() {
+        _state.update { it.copy(error = null) }
+    }
+
+    /**
+     * Leave the editor, offering to announce the deck first when this save *created* it (#39).
+     * [isCreate] keys off the constructor's `deckId` being null, the editor's only honest "new deck"
+     * signal — announcing unconditionally would post again every time someone fixed a typo.
      */
     private suspend fun settle(deck: Deck, isCreate: Boolean) {
         savedDeckId = deck.id
@@ -534,12 +612,10 @@ class DeckEditorViewModel(
     }
 
     /**
-     * Persist the deck. An existing one writes **only** its manifest.
-     *
-     * Republishing would rewrite every chunk — ~201 requests and every card's bytes re-uploaded to
-     * change one field on a 20k-card deck — and, now that the card list is a page rather than the
-     * deck, it would write back only the cards this screen happens to have read. Card changes have
-     * already been written by the time Save is tapped, each as one or two chunk writes.
+     * Persist the deck. An existing one writes **only** its manifest: republishing would rewrite
+     * every chunk — ~201 requests to change one field on a 20k-card deck — and, now that the card
+     * list is a page rather than the deck, would write back only the cards this screen has read.
+     * Card changes are already written by the time Save is tapped.
      */
     private suspend fun writeDeck(deck: Deck, cards: List<Card>, isCreate: Boolean): Result<Deck> =
         if (isCreate) {
@@ -554,31 +630,26 @@ class DeckEditorViewModel(
         private const val TAG = "Loopky/DeckEditorVM"
 
         /**
-         * Above this the card list stops offering drag-to-reorder. Dragging one row across
-         * thousands is not a usable gesture, and the list it would have to drag through is not
-         * even loaded — "move to position…" is the affordance at that size (#52).
+         * Above this the card list stops offering drag-to-reorder: dragging one row across thousands
+         * is not a usable gesture, and the list it would drag through is not even loaded. "Move to
+         * position…" is the affordance at that size (#52).
          */
         const val DRAG_REORDER_LIMIT = 100
     }
 }
 
-private const val CARDS_LOAD_FAILED =
-    "Couldn't load this deck's cards. Your changes to the deck's details will still save."
-
-private const val MOVE_FAILED = "Couldn't move that card. Check your connection and try again."
-
 private const val DEFAULT_IMAGE_MIME = "image/jpeg"
 
-private fun titleErrorFor(text: String): String? =
+private fun titleErrorFor(text: String): FormError? =
     if (text.length > DeckLimits.TITLE_MAX_LENGTH) {
-        "Title must be ${DeckLimits.TITLE_MAX_LENGTH} characters or fewer."
+        FormError.TitleTooLong
     } else {
         null
     }
 
-private fun descriptionErrorFor(text: String): String? =
+private fun descriptionErrorFor(text: String): FormError? =
     if (text.length > DeckLimits.DESCRIPTION_MAX_LENGTH) {
-        "Description must be ${DeckLimits.DESCRIPTION_MAX_LENGTH} characters or fewer."
+        FormError.DescriptionTooLong
     } else {
         null
     }
@@ -596,28 +667,24 @@ private suspend fun resolveCoverImage(
     s: DeckEditorUiState,
     deckId: String,
     mediaRepository: MediaRepository,
+    existing: MediaRef.Image?,
 ): MediaRef.Image? = when {
     s.coverPendingBytes != null ->
         mediaRepository.putImage(deckId, s.coverPendingBytes, s.coverPendingMime ?: DEFAULT_IMAGE_MIME)
             .getOrNull()
 
-    s.coverImageUrl != null -> MediaRef.Image(
-        path = "",
-        mime = DEFAULT_IMAGE_MIME,
-        sha256 = "",
-        width = null,
-        height = null,
-        url = s.coverImageUrl,
-    )
+    // Only a URL the user actually picked builds a new ref. Since #166 the editor opens with the
+    // stored cover's URL already in state, and rebuilding from it would throw away whatever the
+    // saved ref carries beyond the URL (its mime, its dimensions) on every metadata save.
+    s.coverImageUrl != null && s.coverImageUrl != existing?.url -> remoteImageRef(s.coverImageUrl)
 
     else -> null
 }
 
 /**
- * The cards a not-yet-published deck will be created with.
- *
- * Rows with nothing on either side are dropped rather than published: `publish` rejects an empty
- * side, so an untouched "Add card" row would otherwise fail the whole save.
+ * The cards a not-yet-published deck will be created with. Rows with nothing on either side are
+ * dropped rather than published: `publish` rejects an empty side, so an untouched "Add card" row
+ * would otherwise fail the whole save.
  */
 private fun newDeckCards(
     editables: List<EditableCardModel>,
@@ -680,7 +747,10 @@ data class DeckEditorUiState(
     val isLoadingCards: Boolean = false,
     /** There are chunk records left to page in. */
     val hasMoreCards: Boolean = false,
+    /** A remote cover: the deck's stored URL on open, or one picked this session. */
     val coverImageUrl: String? = null,
+    /** A homeserver-blob cover's bytes, fetched on open. Null for a remote or unset cover. */
+    val coverImageBase64: String? = null,
     val coverPendingBytes: ByteArray? = null,
     val coverPendingMime: String? = null,
     val isSaving: Boolean = false,
@@ -695,14 +765,11 @@ data class DeckEditorUiState(
     /** BCP-47 tags for the two card sides; required once either speech opt-in above is on. */
     val frontLang: String? = null,
     val backLang: String? = null,
-    /**
-     * Typed rather than a message like the two errors below it: those predate [FormError], and a
-     * new hardcoded English string in `commonMain` is the thing [FormError] exists to avoid.
-     */
     val languagesError: FormError? = null,
-    val titleError: String? = null,
-    val descriptionError: String? = null,
-    val error: String? = null,
+    val titleError: FormError? = null,
+    val descriptionError: FormError? = null,
+    /** What failed and why, never the FFI's own words — see [DeckEditorError]. */
+    val error: DeckEditorError? = null,
     /** Set after a save that created the deck, unless the user has opted out of being asked (#39). */
     val sharePrompt: DeckSharePrompt? = null,
 ) {
@@ -726,8 +793,36 @@ data class EditableCardModel(
     val hasAudio: Boolean,
 )
 
+/**
+ * What failed in the editor, and why.
+ *
+ * Two fields rather than one message because the *consequence* differs and the *cause* does not: a
+ * failed card page still lets the deck's details save, a failed move leaves the list showing an order
+ * the homeserver does not have, and a failed save wrote nothing. The reason beside it is the
+ * vocabulary every other screen speaks.
+ *
+ * It replaced a raw `String` carrying `err.message`, which is how the card list came to render
+ * `"Failed to import session: Request failed: HTTP transport error…"` in place of the cards (#165).
+ */
+data class DeckEditorError(val op: DeckEditorOp, val reason: ErrorReason)
+
+/** The editor operations that can fail with an [ErrorReason]. */
+enum class DeckEditorOp {
+    /** A page of the card list did not arrive. The metadata is still editable and still saves. */
+    LoadCards,
+
+    /** A reorder was rejected; the list has been re-read from the homeserver. */
+    MoveCard,
+
+    /** The manifest write failed, so nothing was saved. */
+    Save,
+}
+
 sealed interface DeckEditorEffect {
     data object NavigateBack : DeckEditorEffect
+
+    /** The user chose to sign in again from a session failure; the session is already cleared. */
+    data object NavigateToOnboarding : DeckEditorEffect
     data class NavigateEditCard(val deckId: String, val cardId: String) : DeckEditorEffect
 
     /** Open the card editor on a card that does not exist yet; it writes it on save. */

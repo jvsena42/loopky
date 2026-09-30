@@ -29,10 +29,9 @@ import kotlinx.coroutines.launch
  * Bulk file import: parse a whole exported deck and show a **summary**, not a swipe queue.
  *
  * spec §5.4's triage queue is card-at-a-time by design, which is right for a 40-line paste and
- * wrong for a 20,000-card Anki export — nobody swipes through one. This screen reports what was
- * parsed, shows a sample, and takes a single confirmation. It then hands off to the same
- * [PublishDeckViewModel] commit flow that paste uses; the spine every import source shares is
- * parse → preview → commit, not the queue.
+ * wrong for a 20,000-card Anki export. This screen reports what was parsed, shows a sample, and
+ * takes one confirmation, then hands off to the same [PublishDeckViewModel] commit flow paste uses
+ * — the spine every import source shares is parse → preview → commit, not the queue.
  */
 @Suppress("TooManyFunctions")
 class BulkImportViewModel(
@@ -48,11 +47,10 @@ class BulkImportViewModel(
     private var parseJob: Job? = null
 
     /**
-     * The spooled `.apkg`, kept so a change of field mapping can re-read it.
-     *
-     * Re-reading is the whole design of the field picker: the archive is already on disk, the read
-     * takes a second, and it beats holding every note of a 9,000-card deck in the ViewModel on the
-     * chance that the user disagrees with the default.
+     * The spooled `.apkg`, kept so a change of field mapping can re-read it. Re-reading is the
+     * whole design of the field picker: the archive is on disk and the read takes a second, which
+     * beats holding every note of a 9,000-card deck in the ViewModel on the chance the user
+     * disagrees with the default.
      */
     private var apkgPath: String? = null
 
@@ -72,12 +70,11 @@ class BulkImportViewModel(
     }
 
     /**
-     * Import a different pair of fields.
-     *
-     * "The first two fields" is right for a two-field note type and wrong for most real decks, so
-     * the summary names the two it chose and lets the user disagree — the same role the separator
-     * chip plays for a paste, for the same reason. Spec §5.3 rules out a column-mapping UI for
-     * *pasted text*, where there are no field names to show; an `.apkg` knows its own.
+     * Import a different pair of fields. "The first two fields" is right for a two-field note type
+     * and wrong for most real decks, so the summary names the two it chose and lets the user
+     * disagree — the role the separator chip plays for a paste. Spec §5.3 rules out a
+     * column-mapping UI for *pasted text*, where there are no field names to show; an `.apkg` knows
+     * its own.
      */
     fun onFieldMappingChanged(mapping: ApkgFieldMapping) {
         val path = apkgPath ?: return
@@ -107,10 +104,8 @@ class BulkImportViewModel(
     }
 
     /**
-     * Anki's blobs are full-resolution photographs; a card shows one at 96 dp.
-     *
-     * Reuses the same compression the gallery picker applies, so an imported picture and a chosen
-     * one cost the same against the homeserver quota.
+     * Anki's blobs are full-resolution photographs; a card shows one at 96 dp. Reuses the gallery
+     * picker's compression, so an imported picture and a chosen one cost the same against the quota.
      */
     private suspend fun compressForCard(bytes: ByteArray, mime: String): DraftCardImage {
         val processed = mediaProcessor.compressImage(bytes)
@@ -196,12 +191,10 @@ class BulkImportViewModel(
     }
 
     /**
-     * What a failed *read* should tell the user.
-     *
-     * This used to be one constant per call site, so every `.apkg` failure — a zstd collection, a
-     * corrupt zip, an export holding nothing but Anki's compatibility stub — surfaced as "Loopky
-     * can't open this .apkg" and sent the user looking for a format problem they might not have.
-     * The reader names its own reason now; anything else really is an unreadable file.
+     * What a failed *read* should tell the user. This used to be one constant per call site, so
+     * every `.apkg` failure — a zstd collection, a corrupt zip, an export holding only Anki's
+     * compatibility stub — surfaced as "Loopky can't open this .apkg" and sent the user looking for
+     * a format problem they might not have. The reader names its own reason now.
      */
     private fun readErrorFor(err: Throwable): BulkImportError = when ((err as? ApkgException)?.reason) {
         ApkgFailure.UnsupportedFormat -> BulkImportError.UnsupportedApkg
@@ -210,12 +203,10 @@ class BulkImportViewModel(
     }
 
     /**
-     * The deck title to prefill the commit screen with.
-     *
-     * The `.apkg`'s own deck name wins over the file name: "Japanese Core 2000" is what the user
-     * calls this deck, "japanese_core_2000_step_01.apkg" is what their file manager calls it.
-     * Capped at [PublishDeckViewModel.TITLE_MAX_LENGTH] so the commit screen never opens with a
-     * validation error already showing.
+     * The deck title to prefill the commit screen with. The `.apkg`'s own deck name wins over the
+     * file name: "Japanese Core 2000" is what the user calls this deck,
+     * "japanese_core_2000_step_01.apkg" is what their file manager calls it. Capped at
+     * [PublishDeckViewModel.TITLE_MAX_LENGTH] so the commit screen never opens already invalid.
      */
     internal fun suggestedTitleFor(deckName: String?, fileName: String): String? =
         deckName?.trim()?.takeIf { it.isNotBlank() }?.take(PublishDeckViewModel.TITLE_MAX_LENGTH)
@@ -231,14 +222,11 @@ class BulkImportViewModel(
     /**
      * The deck description to prefill the commit screen with, or null.
      *
-     * Anki fills the field in for you: every deck exported from AnkiWeb carries the same
-     * "Please see the shared deck page for more info." — which is true of the AnkiWeb page and
-     * meaningless once the deck is a Loopky deck. Importing it verbatim gives every deck the
-     * same description and buries the fact that the field is the user's to write. An empty field
-     * says "write something here"; boilerplate says "this is already filled in".
-     *
-     * Matched on the normalised text rather than exactly, since the field arrives as HTML and
-     * different Anki versions punctuate it differently.
+     * Every deck exported from AnkiWeb carries the same "Please see the shared deck page for more
+     * info." — true of the AnkiWeb page and meaningless once the deck is a Loopky deck. Importing
+     * it gives every deck the same description and buries the fact that the field is the user's to
+     * write. Matched on the normalised text, since the field arrives as HTML and different Anki
+     * versions punctuate it differently.
      */
     internal fun suggestedDescriptionFor(description: String?): String? =
         description?.takeIf { raw ->
@@ -267,11 +255,9 @@ class BulkImportViewModel(
     }
 
     /**
-     * Re-parse the file the user already picked with an explicit separator.
-     *
-     * The summary showed what the parser decided and, unlike paste, gave no way to disagree with
-     * it — so a misdetected file could only be fixed by editing it outside the app. Re-parses from
-     * the draft's own text, and re-passes its suggested title or the prefill would be lost.
+     * Re-parse the file the user already picked with an explicit separator. The summary showed what
+     * the parser decided and gave no way to disagree, so a misdetected file could only be fixed by
+     * editing it outside the app. Re-passes the suggested title, or the prefill would be lost.
      */
     fun onSeparatorOverride(separator: Separator) {
         val draft = importRepository.currentDraft() ?: return
@@ -356,9 +342,9 @@ sealed interface BulkImportUiState {
  * Why an import failed, in terms the user can act on.
  *
  * A single message string collapsed "you picked a photo", "the file wouldn't open" and "the parser
- * found no cards" into one line — usually a parser message shown to someone who had simply picked
- * the wrong file. Deliberately not `ErrorReason`: every member of that is network/session/auth, and
- * extending it would force edits to exhaustive `when`s eight unrelated screens depend on.
+ * found no cards" into one line — usually a parser message shown to someone who picked the wrong
+ * file. Deliberately not `ErrorReason`: every member of that is network/session/auth, and extending
+ * it would force edits to exhaustive `when`s eight unrelated screens depend on.
  */
 enum class BulkImportError {
     /** The provider wouldn't open it, or the read failed part-way. */

@@ -35,3 +35,32 @@ private fun Char.isUnreserved(): Boolean =
 
 /** Non-ASCII letters and digits are `isLetterOrDigit()` too, and must still be escaped. */
 private const val ASCII_LIMIT = 0x80
+
+/**
+ * The inverse of [encodeUriComponent], or null when [value] holds a malformed escape. `+` stays a
+ * literal: nothing Loopky encodes produces one for a space.
+ */
+internal fun decodeUriComponent(value: String): String? {
+    if ('%' !in value) return value
+    val out = ArrayList<Byte>(value.length)
+    var i = 0
+    while (i < value.length) {
+        val ch = value[i]
+        if (ch != '%') {
+            ch.toString().encodeToByteArray().forEach(out::add)
+            i++
+            continue
+        }
+        val hex = value.substring(i + 1, minOf(i + ESCAPE_LENGTH, value.length))
+        // Checked by hand: toIntOrNull would take a sign, and read `%+1` as the byte 1.
+        if (hex.length != 2 || !hex.all { it.isHexDigit() }) return null
+        val byte = hex.toInt(HEX_RADIX)
+        out.add(byte.toByte())
+        i += ESCAPE_LENGTH
+    }
+    return out.toByteArray().decodeToString()
+}
+
+private const val ESCAPE_LENGTH = 3
+
+private fun Char.isHexDigit(): Boolean = this in '0'..'9' || lowercaseChar() in 'a'..'f'

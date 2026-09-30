@@ -67,9 +67,13 @@ struct DueTodayHeroCard: View {
     /// serves every due card and every unseen one regardless, so this reports, it does not cap.
     var newCardsToday: Int = 0
     var newCardsGoal: Int = 0
+    /// See `HomeContentData.countsKnown`. False draws the same card with a dash where the number
+    /// goes and an indeterminate bar, so nothing moves when the real count lands.
+    var countsKnown: Bool = true
     let onStartStudy: () -> Void
 
-    private var progress: CGFloat {
+    private var progress: CGFloat? {
+        guard countsKnown else { return nil }
         guard dueToday > 0 else { return 0 }
         return min(1, max(0, CGFloat(doneToday) / CGFloat(dueToday)))
     }
@@ -79,9 +83,9 @@ struct DueTodayHeroCard: View {
             Text("home_due_today")
                 .font(.system(size: 11, weight: .bold))
                 .kerning(1)
-                .foregroundColor(LoopkyColor.accentPrimarySoft)
+                .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
             HStack(alignment: .bottom) {
-                Text("\(dueToday)")
+                Text(countsKnown ? "\(dueToday)" : "—")
                     .font(.system(size: 72, weight: .heavy))
                     .foregroundColor(.white)
                 Spacer()
@@ -91,17 +95,35 @@ struct DueTodayHeroCard: View {
                         .foregroundColor(.white)
                     Text("home_to_review")
                         .font(.system(size: 13))
-                        .foregroundColor(LoopkyColor.accentPrimarySoft)
+                        .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
                 }
                 .padding(.bottom, 12)
             }
             VStack(alignment: .leading, spacing: 6) {
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
-                    .tint(.white)
-                Text(String(format: NSLocalizedString("home_progress_done", comment: ""), doneToday, dueToday))
+                if let progress {
+                    ProgressView(value: progress)
+                        .progressViewStyle(.linear)
+                        .tint(.white)
+                } else {
+                    // A bare track, drawn rather than asked for. `ProgressView()` with no value is
+                    // *documented* as indeterminate but renders as a motionless track here
+                    // (measured: two frames 0.45s apart are byte-identical), and the style it
+                    // falls back to is the OS's choice — a spinner would change the card's height
+                    // and undo the "nothing moves" property the dash was picked for. Drawing the
+                    // track pins both the look and the height.
+                    Capsule()
+                        .fill(Color.white.opacity(0.25))
+                        .frame(height: 8)
+                        .accessibilityLabel(Text("home_checking_due"))
+                }
+                Text(countsKnown
+                     ? String(
+                        format: NSLocalizedString("home_progress_done", comment: ""),
+                        doneToday, dueToday
+                     )
+                     : NSLocalizedString("home_checking_due", comment: ""))
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(LoopkyColor.accentPrimarySoft)
+                    .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
                 Text(verbatim: newCardsToday >= newCardsGoal
                      ? String(
                         format: NSLocalizedString("home_new_cards_goal_reached", comment: ""),
@@ -112,7 +134,7 @@ struct DueTodayHeroCard: View {
                         newCardsToday, newCardsGoal
                      ))
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(LoopkyColor.accentPrimarySoft)
+                .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
             }
             Button(action: onStartStudy) {
                 HStack(spacing: 8) {
@@ -120,7 +142,14 @@ struct DueTodayHeroCard: View {
                     Text("home_start_studying")
                 }
             }
-            .buttonStyle(LoopkyFilledButtonStyle(fill: LoopkyColor.surfaceCard, foreground: LoopkyColor.accentPrimary, verticalPadding: 16))
+            // The pill sits *on the accent*, so it takes on-accent colours, not the app's surface
+            // family. `surfaceCard` happens to be white in light mode, which is why the two were
+            // indistinguishable until dark mode turned this into a hole in the orange card.
+            .buttonStyle(LoopkyFilledButtonStyle(
+                fill: LoopkyColor.foregroundOnAccent,
+                foreground: LoopkyColor.accentPrimary,
+                verticalPadding: 16
+            ))
         }
         .padding(24)
         .background(RoundedRectangle(cornerRadius: 28).fill(LoopkyColor.accentPrimary))
@@ -134,6 +163,7 @@ struct TodaysDecksSection: View {
     /// layout, where a single column of rows would leave most of the pane empty.
     var columns: Int = 1
     let onOpenDeck: (String) -> Void
+    var onSeeAll: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -142,9 +172,15 @@ struct TodaysDecksSection: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(LoopkyColor.foregroundPrimary)
                 Spacer()
-                Text("home_see_all")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(LoopkyColor.accentSecondary)
+                // A Button, not a styled Text. It was the latter for as long as it existed: it
+                // looked like the control Android has, announced nothing to VoiceOver, and did
+                // nothing when tapped.
+                Button(action: onSeeAll) {
+                    Text("home_see_all")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(LoopkyColor.accentSecondary)
+                }
+                .accessibilityIdentifier("home_see_all_decks")
             }
             if columns > 1 {
                 LazyVGrid(
@@ -172,13 +208,13 @@ struct DeckRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
-                // Initial first, cover over it: the letter is the fallback, so a deck with a
-                // picture must not show both. The image is sized to the tile rather than left to
-                // grow, or the row with a cover stands taller than the row without.
+                // Emoji first, cover over it: the emoji (or the title's initial) is the fallback,
+                // so a deck with a picture must not show both. The image is sized to the tile
+                // rather than left to grow, or the row with a cover stands taller than one without.
                 ZStack {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(LoopkyColor.accentPrimarySoft)
-                    Text(deck.coverInitial)
+                    Text(deck.coverEmoji)
                         .font(.system(size: 22, weight: .heavy))
                         .foregroundColor(LoopkyColor.accentPrimary)
                     if deck.coverImage != nil {
@@ -197,12 +233,12 @@ struct DeckRow: View {
                     Text(deck.title)
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(LoopkyColor.foregroundPrimary)
-                    Text(String(format: NSLocalizedString("home_deck_due_cards", comment: ""), deck.dueCount, deck.cardCount))
+                    Text(countsCaption)
                         .font(.system(size: 13))
                         .foregroundColor(LoopkyColor.foregroundMuted)
                 }
                 Spacer()
-                Text("\(deck.dueCount)")
+                Text(deck.countsKnown ? "\(deck.dueCount == 0 ? deck.newCount : deck.dueCount)" : "—")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
@@ -215,12 +251,38 @@ struct DeckRow: View {
         }
         .buttonStyle(.plain)
     }
+
+    /// localizedStringWithFormat throughout, never String(format:): all three keys are plural
+    /// entries, and only this formatter resolves the variation — the other renders "1 cards".
+    /// The two-argument ones agree with the *card* count, which the catalog binds to argument 2
+    /// through a named substitution (#267).
+    private var countsCaption: String {
+        // The cached first paint knows the deck and not its badge.
+        guard deck.countsKnown else {
+            return String.localizedStringWithFormat(
+                NSLocalizedString("card_count", comment: ""),
+                deck.cardCount
+            )
+        }
+        // A freshly imported deck has nothing due and everything unseen. Saying "0 due" there
+        // described it as finished.
+        if deck.dueCount == 0 && deck.newCount > 0 {
+            return String.localizedStringWithFormat(
+                NSLocalizedString("home_deck_new_cards", comment: ""),
+                deck.newCount, deck.cardCount
+            )
+        }
+        return String.localizedStringWithFormat(
+            NSLocalizedString("home_deck_due_cards", comment: ""),
+            deck.dueCount, deck.cardCount
+        )
+    }
 }
 
 private let sampleHomeDecks = [
-    HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverInitial: "S"),
-    HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverInitial: "B"),
-    HomeDeckSummary(id: "3", title: "Guitar Chords", cardCount: 18, dueCount: 5, coverInitial: "G"),
+    HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverEmoji: "🇪🇸"),
+    HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverEmoji: "B"),
+    HomeDeckSummary(id: "3", title: "Guitar Chords", cardCount: 18, dueCount: 5, coverEmoji: "G"),
 ]
 
 #Preview("Content") {
@@ -283,6 +345,8 @@ struct CaughtUpCard: View {
             for: Date(timeIntervalSince1970: Double(millis) / 1000),
             relativeTo: Date()
         )
+        // `relative` already carries its preposition ("in 3 days", "dans 3 jours", "in 3 Tagen"),
+        // so the catalog value must not add one — unlike Android's `home_caught_up_next_due`.
         return String(format: NSLocalizedString("home_caught_up_next_due", comment: ""), relative)
     }
 }

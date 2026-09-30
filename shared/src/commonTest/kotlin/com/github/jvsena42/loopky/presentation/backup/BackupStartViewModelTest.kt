@@ -5,6 +5,7 @@ import com.github.jvsena42.loopky.data.repository.PhraseQuiz
 import com.github.jvsena42.loopky.data.repository.RecoveryFileBlob
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.KeyCustody
+import com.github.jvsena42.loopky.platform.PasswordManagerPresence
 import com.github.jvsena42.loopky.testing.FakePubkyRingPresence
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,7 +43,13 @@ class BackupStartViewModelTest {
         override suspend fun markBackedUp(method: BackupMethod) = Unit
     }
 
-    private fun viewModel() = BackupStartViewModel(keyBackup = keyBackup, ringPresence = ring)
+    private fun viewModel(canSave: Boolean = true) = BackupStartViewModel(
+        keyBackup = keyBackup,
+        ringPresence = ring,
+        passwordManager = object : PasswordManagerPresence {
+            override fun canSave(): Boolean = canSave
+        },
+    )
 
     @Test
     fun aRestoredKeyArrivesAlreadyBackedUpSoTheScreenCanSaySoRatherThanWarn() = runTest {

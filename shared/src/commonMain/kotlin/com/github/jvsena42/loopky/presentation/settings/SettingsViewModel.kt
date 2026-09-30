@@ -11,6 +11,7 @@ import com.github.jvsena42.loopky.data.unsplash.UnsplashClient
 import com.github.jvsena42.loopky.data.unsplash.UnsplashError
 import com.github.jvsena42.loopky.data.unsplash.UnsplashException
 import com.github.jvsena42.loopky.data.unsplash.maskedKeySuffix
+import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.StudySettings
@@ -70,6 +71,12 @@ class SettingsViewModel(
         // and the status row has to follow it rather than a local copy.
         unsplashKeyStore.key
             .onEach { key -> _state.update { it.copy(unsplashKeyStatus = statusFor(key)) } }
+            .launchIn(viewModelScope)
+        // Collected rather than read once because the app's root collects the same flow: the two
+        // controls are one setting, and a picker showing a stale value after the screen repainted
+        // around it is the obvious failure.
+        appPreferences.themeMode
+            .onEach { theme -> _state.update { it.copy(themeMode = theme) } }
             .launchIn(viewModelScope)
         // Collected, not read once: the record loads asynchronously, and the rows stay disabled
         // until it has — writing before then would put defaults over the user's real settings.
@@ -143,6 +150,15 @@ class SettingsViewModel(
      */
     fun onShareOnPubkyChange(enabled: Boolean) {
         viewModelScope.launch { appPreferences.setShareOnPubky(enabled) }
+    }
+
+    /**
+     * The chosen palette. Device-local, so nothing is published and nothing can fail — the write
+     * is to `NSUserDefaults`/`SharedPreferences` and the repaint follows the same flow the app's
+     * root is already collecting.
+     */
+    fun onThemeModeChange(theme: AppTheme) {
+        viewModelScope.launch { appPreferences.setThemeMode(theme) }
     }
 
     fun onNewCardsGoalChange(goal: Int) =
@@ -362,6 +378,8 @@ data class SettingsUiState(
     val appVersion: String = "",
     /** Whether Loopky may offer to announce a deck on Pubky. Default on; off means never asked. */
     val shareOnPubky: Boolean = true,
+    /** The palette the app paints itself in. Device-local — see [AppTheme]. */
+    val themeMode: AppTheme = AppTheme.System,
     val unsplashKeyStatus: UnsplashKeyStatus = UnsplashKeyStatus.NotSet,
     val isVerifyingUnsplashKey: Boolean = false,
     val unsplashKeyError: UnsplashError? = null,

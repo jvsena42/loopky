@@ -16,6 +16,8 @@ class PubkyAuthUrlsTest {
     private val caps = "/pub/loopky/:rw,/pub/pubky.app/:rw"
     private val homeserver = "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty"
     private val token = "ABCD-1234-EFGH"
+    private val clientId = "loopky.app"
+    private val clientPk = "5jsjx1o6fzu6aeeo697r3i5rx15zq41kikcye8wtwdqm4nb4tryo"
 
     private val signinUrl = "pubkyauth://signin?caps=$caps&relay=$relay&secret=$secret"
 
@@ -37,6 +39,20 @@ class PubkyAuthUrlsTest {
         assertTrue("relay=$relay" in url)
         assertTrue("secret=$secret" in url)
         assertTrue("caps=$caps" in url)
+    }
+
+    @Test
+    fun theGrantParamsSurviveTheHostRewrite() {
+        // The rewrite replaces the host and nothing else, which is what lets the grant form's
+        // required cid/cpk ride through untouched when the cookie pin is lifted (#321).
+        val grantUrl =
+            "pubkyauth://signin_grant?caps=$caps&relay=$relay&secret=$secret" +
+                "&cid=$clientId&cpk=$clientPk"
+
+        val url = grantUrl.asSignupUrl(homeserver, token)
+
+        assertTrue("cid=$clientId" in url)
+        assertTrue("cpk=$clientPk" in url)
     }
 
     @Test

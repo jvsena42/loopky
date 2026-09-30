@@ -3,7 +3,8 @@
     The Speak study feature: on a speak-enabled deck,
     reveal a card back and start pronunciation practice. Actual speech cannot be synthesized in
     automation, so this journey verifies the permission prompt and the Listening sheet appear and
-    that cancel/retry work; the Correct/Wrong outcome is a manual check. Which *language* each
+    that cancel/retry work, and that a listen producing no answer is reported rather than closing
+    the sheet; the Correct/Wrong outcome is a manual check. Which *language* each
     engine uses is likewise ear-only — see the Listen step at the end. Requires a signed-in
     session with at least one due card in a speak-enabled deck (run journeys 01–02 first).
   </description>
@@ -23,6 +24,10 @@
     <action>Verify the Listening sheet appears with a microphone indicator (resource-id: speak_mic) and the target word</action>
     <action>Manual check: the recognizer listens in the deck's BACK language, not the phone's — on an English-locale device, say the Spanish answer to a Spanish-back deck and verify it is transcribed as Spanish</action>
     <action>Manual check (speech not automatable): say the word and verify either the "Perfect!" sheet with Continue (resource-id: speak_continue) or the "Not quite right" sheet with your transcript (resource-id: speak_heard) and Try again (resource-id: speak_retry)</action>
+    <action>Say nothing at all and wait. Verify the sheet REPORTS the failure (resource-id: speak_failed_title) with a reason and a Try again — it must never close on its own, and must never sit on "Say the word" for good: a sheet that vanishes is indistinguishable from the app having missed the tap</action>
+    <action>Verify the failure buzzed a Reject (constant=17 in `dumpsys vibrator_manager`), distinct from the ContextClick that opened the microphone — on iOS these are `.error` and a light impact</action>
+    <action>Tap Try again from that failure sheet and verify it goes straight back to the Listening sheet — a second listen started before the first recognizer is destroyed comes back as "Still listening" instead</action>
+    <action>Manual check: set the deck to a language with no installed speech model and verify the sheet says "Language not installed" with a Close (resource-id: speak_failed_close) rather than a Try again that would repeat the same failure</action>
     <action>Dismiss the Listening sheet and verify the study card is shown again</action>
     <action>Tap the Listen button (resource-id: study_listen) on the card back and verify — by ear — that the answer is spoken by a voice for the deck's back language, and the front (before reveal) by the front language's voice. This is the acceptance test; a green build says nothing about which voice was used.</action>
     <action>Manual check: set the deck to a language with no installed voice and verify a toast says so rather than the card being read in the wrong accent</action>

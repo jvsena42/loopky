@@ -136,7 +136,7 @@ struct UnregisteredKeyScreen: View {
             switch effect {
             case is UnregisteredKeyEffectNavigateBack: onBack()
             case is UnregisteredKeyEffectNavigateSignup: onNeedsVerification()
-            case is UnregisteredKeyEffectNavigateBackup: onRegistered()
+            case is UnregisteredKeyEffectNavigateHome: onRegistered()
             default: break
             }
         }

@@ -74,6 +74,12 @@ class FakePubkyClient : PubkyClient {
      */
     var honoursShallow: Boolean = true
 
+    /**
+     * Ignore `cursor`, as a homeserver that does not implement it would — every page is page one.
+     * The paging loop has to notice and stop, and has to report what it has as incomplete.
+     */
+    var ignoresListCursor: Boolean = false
+
     /** When set, [list] succeeds this many times and fails afterwards, as a mid-listing drop would. */
     var failListAfterPages: Int? = null
 
@@ -82,6 +88,12 @@ class FakePubkyClient : PubkyClient {
 
     /** When set, every [get] call fails with this error (simulates an unreachable homeserver). */
     var failGetWith: Throwable? = null
+
+    /**
+     * Fail only the reads whose URL contains this — a *transient* failure, not a 404, so callers
+     * that distinguish "gone" from "could not read" can be tested on the difference.
+     */
+    var failGetWhenUrlContains: String? = null
 
     /** What [startAuthFlow] hands back, and the capabilities it was asked for. */
     var authFlowResult: Result<String> = Result.success("pubkyauth:///?caps=&secret=test")
@@ -125,16 +137,16 @@ class FakePubkyClient : PubkyClient {
     }
 
     /**
-     * Deleting a path that is not there is a 404, as on a real homeserver. This used to succeed
-     * silently, which is how a deck whose manifest listed chunk records that were never written —
-     * a half-finished import — could be undeletable on device while every delete test passed.
-     */
-    /**
      * Paths that answer 404 to a delete but stay in [store] — a record the sweep never actually
      * removed. Models the case that makes a delete-count useless as a completeness proof.
      */
     val undeletablePaths = mutableSetOf<String>()
 
+    /**
+     * Deleting a path that is not there is a 404, as on a real homeserver. This used to succeed
+     * silently, which is how a deck whose manifest listed chunk records that were never written — a
+     * half-finished import — could be undeletable on device while every delete test passed.
+     */
     override suspend fun deleteWithSession(url: String, sessionSecret: String): Result<String> {
         consumeInjectedFailure()?.let { return Result.failure(it) }
         deletes.add(url)
@@ -146,6 +158,11 @@ class FakePubkyClient : PubkyClient {
     override suspend fun get(url: String): Result<String> {
         gets.add(url)
         failGetWith?.let { return Result.failure(it) }
+        failGetWhenUrlContains?.let { needle ->
+            if (needle in url) {
+                return Result.failure(PubkyError("HTTP transport error: error sending request for url ($url)"))
+            }
+        }
         return store[url]?.let { Result.success(it) }
             ?: Result.failure(PubkyError("not found: $url"))
     }
@@ -172,7 +189,7 @@ class FakePubkyClient : PubkyClient {
         var matches = store.keys.filter { it.startsWith(url) }
         matches = if (shallow == true && honoursShallow) collapseToChildren(url, matches) else matches
         matches = matches.distinct().sorted()
-        if (cursor != null) matches = matches.filter { it > cursor }
+        if (cursor != null && !ignoresListCursor) matches = matches.filter { it > cursor }
         // `limit.unwrap_or(DEFAULT_LIST_LIMIT).min(DEFAULT_MAX_LIST_LIMIT)`, as the server does.
         val cap = listPageSize ?: (limit?.toInt() ?: defaultListLimit).coerceAtMost(maxListLimit)
         matches = matches.take(cap)
@@ -348,12 +365,27 @@ class FakePubkyClient : PubkyClient {
         signInFailure?.let { return Result.failure(it) }
         return Result.success(grantSessionJson(fakePubkyFor(secretKey)))
     }
+
+    /** What [signOut] answers. A failure models a revoke the homeserver never confirmed. */
+    var signOutResult: Result<String> = Result.success("ok")
+
     override suspend fun signOut(sessionSecret: String): Result<String> {
         signOuts.add(sessionSecret)
-        return Result.success("ok")
+        return signOutResult
     }
 
-    override suspend fun revalidateSession(sessionSecret: String): Result<String> = unused()
+    /**
+     * What [revalidateSession] answers. The session payload, exactly as the FFI returns it — which
+     * notably carries **no `homeserver` field**, so a test that hardcodes one here is not testing
+     * the shape the real flow produces.
+     */
+    var revalidateResult: Result<String>? = null
+    val revalidatedSecrets = mutableListOf<String>()
+
+    override suspend fun revalidateSession(sessionSecret: String): Result<String> {
+        revalidatedSecrets += sessionSecret
+        return revalidateResult ?: unused()
+    }
 
     override suspend fun startAuthFlow(capabilities: String): Result<String> {
         authFlowCapabilities.add(capabilities)

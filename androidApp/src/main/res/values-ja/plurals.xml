@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ja has only the CLDR `other` category: nouns do not inflect for number, so each set has a
+         single item, worded with a counter (枚, 件, 個) that reads naturally at any count. -->
+    <plurals name="duration_minutes">
+        <item quantity="other">%1$d 分</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="other">%1$d 時間</item>
+    </plurals>
+    <plurals name="duration_days">
+        <item quantity="other">%1$d 日</item>
+    </plurals>
+    <plurals name="card_count">
+        <item quantity="other">%1$d 枚</item>
+    </plurals>
+    <plurals name="cards_ready">
+        <item quantity="other">%1$d 枚のカードの準備ができました</item>
+    </plurals>
+    <plurals name="cards_discarded">
+        <item quantity="other">確認時に %1$d 枚を破棄</item>
+    </plurals>
+    <plurals name="cards_published">
+        <item quantity="other">%1$d 枚のカードが公開されました。</item>
+    </plurals>
+    <plurals name="study_goal_reached_count">
+        <item quantity="other">今日の新規カード %1$d 枚</item>
+    </plurals>
+    <plurals name="cards_reviewed">
+        <item quantity="other">%1$d 枚のカードを復習しました。</item>
+    </plurals>
+    <plurals name="cards_incomplete">
+        <item quantity="other">未完成 %1$d 枚</item>
+    </plurals>
+    <plurals name="public_decks_count">
+        <item quantity="other">公開デッキ · %1$d</item>
+    </plurals>
+    <plurals name="profile_decks_count">
+        <item quantity="other">すべてのデッキ · %1$d</item>
+    </plurals>
+    <plurals name="bulk_cards_parsed">
+        <item quantity="other">%1$d 枚のカードを解析しました</item>
+    </plurals>
+    <plurals name="bulk_import_cards">
+        <item quantity="other">%1$d 枚のカードをインポート</item>
+    </plurals>
+    <plurals name="bulk_duplicates">
+        <item quantity="other">重複 %1$d 件を統合しました</item>
+    </plurals>
+    <plurals name="bulk_truncated">
+        <item quantity="other">上限を超えた %1$d 行はインポートされませんでした</item>
+    </plurals>
+    <plurals name="bulk_dropped_notes">
+        <item quantity="other">%1$d 件のノートに使える表面と裏面がありませんでした</item>
+    </plurals>
+    <plurals name="bulk_images_skipped">
+        <item quantity="other">上限を超えた %1$d 枚の画像はインポートされませんでした</item>
+    </plurals>
+    <plurals name="deck_detail_clones">
+        <item quantity="other">コピー %1$d 件</item>
+    </plurals>
+    <plurals name="home_deck_due_cards">
+        <item quantity="other">復習 %1$d · %2$d 枚</item>
+    </plurals>
+    <plurals name="home_deck_new_cards">
+        <item quantity="other">新規 %1$d · %2$d 枚</item>
+    </plurals>
+    <plurals name="deck_detail_clone_dialog_message">
+        <item quantity="other">全 %1$d 枚のカードを編集できるコピーが手に入ります。作成者の更新は反映されず、進捗は最初からになります。</item>
+    </plurals>
+    <plurals name="publish_progress_count">
+        <item quantity="other">%2$d 枚中 %1$d 枚を公開中…</item>
+    </plurals>
+    <plurals name="cards_tried">
+        <item quantity="other">%1$d 枚のカードを試しました。</item>
+    </plurals>
+</resources>

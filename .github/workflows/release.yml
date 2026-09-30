@@ -1,0 +1,1054 @@
+# A tag is the release. Everything a published version consists of is built, signed, verified and
+# attached here (#210) — the Android APK, the two `loopky` binaries, the `.deb`, the container
+# image, the installer, the update manifest and the Homebrew formula.
+#
+# What comes out of a tag:
+#
+#   Loopky-<version>.apk     the signed Android build, attached to the release
+#   Loopky-<version>.aab     the Play Console upload — a *workflow* artifact, never a release
+#                            asset, because an AAB cannot be installed
+#   loopky-linux-x86-64      a single binary, glibc 2.34+, built inside ubuntu:22.04
+#   loopky-macos-aarch64     a single binary, Apple Silicon
+#   loopky-windows-x86-64.exe  a single binary, x64, needing the VC++ redistributable (#301)
+#   loopky_<version>_amd64.deb
+#   install.sh, install.ps1  the installer at this tag, one per shell family
+#   latest.json              the manifest every installed `loopky` reads to learn it is stale
+#   ghcr.io/<owner>/loopky   a container image
+#
+# plus a `.sha256` beside each binary, which `cli/install.sh` checks and `cli/install.ps1`
+# *requires* — `Get-FileHash` has shipped since PowerShell 4.0, so there is no host to degrade for.
+#
+# **One job per host, because `native-image` does not cross-compile.** There is no matrix of
+# `--target` flags to be had: the machine that builds the binary is the machine it runs on, which
+# is also why the Linux job builds inside a container rather than on the runner — a binary linked
+# against the runner's glibc refuses to start on anything older, and the floor that matters is
+# `libpubkycore.so`'s 2.34, not the runner's.
+#
+# **The human's half is the version bump, the tag, and reading what came out.** Signing keys reach
+# this workflow as repository secrets; `docs/releasing.md` lists which, and the `release` skill is
+# the runbook around it.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g. v0.2.0). Artifacts are uploaded, no release is made.'
+        required: true
+        default: 'v0.0.0-dev'
+
+permissions:
+  contents: read
+
+env:
+  VERSION: ${{ github.event.inputs.version || github.ref_name }}
+
+jobs:
+  check-version:
+    # The tag and the four version numbers in the source have to be the same release, and this is
+    # where that is settled — before anything is built, signed or pushed.
+    #
+    # `--version` is compiled in from `loopkyCliVersion` (`:cli:generateCliVersion`). Without this
+    # check, tagging `v0.2.0` without bumping the property ships a GitHub release, a
+    # `ghcr.io/…/loopky:0.2.0` image and a `loopky_0.2.0_amd64.deb` whose binary answers
+    # `loopky 0.1.0` — and `install.sh` ends by running `--version`, so the wrong number is the
+    # first thing a new user sees. The app numbers are here for the same reason on a slower fuse:
+    # a `Loopky-0.2.0.apk` reporting 0.1.0 in Settings is found by a user, not by a build.
+    #
+    # Every mismatch is reported, not just the first. Half a bump is the normal way this fails, and
+    # a tag is already public by the time the job runs — being told about one number, re-tagging,
+    # and being told about the next is the same public mistake made twice.
+    name: The tag and the source agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare
+        run: |
+          set -euo pipefail
+          NUM="${VERSION#v}"
+
+          # `tr -d` on every one: an xcconfig line carrying a trailing space or a CRLF would
+          # otherwise fail the comparison against a number that is in fact correct, and the error
+          # would name two strings that look identical.
+          trim() { tr -d '[:space:]'; }
+          CLI=$(sed -n 's/^loopkyCliVersion=//p' gradle.properties | trim)
+          NAME=$(sed -n 's/^ *versionName *= *"\(.*\)" *$/\1/p' androidApp/build.gradle.kts | trim)
+          CODE=$(sed -n 's/^ *versionCode *= *\([0-9][0-9]*\) *$/\1/p' androidApp/build.gradle.kts | trim)
+          MARKETING=$(sed -n 's/^MARKETING_VERSION=//p' iosApp/Configuration/Config.xcconfig | trim)
+          PROJECT=$(sed -n 's/^CURRENT_PROJECT_VERSION=//p' iosApp/Configuration/Config.xcconfig | trim)
+
+          FAILED=0
+          expect() {  # <what> <found> <wanted>
+            if [ -z "$2" ]; then
+              echo "::error::could not read $1 out of the source" >&2; FAILED=1
+            elif [ "$2" != "$3" ]; then
+              echo "::error::$1 is $2, but the tag says $3" >&2; FAILED=1
+            else
+              echo "ok: $1 = $2"
+            fi
+          }
+          expect "loopkyCliVersion (gradle.properties)" "$CLI" "$NUM"
+          # The agent plugin's version is what `/plugin update` compares, so a stale one means
+          # nobody's installed skill ever moves (#388). `AgentPluginTest` pins it to the line above.
+          PLUGIN=$(jq -r .version plugins/loopky/.claude-plugin/plugin.json | trim)
+          MARKET=$(jq -r '.plugins[] | select(.name == "loopky") | .version' .claude-plugin/marketplace.json | trim)
+          expect "version (plugins/loopky/.claude-plugin/plugin.json)" "$PLUGIN" "$NUM"
+          CODEX=$(jq -r .version plugins/loopky/.codex-plugin/plugin.json | trim)
+          expect "version (plugins/loopky/.codex-plugin/plugin.json)" "$CODEX" "$NUM"
+          CODEX_REF=$(jq -r '.plugins[] | select(.name == "loopky") | .source.ref' .agents/plugins/marketplace.json | trim)
+          expect "loopky source ref (.agents/plugins/marketplace.json)" "$CODEX_REF" "$VERSION"
+          expect "loopky version (.claude-plugin/marketplace.json)" "$MARKET" "$NUM"
+          # The ref is what users actually install: the plugin as it was at this tag (#395).
+          REF=$(jq -r '.plugins[] | select(.name == "loopky") | .source.ref' .claude-plugin/marketplace.json | trim)
+          expect "loopky source ref (.claude-plugin/marketplace.json)" "$REF" "$VERSION"
+          expect "versionName (androidApp/build.gradle.kts)" "$NAME" "$NUM"
+          expect "MARKETING_VERSION (iosApp/Configuration/Config.xcconfig)" "$MARKETING" "$NUM"
+          # Checked on its own first: it is the *expected* side of the comparison below, and
+          # `expect` only reports emptiness of the side it was handed. Unreadable, it would produce
+          # "CURRENT_PROJECT_VERSION vs Android versionCode is 21, but the tag says" — naming the
+          # xcconfig and pointing at a blank, when the number that could not be read is Android's.
+          test -n "$CODE" || {
+            echo "::error::could not read versionCode out of androidApp/build.gradle.kts" >&2
+            FAILED=1
+          }
+          # Not the tag — the two build numbers only have to match each other, and they are the one
+          # pair that keeps climbing while the version string stands still on a patch release.
+          [ -n "$CODE" ] && expect "CURRENT_PROJECT_VERSION vs Android versionCode" "$PROJECT" "$CODE"
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "Bump the numbers on a branch, merge it, then move the tag to the merge commit." >&2
+            echo "The binary's --version comes from the source, not from the tag." >&2
+            exit 1
+          fi
+
+  plugin-evals:
+    # The agent skill's behavioural evals (#388), once per release and nowhere else, because they
+    # spend API credit. Beside the build rather than in front of it: nothing `needs` this job, so a
+    # flaky judge can never hold back a release — a red row here is read, not obeyed.
+    name: Agent plugin evals
+    needs: check-version
+    uses: ./.github/workflows/plugin-evals.yml
+    secrets: inherit
+
+  android:
+    # The signed APK and the Play bundle, built from the tagged commit rather than from whatever a
+    # laptop happened to have checked out.
+    #
+    # The signature is verified three ways, and the third is the one that looks redundant and is
+    # not. `apksigner`/`jarsigner` confirm a signature exists and verifies; Play *additionally*
+    # requires the upload key to be RSA at 2048 bits or more with a certificate valid past 2033,
+    # and rejects anything else at upload time with "Your Android App Bundle has an invalid
+    # signature" — a message that names neither the key nor the cause, after the release is already
+    # public. See v0.6.1.
+    name: Signed Android artifacts
+    needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      # A tag has to produce a signed APK or the release is broken, so a missing keystore is a
+      # hard failure on that path. A `workflow_dispatch` dry run is allowed to skip instead, so the
+      # CLI half stays testable on a repository whose secrets are not configured yet.
+      - name: Is there an upload keystore?
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo 'present=false' >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = 'push' ]; then
+            echo "::error::KEYSTORE_BASE64 is not set. See docs/releasing.md — a tag cannot" >&2
+            echo "produce a release without the four signing secrets." >&2
+            exit 1
+          fi
+          echo "::warning::no KEYSTORE_BASE64 — skipping the Android artifacts for this dry run"
+
+      # Into RUNNER_TEMP, never the workspace: nothing under the checkout can then sweep it into an
+      # artifact by glob. The four constants stay in the environment for exactly the one Gradle
+      # invocation that needs them (see `localConfig` in androidApp/build.gradle.kts).
+      - name: Decode the keystore
+        if: steps.keystore.outputs.present == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          test -s "$RUNNER_TEMP/upload.jks"
+
+      - name: Build
+        if: steps.keystore.outputs.present == 'true'
+        env:
+          LOOPKY_KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
+          LOOPKY_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          LOOPKY_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          LOOPKY_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          # Absent, the published APK's "from web" image search degrades to gallery-only with
+          # nothing reporting it — `UnsplashClient.hasFallbackKey` just answers false.
+          LOOPKY_UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+        # `--no-configuration-cache`, and it is the reason the keystore-in-the-environment argument
+        # holds at all. `org.gradle.configuration-cache=true` is set in gradle.properties, and with
+        # it on Gradle records the `LOOPKY_*` reads as fingerprint inputs and serialises the
+        # resulting signingConfig into `.gradle/configuration-cache/` — inside the workspace, which
+        # is precisely the exposure keeping the secrets out of a `local.properties` was meant to
+        # avoid. (Verified: changing only the password prints "cannot be reused because environment
+        # variable 'LOOPKY_KEYSTORE_PASSWORD' has changed", so the value is tracked.) Off, no entry
+        # is written at all. It costs one configuration phase, once per tag.
+        run: >
+          ./gradlew --no-configuration-cache clean
+          :androidApp:assembleRelease :androidApp:bundleRelease
+
+      - name: It is signed, and with a key Play will take
+        if: steps.keystore.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          APK=androidApp/build/outputs/apk/release/androidApp-release.apk
+          AAB=androidApp/build/outputs/bundle/release/androidApp-release.aab
+          test -f "$APK" && test -f "$AAB"
+
+          # The release build type falls back to an unsigned build when the signing config is
+          # absent, so an unsigned APK here means the constants did not reach Gradle — never that
+          # the build failed.
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose "$APK"
+          # An AAB carries JAR/v1 signing only, so apksigner does not apply. The self-signed and
+          # missing-timestamp warnings are expected for an upload key; only `jar verified` matters.
+          jarsigner -verify "$AAB" | tee /tmp/aab-verify.txt
+          grep -q 'jar verified' /tmp/aab-verify.txt
+
+          rm -rf /tmp/certchk && mkdir -p /tmp/certchk
+          # `|| true`: unzip exits 11 when *any* pattern matches nothing, and only one of these
+          # three ever can — an RSA block means the EC and DSA patterns both "fail". Whether a
+          # block was actually extracted is the next line's job, which is the real assertion.
+          unzip -o -q "$AAB" 'META-INF/*.RSA' 'META-INF/*.EC' 'META-INF/*.DSA' -d /tmp/certchk || true
+          BLOCK=$(find /tmp/certchk -type f | head -1)
+          test -n "$BLOCK" || { echo "::error::no signature block in the bundle" >&2; exit 1; }
+          # TZ=UTC so keytool prints a zone `date` can parse back. It formats the validity in the
+          # JVM's default zone, and an abbreviation like `BRT` is not one GNU date accepts.
+          CERT=$(TZ=UTC keytool -printcert -file "$BLOCK")
+          echo "$CERT"
+
+          KEY=$(printf '%s\n' "$CERT" | sed -n 's/.*Subject Public Key Algorithm: *//p' | head -1)
+          BITS=$(printf '%s' "$KEY" | sed -n 's/^\([0-9][0-9]*\)-bit.*/\1/p')
+          case "$KEY" in
+            *RSA*) ;;
+            *) echo "::error::the upload key is '$KEY'. Play requires RSA — a 256-bit EC key is" >&2
+               echo "the failure this check exists to catch (v0.6.1)." >&2; exit 1 ;;
+          esac
+          test -n "$BITS" && [ "$BITS" -ge 2048 ] || {
+            echo "::error::the upload key is $BITS-bit. Play requires 2048 or more." >&2; exit 1; }
+
+          UNTIL=$(printf '%s\n' "$CERT" | sed -n 's/.* until: //p' | head -1)
+          EXPIRY=$(date -u -d "$UNTIL" +%s) || {
+            echo "::error::could not read the certificate's expiry out of '$UNTIL'" >&2; exit 1; }
+          FLOOR=$(date -u -d '2033-10-23' +%s)
+          [ "$EXPIRY" -ge "$FLOOR" ] || {
+            echo "::error::the certificate expires $UNTIL, before Play's 2033-10-22 floor." >&2
+            exit 1; }
+          echo "ok: ${BITS}-bit RSA, valid until $UNTIL"
+
+      # Named for what they are and what version they are, rather than `androidApp-release.*`.
+      - name: Name them
+        if: steps.keystore.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p dist bundle
+          cp androidApp/build/outputs/apk/release/androidApp-release.apk "dist/Loopky-${VERSION#v}.apk"
+          cp androidApp/build/outputs/bundle/release/androidApp-release.aab "bundle/Loopky-${VERSION#v}.aab"
+
+      - uses: actions/upload-artifact@v7
+        if: steps.keystore.outputs.present == 'true'
+        with:
+          name: release-asset-apk
+          path: dist/*
+          if-no-files-found: error
+
+      # **Not** a `release-asset-*` artifact, and the naming is the mechanism: the release job
+      # globs those, so an AAB can never be attached to a release by accident. It cannot be
+      # installed from one — it exists to be downloaded from this run and uploaded to the Play
+      # Console by hand.
+      - uses: actions/upload-artifact@v7
+        if: steps.keystore.outputs.present == 'true'
+        with:
+          name: play-bundle
+          path: bundle/*
+          if-no-files-found: error
+
+  linux:
+    name: Linux x86_64 binary
+    needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # `cli/Dockerfile` is the whole build definition, so this step is identical to what a
+      # developer runs locally and there is no second recipe to drift.
+      - name: Build the binary
+        run: |
+          docker build -f cli/Dockerfile --target export \
+            --output type=local,dest=dist .
+
+      # The contract an agent branches on, asserted on the artifact rather than on a jar that
+      # resembles it. Deliberately offline: nothing here needs a homeserver, so a network blip
+      # cannot make a release flake.
+      - name: Smoke-test it
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-release
+          # Off, so a release cannot flake on github.com answering slowly (#209). The manifest this
+          # job is about to generate is the one a *released* binary will read.
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          ls -la dist
+          # One file, or the install story is not one curl. `export` copies the whole
+          # `nativeCompile` directory precisely so this can be counted; the build has already
+          # failed at `:cli:checkNativeImageIsOneFile` if there is more than one.
+          test "$(ls dist | wc -l)" -eq 1
+          chmod +x dist/loopky
+          dist/loopky --version
+          set +e; OUT=$(dist/loopky whoami --json); CODE=$?; set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          echo "$OUT" | grep -q '"schema":1'
+          # The number in the binary is the number on the release. `check-version` compared the
+          # tag with gradle.properties; this compares the tag with what was actually compiled.
+          dist/loopky --version | grep -qF "loopky ${VERSION#v} "
+
+      - name: Name it, and check it
+        run: |
+          set -euo pipefail
+          mv dist/loopky dist/loopky-linux-x86-64
+          ( cd dist && sha256sum loopky-linux-x86-64 > loopky-linux-x86-64.sha256 )
+          cli/packaging/deb.sh dist/loopky-linux-x86-64 "$VERSION" dist
+
+      # The manifest `loopky`'s update check reads (#209), and the reason it is generated **here**
+      # rather than written by hand or grepped out of the source: it is derived from the binary
+      # this job just built, so it cannot announce a version or a `--json` schema the artifact
+      # beside it does not actually answer with. A manifest that over-promises is worse than none —
+      # it tells an agent its parser is stale when it is not, or the reverse.
+      #
+      # It is fetched through `releases/latest/download/latest.json`, the same path `install.sh`
+      # uses for the binary, so the check adds no host to anybody's allowlist.
+      - name: The release manifest the update check reads
+        run: |
+          set -euo pipefail
+          SCHEMA=$(dist/loopky-linux-x86-64 --version | sed -n 's/.*(schema \([0-9][0-9]*\)).*/\1/p')
+          test -n "$SCHEMA" || { echo "could not read the schema out of --version" >&2; exit 1; }
+          printf '{"version":"%s","schema":%s}\n' "${VERSION#v}" "$SCHEMA" > dist/latest.json
+          cat dist/latest.json
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-asset-linux
+          path: dist/*
+          if-no-files-found: error
+
+  macos:
+    name: macOS aarch64 binary
+    needs: check-version
+    # An arm64 runner, and only an arm64 runner: there is one `darwin-aarch64` row of
+    # `libpubkycore` and an Intel build would have nothing to load (#54).
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build the binary
+        run: ./gradlew :cli:nativeCompile
+
+      - name: Smoke-test it
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-release
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/native/nativeCompile/loopky
+          "$BIN" --version
+          set +e; OUT=$("$BIN" whoami --json); CODE=$?; set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          "$BIN" --version | grep -qF "loopky ${VERSION#v} "
+
+      # Deliberately *without* `LOOPKY_CONFIG_HOME`: setting it opts the session back into a
+      # file (#213), so the step above never touches the Keychain — and the Keychain is reached
+      # by spawning `security(1)`, which is the one thing about this row a native image could
+      # plausibly get wrong and still exit cleanly. A read that cannot run the tool degrades to
+      # the file store with a warning on stderr, so the warning's *absence* is the assertion.
+      - name: The Keychain path works in the binary, not just on a JVM
+        env:
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          # The assertion below is an *absence* — no degraded-read warning — so the precondition
+          # has to be positive or the whole step goes vacuous the day a runner image starts
+          # exporting one of these. Either variable sends `keychainEligible()` to the file store,
+          # and then "no keychain complaint" is true because nothing ever asked the keychain.
+          test -z "${LOOPKY_CONFIG_HOME:-}"
+          test -z "${XDG_CONFIG_HOME:-}"
+          BIN=cli/build/native/nativeCompile/loopky
+          set +e; "$BIN" whoami --json > out.txt 2> err.txt; CODE=$?; set -e
+          cat out.txt err.txt
+          test "$CODE" -eq 3
+          grep -q '"code":"not_signed_in"' out.txt
+          ! grep -qi 'keychain' err.txt
+
+      - name: Name it, and check it
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp cli/build/native/nativeCompile/loopky dist/loopky-macos-aarch64
+          ( cd dist && shasum -a 256 loopky-macos-aarch64 > loopky-macos-aarch64.sha256 )
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-asset-macos
+          path: dist/*
+          if-no-files-found: error
+
+  windows:
+    name: Windows x86_64 binary
+    needs: check-version
+    # The host *is* the target — `native-image` does not cross-compile, and unlike Linux there is
+    # no container that cross-builds this one from anywhere else: `x86_64-pc-windows-msvc` needs
+    # the Microsoft linker and the Windows SDK (#301).
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build the binary
+        run: ./gradlew :cli:nativeCompile
+
+      - name: Smoke-test it
+        shell: bash
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-release
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/native/nativeCompile/loopky.exe
+          "$BIN" --version
+          set +e; OUT=$("$BIN" whoami --json); CODE=$?; set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          "$BIN" --version | grep -qF "loopky ${VERSION#v} "
+
+      # The Windows equivalent of the macOS job's Keychain step: the one thing about this row that
+      # a native image can get wrong while still exiting cleanly. `pubkycore.dll` and
+      # `jnidispatch.dll` are embedded resources extracted by JNA at runtime, and `sqlitejdbc.dll`
+      # is a third — an image that failed to fold any of them in builds, links and answers
+      # `--version` exactly like one that did, and only fails when something actually reaches the
+      # FFI. Reading an `.apkg` goes through JNA *and* the JDBC driver, so it exercises both.
+      - name: The native libraries are really in the binary
+        shell: bash
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-release
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/native/nativeCompile/loopky.exe
+          python cli/tools/make-sample-apkg.py sample.apkg
+          "$BIN" import sample.apkg --dry-run --json | tee out.json
+          grep -q '"cards":3' out.json
+
+      - name: Name it, and check it
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp cli/build/native/nativeCompile/loopky.exe dist/loopky-windows-x86-64.exe
+          # `sha256sum` from Git Bash, so the file is byte-identical in shape to the other rows'
+          # and `install.ps1` can split it the same way.
+          ( cd dist && sha256sum loopky-windows-x86-64.exe > loopky-windows-x86-64.exe.sha256 )
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-asset-windows
+          path: dist/*
+          if-no-files-found: error
+
+  image:
+    name: Container image
+    # The other half of the install story rather than an alternative to it: a sandbox that lets
+    # you choose an image needs no install step at all, and one with restricted egress may have
+    # no other way in.
+    #
+    # Behind the build jobs, because this pushes to a registry the moment it succeeds and a
+    # registry push cannot be taken back the way an unpublished artifact can. It builds the same
+    # source through the same Dockerfile, so if the Linux smoke test is going to fail, it fails
+    # before anyone can pull this — and a keystore that never reached Gradle stops the tag before
+    # a `:latest` moves under everyone for a release that has no APK.
+    #
+    # **`windows` included, and the "it would cost seven minutes" objection does not survive the
+    # graph.** `image-latest` already waits on `mark-latest` -> `verify-windows` -> `release` ->
+    # `windows`, a chain strictly longer than `windows` plus this build, so nothing observable
+    # happens any later for having waited here. What it buys is the rule above holding for *every*
+    # build that can fail the tag: without it a Windows-only failure leaves
+    # `ghcr.io/<owner>/loopky:<version>` pushed with no release behind it — and unlike `:latest`,
+    # which correctly stays put, that tag is resolvable by anyone who types the version.
+    needs: [check-version, android, linux, macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/loopky"
+          TAG="${VERSION#v}"
+          docker build -f cli/Dockerfile --target runtime -t "$IMAGE:$TAG" .
+          docker run --rm "$IMAGE:$TAG" --version
+
+          # Only a real tag publishes. A `workflow_dispatch` run builds and tests the image and
+          # stops there, so a dry run cannot move anything under anyone.
+          if [ "${{ github.event_name }}" != "push" ]; then
+            echo "not a tag push — built and tested, publishing nothing"
+            exit 0
+          fi
+          docker push "$IMAGE:$TAG"
+          # `:latest` is moved by `image-latest`, behind the release verification — not here.
+
+  image-latest:
+    # `docker run … ghcr.io/…/loopky` is a documented install path, so moving `:latest` is an act of
+    # publishing and belongs behind the same verification the GitHub `latest` waits for. Pushed
+    # from the `image` job it moved as soon as that job was green — and a `release` job that then
+    # failed on a missing asset or a binary disagreeing with its tag left GitHub's `latest`
+    # correctly on the previous release while every `docker run` already served the version that
+    # failed.
+    #
+    # `imagetools create` retags inside the registry, so nothing is pulled or rebuilt: the digest
+    # `:latest` ends up pointing at is the one `image` pushed and `release` verified.
+    name: Move the image's :latest
+    # `mark-latest` rather than `release`: the two `latest`s have to answer for the same release or
+    # the README's two install paths hand people different versions, and GitHub's now waits for the
+    # published Windows installer as well.
+    needs: [image, mark-latest]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/loopky"
+          TAG="${VERSION#v}"
+          # Only a final version. A `v1.0.0-rc1` moving it would silently hand every reader of the
+          # README a release candidate.
+          case "$TAG" in
+            *[!0-9.]*)
+              echo "$TAG is a pre-release — leaving :latest where it is"
+              exit 0 ;;
+          esac
+          docker buildx imagetools create -t "$IMAGE:latest" "$IMAGE:$TAG"
+          docker run --rm "$IMAGE:latest" --version
+
+  release:
+    # **The release is created here; `latest` is moved by `mark-latest`.** Both used to be done by
+    # hand against a workflow racing to do the same thing, which is why the runbook had a whole
+    # section on who won. One writer, one order: draft, upload everything, publish held back from
+    # `latest`, verify by running what was published — and only then, from the one job that waits
+    # for every shipped row, move `latest`.
+    #
+    # `latest` is what all three documented install paths resolve through — `cli/install.sh` and
+    # `cli/install.ps1` both default to `releases/latest/download/…`, as does the README's one-liner
+    # — so moving it *is* the act of publishing rather than a flag on the way past. Held back until
+    # the assets are listed and a published binary from each row has actually been run, the previous
+    # release stays installable meanwhile.
+    name: Publish the release
+    needs: [android, linux, macos, windows]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # The installer is published **as a release asset**, at the tag, and that is half the point
+      # of checking the repository out here (#209). The documented one-liner used to pipe
+      # `raw.githubusercontent.com/.../main/cli/install.sh` into `sh` — whatever `main` happened to
+      # be at that second, which is a moving target for the one command in this project that runs
+      # unreviewed shell as the user. Everything else about a release is pinned to a tag; the
+      # script that installs it should be too.
+      #
+      # The other half is the changelog, which needs the history and the previous tag.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # `release-asset-*` and nothing else — the Play bundle is uploaded under a different name so
+      # that it cannot land on a release page by widening a glob.
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-asset-*
+          path: dist
+          merge-multiple: true
+
+      # Both installers, for the same reason and at the same tag. `install.ps1` is not a translation
+      # of `install.sh` kept in step by hand — the install directory, the PATH advice, the
+      # mandatory digest and the Visual C++ precondition all differ — so it is a second asset
+      # rather than a second branch of the first.
+      - name: Add the tagged installers to the assets
+        run: |
+          cp cli/install.sh dist/install.sh
+          cp cli/install.ps1 dist/install.ps1
+
+      # Mechanical, from the conventional-commit subjects. It is a floor rather than a ceiling:
+      # `gh release edit <tag> --notes-file …` rewrites it afterwards, and the same script run
+      # locally shows what a tag is going to say before it is pushed.
+      - name: Write the notes
+        run: |
+          set -euo pipefail
+          .github/scripts/changelog.sh "$VERSION" > "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Draft, upload, publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ls -la dist
+
+          # A re-run against a tag whose release already exists fills in the assets and leaves the
+          # notes alone — by then they may have been rewritten by a human, and a re-run is not a
+          # reason to throw that away.
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "release $VERSION already exists — uploading assets into it, notes untouched"
+            gh release upload "$VERSION" dist/* --clobber
+            # **The recovery path for a run that died between `create --draft` and `--draft=false`.**
+            # `gh release view` succeeds on a draft, so without this every re-run uploads into the
+            # draft and exits here, while "Run what was published" 404s on a URL that is not public
+            # yet — red forever, and never fixed by re-running. `--latest=false` rides along only
+            # while it is still a draft: on an already-published release it would demote it and
+            # point `latest` back at the previous version until the step below re-promotes it.
+            if [ "$(gh release view "$VERSION" --json isDraft -q .isDraft)" = 'true' ]; then
+              echo "it was left as a draft — publishing it"
+              gh release edit "$VERSION" --draft=false --latest=false
+            fi
+            exit 0
+          fi
+
+          # Draft, upload, publish — three explicit commands rather than `gh release create <tag>
+          # <assets>`, which does the same thing internally but as an implementation detail of a
+          # convenience form. It is documented in gh 2.98's help and the runner's `gh` is whatever
+          # its image ships, so the short form would make a no-window guarantee out of an unpinned
+          # dependency. The extra line costs nothing and depends on nothing.
+          EXTRA=()
+          # A pre-release must say so, or GitHub's automatic latest picks it up on publish and
+          # `curl …/releases/latest/download/…` starts handing everyone an RC. Same guard the
+          # image job uses for the `:latest` tag.
+          case "${VERSION#v}" in
+            *[!0-9.]*) EXTRA+=(--prerelease) ;;
+          esac
+          gh release create "$VERSION" --draft --title "Loopky $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" --verify-tag "${EXTRA[@]}"
+          gh release upload "$VERSION" dist/*
+          # `--latest=false` and not merely omitting it: the default is "automatic based on date
+          # and version", and GitHub reads a new highest version as the latest one.
+          gh release edit "$VERSION" --draft=false --latest=false
+
+      # `cli/install.sh` fetches these exact strings and the README tells strangers to pipe
+      # `releases/latest/download/install.sh` into `sh`, so a missing one is a 404 on the primary
+      # install path — a failed release that reads as a successful one.
+      - name: Every asset the install paths fetch is on the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          NUM="${VERSION#v}"
+          HAVE=$(gh release view "$VERSION" --json assets -q '.assets[].name' | sort)
+          echo "$HAVE"
+          MISSING=0
+          for want in \
+            "loopky-linux-x86-64" "loopky-linux-x86-64.sha256" \
+            "loopky-macos-aarch64" "loopky-macos-aarch64.sha256" \
+            "loopky-windows-x86-64.exe" "loopky-windows-x86-64.exe.sha256" \
+            "loopky_${NUM}_amd64.deb" "install.sh" "install.ps1" "latest.json" \
+            "Loopky-${NUM}.apk"
+          do
+            printf '%s\n' "$HAVE" | grep -qxF "$want" ||
+              { echo "::error::missing release asset: $want" >&2; MISSING=1; }
+          done
+          test "$MISSING" -eq 0
+
+          # What the manifest claims is what every installed `loopky` will read.
+          gh release download "$VERSION" --pattern latest.json --dir "$RUNNER_TEMP" --clobber
+          cat "$RUNNER_TEMP/latest.json"
+          grep -qF "\"version\":\"$NUM\"" "$RUNNER_TEMP/latest.json"
+
+      # Downloaded over the public URL and executed, rather than trusted because a job upstream
+      # said so. It is one file and needs nothing installed, which is the entire claim being
+      # shipped.
+      - name: Run what was published
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-verify
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$VERSION/loopky-linux-x86-64"
+          # Retried, because the release stopped being a draft one step ago and an asset URL is a
+          # read-your-own-write against a CDN. Without it a slow propagation reddens a release that
+          # is in fact complete.
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$URL" -o "$RUNNER_TEMP/loopky"
+          chmod +x "$RUNNER_TEMP/loopky"
+          "$RUNNER_TEMP/loopky" --version | grep -qF "loopky ${VERSION#v} "
+
+  verify-windows:
+    # **The Windows half of "run what was published", and it runs the installer rather than the
+    # binary.** `install.ps1` is itself a release asset, and the one asset whose failure modes are
+    # invisible to every other job here: a digest line split the wrong way, the Visual C++
+    # precondition refusing a machine that is in fact fine, a PATH message naming a directory it
+    # never created. The Linux equivalent lives inside `release` because that job already runs on
+    # Linux; this one cannot, which is the whole reason it is a separate job.
+    name: The published Windows installer works
+    needs: release
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    steps:
+      - name: Install from the release, with the release's own installer
+        shell: pwsh
+        env:
+          LOOPKY_VERSION: ${{ env.VERSION }}
+          LOOPKY_INSTALL_DIR: ${{ runner.temp }}\loopky-verify
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # The **tag** URL, not `latest`. `latest` has deliberately not moved yet, so pointing this
+          # at it would either 404 or — worse — install the *previous* release and report success,
+          # which is precisely the shape of failure this job exists to catch.
+          $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:VERSION/install.ps1"
+          # `irm | iex`, which is the one-liner `cli/README.md` gives the reader, and the point of
+          # this job is that *that* line works. It is deliberately not `(iwr …).Content | iex`:
+          # GitHub serves a release asset as `application/octet-stream`, for which
+          # `Invoke-WebRequest` hands `.Content` back as a `byte[]` rather than a string, so the
+          # pipe feeds `Invoke-Expression` one byte at a time — and a bare number evaluates to
+          # itself, so the installer is *printed* as a column of integers, never run, and the only
+          # symptom is the missing `loopky.exe` two lines further down. `Invoke-RestMethod` decodes
+          # to a string, which is why the documented line is unaffected.
+          # Retried for the same reason the Linux step retries: the release stopped being a draft one
+          # step ago, and an asset URL is a read-your-own-write against a CDN.
+          Invoke-RestMethod -Uri $url -MaximumRetryCount 5 -RetryIntervalSec 3 | Invoke-Expression
+
+          # The installer already runs `--version`; this asserts *which* version, so a release whose
+          # Windows asset is a stale binary cannot pass by printing a number nobody compared.
+          $num = $env:VERSION -replace '^v', ''
+          $exe = "$env:LOOPKY_INSTALL_DIR\loopky.exe"
+          # A clearer failure than `&` on a missing path, which reports it as an unknown *command*.
+          if (-not (Test-Path $exe)) {
+            throw "the installer reported success but left no binary at $exe"
+          }
+          $out = & $exe --version
+          if ($out -notmatch [regex]::Escape("loopky $num ")) {
+            throw "the published Windows binary reports '$out', not loopky $num"
+          }
+
+  mark-latest:
+    # **The single writer of `latest`, in its own job so that it can wait for every row.** Moving it
+    # *is* the act of publishing — `install.sh`, `install.ps1` and the README's one-liner all resolve
+    # through it — so it belongs behind a published binary from each shipped row having actually
+    # been run, rather than behind the Linux one alone. Same shape as `image-latest`, and for the
+    # same reason it was split out.
+    #
+    # The cost is deliberate and is the trade this file already makes everywhere else: a
+    # Windows-only failure withholds `latest` from all three rows, leaving the previous release
+    # installable everywhere. A half-published release that nobody can reach by the documented URL
+    # is the *desired* outcome of a partial failure, not a consolation for one.
+    name: Move latest
+    needs: [release, verify-windows]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Mark it latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # A pre-release deliberately leaves `latest` where it is: a bare
+          # `curl … /releases/latest/download/…` should not install a release candidate.
+          case "${VERSION#v}" in
+            *[!0-9.]*)
+              echo "$VERSION is a pre-release — leaving latest where it is"
+              exit 0 ;;
+          esac
+          gh release edit "$VERSION" --latest
+
+          # There is no `isLatest` field on a release, so the endpoint is asked. A couple of
+          # retries because this is a read-your-own-write against a CDN, and a slow one would
+          # otherwise redden a release that is in fact complete.
+          for _ in 1 2 3; do
+            AT=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" -q '.tag_name' || true)
+            [ "$AT" = "$VERSION" ] && break
+            sleep 5
+          done
+          test "$AT" = "$VERSION" || {
+            echo "::error::releases/latest still points at ${AT:-nothing}" >&2; exit 1; }
+
+          # No `-f`: it exits non-zero on any status >= 400, so under `set -e` the assignment
+          # aborts the step and the message below — the one line naming what actually broke —
+          # never prints.
+          CODE=$(curl -sIL -o /dev/null -w '%{http_code}' \
+            "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/loopky-linux-x86-64")
+          test "$CODE" = 200 || {
+            echo "::error::the documented install path answers $CODE" >&2; exit 1; }
+
+      # Success only, deliberately. The body says the release is complete and names what is left
+      # to do by hand; printed after a failed verification it would be describing a release that
+      # does not exist in the state it claims.
+      - name: Say what came out
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          NUM="${VERSION#v}"
+          {
+            echo "## Loopky $VERSION"
+            echo
+            echo "- Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$VERSION"
+            echo "- Image: \`ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/loopky:$NUM\`"
+            echo
+            echo "### Left to do by hand"
+            echo
+            echo "1. Download **play-bundle** from this run and upload \`Loopky-$NUM.aab\`"
+            echo "   to the Play Console. An AAB is not a release asset — it cannot be installed."
+            echo "2. Read the generated notes and rewrite them if they need it:"
+            echo "   \`gh release edit $VERSION --notes-file <file>\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  plugin-branch:
+    # **The copy of the agent plugin that plugin directories download (#388).** They fetch a
+    # repository's whole archive, and this one's is ~112 MiB against a 50 MiB limit, so Anthropic's
+    # directory is pointed at `plugin`: a branch holding only `plugins/loopky/` and a README. The
+    # directory follows that branch, so this job is the only thing that moves it, once per final
+    # release, after `latest` has moved — the same gate as Homebrew, and the same reason: the
+    # directory's copy of the skill must describe the binary `releases/latest` installs.
+    #
+    # Commits on top of the branch rather than recreating it, so its history is one commit per
+    # release. `plugin-branch-check.sh` then holds the pushed branch to the tag, and the last two
+    # steps check what the directory itself will download. Checked here and nowhere else, because
+    # this job is the branch's only writer — never edit it by hand.
+    name: Plugin branch
+    needs: mark-latest
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Should this run?
+        id: guard
+        run: |
+          case "${VERSION#v}" in
+            *[!0-9.]*)
+              echo 'go=false' >> "$GITHUB_OUTPUT"
+              echo "$VERSION is a pre-release — leaving the plugin branch where it is" ;;
+            *) echo 'go=true' >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - uses: actions/checkout@v7
+        if: steps.guard.outputs.go == 'true'
+        with:
+          fetch-depth: 0
+
+      - name: Copy the plugin onto the branch
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          git fetch origin plugin
+          git worktree add "$RUNNER_TEMP/plugin" origin/plugin
+          rsync -a --delete plugins/loopky/ "$RUNNER_TEMP/plugin/plugins/loopky/"
+          cd "$RUNNER_TEMP/plugin"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The plugin is unchanged since the last release — nothing to push"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "plugin: loopky ${VERSION#v}, copied from $VERSION"
+          git push origin HEAD:plugin
+
+      - name: The branch is the release, and small
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          git fetch origin plugin
+          .github/scripts/plugin-branch-check.sh "$VERSION" origin/plugin
+
+      # What the directory itself downloads, rather than what git says the branch holds.
+      - name: GitHub serves a small archive with the plugin in it
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/plugin.tar.gz" \
+            "https://codeload.github.com/$GITHUB_REPOSITORY/tar.gz/refs/heads/plugin"
+          SIZE=$(wc -c < "$RUNNER_TEMP/plugin.tar.gz")
+          echo "served archive: $SIZE bytes"
+          test "$SIZE" -lt $((10 * 1024 * 1024)) || { echo "::error::the served archive is $SIZE bytes"; exit 1; }
+          mkdir "$RUNNER_TEMP/served"
+          tar -xzf "$RUNNER_TEMP/plugin.tar.gz" -C "$RUNNER_TEMP/served" --strip-components=1
+          test -f "$RUNNER_TEMP/served/plugins/loopky/.claude-plugin/plugin.json"
+
+      - uses: actions/setup-node@v6
+        if: steps.guard.outputs.go == 'true'
+        with:
+          node-version: '22'
+
+      # No model calls: validation is local, so this spends no API credit.
+      - name: The served plugin validates as the directory would
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code
+          claude plugin validate "$RUNNER_TEMP/served/plugins/loopky" --strict
+          echo "> **Plugin branch** now serves loopky ${VERSION#v} to plugin directories." >> "$GITHUB_STEP_SUMMARY"
+
+  homebrew:
+    # The macOS delivery channel, and the one thing about a release that lives in another
+    # repository — a tap is its own repo (`<owner>/homebrew-loopky`), so this needs a token the
+    # default `GITHUB_TOKEN` cannot stand in for.
+    #
+    # Left stale, there is no error anywhere and it is worse than merely old: `loopky update`
+    # refuses on a Homebrew install with exit 11 and tells the user to run `brew upgrade`
+    # (Architecture.md §13.12), so the one instruction the binary gives them leads nowhere.
+    # Without the token the job says so in the run summary rather than failing — a tap that does
+    # not exist yet is a fine state to be in and a bad one to leave implied.
+    name: Homebrew tap
+    # `mark-latest`, not `release`: a formula pointing at a release that `latest` does not
+    # acknowledge would have `brew install` and the documented `curl` handing people different
+    # versions, which is the divergence moving `latest` in one place exists to prevent.
+    needs: mark-latest
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Should this run?
+        id: guard
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TAP_TOKEN:-}" ]; then
+            echo 'go=false' >> "$GITHUB_OUTPUT"
+            echo "::warning::HOMEBREW_TAP_TOKEN is not set — the tap still serves the old version"
+            echo "> **Homebrew not updated** — \`HOMEBREW_TAP_TOKEN\` is not set." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # A pre-release must not become what `brew install loopky` hands people, for the same
+          # reason it does not move `latest` or `:latest`.
+          case "${VERSION#v}" in
+            *[!0-9.]*)
+              echo 'go=false' >> "$GITHUB_OUTPUT"
+              echo "$VERSION is a pre-release — leaving the tap where it is"
+              exit 0 ;;
+          esac
+          echo 'go=true' >> "$GITHUB_OUTPUT"
+
+      - name: Check out the tap
+        if: steps.guard.outputs.go == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/homebrew-loopky
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      # The two sums are taken from the release rather than recomputed, so the formula can only
+      # ever describe the bytes that were actually published. They are **not** interchangeable —
+      # one per row — which is why the template names its placeholders instead of repeating an
+      # anonymous run of zeroes twice.
+      - name: Render the formula
+        if: steps.guard.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          NUM="${VERSION#v}"
+          gh release download "$VERSION" --dir "$RUNNER_TEMP" --clobber \
+            --pattern 'loopky-macos-aarch64.sha256' --pattern 'loopky-linux-x86-64.sha256'
+          MAC=$(awk '{print $1}' "$RUNNER_TEMP/loopky-macos-aarch64.sha256")
+          LNX=$(awk '{print $1}' "$RUNNER_TEMP/loopky-linux-x86-64.sha256")
+
+          mkdir -p tap/Formula
+          sed -e "s|__VERSION__|$NUM|g" \
+              -e "s|__SHA256_MACOS_AARCH64__|$MAC|g" \
+              -e "s|__SHA256_LINUX_X86_64__|$LNX|g" \
+              cli/packaging/loopky.rb > tap/Formula/loopky.rb
+
+          # Catches a template edit that renamed a placeholder: a formula shipped with `__…__`
+          # still in it installs nothing and says so only at `brew install` time.
+          ! grep -n '__[A-Z][A-Z0-9_]*__' tap/Formula/loopky.rb
+          grep -E 'version|sha256' tap/Formula/loopky.rb
+
+      - name: Push it
+        if: steps.guard.outputs.go == 'true'
+        working-directory: tap
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # Staged *before* the comparison, because `git diff` only looks at tracked files. On a
+          # freshly created tap — the state docs/releasing.md tells you to set up, since git cannot
+          # hold an empty `Formula/` directory — the render step creates an untracked file, plain
+          # `git diff --quiet` reports no change, and the very first publish exits 0 having
+          # committed nothing. Green run, empty tap, and a summary that never says it was skipped.
+          git add Formula/loopky.rb
+          if git diff --cached --quiet -- Formula/loopky.rb; then
+            echo "the tap already serves ${VERSION#v}"
+            exit 0
+          fi
+          git commit -m "loopky ${VERSION#v}"
+          git push
+          echo "> Homebrew tap updated to \`${VERSION#v}\`." >> "$GITHUB_STEP_SUMMARY"

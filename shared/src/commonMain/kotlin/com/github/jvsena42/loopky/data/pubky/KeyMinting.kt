@@ -6,29 +6,25 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Minting and deriving key material, with the validation that has to run on **our** side of the
- * FFI boundary.
+ * Minting and deriving key material, with the validation that has to run on **our** side of the FFI
+ * boundary.
  *
  * Where the entropy comes from is already right: `generate_mnemonic` reaches bip39's
- * `Mnemonic::generate_in`, which draws from `rand::thread_rng()` reseeded from the OS
- * (`getrandom(2)` on Android, `SecRandomCopyBytes` on iOS), and `rand` panics rather than
- * degrading if the OS refuses entropy. So there is no silent userspace fallback to worry about.
+ * `Mnemonic::generate_in`, drawing from `rand::thread_rng()` reseeded from the OS, and `rand` panics
+ * rather than degrading if the OS refuses entropy — there is no silent userspace fallback.
  *
  * What this file exists for is the one failure nobody can see: key material that is *valid-looking*
- * but wrong. A user cannot detect it, the homeserver will happily accept it, and the account is
- * orphaned the moment they try to restore from the phrase they were shown. So every generated key
- * is round-tripped and asserted before it reaches a screen.
+ * but wrong. The user cannot detect it, the homeserver accepts it, and the account is orphaned the
+ * moment they restore from the phrase they were shown. So every generated key is round-tripped and
+ * asserted before it reaches a screen.
  *
- * Four rules, and none of them may be relaxed:
+ * Four rules, none of which may be relaxed:
  *
- * 1. **Never mint key material outside the FFI.** No `kotlin.random.Random`, no `SecureRandom`
- *    seeded by hand, nowhere near a key, a passphrase or a salt. A scoped `ForbiddenImport` in
- *    `config/detekt/detekt.yml` keeps it that way, and `maxIssues: 0` makes it a build failure.
- * 2. **Fail loudly, never fall back.** A failure here is terminal and the screen offers Pubky Ring.
- *    Retrying with a weaker source is not an option that exists.
- * 3. **Validate in release too.** These are plain `if`s returning [Result.failure], deliberately not
- *    `require`/`assert` and deliberately not behind a debug flag — release is the only build where
- *    a weak key actually costs someone their account.
+ * 1. **Never mint key material outside the FFI.** A scoped `ForbiddenImport` in the detekt config
+ *    keeps it that way, and `maxIssues: 0` makes it a build failure.
+ * 2. **Fail loudly, never fall back.** A failure is terminal and the screen offers Pubky Ring.
+ * 3. **Validate in release too.** Plain `if`s returning [Result.failure], not `require`/`assert` and
+ *    not behind a debug flag — release is the only build where a weak key costs someone their account.
  * 4. **Check the payload, not the `Result`.** See [isValidMnemonic].
  */
 
@@ -41,19 +37,15 @@ internal data class MintedKeypair(
 
 /**
  * Generated key material failed its own round-trip. [stage] names which check, never a value.
- *
- * Terminal by construction: the caller surfaces it and offers Ring. There is no retry, because a
- * second draw from a source that just produced this is not evidence of anything.
+ * Terminal by construction — a second draw from a source that just produced this is not evidence.
  */
 internal class WeakKeyMaterial(val stage: String) :
     RuntimeException("Generated key material failed validation at $stage")
 
 /**
- * Mint a new keypair inside the FFI and prove it before returning it.
- *
- * The proof is the point: generation and derivation are two different code paths in the fork
- * (`generate_mnemonic_and_keypair` vs `mnemonic_to_keypair`), and the phrase we show the user is
- * only worth anything if the second one reproduces the first exactly.
+ * Mint a new keypair inside the FFI and prove it before returning it. Generation and derivation are
+ * two different code paths in the fork, and the phrase we show the user is only worth anything if the
+ * second reproduces the first exactly.
  */
 internal fun PubkyClient.mintValidatedKeypair(): Result<MintedKeypair> = runCatching {
     // Plain `runCatching`, not `runSuspendCatching`: every call in here is synchronous, so there is
@@ -84,11 +76,9 @@ internal fun PubkyClient.mintValidatedKeypair(): Result<MintedKeypair> = runCatc
 }
 
 /**
- * Derive a keypair from a user-supplied recovery phrase.
- *
- * No degeneracy check here, unlike [mintValidatedKeypair]: that check exists to catch a broken RNG,
- * and this key did not come from ours. If someone's real key were somehow degenerate it would still
- * be their key, and refusing it would lock them out of their own account to no purpose.
+ * Derive a keypair from a user-supplied recovery phrase. No degeneracy check, unlike
+ * [mintValidatedKeypair]: that catches a broken RNG, and this key did not come from ours — a real key
+ * that were somehow degenerate would still be theirs, and refusing it would lock them out to no purpose.
  */
 internal fun PubkyClient.keypairFromMnemonic(mnemonic: String): Result<MintedKeypair> {
     val normalised = mnemonic.normaliseMnemonic()
@@ -103,14 +93,13 @@ internal fun PubkyClient.keypairFromMnemonic(mnemonic: String): Result<MintedKey
 /**
  * Derive the pubky for a bare secret key — the recovery-file path, which has no phrase.
  *
- * **The FFI answers with JSON here, exactly as it does for the two mnemonic calls.**
- * `get_public_key_from_secret_key` returns `{"public_key":…,"uri":…}`, so the payload has to be
- * parsed rather than trimmed. Taking it verbatim is what broke recovery-file sign-in outright: the
- * whole JSON object travelled on as the pubky, and the DHT lookup it was handed to could only ever
- * fail — the user got "Something went wrong" for a file that had decrypted perfectly.
+ * **The FFI answers with JSON here**, exactly as for the two mnemonic calls:
+ * `get_public_key_from_secret_key` returns `{"public_key":…,"uri":…}`, so the payload has to be parsed
+ * rather than trimmed. Taking it verbatim broke recovery-file sign-in outright — the whole JSON object
+ * travelled on as the pubky, and the user got "Something went wrong" for a file that decrypted fine.
  *
- * [parseKeypairJson] is not reusable here: it demands a `secret_key` field, and this response
- * carries only the public half. The secret is the one the caller already holds.
+ * [parseKeypairJson] is not reusable: it demands a `secret_key` field, and this response carries only
+ * the public half.
  */
 internal fun PubkyClient.keypairFromSecretKey(secretKeyHex: String): Result<MintedKeypair> =
     getPublicKeyFromSecretKey(secretKeyHex).mapCatching { payload ->
@@ -124,20 +113,16 @@ internal class InvalidMnemonic : RuntimeException("Invalid recovery phrase")
  * Whether the FFI considers [mnemonic] a valid BIP-39 phrase.
  *
  * **Reads the payload, not `isSuccess`.** `validate_mnemonic_phrase` never returns an error — it
- * answers `["false", "true"]` or `["false", "false"]`, where the first element is the FFI's
- * "is this an error" flag and the second is the answer. So `Result.isSuccess` is true for an
- * invalid phrase just as much as a valid one, and a caller checking it would be validating nothing
- * at all while looking like it was.
+ * answers `["false", "true"]` or `["false", "false"]`, so `Result.isSuccess` is true for an invalid
+ * phrase just as much as a valid one, and a caller checking it would validate nothing while looking
+ * like it did.
  */
 private fun PubkyClient.isValidMnemonic(mnemonic: String): Boolean =
     validateMnemonicPhrase(mnemonic).getOrNull()?.trim()?.equals("true", ignoreCase = true) == true
 
 /**
- * Collapse the whitespace a pasted or hand-typed phrase arrives with.
- *
- * Also accepts the `-`, `_` and `+` separators, matching how Pubky Ring normalises an imported
- * phrase (`formatImportData` in its `inputParser.ts`), so a phrase exported from Ring in one of
- * those forms comes back in.
+ * Collapse the whitespace a pasted or hand-typed phrase arrives with. Also accepts `-`, `_` and `+`,
+ * matching how Pubky Ring normalises an imported phrase, so a phrase exported from Ring comes back in.
  */
 internal fun String.normaliseMnemonic(): String =
     trim().lowercase().replace(MNEMONIC_SEPARATORS, " ")
@@ -148,9 +133,8 @@ private val MNEMONIC_SEPARATORS = Regex("[\\s\\-_+]+")
  * Why [secretKeyHex] cannot have come from a working CSPRNG, or null if it looks fine.
  *
  * Not a strength test — 32 bytes of real entropy cannot be judged by looking at them. These are the
- * two patterns that mean the entropy source returned nothing at all: a zero-filled buffer, and a
- * buffer filled with one repeated byte. Both are what a broken or stubbed RNG produces, and both
- * would otherwise sail through every other check in this file.
+ * two patterns that mean the source returned nothing at all: a zero-filled buffer, and one repeated
+ * byte. Both are what a broken or stubbed RNG produces, and both sail through every other check here.
  */
 private fun degenerateSecretReason(secretKeyHex: String): String? {
     val hex = secretKeyHex.trim().lowercase()
@@ -178,11 +162,9 @@ private fun String.parseKeypairJson(): MintedKeypair {
 }
 
 /**
- * The `public_key` out of a `{"public_key":…,"uri":…}` FFI response.
- *
- * Falls back to the trimmed payload when it does not parse as an object, so a build against an FFI
- * that answers with a bare key still signs in rather than failing on a shape that is, in itself,
- * usable. What must never happen again is the reverse — JSON travelling on as if it were a pubky.
+ * The `public_key` out of a `{"public_key":…,"uri":…}` FFI response. Falls back to the trimmed payload
+ * when it does not parse as an object, so a build against an FFI answering with a bare key still signs
+ * in. What must never happen again is the reverse — JSON travelling on as if it were a pubky.
  */
 private fun String.parsePublicKey(): String {
     val parsed = runCatching { keypairJson.parseToJsonElement(this).jsonObject }.getOrNull()

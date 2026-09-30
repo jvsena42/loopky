@@ -1,0 +1,1 @@
+Flashcards com repetição espaçada. Importe decks do Anki.

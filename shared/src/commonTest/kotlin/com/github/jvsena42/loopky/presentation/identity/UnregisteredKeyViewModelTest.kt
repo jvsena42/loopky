@@ -85,6 +85,21 @@ class UnregisteredKeyViewModelTest {
     }
 
     @Test
+    fun aRegisteredKeyGoesStraightIntoTheAppRatherThanIntoABackupWall() = runTest {
+        // Backing up is offered by the Profile card above sign-out and by Settings, and the
+        // sign-out guard refuses to erase an un-backed-up key. A screen between registering and
+        // using the app buys none of that.
+        val vm = viewModel(FakeSignupRepository(redeemable()))
+        val effects = collectEffects(vm)
+        advanceUntilIdle()
+
+        vm.onRegisterConfirmed()
+        advanceUntilIdle()
+
+        assertEquals(listOf(UnregisteredKeyEffect.NavigateHome), effects)
+    }
+
+    @Test
     fun withNoStoredTokenTheUserIsSentToVerifyRatherThanCharged() = runTest {
         val vm = viewModel(FakeSignupRepository(null))
         val effects = collectEffects(vm)

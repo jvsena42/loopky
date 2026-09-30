@@ -8,7 +8,7 @@ import Shared
 struct LocalSignupScreen: View {
     var onBack: () -> Void
     var adoptHeldKey: Bool
-    var onBackup: () -> Void
+    var onCreated: () -> Void
     var onStartOver: () -> Void
 
     @State private var viewModel: LocalSignupViewModel?
@@ -56,7 +56,7 @@ struct LocalSignupScreen: View {
         stateSink = FlowEffectSink(vm.state) { uiState = $0 as? LocalSignupUiState }
         effectSink = FlowEffectSink(vm.effects) { effect in
             switch effect {
-            case is LocalSignupEffectNavigateBackup: onBackup()
+            case is LocalSignupEffectNavigateHome: onCreated()
             case is LocalSignupEffectNavigateStartOver: onStartOver()
             default: break
             }

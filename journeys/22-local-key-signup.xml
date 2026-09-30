@@ -15,14 +15,17 @@
     <action>From a signed-out Loopky: "onboarding_create_pubky" → "signup_create_locally_option" → "signup_method_invite"</action>
     <action>Enter a valid invite code and submit</action>
     <action>Verify "signup_local_progress" appears — Loopky is minting the key and registering it itself, with no deeplink and no relay</action>
-    <action>Verify Loopky lands on the BACKUP screen, not home: this is the only moment in the app where a key exists that nobody has a copy of</action>
+    <action>Verify Loopky lands on HOME, not on a backup screen — signup does not stand a wall in front of the app</action>
+    <action>Verify the Profile card above sign-out ("profile_backup_nag") IS present: the key is only on this device, and that is where it is said</action>
 
     <action>THE RETRY CHECK. Repeat with airplane mode on so the registration fails. Note the pubky in logcat ("registerKey: registering …"), then turn airplane mode off and tap "signup_local_retry"</action>
     <action>Verify the SAME pubky is registered on the retry — a different one means a fresh key was minted and the first identity was stranded</action>
     <action>Verify logcat shows no second Homegate request: the stored token is reused, not re-bought</action>
 
-    <action>BACKUP. Tap "backup_method_phrase", reveal the words, continue, and pass the quiz</action>
-    <action>Verify "backup_method_phrase_done" now shows on the menu, and that the Profile card above sign-out ("profile_backup_nag") is GONE</action>
+    <action>BACKUP. Profile → "profile_backup_nag_action", then tap "backup_method_phrase", reveal the words, continue, and pass the quiz</action>
+    <action>Verify "backup_method_phrase_done" now shows on the menu, and that leaving it ("backup_later") returns to Profile rather than pushing a second home</action>
+    <action>Verify the Profile card above sign-out ("profile_backup_nag") is now GONE</action>
+    <action>Verify Settings → the backup row reaches the same menu, and that leaving it returns to Settings</action>
     <action>Verify the phrase screen blocks screenshots in a RELEASE build (debug deliberately allows them so these journeys can capture)</action>
 
     <action>SIGN-OUT GUARD. Create a second local account and skip backup. Settings → Sign out</action>

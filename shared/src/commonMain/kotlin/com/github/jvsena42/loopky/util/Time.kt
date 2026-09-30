@@ -13,3 +13,11 @@ internal expect fun epochMillis(): Long
  * means 72 hours, not "at midnight three sleeps from now".
  */
 internal expect fun localDayIndex(millis: Long): Int
+
+/**
+ * How many minutes past local midnight [millis] is — 0 for 00:00, 1230 for 20:30.
+ *
+ * Local for the same reason [localDayIndex] is: this answers "what time is it where the reader
+ * is", and the only caller is the Auto theme schedule, which is a claim about their evening.
+ */
+internal expect fun localMinuteOfDay(millis: Long): Int

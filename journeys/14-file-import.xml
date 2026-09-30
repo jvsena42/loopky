@@ -16,6 +16,9 @@
     <action>Verify the file-import CTA (resource-id: decks_import_file) reads "Import from Anki or a file", is horizontally centred, and sits directly under the "Paste to import" card rather than separated from it by the section gap</action>
     <action>Tap the element with resource-id "decks_import_file"</action>
     <action>Verify the "Import file" screen opens on a real empty state — "Bring your deck over", a "WHAT WORKS" section with one card per accepted format (.apkg and .txt/.csv, each saying what it brings over and naming Anki's export path), a "Choose a file" button (resource-id: bulk_pick_file), and the size ceiling. It must NOT be a paragraph of prose over an otherwise blank screen</action>
+    <action>Verify the empty state ends with a "🤖 Or let your agent build it" card pitching the loopky CLI, and that nothing offers to browse AnkiWeb — that row was removed</action>
+    <action>Tap the element with resource-id "bulk_cli_copy" and verify its label flips to "Copied" for about two seconds, then back</action>
+    <action>Paste the clipboard into the paste-import field (tab_decks → decks_paste_cta → paste_input) and verify it holds the whole agent prompt: the Pubky Ring backup instruction first, then the install line, `loopky login`, `loopky commands --json`, and a `loopky deck create` example. Line breaks and the quoted --title must survive</action>
 
     <action>Tap the element with resource-id "bulk_pick_file" and choose the .apkg from Downloads</action>
     <action>Verify a summary appears reading "N cards parsed" — NOT a swipe-triage queue, which nobody completes for a 20,000-card export</action>

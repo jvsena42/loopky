@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- pt-BR takes CLDR `one` (i = 0..1) and `other`, so the two-form shape of values/ carries
+         over unchanged. -->
+    <plurals name="duration_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="one">%1$d hora</item>
+        <item quantity="other">%1$d horas</item>
+    </plurals>
+    <plurals name="duration_days">
+        <item quantity="one">%1$d dia</item>
+        <item quantity="other">%1$d dias</item>
+    </plurals>
+    <plurals name="card_count">
+        <item quantity="one">%1$d carta</item>
+        <item quantity="other">%1$d cartas</item>
+    </plurals>
+    <plurals name="cards_ready">
+        <item quantity="one">%1$d carta pronta</item>
+        <item quantity="other">%1$d cartas prontas</item>
+    </plurals>
+    <plurals name="cards_discarded">
+        <item quantity="one">%1$d descartada na revisão</item>
+        <item quantity="other">%1$d descartadas na revisão</item>
+    </plurals>
+    <plurals name="cards_published">
+        <item quantity="one">%1$d carta agora é pública.</item>
+        <item quantity="other">%1$d cartas agora são públicas.</item>
+    </plurals>
+    <plurals name="study_goal_reached_count">
+        <item quantity="one">%1$d carta nova hoje</item>
+        <item quantity="other">%1$d cartas novas hoje</item>
+    </plurals>
+    <plurals name="cards_reviewed">
+        <item quantity="one">Você revisou %1$d carta.</item>
+        <item quantity="other">Você revisou %1$d cartas.</item>
+    </plurals>
+    <plurals name="cards_incomplete">
+        <item quantity="one">%1$d incompleta</item>
+        <item quantity="other">%1$d incompletas</item>
+    </plurals>
+    <plurals name="public_decks_count">
+        <item quantity="one">Baralho público · %1$d</item>
+        <item quantity="other">Baralhos públicos · %1$d</item>
+    </plurals>
+    <plurals name="profile_decks_count">
+        <item quantity="one">Todos os baralhos · %1$d</item>
+        <item quantity="other">Todos os baralhos · %1$d</item>
+    </plurals>
+    <plurals name="bulk_cards_parsed">
+        <item quantity="one">%1$d carta lida</item>
+        <item quantity="other">%1$d cartas lidas</item>
+    </plurals>
+    <plurals name="bulk_import_cards">
+        <item quantity="one">Importar %1$d carta</item>
+        <item quantity="other">Importar %1$d cartas</item>
+    </plurals>
+    <plurals name="bulk_duplicates">
+        <item quantity="one">%1$d duplicata mesclada</item>
+        <item quantity="other">%1$d duplicatas mescladas</item>
+    </plurals>
+    <plurals name="bulk_truncated">
+        <item quantity="one">%1$d linha além do limite não foi importada</item>
+        <item quantity="other">%1$d linhas além do limite não foram importadas</item>
+    </plurals>
+    <plurals name="bulk_dropped_notes">
+        <item quantity="one">%1$d nota não tinha frente e verso para usar</item>
+        <item quantity="other">%1$d notas não tinham frente e verso para usar</item>
+    </plurals>
+    <plurals name="bulk_images_skipped">
+        <item quantity="one">%1$d imagem além do limite não foi importada</item>
+        <item quantity="other">%1$d imagens além do limite não foram importadas</item>
+    </plurals>
+    <plurals name="deck_detail_clones">
+        <item quantity="one">%1$d cópia</item>
+        <item quantity="other">%1$d cópias</item>
+    </plurals>
+    <!-- The plural agrees with the *card* count, so the quantity argument is %2$d. -->
+    <plurals name="home_deck_due_cards">
+        <item quantity="one">%1$d a revisar · %2$d carta</item>
+        <item quantity="other">%1$d a revisar · %2$d cartas</item>
+    </plurals>
+    <plurals name="home_deck_new_cards">
+        <item quantity="one">%1$d nova · %2$d carta</item>
+        <item quantity="other">%1$d novas · %2$d cartas</item>
+    </plurals>
+    <plurals name="deck_detail_clone_dialog_message">
+        <item quantity="one">Você terá uma cópia editável desta %1$d carta. Ela não recebe as atualizações do autor, e seu progresso recomeça.</item>
+        <item quantity="other">Você terá uma cópia editável das %1$d cartas. Ela não recebe as atualizações do autor, e seu progresso recomeça.</item>
+    </plurals>
+    <plurals name="publish_progress_count">
+        <item quantity="one">Publicando %1$d de %2$d carta…</item>
+        <item quantity="other">Publicando %1$d de %2$d cartas…</item>
+    </plurals>
+    <plurals name="cards_tried">
+        <item quantity="one">Você tentou %1$d carta.</item>
+        <item quantity="other">Você tentou %1$d cartas.</item>
+    </plurals>
+</resources>

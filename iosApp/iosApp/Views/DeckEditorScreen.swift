@@ -10,6 +10,8 @@ struct DeckEditorScreen: View {
     /// A card that does not exist yet — the editor mints its id and appends it on save.
     var onNewCard: (String) -> Void = { _ in }
     var onSaved: (String) -> Void = { _ in }
+    /// The session was ended from the error row's "Sign in again" — go collect a new one.
+    var onSignedOut: () -> Void = {}
 
     @State private var viewModel: DeckEditorViewModel?
     @State private var uiState: DeckEditorUiState?
@@ -21,6 +23,7 @@ struct DeckEditorScreen: View {
             isNew: uiState?.isNew ?? (deckId == nil),
             coverEmoji: uiState?.coverEmoji ?? "",
             coverImageUrl: uiState?.coverImageUrl,
+            coverImageBase64: uiState?.coverImageBase64,
             coverPendingBytes: uiState?.coverPendingBytes?.toData(),
             title: uiState?.title ?? "",
             description: uiState?.description_ ?? "",
@@ -38,9 +41,12 @@ struct DeckEditorScreen: View {
             isLoadingCards: uiState?.isLoadingCards ?? false,
             hasMoreCards: uiState?.hasMoreCards ?? false,
             isSaving: uiState?.isSaving ?? false,
-            titleError: uiState?.titleError,
-            descriptionError: uiState?.descriptionError,
-            error: uiState?.error,
+            titleError: FormErrorCopy.message(for: uiState?.titleError),
+            descriptionError: FormErrorCopy.message(for: uiState?.descriptionError),
+            error: DeckEditorErrorCopy.message(for: uiState?.error),
+            onSignInAgain: (uiState?.error?.reason.offersSignIn ?? false)
+                ? { viewModel?.onSignInAgainClick() }
+                : nil,
             onTitleChanged: { viewModel?.onTitleChanged(text: $0) },
             onDescriptionChanged: { viewModel?.onDescriptionChanged(text: $0) },
             onAddTag: { viewModel?.onAddTag(tag: $0) },
@@ -75,6 +81,15 @@ struct DeckEditorScreen: View {
                 }
             }
         )
+        // Without this the editor is *stuck* after creating a deck, not merely quiet: a create
+        // with announcing on parks the flow on the prompt and withholds `SaveSuccess` until it is
+        // answered, so the deck is written and the screen never leaves.
+        .sharePrompt(
+            prompt: uiState?.sharePrompt,
+            onConfirm: { viewModel?.onShareConfirm() },
+            onDismiss: { viewModel?.onShareDismiss() },
+            onNeverAsk: { viewModel?.onShareNeverAsk() }
+        )
         .onAppear { attach() }
         .onDisappear { detach() }
     }
@@ -89,12 +104,19 @@ struct DeckEditorScreen: View {
             switch effect {
             case is DeckEditorEffectNavigateBack:
                 onBack()
+            case is DeckEditorEffectNavigateToOnboarding:
+                onSignedOut()
             case let editCard as DeckEditorEffectNavigateEditCard:
                 onEditCard(editCard.deckId, editCard.cardId)
             case let newCard as DeckEditorEffectNavigateNewCard:
                 onNewCard(newCard.deckId)
             case let saved as DeckEditorEffectSaveSuccess:
                 onSaved(saved.deckId)
+            case is DeckEditorEffectShared, is DeckEditorEffectShareFailed:
+                // Deliberately not shown. Announcing is best-effort, and the `SaveSuccess` that
+                // follows it immediately pops this screen — a toast raised here would be torn
+                // down with the editor before anyone read it.
+                break
             default:
                 break
             }

@@ -3,18 +3,17 @@ import Foundation
 /// The signed-out flows: create an account, restore one, or deal with a key that has none.
 ///
 /// A separate enum from `DeckRoute` because these live in the signed-*out* branch of `RootView`,
-/// and because they need a **path**, not a single destination — signup start → phone → local
-/// signup → backup start → phrase → quiz is six pushes deep.
+/// and because they need a **path**, not a single destination — restore start → phrase →
+/// unregistered key → signup start → phone → local signup is six pushes deep.
 ///
-/// Two payloads here replace back-stack probes Android has to do:
+/// `adoptHeldKey` travels with the route, replacing a back-stack probe Android has to do: it reads
+/// the intent off the nav back stack with `lastOrNull` precisely because a start-over pushes a
+/// *second* `SIGNUP_START`, and reading the oldest would let an abandoned attempt outvote the
+/// screen the user is standing on. Carried as a payload, that ordering hazard cannot arise.
 ///
-/// - `adoptHeldKey` travels with the route. Android reads it off the nav back stack with
-///   `lastOrNull` precisely because a start-over pushes a *second* `SIGNUP_START`, and reading the
-///   oldest would let an abandoned attempt outvote the screen the user is standing on. Carried as
-///   a payload, that ordering hazard cannot arise.
-/// - `enteredFromSettings` replaces `previousBackStackEntry != null`. Backup reached from
-///   onboarding must leave to home; reached from Settings or Profile it must go back where it came
-///   from, and sending that user home would both lose their place and push a second home.
+/// Backup is **not** here: it is only ever reached from Settings or the Profile nag, both of which
+/// are signed-in surfaces, so it is a sheet over the tabs (`BackupFlowView`) rather than a leg of
+/// this path.
 enum IdentityRoute: Hashable {
     /// `adoptHeldKey` — register the key this device already holds, rather than minting a new one.
     case signupStart(adoptHeldKey: Bool)
@@ -22,12 +21,6 @@ enum IdentityRoute: Hashable {
     case signupLightning
     case signupInvite
     case signupLocal(adoptHeldKey: Bool)
-
-    case backupStart(enteredFromSettings: Bool)
-    case backupPhrase
-    case backupQuiz
-    case backupFile
-    case backupRing
 
     case restoreStart
     case restorePhrase
@@ -61,22 +54,5 @@ extension Array where Element == IdentityRoute {
             if case .signupStart = last { break }
         }
         append(.signupStart(adoptHeldKey: adoptHeldKey))
-    }
-
-    /// Return to the backup menu, dropping the method screen that just finished.
-    ///
-    /// Methods accumulate, and the menu shows the finished one ticked — so a completed method goes
-    /// back to the menu rather than out of the flow.
-    mutating func returnToBackupMenu() {
-        while let last = self.last, !last.isBackupStart {
-            removeLast()
-        }
-    }
-}
-
-private extension IdentityRoute {
-    var isBackupStart: Bool {
-        if case .backupStart = self { return true }
-        return false
     }
 }

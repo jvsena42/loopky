@@ -12,6 +12,16 @@ import kotlinx.serialization.json.Json
  * Keychain (`kSecClassGenericPassword`). Both go through Liftric KVault.
  */
 interface SecureSessionStore {
+    /**
+     * Where this store keeps the session, in a form a client can print.
+     *
+     * A client has to be able to *say* where the credential is, rather than describe the rules
+     * that decide it: the desktop build picks between the macOS Keychain and a file, and `loopky
+     * whoami` reports the answer (#213). Never the value, and never a secret — a path or the name
+     * of a keystore.
+     */
+    val location: String
+
     suspend fun save(session: Session)
     suspend fun load(): Session?
     suspend fun clear()

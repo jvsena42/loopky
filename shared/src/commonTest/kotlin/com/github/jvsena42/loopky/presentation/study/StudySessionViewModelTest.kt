@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.presentation.study
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.StudySettings
+import com.github.jvsena42.loopky.platform.SpeechError
 import com.github.jvsena42.loopky.testing.FakeCardRepository
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
@@ -249,10 +250,9 @@ class StudySessionViewModelTest {
     }
 
     @Test
-    fun aGoalMetOnTheLastCardIsNotSpentOnAScreenNobodySees() = runTest(mainDispatcher) {
-        // The celebration renders over a card. Hitting the goal on the final grade goes straight
-        // to "All done!", which carries the same news — but marking it shown there would use up
-        // the day's one celebration invisibly.
+    fun aGoalMetOnTheLastCardIsCelebratedThenAndNotInTheNextSession() = runTest(mainDispatcher) {
+        // Skipping it here left it owed, so it popped up one card into the next session — on a
+        // phone, typically only after the app had been restarted.
         settingsRepo.setStudySettings(StudySettings(newCardsPerDayGoal = 1))
         deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish")
         srsRepo.due = listOf(testCard("c1", front = "hola", back = "hello"))
@@ -262,10 +262,23 @@ class StudySessionViewModelTest {
         vm.onGrade(SrsGrade.Good)
         advanceUntilIdle()
 
-        assertIs<StudySessionUiState.Complete>(vm.state.value)
-        assertFalse(
-            srsRepo.dailyProgress.value.goalCelebrated,
-            "the day's celebration was consumed without being shown",
+        val done = assertIs<StudySessionUiState.Complete>(vm.state.value)
+        val celebration = assertNotNull(done.goalCelebration, "the goal was met but not celebrated")
+        assertEquals(expected = 1, actual = celebration.newCardsToday)
+        assertTrue(srsRepo.dailyProgress.value.goalCelebrated, "the celebration was left owed")
+
+        // Dismissing it uncovers the summary, which is still there underneath.
+        vm.onContinueAfterGoal()
+        assertNull(assertIs<StudySessionUiState.Complete>(vm.state.value).goalCelebration)
+
+        srsRepo.due = (2..4).map { testCard("c$it", front = "front $it", back = "back $it") }
+        val next = viewModel()
+        advanceUntilIdle()
+        next.onGrade(SrsGrade.Good)
+        advanceUntilIdle()
+        assertNull(
+            assertIs<StudySessionUiState.Reviewing>(next.state.value).goalCelebration,
+            "the celebration came back in the next session",
         )
     }
 
@@ -342,12 +355,12 @@ class StudySessionViewModelTest {
 
         vm.onSpeak()
         advanceUntilIdle()
-        assertEquals(StudySessionEffect.Speak("hola", "es-ES"), effects.single())
+        assertEquals(StudySessionEffect.Speak("hola", "es-ES"), effects.excludingHaptics().single())
 
         vm.onReveal()
         vm.onSpeak()
         advanceUntilIdle()
-        assertEquals(StudySessionEffect.Speak("hello", "en-US"), effects.last())
+        assertEquals(StudySessionEffect.Speak("hello", "en-US"), effects.excludingHaptics().last())
 
         job.cancel()
     }
@@ -365,12 +378,12 @@ class StudySessionViewModelTest {
 
         vm.onSpeak()
         advanceUntilIdle()
-        assertEquals(StudySessionEffect.Speak("hola", "es-ES"), effects.single())
+        assertEquals(StudySessionEffect.Speak("hola", "es-ES"), effects.excludingHaptics().single())
 
         vm.onReveal()
         vm.onSpeak()
         advanceUntilIdle()
-        assertEquals(StudySessionEffect.Speak("hello", "en-US"), effects.last())
+        assertEquals(StudySessionEffect.Speak("hello", "en-US"), effects.excludingHaptics().last())
 
         job.cancel()
     }
@@ -392,7 +405,7 @@ class StudySessionViewModelTest {
 
         assertEquals(
             StudySessionEffect.StartSpeechRecognition("hello", "en-US"),
-            effects.single(),
+            effects.excludingHaptics().single(),
         )
         job.cancel()
     }
@@ -413,7 +426,7 @@ class StudySessionViewModelTest {
 
         assertEquals(
             StudySessionEffect.StartSpeechRecognition("hola", "es-ES"),
-            effects.single(),
+            effects.excludingHaptics().single(),
         )
         job.cancel()
     }
@@ -478,7 +491,7 @@ class StudySessionViewModelTest {
 
         assertEquals(
             StudySessionEffect.StartSpeechRecognition("hola", "es-ES"),
-            effects.last(),
+            effects.excludingHaptics().last(),
         )
         job.cancel()
     }
@@ -499,6 +512,81 @@ class StudySessionViewModelTest {
 
         val state = assertIs<StudySessionUiState.Reviewing>(vm.state.value)
         assertIs<SpeakPhase.Correct>(state.speakPhase)
+    }
+
+    @Test
+    fun aRecognitionFailureIsReportedInTheSheetRatherThanClosingIt() = runTest {
+        // A sheet that vanishes on ERROR_NO_MATCH is indistinguishable from the app having dropped
+        // the tap — which is exactly how the bug was reported.
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onSpeakTest()
+        advanceUntilIdle()
+        vm.onSpeechError(SpeechError.NoMatch)
+        advanceUntilIdle()
+
+        val state = assertIs<StudySessionUiState.Reviewing>(vm.state.value)
+        val failed = assertIs<SpeakPhase.Failed>(state.speakPhase)
+        assertEquals(SpeechError.NoMatch, failed.reason)
+        assertEquals("hola", failed.expected)
+        assertTrue(failed.retryable, "Nothing matched — another go is the whole point")
+    }
+
+    @Test
+    fun retryingAfterAFailureKeepsTheSameTarget() = runTest {
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+
+        vm.onSpeakTest()
+        advanceUntilIdle()
+        vm.onSpeechError(SpeechError.Busy)
+        advanceUntilIdle()
+        vm.onSpeakRetry()
+        advanceUntilIdle()
+
+        assertEquals(StudySessionEffect.StartSpeechRecognition("hola", "es-ES"), effects.excludingHaptics().last())
+        job.cancel()
+    }
+
+    @Test
+    fun aFailureNothingCanRetryOffersNoRetry() = runTest {
+        // A refused permission and a missing language model do not change by trying again, so the
+        // sheet offers a way out instead of a button that repeats the same failure.
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onSpeakTest()
+        advanceUntilIdle()
+        vm.onSpeechError(SpeechError.LanguageUnavailable)
+        advanceUntilIdle()
+
+        val state = assertIs<StudySessionUiState.Reviewing>(vm.state.value)
+        assertFalse(assertIs<SpeakPhase.Failed>(state.speakPhase).retryable)
+    }
+
+    @Test
+    fun aLateFailureAfterDismissalIsIgnored() = runTest {
+        // The mirror of the late-transcript guard: an error landing after the sheet is gone must
+        // not reopen it over a card the user has moved on from.
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onSpeakTest()
+        advanceUntilIdle()
+        vm.onSpeakDismiss()
+        vm.onSpeechError(SpeechError.NoMatch)
+        advanceUntilIdle()
+
+        val state = assertIs<StudySessionUiState.Reviewing>(vm.state.value)
+        assertEquals(SpeakPhase.Idle, state.speakPhase)
     }
 
     @Test

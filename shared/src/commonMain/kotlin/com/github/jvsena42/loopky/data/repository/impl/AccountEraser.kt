@@ -11,6 +11,7 @@ import com.github.jvsena42.loopky.data.pubky.mapConcurrently
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
@@ -23,17 +24,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Removes every record Loopky wrote for the signed-in account, and the local state that outlives
- * a sign-out.
+ * Removes every record Loopky wrote for the signed-in account, and the local state that outlives a
+ * sign-out.
  *
- * Split from [IdentityRepositoryImpl] the way [DeckCompactor] and [DeckMediaSweeper] are split
- * from `DeckRepositoryImpl`: this is a multi-step pass over the homeserver rather than another
- * identity operation, and it needs half a dozen collaborators that nothing else in that class
- * touches.
+ * Split from [IdentityRepositoryImpl] the way [DeckCompactor] and [DeckMediaSweeper] are split from
+ * `DeckRepositoryImpl`: a multi-step pass over the homeserver rather than another identity
+ * operation, needing half a dozen collaborators nothing else in that class touches.
  *
  * **It does not delete the Pubky account**, and no copy anywhere may say it does — see
- * [com.github.jvsena42.loopky.data.repository.IdentityRepository.deleteAccount] for what is and is
- * not in scope, and why the signup token survives.
+ * [IdentityRepository.deleteAccount] for what is in scope, and why the signup token survives.
  */
 // LongParameterList: the collaborator count is the reason this class exists rather than living on
 // IdentityRepositoryImpl. Taking an account apart genuinely touches decks, tags, the homeserver and
@@ -49,13 +48,12 @@ class AccountEraser(
     private val studyProgress: StudyProgressStore,
     private val preferences: AppPreferences,
     private val unsplashKeyStore: UnsplashKeyStore,
+    private val deckCache: DeckCacheStore,
 ) {
 
     /**
-     * Sweep the homeserver for [owner].
-     *
-     * Throws if anything Loopky owns could not be removed, which is what keeps the caller from
-     * signing the user out of a half-deleted account. Returns having also wiped local state.
+     * Sweep the homeserver for [owner]. Throws if anything Loopky owns could not be removed, which
+     * is what keeps the caller from signing the user out of a half-deleted account.
      */
     suspend fun erase(owner: String, onProgress: (Int, Int) -> Unit) {
         val owned = decks.listOwned()
@@ -80,14 +78,12 @@ class AccountEraser(
             progress.step()
         }
 
-        // 2. Review state, settings, subscriptions, tag records — and whatever step 1 could not
-        // see. Re-listed rather than reusing `strays`, which is stale by now.
-        //
-        // Counted from the returned list rather than a shared variable: these run concurrently,
-        // and `failures++` from two coroutines is a race that would under-report and sign the user
-        // out of an account that is still half there.
+        // 2. Review state, settings, subscriptions, tag records — and whatever step 1 could not see.
+        // Re-listed rather than reusing `strays`, which is stale by now. Counted from the returned
+        // list rather than a shared variable: these run concurrently, and `failures++` from two
+        // coroutines would under-report and sign the user out of an account that is still half there.
         failures += namespaceRecords(owner)
-            .mapConcurrently(limit = SWEEP_IN_FLIGHT) { path -> deleteRecord(path).also { progress.step() } }
+            .mapConcurrently { path -> deleteRecord(path).also { progress.step() } }
             .count { deleted -> !deleted }
 
         // 3. The directory entry. Nothing else takes the account out of Discover and search, so a
@@ -119,19 +115,15 @@ class AccountEraser(
      * Every record Loopky owns for [owner], best-effort.
      *
      * **Each sub-root is listed in its own right, not just the namespace root.** One listing of
-     * `pub/loopky/` was the obvious implementation and it silently missed records: a followed
-     * deck's subscription survived two full sweeps that both reported success, because
-     * `subscriptions/{author}/{deckId}.json` never appeared in the namespace-root listing while
-     * `DeckRepository.loadSubscriptions`, which lists `subscriptions/` directly, found it every
-     * time. Whatever the homeserver's rule is for how deep a prefix listing reaches, relying on it
-     * meant reporting an account deleted while its data was still there.
+     * `pub/loopky/` silently missed records: a followed deck's subscription survived two full sweeps
+     * that both reported success, because `subscriptions/{author}/{deckId}.json` never appeared in
+     * the namespace-root listing while `loadSubscriptions`, which lists `subscriptions/` directly,
+     * found it every time. The root listing stays as the catch-all for anything a future version
+     * writes that this list does not name.
      *
-     * The root listing stays as the catch-all for anything a future version writes that this list
-     * does not name.
-     *
-     * Directory entries are dropped: a homeserver that answers with `…/srs/` rather than the
-     * records beneath it hands back something no delete can remove, and a 404 on that would be
-     * scored as a successful deletion.
+     * Directory entries are dropped: a homeserver answering with `…/srs/` rather than the records
+     * beneath it hands back something no delete can remove, and a 404 on that would score as a
+     * successful deletion.
      */
     private suspend fun namespaceRecords(owner: String): List<String> {
         val root = "pubky://$owner/${PubkyPaths.APP_NAMESPACE}/"
@@ -149,12 +141,10 @@ class AccountEraser(
     }
 
     /**
-     * Delete [path], treating "already gone" as success.
-     *
-     * A sweep names records a previous, interrupted sweep already removed, and gone is the outcome
-     * being asked for — the same reasoning as `DeckRepositoryImpl.deleteRecordLocked`. Unlike that
-     * one this never rethrows: there is no manifest here whose ordering a partial failure could
-     * corrupt, and one stubborn record must not strand the rest of the account.
+     * Delete [path], treating "already gone" as success — a sweep names records a previous,
+     * interrupted sweep already removed. Unlike `DeckRepositoryImpl.deleteRecordLocked` this never
+     * rethrows: there is no manifest here whose ordering a partial failure could corrupt, and one
+     * stubborn record must not strand the rest of the account.
      */
     private suspend fun deleteRecord(path: String): Boolean =
         pubky.deleteWithSessionRetry(path, session, revalidator).fold(
@@ -173,15 +163,15 @@ class AccountEraser(
     /**
      * Remove the posts Loopky published announcing this user's decks.
      *
-     * Matched on the embed URI being under **this user's own** deck root, never on the post
-     * looking Loopky-ish: `posts/` is the user's ordinary pubky.app feed, shared with every other
-     * app, and an over-broad match here deletes writing that has nothing to do with Loopky. A post
-     * that cannot be fetched or parsed is left exactly where it is.
+     * Matched on the embed URI being under **this user's own** deck root, never on the post looking
+     * Loopky-ish: `posts/` is the user's ordinary pubky.app feed, shared with every other app, and
+     * an over-broad match deletes writing that has nothing to do with Loopky. A post that cannot be
+     * fetched or parsed is left where it is.
      */
     private suspend fun deleteAnnouncementPosts(owner: String) {
         val ownDeckRoot = PubkyPaths.decksList(owner)
         pubky.listAllEntriesOrEmpty(PubkyPaths.postsRoot(owner))
-            .mapConcurrently(limit = SWEEP_IN_FLIGHT) { path ->
+            .mapConcurrently { path ->
                 val embedUri = runSuspendCatching {
                     loopkyJson.decodeFromString<PostDto>(pubky.get(path).getOrThrow()).embed?.uri
                 }.getOrNull()
@@ -194,9 +184,7 @@ class AccountEraser(
 
     /**
      * Device-local state that outlives sign-out and would otherwise greet a fresh account with the
-     * last one's numbers.
-     *
-     * The signup token is deliberately not here.
+     * last one's numbers. The signup token is deliberately not here.
      */
     private suspend fun wipeLocalState(owner: String) {
         runSuspendCatching {
@@ -207,26 +195,23 @@ class AccountEraser(
             studyProgress.save(owner, DailyStudyProgress(dayIndex = 0, newCards = 0, reviews = 0))
             preferences.setCachedStudySettings("")
             unsplashKeyStore.clear()
+            // Cleared, not emptied: every deck title, description and tag of the deleted account
+            // is in plaintext preferences, and writing an empty snapshot would still leave a record
+            // naming the pubky behind. It is keyed by pubky besides, so restoring this key from its
+            // phrase would otherwise paint a library of decks that no longer exist.
+            deckCache.clear()
         }.onFailure { Log.e(TAG, "local wipe FAILED — ${it.message}", it) }
     }
 
     private companion object {
         const val TAG = "Loopky/AccountEraser"
-
-        /**
-         * Narrower than the default write width, matching `DeckRepositoryImpl`'s sweep: the FFI
-         * re-imports and revalidates the session on every authenticated call, so a long run of
-         * deletes at publish width reliably 429s straight through the retry budget.
-         */
-        const val SWEEP_IN_FLIGHT = 2
     }
 }
 
 /**
- * Counts records off against a total and reports them, safely from concurrent callers.
- *
- * A plain `var done` incremented from inside `mapConcurrently` is a data race. The worst case is
- * only a progress number that skips, but the fix is three lines.
+ * Counts records off against a total and reports them, safely from concurrent callers. A plain
+ * `var done` incremented inside `mapConcurrently` is a data race; the worst case is only a progress
+ * number that skips, but the fix is three lines.
  */
 private class SweepProgress(private val total: Int, private val report: (Int, Int) -> Unit) {
     private val lock = Mutex()

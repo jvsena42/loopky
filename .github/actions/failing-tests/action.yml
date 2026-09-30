@@ -1,0 +1,22 @@
+# Print the failing tests into the job log (#239).
+#
+# Every job here already uploads `build/reports/tests/` as an artifact on failure, which answers
+# "which test failed and why" for a human with a browser: download the zip, unzip it, open the
+# HTML. An agent reading CI output cannot do any of that, so for it the log says
+# `> Task :shared:jvmTest FAILED` and stops.
+#
+# The data is already on disk as JUnit XML. This puts it on the channel the failure is read from.
+#
+# A local composite action rather than a third-party one, and rather than the same twenty lines
+# pasted into three jobs. This repo already declines the community reachability-metadata
+# repository to keep the build fetching nothing, and the same reasoning applies to a step that
+# runs on every failure — with rather more force, since this one runs *while something is already
+# wrong*.
+name: Failing tests, in the log
+description: Prints every JUnit failure under build/test-results into the job log.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: python3 "${{ github.action_path }}/report.py"

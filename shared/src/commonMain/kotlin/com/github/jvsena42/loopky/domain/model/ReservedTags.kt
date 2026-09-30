@@ -27,15 +27,19 @@ object ReservedTags {
      * On a followed deck's manifest, so "N people follow this" falls out of the indexer's tagger
      * count for free.
      *
-     * TODO(#33): written by the follow flow once Follow deck exists; nothing writes it today.
+     * Written by `DeckRepositoryImpl.followDeck` and removed by `unfollowDeck` (#33). Best-effort
+     * at both ends, like every reserved-tag write: the label is what makes the count exist, but a
+     * tag record must never fail the follow it describes.
      */
     val FOLLOWED = Tag("${PREFIX}followed")
 
     /**
      * On the **source** deck's manifest, so credit for a clone accrues to the original author
-     * (matching the `cloned_from` provenance field).
+     * (matching the copy's own `source` provenance block, `SourceDto.kind = "clone"`).
      *
-     * TODO(#33): written by the clone flow once Clone deck exists; nothing writes it today.
+     * Written by `DeckRepositoryImpl.clone` once the copy is published (#33), best-effort like
+     * [FOLLOWED]. Nothing ever removes it — not `clone`'s own follow-up unfollow, and not the
+     * source author deleting their deck: the copy outlives the original, so the credit does too.
      */
     val CLONED = Tag("${PREFIX}cloned")
 

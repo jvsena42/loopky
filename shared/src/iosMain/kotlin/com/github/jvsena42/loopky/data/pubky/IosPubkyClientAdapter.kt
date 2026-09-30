@@ -8,7 +8,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 /**
  * Bridges the Swift-implemented [RawPubkyClient] (dumb `[status, payload]` pass-through to the
  * UniFFI Swift bindings) into the shared [PubkyClient] contract — the iOS counterpart of
- * `AndroidPubkyClient`. Blocking FFI calls are routed through [Dispatchers.Default]
+ * `UniffiPubkyClient`. Blocking FFI calls are routed through [Dispatchers.Default]
  * (Dispatchers.IO is not public on Kotlin/Native); binary payloads are Base64-encoded
  * across the Swift boundary and decoded back to raw bytes there.
  */
@@ -141,7 +141,7 @@ class IosPubkyClientAdapter(private val raw: RawPubkyClient) : PubkyClient {
         }
     }
 
-    /** Same `[error, data]` convention as `AndroidPubkyClient` — see that class for details. */
+    /** Same `[error, data]` convention as `UniffiPubkyClient` — see that class for details. */
     private fun List<String>.toResult(): Result<String> {
         if (size < 2) return Result.failure(PubkyError("Unexpected FFI response: $this"))
         return when (this[0]) {

@@ -8,6 +8,8 @@ import SwiftUI
 /// target must never be the thing that ends a session.
 struct GoalCelebrationView: View {
     let newCardsToday: Int
+    /// Met on the session's last card: no "Keep studying", and `onDone` is the single way out.
+    var sessionEnded: Bool = false
     var onKeepStudying: () -> Void = {}
     var onDone: () -> Void = {}
 
@@ -32,22 +34,29 @@ struct GoalCelebrationView: View {
                 ))
                 .font(.system(size: 16))
                 .foregroundStyle(LoopkyColor.foregroundPrimary)
-                Text("study_goal_reached_body")
-                    .font(.system(size: 14))
-                    .foregroundStyle(LoopkyColor.foregroundSecondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
+                if sessionEnded {
+                    Button("study_done", action: onDone)
+                        .buttonStyle(.loopkyFilled)
+                        .padding(.top, 12)
+                        .accessibilityIdentifier("study_goal_dismiss")
+                } else {
+                    Text("study_goal_reached_body")
+                        .font(.system(size: 14))
+                        .foregroundStyle(LoopkyColor.foregroundSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
 
-                // Both ways out, equal in weight but not in emphasis: the card behind this is
-                // already loaded, and the goal withholds nothing.
-                Button("study_goal_keep_studying", action: onKeepStudying)
-                    .buttonStyle(.loopkyFilled)
-                    .padding(.top, 12)
-                    .accessibilityIdentifier("study_goal_keep_studying")
-                Button("study_goal_done", action: onDone)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(LoopkyColor.foregroundMuted)
+                    // Both ways out, equal in weight but not in emphasis: the card behind this is
+                    // already loaded, and the goal withholds nothing.
+                    Button("study_goal_keep_studying", action: onKeepStudying)
+                        .buttonStyle(.loopkyFilled)
+                        .padding(.top, 12)
+                        .accessibilityIdentifier("study_goal_keep_studying")
+                    Button("study_goal_done", action: onDone)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(LoopkyColor.foregroundMuted)
+                }
             }
             .padding(.horizontal, 32)
             // The one modal moment in a session, and it covers the whole screen — so on an iPad

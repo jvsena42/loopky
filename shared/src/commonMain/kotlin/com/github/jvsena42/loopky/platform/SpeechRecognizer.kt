@@ -11,7 +11,30 @@ sealed interface SpeechEvent {
     data class Error(val reason: SpeechError) : SpeechEvent
 }
 
-enum class SpeechError { NO_MATCH, PERMISSION, NETWORK, BUSY, UNAVAILABLE, UNKNOWN }
+/**
+ * Why a listen produced no answer. Every value is *reported*, never swallowed: a recognition that
+ * ends with nothing on screen is indistinguishable from the app having missed the tap.
+ *
+ * Entries are PascalCase, like every other enum that crosses to Swift here — Kotlin exports them
+ * lowercased with the separators dropped (`SpeechError.languageunavailable`), so a SCREAMING_SNAKE
+ * entry would cross under a name nothing in this repo can predict.
+ */
+enum class SpeechError {
+    /** Speech was captured but matched nothing, or none was heard before the engine gave up. */
+    NoMatch,
+    Permission,
+    Network,
+
+    /** Another recognition is still running — the engine refuses a second one. */
+    Busy,
+
+    /** The device has no recognition service at all. */
+    Unavailable,
+
+    /** Recognition exists, but not for the deck's declared language. */
+    LanguageUnavailable,
+    Unknown,
+}
 
 /**
  * On-device speech recognition for the Speak pronunciation practice (study). Implemented per

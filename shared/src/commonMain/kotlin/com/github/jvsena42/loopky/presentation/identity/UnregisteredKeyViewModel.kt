@@ -118,7 +118,7 @@ class UnregisteredKeyViewModel(
                         .onFailure { Log.w(TAG, "register: could not clear the spent token") }
                     keyHasAFuture = true
                     _state.update { it.copy(isRegistering = false) }
-                    _effects.emit(UnregisteredKeyEffect.NavigateBackup)
+                    _effects.emit(UnregisteredKeyEffect.NavigateHome)
                 }
                 .onFailure { error ->
                     Log.e(TAG, "register: FAILED — ${error::class.simpleName}")
@@ -189,5 +189,7 @@ data class UnregisteredKeyUiState(
 sealed interface UnregisteredKeyEffect {
     data object NavigateBack : UnregisteredKeyEffect
     data object NavigateSignup : UnregisteredKeyEffect
-    data object NavigateBackup : UnregisteredKeyEffect
+
+    /** The key now has an account. Into the app — backing it up is offered from Profile and Settings. */
+    data object NavigateHome : UnregisteredKeyEffect
 }

@@ -14,12 +14,12 @@ struct DeckEditorView: View {
     @State private var pickingCover = false
     var isNew: Bool = true
     var coverEmoji: String = ""
-    /// A cover chosen *this session*: a web URL, or bytes not yet uploaded.
-    ///
-    /// A cover already saved as a blob is deliberately absent, matching Android — the editor's
-    /// state carries no ref for it, so both platforms fall back to the emoji until a new picture
-    /// is chosen.
+    /// The deck's remote cover URL — its stored one on open, or one chosen this session.
     var coverImageUrl: String?
+    /// A homeserver-blob cover's bytes, fetched by the shared ViewModel. A blob carries no URL,
+    /// so without this the one screen that can *replace* a cover could not show it (#166).
+    var coverImageBase64: String?
+    /// Bytes chosen this session and not yet uploaded. The newest cover, so it wins.
     var coverPendingBytes: Data?
     var title: String = ""
     var description: String = ""
@@ -34,6 +34,8 @@ struct DeckEditorView: View {
     var titleError: String?
     var descriptionError: String?
     var error: String?
+    /// Offered beside `error` only when signing in again could clear it — see `offersSignIn`.
+    var onSignInAgain: (() -> Void)?
 
     var onTitleChanged: (String) -> Void = { _ in }
     var onDescriptionChanged: (String) -> Void = { _ in }
@@ -52,9 +54,14 @@ struct DeckEditorView: View {
 
     @State private var showTagSheet = false
 
-    private var hasCover: Bool { coverImageUrl != nil || coverPendingBytes != nil }
+    private var hasCover: Bool { coverImageUrl != nil || coverBytes != nil }
 
-    /// A URL chosen this session has no `MediaRef` yet; wrap it so the same view can draw it.
+    /// The bytes to draw: a cover picked this session, else a loaded blob cover.
+    private var coverBytes: Data? {
+        coverPendingBytes ?? coverImageBase64.flatMap { Data(base64Encoded: $0) }
+    }
+
+    /// A URL cover has no `MediaRef` here; wrap it so the same view can draw it.
     private var coverRef: MediaRef.Image? {
         coverImageUrl.map {
             MediaRef.Image(path: "", mime: "", sha256: "", width: nil, height: nil, uri: nil, url: $0)
@@ -106,12 +113,11 @@ struct DeckEditorView: View {
                                 if hasCover {
                                     CardMediaImage(
                                         ref: coverRef,
-                                        pendingBytes: coverPendingBytes,
+                                        pendingBytes: coverBytes,
                                         authorPubky: "",
                                         deckId: "",
                                         contentMode: .fill
                                     )
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
                                 } else {
                                     // The emoji is the fallback cover, drawn underneath — a deck
                                     // always has one, a picture is optional.
@@ -119,7 +125,14 @@ struct DeckEditorView: View {
                                         .font(.system(size: 32))
                                 }
                             }
+                            // Clip *after* the frame, not around the image inside it. A `.fill`
+                            // image reports a size larger than the box in one dimension, so the
+                            // ZStack grows with it and the frame only re-centres the overflow —
+                            // it does not cut it off. Clipping the inner image rounds that
+                            // oversized rect instead of the tile, which is how the cover came to
+                            // spill over the title beside it (#166).
                             .frame(width: 64, height: 64)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(Text("publish_cover_change"))
@@ -185,6 +198,16 @@ struct DeckEditorView: View {
 
                 if let error {
                     FieldErrorText(message: error)
+                    // A Button, never a tappable Text: a bare `.onTapGesture` is invisible to
+                    // VoiceOver and to `snapshot-ui`, so the one way out of a wedged session
+                    // would be reachable by a finger and by nothing else.
+                    if let onSignInAgain {
+                        Button(NSLocalizedString("error_sign_in_again", comment: ""),
+                               action: onSignInAgain)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(LoopkyColor.accentPrimary)
+                            .accessibilityIdentifier("deck_editor_sign_in_again")
+                    }
                 }
 
                 // The editor is the only place a deck published before the language pair existed
@@ -275,7 +298,7 @@ struct DeckEditorView: View {
             // still reaches both edges of an iPad and only the content inside is bounded.
             .contentPane()
         }
-        .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+        .loopkyScreenBackground()
         .navigationBarHidden(true)
         .sheet(isPresented: $pickingCover) {
             ImagePickerSheet(

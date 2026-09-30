@@ -18,15 +18,29 @@ import com.liftric.kvault.KVault
  * the restored file already, and a Keystore can also be invalidated on-device (a factory reset of
  * secure hardware, a device-admin wipe).
  *
- * So: delete the unreadable file and open a fresh vault. The stored values are gone either way —
- * they were unreadable ciphertext — and the choice is between an app that starts signed out and an
- * app that cannot start. Returns null only if even the second attempt fails, and every caller
- * degrades to "no stored value" rather than throwing.
+ * **The reset is the last resort, not the first answer**, because it is irreversible and the
+ * credential it destroys is the whole session: deleting the file on the first throw meant one
+ * momentary Keystore failure signed the user out for good, where doing nothing would have cost a
+ * single launch. The two failures are indistinguishable at the exception — both surface as a
+ * `GeneralSecurityException` from the same constructor — and only their *persistence* separates
+ * them, so the discriminator is to ask twice. An undecryptable file answers the same way every
+ * time; a Keystore that was busy does not.
+ *
+ * Returns null only if even the reset fails, and every caller degrades to "no stored value" rather
+ * than throwing.
  */
-internal fun openVaultOrNull(context: Context, service: String): KVault? {
-    runCatching { KVault(context, service) }.onSuccess { return it }.onFailure {
-        Log.e(TAG, "vault '$service' unreadable, resetting it", it)
+internal fun openVaultOrNull(context: Context, service: String): KVault? = synchronized(vaultLock) {
+    openVault(context, service)?.let { return it }
+    // The one transient cause with a name: `androidx.security.crypto` generates the master key on
+    // first use and is not safe to do so concurrently, and Loopky builds four vaults from Koin
+    // field initialisers that a worker and the UI can resolve at the same moment. [vaultLock] keeps
+    // ours apart; this second attempt is what an interrupted first one needs to succeed.
+    openVault(context, service)?.let {
+        Log.w(TAG, "vault '$service' opened on the second attempt; the first failure was transient")
+        return it
     }
+
+    Log.e(TAG, "vault '$service' unreadable twice, resetting it")
     return runCatching {
         context.deleteSharedPreferences(service)
         KVault(context, service)
@@ -34,6 +48,20 @@ internal fun openVaultOrNull(context: Context, service: String): KVault? {
         Log.e(TAG, "vault '$service' unavailable even after reset", it)
     }.getOrNull()
 }
+
+private fun openVault(context: Context, service: String): KVault? =
+    runCatching { KVault(context, service) }
+        .onFailure { Log.e(TAG, "vault '$service' would not open", it) }
+        .getOrNull()
+
+/**
+ * Serializes vault construction across the four stores.
+ *
+ * Not thread-safety for its own sake: the master key is generated on first use, and two vaults
+ * doing that at once is the transient failure the retry above exists to survive. Cheap — this runs
+ * once per store for the life of the process.
+ */
+private val vaultLock = Any()
 
 /**
  * Read [key] from a vault that may not exist, treating any failure as absence.

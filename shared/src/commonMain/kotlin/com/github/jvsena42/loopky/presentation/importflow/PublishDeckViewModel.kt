@@ -25,6 +25,7 @@ import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.SpeechLanguages
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.frontBackOf
+import com.github.jvsena42.loopky.domain.model.remoteImageRef
 import com.github.jvsena42.loopky.presentation.share.DeckSharePrompt
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.epochMillis
@@ -175,10 +176,8 @@ class PublishDeckViewModel(
     }
 
     /**
-     * A tag label as the publish flow will accept it, or null.
-     *
-     * Shares [onAddTag]'s rules so a suggested chip cannot arrive in a state the user could not
-     * have typed — a reserved `loopky-` label is the app's own bookkeeping, not a deck's tag.
+     * A tag label as the publish flow will accept it, or null. Shares [onAddTag]'s rules so a
+     * suggested chip cannot arrive in a state the user could not have typed.
      */
     private fun normalizeTag(tag: String): String? =
         tag.trim().lowercase().takeIf { it.isNotBlank() && !ReservedTags.isReserved(it) }
@@ -267,8 +266,7 @@ class PublishDeckViewModel(
      * failed, in which case the error is already in the state and the caller must stop.
      *
      * Media goes up before the marker manifest exists, so a failure here cannot be swept by
-     * [DeckRepository.delete] — it needs a manifest to walk. The refs are tracked as they land and
-     * removed by hand instead.
+     * [DeckRepository.delete], which needs a manifest to walk. The refs are tracked as they land.
      */
     private suspend fun prepareContent(
         draft: ImportDraft,
@@ -337,12 +335,11 @@ class PublishDeckViewModel(
     /**
      * Stop a publish in flight and sweep whatever reached the homeserver.
      *
-     * Offerable at all because of #49's marker manifest: it is written before the first chunk, so
-     * an interrupted publish leaves a deck that is reachable and deletable rather than orphaned
-     * chunks. But a deck the user just took back has no business staying in their library — it was
-     * never announced and never appeared there — so it is deleted rather than left as an
-     * `incomplete` husk. If the sweep itself fails (offline being a likely reason to cancel a
-     * stalled upload) the husk stays, which is precisely the case the marker exists for.
+     * Offerable at all because of #49's marker manifest, written before the first chunk, so an
+     * interrupted publish leaves a deck that is reachable and deletable. But a deck the user just took
+     * back has no business staying in their library, so it is deleted rather than left as an
+     * `incomplete` husk. If the sweep itself fails — offline being a likely reason to cancel a stalled
+     * upload — the husk stays, which is the case the marker exists for.
      */
     fun onCancelPublish() {
         val job = publishJob?.takeIf { it.isActive } ?: return
@@ -397,6 +394,25 @@ class PublishDeckViewModel(
         }
     }
 
+    /**
+     * The escape hatch beside a session failure: end the session and go sign in again.
+     *
+     * Explicit, never automatic — a `SessionUnreachable` publish failed without the homeserver ever
+     * answering, so ending a session that may still be good is the user's call. The draft survives:
+     * it lives in the import repository, not this screen (#165).
+     *
+     * The sign-out is best-effort: `signOut` refuses when it would destroy the only copy of an
+     * un-backed-up local key, and that refusal must stand — but it is no reason to withhold the
+     * sign-in screen, since signing in again *replaces* the session without clearing the old one.
+     */
+    fun onSignInAgainClick() {
+        viewModelScope.launch {
+            Log.d(TAG, "onSignInAgainClick: signing out to re-authenticate")
+            runSuspendCatching { identityRepository.signOut() }
+            _effects.emit(PublishDeckEffect.NavigateToOnboarding)
+        }
+    }
+
     fun onDonePublish() {
         val deckId = _state.value.publishedDeckId ?: return
         undoCountdownJob?.cancel()
@@ -417,12 +433,9 @@ class PublishDeckViewModel(
     }
 
     /**
-     * The undo window is over — by tapping Done or by letting it run out — so the deck is real and
-     * the user can be asked about announcing it (#39).
-     *
-     * Deliberately not asked *during* the window: a post about a deck that gets deleted a second
-     * later advertises nothing. Undo clears [publishedDeck], so the path that reaches here after an
-     * undo asks nothing and posts nothing.
+     * The undo window is over, so the deck is real and the user can be asked about announcing it (#39).
+     * Deliberately not asked *during* the window: a post about a deck deleted a second later advertises
+     * nothing. Undo clears [publishedDeck], so the path reaching here after an undo asks nothing.
      */
     private suspend fun settle(deckId: String) {
         importRepository.clear()
@@ -477,7 +490,6 @@ class PublishDeckViewModel(
 
     /**
      * Maps the kept triage rows to [Card]s, uploading any per-row images attached during triage.
-     *
      * Throws if an upload fails — see [resolveDraftImage]. Every ref that did land is appended to
      * [uploaded] first, so the caller can remove them.
      */
@@ -520,10 +532,9 @@ class PublishDeckViewModel(
     /**
      * Resolves a triage [DraftCardImage]: upload gallery bytes, wrap a web URL, else none.
      *
-     * **Throws on a failed upload rather than degrading to `null`.** It used to swallow it, which
-     * meant a full quota (or any other write failure) produced a deck that looked successfully
-     * published and was quietly missing the images the user had picked, with nothing said. A deck
-     * missing media the user chose is a failed publish (#91).
+     * **Throws on a failed upload rather than degrading to `null`.** Swallowing it meant a full quota
+     * produced a deck that looked successfully published and was quietly missing the images the user
+     * picked. A deck missing media the user chose is a failed publish (#91).
      */
     private suspend fun resolveDraftImage(
         image: DraftCardImage?,
@@ -537,8 +548,7 @@ class PublishDeckViewModel(
                 .getOrThrow()
                 .also { uploaded.add(it) }
 
-        image.url != null ->
-            MediaRef.Image(path = "", mime = "image/jpeg", sha256 = "", width = null, height = null, url = image.url)
+        image.url != null -> remoteImageRef(image.url)
 
         else -> null
     }
@@ -555,8 +565,7 @@ class PublishDeckViewModel(
                 .getOrThrow()
                 .also { uploaded.add(it) }
 
-        s.coverImageUrl != null ->
-            MediaRef.Image(path = "", mime = "image/jpeg", sha256 = "", width = null, height = null, url = s.coverImageUrl)
+        s.coverImageUrl != null -> remoteImageRef(s.coverImageUrl)
 
         else -> null
     }
@@ -564,10 +573,9 @@ class PublishDeckViewModel(
     /**
      * Remove the blobs an aborted publish already uploaded.
      *
-     * By hand rather than through `deckRepository.delete`, which walks the manifest to find what
-     * to sweep — and at this point there is no manifest, because media goes up before publish()
-     * writes the #49 marker. Best-effort: a leaked blob costs storage, and the reason the publish
-     * aborted is quite likely that storage is exactly what ran out.
+     * By hand rather than through `deckRepository.delete`, which walks the manifest — and there is
+     * none yet, because media goes up before publish() writes the #49 marker. Best-effort: the publish
+     * quite likely aborted because storage is what ran out.
      */
     private suspend fun sweepUploadedMedia(deckId: String, uploaded: List<MediaRef>) {
         for (ref in uploaded) {
@@ -644,10 +652,9 @@ data class PublishDeckUiState(
     /** Set once the undo window resolves, when the user has not opted out of being asked (#39). */
     val sharePrompt: DeckSharePrompt? = null,
     /**
-     * Off until asked for, because turning either on now obliges the author to say what language
-     * each side is in. Defaulting them on would put that choice in front of everyone importing a
-     * deck, and the old default only looked free because the features quietly used the author's
-     * own locale.
+     * Off until asked for, because turning either on obliges the author to say what language each side
+     * is in. Defaulting them on would put that choice in front of everyone importing a deck, and the
+     * old default only looked free because the features quietly used the author's own locale.
      */
     val listenEnabled: Boolean = false,
     val speakEnabled: Boolean = false,
@@ -683,29 +690,38 @@ data class PublishDeckUiState(
  * What went wrong on the publish screen, in terms the UI can speak about.
  *
  * The three failing steps are kept apart rather than folded into one [ErrorReason], because the
- * consequence differs and the copy has to say which: a failed publish leaves nothing, a failed
- * cancel leaves the partial deck on the homeserver, and a failed undo leaves the deck published.
+ * consequence differs and the copy has to say which: a failed publish leaves nothing, a failed cancel
+ * leaves the partial deck on the homeserver, and a failed undo leaves the deck published.
  *
- * Replaces a raw `err.message`. That put the FFI's diagnostic text
- * (`HTTP transport error: error sending request for url (https://_pubky.rc3om…)`) straight into
- * the UI, which is the thing [ErrorReason] exists to stop.
+ * Replaces a raw `err.message`, which put the FFI's diagnostic text straight into the UI.
  */
 sealed interface PublishError {
+    /**
+     * The classified cause, for a screen deciding what to offer beside the message. Null only when
+     * the failure never involved the homeserver.
+     */
+    val reason: ErrorReason?
+
     /** The triage draft is gone, so there is nothing to publish. Not a homeserver failure. */
-    data object NoDraft : PublishError
+    data object NoDraft : PublishError {
+        override val reason: ErrorReason? = null
+    }
 
     /** The publish itself failed. Nothing was kept; the user can retry over it. */
-    data class Publish(val reason: ErrorReason) : PublishError
+    data class Publish(override val reason: ErrorReason) : PublishError
 
     /** The sweep after a cancel failed, so the partial deck is still on the homeserver. */
-    data class Cancel(val reason: ErrorReason) : PublishError
+    data class Cancel(override val reason: ErrorReason) : PublishError
 
     /** The undo failed, so the deck is still published. */
-    data class Undo(val reason: ErrorReason) : PublishError
+    data class Undo(override val reason: ErrorReason) : PublishError
 }
 
 sealed interface PublishDeckEffect {
     data object NavigateBack : PublishDeckEffect
+
+    /** The user chose to sign in again from a session failure; the session is already cleared. */
+    data object NavigateToOnboarding : PublishDeckEffect
     data class Published(val deckId: String) : PublishDeckEffect
 
     /** The announcement post went out, or didn't. Cosmetic either way — the deck is published. */

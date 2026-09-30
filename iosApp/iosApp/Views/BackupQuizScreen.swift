@@ -101,6 +101,12 @@ struct BackupQuizScreen: View {
                 )
         }
         .buttonStyle(.plain)
+        // The fill says "chosen" to the eye; this says it to everything else. Without it VoiceOver
+        // read four identical buttons on the screen that gates account backup. No check mark here —
+        // the filled chip is unambiguous on its own, and Android needs its glyph only because its
+        // selected state had to stop relying on a warm outline that read as an error.
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityIdentifier("backup_quiz_\(index)_\(word)")
     }
 
     /// `Map<Int, String>` crosses as a dictionary keyed by boxed integers, so the key is matched

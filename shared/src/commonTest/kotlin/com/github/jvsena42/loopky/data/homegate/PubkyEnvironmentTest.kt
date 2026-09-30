@@ -15,6 +15,7 @@ class PubkyEnvironmentTest {
         // not a recoverable mistake.
         assertNotEquals(PubkyEnvironment.Staging.homegateBaseUrl, PubkyEnvironment.Production.homegateBaseUrl)
         assertNotEquals(PubkyEnvironment.Staging.defaultHomeserver, PubkyEnvironment.Production.defaultHomeserver)
+        assertNotEquals(PubkyEnvironment.Staging.nexusBaseUrl, PubkyEnvironment.Production.nexusBaseUrl)
     }
 
     @Test
@@ -55,7 +56,53 @@ class PubkyEnvironmentTest {
         PubkyEnvironment.entries.forEach {
             assertTrue(it.homegateBaseUrl.startsWith("https://"), "${it.name} must not be plaintext")
             assertTrue(it.webBaseUrl.startsWith("https://"), "${it.name} web must not be plaintext")
+            assertTrue(it.nexusBaseUrl.startsWith("https://"), "${it.name} indexer must not be plaintext")
         }
+    }
+
+    @Test
+    fun theIndexerIsOnTheSameNetworkAsTheGateAndTheWebClient() {
+        // The whole reason the indexer moved into this enum (#205): it used to travel on its own
+        // BuildConfig wire, and a mismatched one does not error — Nexus answers normally, for the
+        // other network, so discovery, tags, followers, search and every avatar just come back
+        // empty. Hosts, not URLs, because only the host decides which deployment answers.
+        PubkyEnvironment.entries.forEach { environment ->
+            val family = environment.webBaseUrl.removePrefix(HTTPS)
+            assertTrue(
+                environment.nexusBaseUrl.removePrefix(HTTPS).endsWith(family),
+                "${environment.name}: indexer ${environment.nexusBaseUrl} is not under $family",
+            )
+            assertTrue(
+                environment.homegateBaseUrl.removePrefix(HTTPS).endsWith(family),
+                "${environment.name}: gate ${environment.homegateBaseUrl} is not under $family",
+            )
+        }
+        // `pubky.app` is a suffix of `staging.pubky.app`, so the check above passes for a
+        // production entry pointed at a staging host. This is what catches that direction.
+        listOf(
+            PubkyEnvironment.Production.nexusBaseUrl,
+            PubkyEnvironment.Production.homegateBaseUrl,
+            PubkyEnvironment.Production.webBaseUrl,
+        ).forEach { assertFalse(it.contains(STAGING_MARKER), "production must not read staging: $it") }
+        listOf(
+            PubkyEnvironment.Staging.nexusBaseUrl,
+            PubkyEnvironment.Staging.homegateBaseUrl,
+            PubkyEnvironment.Staging.webBaseUrl,
+        ).forEach { assertTrue(it.contains(STAGING_MARKER), "staging must not read production: $it") }
+    }
+
+    @Test
+    fun theIndexerIsTheOneMatchingTheBuildsNetwork() {
+        // The literals `androidApp/build.gradle.kts` and `iOSApp.swift` used to carry on a second
+        // wire, now reached through the environment name alone.
+        assertEquals(
+            "https://nexus.staging.pubky.app",
+            PubkyEnvironment.fromNameOrProduction("Staging").nexusBaseUrl,
+        )
+        assertEquals(
+            "https://nexus.pubky.app",
+            PubkyEnvironment.fromNameOrProduction("Production").nexusBaseUrl,
+        )
     }
 
     @Test
@@ -84,7 +131,7 @@ class PubkyEnvironmentTest {
 
     @Test
     fun theBuildConfigNameDecidesWhichPubkyAppTheUserOpens() {
-        // Closes the loop from the build type to the browser: `composeApp/build.gradle.kts` writes
+        // Closes the loop from the build type to the browser: `androidApp/build.gradle.kts` writes
         // these two literals into `BuildConfig.PUBKY_ENV` (debug -> Staging, release ->
         // Production), `LoopkyApp` resolves them through `fromNameOrProduction`, and this is the
         // URL the profile screens then hand to the browser. If the gradle literals move, this is
@@ -106,7 +153,14 @@ class PubkyEnvironmentTest {
         // side produces `//profile/…`, which is a different path.
         PubkyEnvironment.entries.forEach { environment ->
             val url = environment.profileUrl("somepubky")
-            assertFalse(url.removePrefix("https://").contains("//"), "${environment.name}: $url")
+            assertFalse(url.removePrefix(HTTPS).contains("//"), "${environment.name}: $url")
         }
+    }
+
+    private companion object {
+        const val HTTPS = "https://"
+
+        /** What every staging host carries and no production host may. */
+        const val STAGING_MARKER = "staging."
     }
 }

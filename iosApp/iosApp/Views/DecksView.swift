@@ -167,7 +167,7 @@ struct DecksView: View {
             // tiles. After the background, so the cream still reaches both edges.
             .contentPane(PaneWidth.wide)
         }
-        .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+        .loopkyScreenBackground()
     }
 
     /// A plain field rather than `.searchable`: the library is a scrolling column inside a tab,

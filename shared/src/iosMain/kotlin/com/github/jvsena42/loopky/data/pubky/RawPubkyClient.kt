@@ -8,7 +8,7 @@ package com.github.jvsena42.loopky.data.pubky
  * functions do not survive the ObjC bridge cleanly).
  *
  * [IosPubkyClientAdapter] converts this into the shared [PubkyClient] contract on the Kotlin
- * side, mirroring what `AndroidPubkyClient` does over the generated Kotlin bindings.
+ * side, mirroring what `UniffiPubkyClient` does over the generated Kotlin bindings.
  *
  * Binary payloads cross this boundary Base64-encoded ([putBytesBase64]) and are decoded to
  * raw bytes by the Swift side before hitting the FFI, so blobs still land raw on the

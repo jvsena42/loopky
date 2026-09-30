@@ -1,0 +1,22 @@
+# Build context for cli/Dockerfile. Everything the Gradle build does not read, because the context
+# is uploaded to the daemon before anything runs and this repo is ~3 GB with its build directories.
+.git
+.gradle
+**/build
+**/.idea
+**/*.apk
+**/*.aab
+
+# iOS is a different toolchain and its checked-in xcframework alone is 300 MB.
+iosApp
+
+# Not read by any Gradle task.
+appstore
+screenshots
+journeys
+docs
+*.md
+!cli/README.md
+
+# A developer's Android SDK path, which is wrong inside the image and absent from CI.
+local.properties

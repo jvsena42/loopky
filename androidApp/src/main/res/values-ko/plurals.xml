@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Korean has only the CLDR `other` category, so each set carries a single form. Counts use
+         a counter word (장 for cards, 개 for other items) that reads naturally with any number. -->
+    <plurals name="duration_minutes">
+        <item quantity="other">%1$d분</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="other">%1$d시간</item>
+    </plurals>
+    <plurals name="duration_days">
+        <item quantity="other">%1$d일</item>
+    </plurals>
+    <plurals name="card_count">
+        <item quantity="other">카드 %1$d장</item>
+    </plurals>
+    <plurals name="cards_ready">
+        <item quantity="other">카드 %1$d장 준비 완료</item>
+    </plurals>
+    <plurals name="cards_discarded">
+        <item quantity="other">검토에서 %1$d장 버림</item>
+    </plurals>
+    <plurals name="cards_published">
+        <item quantity="other">카드 %1$d장이 공개되었어요.</item>
+    </plurals>
+    <plurals name="study_goal_reached_count">
+        <item quantity="other">오늘 새 카드 %1$d장</item>
+    </plurals>
+    <plurals name="cards_reviewed">
+        <item quantity="other">카드 %1$d장을 복습했어요.</item>
+    </plurals>
+    <plurals name="cards_incomplete">
+        <item quantity="other">%1$d장 미완성</item>
+    </plurals>
+    <plurals name="public_decks_count">
+        <item quantity="other">공개 덱 · %1$d</item>
+    </plurals>
+    <plurals name="profile_decks_count">
+        <item quantity="other">모든 덱 · %1$d</item>
+    </plurals>
+    <plurals name="bulk_cards_parsed">
+        <item quantity="other">카드 %1$d장 분석됨</item>
+    </plurals>
+    <plurals name="bulk_import_cards">
+        <item quantity="other">카드 %1$d장 가져오기</item>
+    </plurals>
+    <plurals name="bulk_duplicates">
+        <item quantity="other">중복 %1$d개 병합됨</item>
+    </plurals>
+    <plurals name="bulk_truncated">
+        <item quantity="other">한도를 넘은 %1$d개 행은 가져오지 않았어요</item>
+    </plurals>
+    <plurals name="bulk_dropped_notes">
+        <item quantity="other">노트 %1$d개에 사용할 앞면과 뒷면이 없었어요</item>
+    </plurals>
+    <plurals name="bulk_images_skipped">
+        <item quantity="other">한도를 넘은 사진 %1$d장은 가져오지 않았어요</item>
+    </plurals>
+    <plurals name="deck_detail_clones">
+        <item quantity="other">사본 %1$d개</item>
+    </plurals>
+    <plurals name="home_deck_due_cards">
+        <item quantity="other">복습 %1$d장 · 카드 %2$d장</item>
+    </plurals>
+    <plurals name="home_deck_new_cards">
+        <item quantity="other">새 카드 %1$d장 · 카드 %2$d장</item>
+    </plurals>
+    <plurals name="deck_detail_clone_dialog_message">
+        <item quantity="other">카드 %1$d장을 모두 편집할 수 있는 내 사본이 생겨요. 작성자의 업데이트는 받지 않고, 진행 상황은 처음부터 시작해요.</item>
+    </plurals>
+    <plurals name="publish_progress_count">
+        <item quantity="other">카드 %2$d장 중 %1$d장 발행하는 중…</item>
+    </plurals>
+    <plurals name="cards_tried">
+        <item quantity="other">카드 %1$d장을 체험했어요.</item>
+    </plurals>
+</resources>

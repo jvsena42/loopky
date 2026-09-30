@@ -1,0 +1,26 @@
+<journey name="Create a deck from the editor — the announce prompt has to be answered">
+  <description>
+    The first-deck path, which no other journey covered and which is why #193's sibling bug lived
+    on iOS: the "Create a deck" entry exists only in the *empty* library state, so an account that
+    already owns a deck cannot reach it at all.
+
+    The trap is the announce prompt. `shareOnPubky` defaults on, so a save that *creates* a deck
+    parks on "Share this on Pubky?" and withholds the save-success signal until it is answered — a
+    screen that never renders the prompt looks like Save did nothing while the deck is already
+    written on the homeserver, and tapping Save again writes a second one.
+
+    Requires a signed-in account with **no decks**. Answer the prompt with "Not now" so the run
+    posts nothing; "Don't ask again" would turn announcing off for every later journey.
+  </description>
+  <actions>
+    <action>Launch the Loopky app signed in to an account that owns no decks, and tap the element with resource-id "tab_decks"</action>
+    <action>Verify the empty library offers a create action, and tap it</action>
+    <action>Verify the deck editor opens with an empty title and a Save control</action>
+    <action>Type "Journey 24 deck" into the title field and tap Save</action>
+    <action>Verify a "Share this on Pubky?" prompt appears offering Share, "Don't ask again" and "Not now" — all three visible (regression: on iOS the prompt was never rendered and the editor simply stayed put)</action>
+    <action>Tap "Not now"</action>
+    <action>Verify the editor closes and the new deck's detail screen is shown (regression: the editor stayed on screen with the deck already saved)</action>
+    <action>Go back to the Decks tab and verify "Journey 24 deck" appears exactly ONCE (a second tap on Save while stuck used to create a duplicate)</action>
+    <action>Delete "Journey 24 deck" so the account is empty again for the next run</action>
+  </actions>
+</journey>

@@ -1,15 +1,18 @@
 package com.github.jvsena42.loopky.presentation.profile
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.SrsGrade
+import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
 import com.github.jvsena42.loopky.testing.FakeDiscoveryRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
 import com.github.jvsena42.loopky.testing.FakeSrsRepository
 import com.github.jvsena42.loopky.testing.TEST_PUBKY
+import com.github.jvsena42.loopky.testing.fakeSession
 import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testDeck
 import kotlinx.coroutines.CompletableDeferred
@@ -37,6 +40,7 @@ class ProfileViewModelTest {
     private val decks = FakeDeckRepository()
     private val srs = FakeSrsRepository()
     private val discovery = FakeDiscoveryRepository()
+    private val preferences = FakeAppPreferences()
     private val mainDispatcher = StandardTestDispatcher()
 
     @BeforeTest
@@ -51,15 +55,38 @@ class ProfileViewModelTest {
 
     private fun viewModel(
         environment: PubkyEnvironment = PubkyEnvironment.Production,
+        prefs: FakeAppPreferences = preferences,
     ) = ProfileViewModel(
         identityRepository = identity,
         deckRepository = decks,
         srsRepository = srs,
         discoveryRepository = discovery,
+        appPreferences = prefs,
         pubkyEnvironment = environment,
     )
 
     private val friend = PubkyIdentity("friendpk", "Grace Hopper", null, null)
+
+    /**
+     * Followed decks are studiable (#33) and land review state on your own homeserver. Handing
+     * `countsToday` the owned half alone made this screen and Home report two different "due"
+     * totals to the same user, with nothing saying so.
+     */
+    @Test
+    fun theDueCountCoversFollowedDecksAsWellAsOwnedOnes() = runTest {
+        decks.decks["mine"] = testDeck(id = "mine", cardCount = 1)
+        decks.followedDecks["theirs"] = testDeck(id = "theirs", authorPubky = "friendpk", cardCount = 1)
+        srs.due = listOf(testCard("c1", deckId = "mine"), testCard("c2", deckId = "theirs"))
+        srs.seedDue("mine", "c1")
+        srs.seedDue("theirs", "c2")
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        assertEquals(expected = 2, actual = vm.state.value.dueCount)
+        // The deck and card counters stay owned-only: those say what you have written.
+        assertEquals(expected = 1, actual = vm.state.value.deckCount)
+    }
 
     @Test
     fun sharingHandsOutAnAddressRatherThanABareKey() = runTest {
@@ -74,7 +101,7 @@ class ProfileViewModelTest {
         job.cancel()
 
         val shared = effects.filterIsInstance<ProfileEffect.ShareProfile>().single()
-        assertEquals("pubky://$TEST_PUBKY", shared.uri)
+        assertEquals("https://loopky.app/profile/?pubky=$TEST_PUBKY", shared.uri)
         // Named, so a recipient knows whose profile they are about to open.
         assertEquals("Ada", shared.identity.displayName)
     }
@@ -158,6 +185,84 @@ class ProfileViewModelTest {
         assertFalse(vm.state.value.isLoading)
         assertEquals(1, vm.state.value.deckCount)
         assertNull(vm.state.value.followingCount)
+    }
+
+    @Test
+    fun theProfileIsOnScreenFromCacheWhileTheLoadRuns() = runTest {
+        // The header used to sit behind a full-screen spinner for as long as a profile GET plus a
+        // deck listing took, on every visit, over a name that had not changed since last launch.
+        decks.cached = CachedDecks(owned = listOf(testDeck(id = "d1", cardCount = 12)), followed = emptyList())
+        decks.listOwnedGate = CompletableDeferred()
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val painted = vm.state.value
+        assertFalse(painted.showLoadingScreen)
+        assertEquals("Tester", painted.identity?.displayName)
+        assertEquals(1, painted.deckCount)
+        assertEquals(12, painted.cardCount)
+        assertTrue(painted.libraryCountsKnown)
+        // Review state is not cached across processes, so the due total is a dash rather than a
+        // "0" that turns into a real number a round trip later.
+        assertFalse(painted.dueCountKnown)
+
+        decks.listOwnedGate?.complete(Unit)
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.dueCountKnown)
+        assertFalse(vm.state.value.isLoading)
+    }
+
+    @Test
+    fun aColdCacheShowsTheHeaderWithDashesRatherThanCountsItIsGuessing() = runTest {
+        decks.cached = null
+        decks.listOwnedGate = CompletableDeferred()
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val painted = vm.state.value
+        assertFalse(painted.showLoadingScreen, "the session already names the account")
+        assertFalse(painted.libraryCountsKnown)
+        assertFalse(painted.dueCountKnown)
+    }
+
+    @Test
+    fun aFailedListingKeepsTheCachedCountsRatherThanReportingAnEmptyLibrary() = runTest {
+        // Reporting the failure as an empty library turned the counters this screen had just
+        // painted from cache into three zeros — which reads as "my decks are gone".
+        decks.cached = CachedDecks(owned = listOf(testDeck(id = "d1", cardCount = 12)), followed = emptyList())
+        decks.listOwnedError = IllegalStateException("offline")
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        assertEquals(1, vm.state.value.deckCount)
+        assertEquals(12, vm.state.value.cardCount)
+        assertTrue(vm.state.value.libraryCountsKnown)
+        assertFalse(vm.state.value.dueCountKnown, "nothing answered for the due half")
+    }
+
+    /**
+     * The profile record, the owned listing and the followed listing are three independent reads;
+     * running them one after another made this screen cost their sum.
+     */
+    @Test
+    fun theProfileAndBothDeckListingsAreFetchedTogether() = runTest {
+        decks.listOwnedGate = CompletableDeferred()
+        identity.profiles[TEST_PUBKY] = PubkyIdentity(TEST_PUBKY, "Ada", null, null)
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        // The owned listing is still held open, so anything that ran did so beside it.
+        assertEquals(listOf(TEST_PUBKY), identity.fetchedProfiles)
+        assertEquals(1, decks.listFollowedCount)
+
+        decks.listOwnedGate?.complete(Unit)
+        advanceUntilIdle()
+        assertEquals("Ada", vm.state.value.identity?.displayName)
     }
 
     @Test
@@ -251,5 +356,125 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.state.value.needsBackup, "the card outlived the backup that answered it")
+    }
+
+    @Test
+    fun aProfileWithNoNameIsInvitedToAddOne() = runTest {
+        identity.session = fakeSession(displayName = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.showNameNudge)
+    }
+
+    @Test
+    fun aWhitespaceNameCountsAsNoNameAtAll() = runTest {
+        identity.session = fakeSession(displayName = "   ")
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.showNameNudge, "a name of spaces is a pubky on every screen")
+    }
+
+    @Test
+    fun aNamedProfileIsNeverAsked() = runTest {
+        identity.profiles[TEST_PUBKY] = PubkyIdentity(TEST_PUBKY, "Ada", null, null)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.showNameNudge)
+    }
+
+    @Test
+    fun dismissingTheInvitationOutlivesTheScreen() = runTest {
+        identity.session = fakeSession(displayName = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertTrue(vm.state.value.showNameNudge)
+
+        vm.onDismissNameNudge()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.showNameNudge)
+        // Persisted, not just cleared in state: this tab is the one visited most, and a refusal
+        // that lasted until the next launch would be a nag nobody can finish refusing.
+        assertTrue(preferences.nameNudgeDismissedValue)
+    }
+
+    @Test
+    fun aStoredDismissalIsHonouredOnTheNextVisit() = runTest {
+        identity.session = fakeSession(displayName = null)
+        val vm = viewModel(prefs = FakeAppPreferences(nameNudgeDismissed = true))
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.showNameNudge)
+    }
+
+    @Test
+    fun nothingIsAskedWhileTheProfileIsStillLoading() = runTest {
+        identity.session = fakeSession(displayName = null)
+        val vm = viewModel()
+
+        // Before the load resolves there is no identity to judge, and a prompt that flashes on
+        // every visit to this tab is worse than one that arrives a beat late.
+        assertFalse(vm.state.value.showNameNudge)
+        assertFalse(vm.state.value.showAvatarNudge)
+    }
+
+    @Test
+    fun aNamedProfileWithNoPictureIsInvitedToAddOne() = runTest {
+        identity.profiles[TEST_PUBKY] = PubkyIdentity(TEST_PUBKY, "Ada", null, null)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.showAvatarNudge)
+    }
+
+    @Test
+    fun theTwoInvitationsNeverStack() = runTest {
+        identity.session = fakeSession(displayName = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        // A hero followed by two cards asking for two different things is a wall of chores; the
+        // photo waits for the visit after the name is in.
+        assertTrue(vm.state.value.showNameNudge)
+        assertFalse(vm.state.value.showAvatarNudge)
+    }
+
+    @Test
+    fun aProfileWithAPictureIsNeverAsked() = runTest {
+        identity.profiles[TEST_PUBKY] =
+            PubkyIdentity(TEST_PUBKY, "Ada", "pubky://$TEST_PUBKY/pub/pubky.app/files/f1", null)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.showAvatarNudge)
+    }
+
+    @Test
+    fun dismissingThePhotoInvitationOutlivesTheScreen() = runTest {
+        identity.profiles[TEST_PUBKY] = PubkyIdentity(TEST_PUBKY, "Ada", null, null)
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertTrue(vm.state.value.showAvatarNudge)
+
+        vm.onDismissAvatarNudge()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.showAvatarNudge)
+        assertTrue(preferences.avatarNudgeDismissedValue)
+    }
+
+    @Test
+    fun theTwoDismissalsAreIndependent() = runTest {
+        identity.session = fakeSession(displayName = null)
+        val vm = viewModel(prefs = FakeAppPreferences(nameNudgeDismissed = true))
+        advanceUntilIdle()
+
+        // Refusing to be named must not also refuse the photo — they are two different prompts,
+        // and the name card is the only reason the photo one was ever withheld.
+        assertFalse(vm.state.value.showNameNudge)
+        assertTrue(vm.state.value.showAvatarNudge)
     }
 }

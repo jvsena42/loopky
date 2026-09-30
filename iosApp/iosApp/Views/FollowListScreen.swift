@@ -51,7 +51,7 @@ struct FollowListScreen: View {
         // A column of names. Unbounded on an iPad each row puts its avatar at one edge and its
         // Follow button at the other, with a hand's width of empty card between them.
         .contentPane()
-        .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+        .loopkyScreenBackground()
         .navigationTitle(Text(isFollowing ? "follow_list_following_title" : "follow_list_followers_title"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { attach() }

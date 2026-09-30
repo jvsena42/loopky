@@ -75,7 +75,10 @@ struct MainView: View {
                     onCreateDeck: onCreateDeckTap,
                     onBrowseExamples: onImportTap,
                     onStartStudy: onStartStudy,
-                    onSignedOut: onSignedOut
+                    onSignedOut: onSignedOut,
+                    // The library is a tab, not a push: "See all" over today's decks selects it,
+                    // the way Android's does.
+                    onSeeAllDecks: { selectedTab = .decks }
                 )
             }
 

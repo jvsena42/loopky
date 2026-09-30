@@ -51,13 +51,31 @@ struct PasteScreen: View {
             cardCount: Int(state.cardCount),
             incompleteCardCount: Int(state.incompleteCardCount),
             separatorLabel: KotlinInterop.separatorLabel(state.detectedSeparator),
+            hasDetectedSeparator: state.detectedSeparator != nil,
             activeSeparator: state.separatorOverride ?? state.detectedSeparator,
             previewCards: state.previewCards.map { PastePreviewCard(front: $0.front, back: $0.back) },
             hasPreviewableCard: state.hasPreviewableCard,
             noPatternDetected: state.noPatternDetected,
             hasIncompleteCards: state.hasIncompleteCards,
-            errorMessage: state.error
+            errorMessage: state.error,
+            validationMessage: Self.validationMessage(state.validation)
         )
+    }
+
+    /// Why Next could not advance, in words.
+    ///
+    /// `PasteValidation` is a Kotlin enum, so it crosses as a class whose entries are lowercased
+    /// class properties and a `switch` over it can never be exhaustive — hence the `if` ladder
+    /// with a nil fallback rather than a `default:` that would silently swallow a new case.
+    private static func validationMessage(_ validation: PasteValidation?) -> String? {
+        guard let validation else { return nil }
+        if validation == PasteValidation.emptyinput {
+            return NSLocalizedString("paste_validation_empty", comment: "")
+        }
+        if validation == PasteValidation.nocardsparsed {
+            return NSLocalizedString("paste_validation_no_cards", comment: "")
+        }
+        return nil
     }
 
     private func attach() {
@@ -89,15 +107,16 @@ struct PasteViewState {
     var cardCount: Int = 0
     var incompleteCardCount: Int = 0
     var separatorLabel: String = ""
+    /// Whether the parser reached a verdict at all — the chip is meaningless before it did.
+    var hasDetectedSeparator: Bool = false
     var activeSeparator: Separator?
     var previewCards: [PastePreviewCard] = []
     var hasPreviewableCard: Bool = false
     var noPatternDetected: Bool = false
     var hasIncompleteCards: Bool = false
     var errorMessage: String?
-
-    /// Next is live only once the parser found a card with both sides — the same gate as Android.
-    var canAdvance: Bool { isParsed && hasPreviewableCard }
+    /// Set once Next has been tapped with nothing importable, so the CTA can explain itself.
+    var validationMessage: String?
 }
 
 struct PastePreviewCard: Identifiable {

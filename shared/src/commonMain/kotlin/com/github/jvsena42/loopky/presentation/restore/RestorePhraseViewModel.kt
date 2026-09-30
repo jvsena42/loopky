@@ -22,24 +22,15 @@ import kotlinx.coroutines.launch
 /**
  * Sign in with a recovery phrase — the door for someone who has a pubky but no working Pubky Ring.
  *
- * The whole design of this screen is about **not lying to an anxious user**. Someone here has
- * typed twelve words they may have written down months ago, and the three ways this can fail are
- * genuinely different:
+ * The design of this screen is about **not lying to an anxious user**. The three ways it can fail
+ * are genuinely different: the words are not BIP-39 (a real mistake, say so); the words are valid
+ * but belong to no account (almost always a checksum-passing typo, so the phrase is **not**
+ * invalid — show the pubky they derived, which they can often tell at a glance is not theirs); or
+ * the DHT could not be reached, which is not a verdict on anything.
  *
- * - The words are not BIP-39. That is a real mistake and saying so is right.
- * - The words are valid but belong to no account — almost always a checksum-passing typo (one
- *   wrong word, or two transposed). The phrase is **not** invalid, and calling it invalid sends
- *   the user hunting for a problem that is not there. We show the pubky they derived instead,
- *   because they can often tell at a glance that it is not theirs.
- * - We could not reach the DHT to ask. That is not a verdict on anything and must never render as
- *   one.
- *
- * Two rules that are load-bearing rather than stylistic:
- *
- * 1. **The lookup runs on submit, never while typing.** A DHT probe per completed phrase is an
- *    enumeration oracle for "does this pubky exist", and it costs a round trip each time.
- * 2. **Nothing here holds the words after they are used.** They live in [RestorePhraseUiState]
- *    only while the field is on screen, and [onLeave] clears them.
+ * Two load-bearing rules: **the lookup runs on submit, never while typing** — a DHT probe per
+ * completed phrase is an enumeration oracle for "does this pubky exist" — and **nothing holds the
+ * words after they are used**; [onLeave] clears them.
  */
 class RestorePhraseViewModel(
     private val identityRepository: IdentityRepository,
@@ -125,15 +116,15 @@ class RestorePhraseViewModel(
         val outcome = error.toRestoreOutcome(pubky)
         _state.update { it.copy(isChecking = false, outcome = outcome) }
         if (outcome is RestoreOutcome.NoAccount) {
-            // Held here too, not only on the pre-flight branch. This is the path the device
-            // actually takes for a pkarr record that outlived its account: the lookup answers
-            // *Registered* and the homeserver then 404s at signin. Storing only on the other
-            // branch left "Register this key" with nothing to register on the common case.
+            // Held here too, not only on the pre-flight branch: this is the path the device
+            // actually takes for a pkarr record that outlived its account — the lookup answers
+            // *Registered* and the homeserver then 404s at signin.
+            //
             // The phrase captured at submit, **not** `_state.value.phrase`. The field stays
-            // editable while the lookup and sign-in are in flight, so a user still fixing a typo
-            // would have had a key stored for the edited words while the next screen showed the
-            // pubky for the submitted ones — and "Register this key" would then spend the token on
-            // a pubky they never confirmed.
+            // editable while the lookup is in flight, so a user still fixing a typo would have had
+            // a key stored for the edited words while the next screen showed the pubky for the
+            // submitted ones — and "Register this key" would spend the token on a pubky they never
+            // confirmed.
             if (identityRepository.holdKeyForRegistration(KeySource.Phrase(phrase)).isFailure) {
                 _state.update {
                     it.copy(isChecking = false, outcome = RestoreOutcome.SignInFailed(ErrorReason.Unknown))
@@ -145,28 +136,19 @@ class RestorePhraseViewModel(
     }
 
     /**
-     * Drop the phrase when the user leaves the flow for good.
+     * Drop the phrase when the user leaves the flow for good. Not housekeeping: a `StateFlow`
+     * outlives the composable that reads it, so without this the twelve words sit in memory
+     * reachable from a heap dump.
      *
-     * Not housekeeping: a `StateFlow` outlives the composable that reads it, so without this the
-     * twelve words sit in memory for as long as the ViewModel does, reachable from a heap dump
-     * long after the user has left the screen.
+     * **Deliberately not called when routing to the unregistered-key screen**, whose primary action
+     * is "Check my recovery phrase again" — wiping the field first drops the user on a blank form.
      *
-     * **Deliberately not called when routing to the unregistered-key screen.** That screen's
-     * primary action is "Check my recovery phrase again" — the likeliest fix for landing there is
-     * one mistyped word — and wiping the field first drops the user on a blank form to retype all
-     * twelve.
-     *
-     * **Be precise about the cost, because it is not one hop.** The unregistered screen can also
-     * push *forward* into verification, and this ViewModel lives as long as its nav back-stack
-     * entry — so on that path the words stay in memory through the whole SMS/Lightning flow until
-     * `popUpTo(ONBOARDING)` destroys the entry. An `onCleared` override was tried and removed: it
-     * fires at exactly that moment, by which point the state is already unreachable, so it bought
-     * nothing but the appearance of a bound.
-     *
-     * The trade being made is a filled field on the one action the next screen recommends, against
-     * that lifetime on a path that ends in registering this same key anyway. If the lifetime is
-     * judged too long, the fix is to clear on leaving *forward* — which needs the unregistered
-     * screen to say which way it went — not another hook at the same moment as the last one.
+     * The cost is not one hop: that screen can push *forward* into verification, and this ViewModel
+     * lives as long as its nav back-stack entry, so the words stay in memory until
+     * `popUpTo(ONBOARDING)`. An `onCleared` override was tried and removed — it fires at exactly
+     * that moment, by which point the state is already unreachable. If the lifetime is judged too
+     * long, the fix is to clear on leaving *forward*, which needs the unregistered screen to say
+     * which way it went.
      */
     fun onLeave() {
         submitJob?.cancel()
@@ -214,11 +196,9 @@ sealed interface RestoreOutcome {
     data class SignInFailed(val reason: ErrorReason) : RestoreOutcome
 
     /**
-     * A recovery file would not decrypt: wrong passphrase, or the wrong file.
-     *
-     * Its own outcome because decryption failing says **nothing** about whether the account
-     * exists. Reporting it as "no account" would send someone hunting for a lost identity when
-     * all they did was mistype.
+     * A recovery file would not decrypt: wrong passphrase, or the wrong file. Its own outcome
+     * because decryption failing says **nothing** about whether the account exists — reporting it
+     * as "no account" would send someone hunting for a lost identity when all they did was mistype.
      */
     data object WrongPassphrase : RestoreOutcome
 
@@ -229,17 +209,13 @@ sealed interface RestoreOutcome {
 /**
  * Classify a sign-in failure on a restore path.
  *
- * **A 404 here means "no account for this pubky", not "not found".** The homeserver answers 404 at
- * signin for a pubky it has never registered, and nothing else on this path is fetching a record —
- * no deck, no profile — so a not-found is always the account. Without this remap the generic
- * classifier renders `ErrorReason.NotFound`, whose copy is *"This deck no longer exists"*: deck
- * copy, on a recovery-phrase screen, for someone who has no account. That is the exact confusion
- * `NoHomeserverAccount` was added to end, and `OnboardingViewModel` carries the same remap for the
- * same reason.
+ * **A 404 here means "no account for this pubky", not "not found".** Nothing else on this path
+ * fetches a record, so a not-found is always the account. Without the remap the generic classifier
+ * renders `ErrorReason.NotFound`, whose copy is *"This deck no longer exists"* — deck copy on a
+ * recovery-phrase screen. `OnboardingViewModel` carries the same remap.
  *
- * It is also reachable in a state the pre-flight cannot rule out: a pkarr homeserver record can
- * outlive the account it points at, so `getHomeserver` says *Registered* and the homeserver still
- * 404s. Seen on staging.
+ * Reachable in a state the pre-flight cannot rule out: a pkarr homeserver record can outlive the
+ * account it points at, so `getHomeserver` says *Registered* and the homeserver still 404s.
  */
 internal fun Throwable.toRestoreOutcome(pubky: String): RestoreOutcome =
     when (val reason = toErrorReason()) {

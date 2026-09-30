@@ -57,7 +57,7 @@ struct ImagePickerSheet: View {
                 }
                 .padding(20)
             }
-            .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+            .loopkyScreenBackground()
             .navigationTitle(Text(title))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

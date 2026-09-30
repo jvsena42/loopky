@@ -1,0 +1,59 @@
+# Agent-sandbox network shapes for exercising the CLI. Driven by run.sh; see README.md.
+name: loopky-sandbox-sim
+
+services:
+  allowlist-proxy:
+    image: ubuntu/squid:latest
+    profiles: [allowlist]
+    volumes:
+      - ./squid.conf:/etc/squid/squid.conf:ro
+      - ./allowlist.active.txt:/etc/squid/allowlist.txt:ro
+
+  authenticated-proxy:
+    image: ubuntu/squid:latest
+    profiles: [authenticated]
+    volumes:
+      - ./squid-auth.conf:/etc/squid/squid.conf:ro
+      - ./allowlist.active.txt:/etc/squid/allowlist.txt:ro
+      - ./htpasswd:/etc/squid/htpasswd:ro
+
+  codex-proxy:
+    image: mitmproxy/mitmproxy:latest
+    profiles: [codex]
+    command: mitmdump --listen-port 3128 -s /policy/codex_policy.py
+    environment:
+      CODEX_READ_ONLY: ${CODEX_READ_ONLY:-0}
+    volumes:
+      - ca:/home/mitmproxy/.mitmproxy
+      - ./codex_policy.py:/policy/codex_policy.py:ro
+      - ./allowlist.active.txt:/policy/allowlist.txt:ro
+
+  intercepting-proxy:
+    image: mitmproxy/mitmproxy:latest
+    profiles: [intercepting]
+    command: mitmdump --listen-port 3128
+    volumes:
+      - ca:/home/mitmproxy/.mitmproxy
+
+  client:
+    build: { context: ., dockerfile: Dockerfile.client }
+    cap_add: [NET_ADMIN]
+    environment:
+      PROXY_HOST: ${PROXY_HOST:-}
+      HTTPS_PROXY: ${SIM_PROXY_URL:-}
+      https_proxy: ${SIM_PROXY_URL:-}
+      EXTRA_CA: ${EXTRA_CA:-}
+      JVM_TRUSTS_PROXY_CA: ${JVM_TRUSTS_PROXY_CA:-0}
+      LOOPKY_CONFIG_HOME: /tmp/loopky
+      LOOPKY_NO_UPDATE_CHECK: "1"
+      LOOPKY_SESSION: ${LOOPKY_SESSION:-}
+      # With PUBKYCORE_DIR set, JNA loads that directory's libpubkycore ahead of the bundled one.
+      LOOPKY_OPTS: ${PUBKYCORE_DIR:+-Djna.library.path=/pubkycore}
+    volumes:
+      - ${PUBKYCORE_DIR:-./fixtures}:/pubkycore:ro
+      - ${LOOPKY_DIST:-../build/install/loopky}:/opt/loopky:ro
+      - ./fixtures:/fixtures:ro
+      - ca:/ca:ro
+
+volumes:
+  ca:

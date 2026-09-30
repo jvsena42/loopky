@@ -10,6 +10,7 @@ import com.github.jvsena42.loopky.domain.model.CardSide
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.FormError
 import com.github.jvsena42.loopky.domain.model.MediaRef
+import com.github.jvsena42.loopky.domain.model.remoteImageRef
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.epochMillis
 import com.github.jvsena42.loopky.util.generateId
@@ -95,9 +96,15 @@ class EditCardViewModel(
         hasAudio = card?.front?.audioRef != null || card?.back?.audioRef != null,
     )
 
-    /** A web (Unsplash) image was chosen for the card front — saved by URL. */
+    /**
+     * A web (Unsplash) image was chosen for the card front — saved by URL.
+     *
+     * A URL no client could render is dropped rather than stored: the sheet cannot normally offer
+     * one (its Done button waits on a preview that actually loaded), so this is the guard for
+     * every other way a string reaches here.
+     */
     fun onFrontImageWebSelected(url: String) {
-        val ref = MediaRef.Image(path = "", mime = "image/jpeg", sha256 = "", width = null, height = null, url = url)
+        val ref = remoteImageRef(url) ?: return
         _state.update { it.copy(frontImageRef = ref, frontPendingBytes = null, frontPendingMime = null, hasImage = true) }
     }
 
@@ -112,9 +119,9 @@ class EditCardViewModel(
         _state.update { it.copy(frontImageRef = null, frontPendingBytes = null, frontPendingMime = null) }
     }
 
-    /** A web (Unsplash) image was chosen for the card back — saved by URL. */
+    /** A web (Unsplash) image was chosen for the card back — saved by URL. See the front's note. */
     fun onBackImageWebSelected(url: String) {
-        val ref = MediaRef.Image(path = "", mime = "image/jpeg", sha256 = "", width = null, height = null, url = url)
+        val ref = remoteImageRef(url) ?: return
         _state.update { it.copy(backImageRef = ref, backPendingBytes = null, backPendingMime = null) }
     }
 

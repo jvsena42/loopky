@@ -1,0 +1,4 @@
+FROM eclipse-temurin:17-jre
+RUN apt-get update -qq && apt-get install -y -qq iptables >/dev/null && rm -rf /var/lib/apt/lists/*
+COPY lockdown.sh /usr/local/bin/lockdown
+ENTRYPOINT ["/usr/local/bin/lockdown"]

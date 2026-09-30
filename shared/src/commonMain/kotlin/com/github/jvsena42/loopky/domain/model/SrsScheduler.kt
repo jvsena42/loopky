@@ -4,22 +4,19 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Fixed-interval spaced-repetition scheduler. Pure functions over [SrsState] — no clock, no I/O;
- * the caller supplies `now` (see `com.github.jvsena42.loopky.util.epochMillis`). Business logic for
- * grading lives in `SrsRepositoryImpl`, which calls these.
+ * Fixed-interval spaced-repetition scheduler. Pure functions over [SrsState] — no clock, no I/O; the
+ * caller supplies `now`. Grading logic lives in `SrsRepositoryImpl`, which calls these.
  *
  * A grade schedules the card for `now + the days configured for that grade`, **every** review and
- * not only the first: Hard, Good and Easy each mean one number, the one the user set in
- * [StudySettings]. Again is the exception and is not configurable — it is `<10m`, a same-session
- * retry rather than a date.
+ * not only the first. Again is the exception and is not configurable: `<10m`, a same-session retry
+ * rather than a date.
  *
- * This deliberately replaces SM-2's compounding growth (interval × ease). Under the old rule a
- * card graded Good at a 3-day setting came back in 8 days the second time, 20 the third, and the
- * settings screen printed numbers the buttons then disagreed with from the second review onwards.
- * The trade is real and worth stating: intervals no longer lengthen as a card is learned, so a
- * well-known card keeps coming back on its Easy interval instead of drifting out to months.
- * [SrsState.easeFactor] and [SrsState.repetitions] are still tracked — they record how a card has
- * gone, and growth cannot return without them — but nothing here reads them for an interval.
+ * This deliberately replaces SM-2's compounding growth (interval × ease), under which a card graded
+ * Good at a 3-day setting came back in 8 days, then 20, while the settings screen printed numbers
+ * the buttons disagreed with. The trade is real: intervals no longer lengthen as a card is learned,
+ * so a well-known card keeps coming back on its Easy interval instead of drifting out to months.
+ * [SrsState.easeFactor] and [SrsState.repetitions] are still tracked — growth cannot return without
+ * them — but nothing here reads them for an interval.
  */
 private const val MINUTE_MS = 60_000L
 private const val DAY_MS = 86_400_000L
@@ -37,11 +34,9 @@ private const val EASE_PENALTY_HARD = 0.15
 private const val EASE_BONUS_EASY = 0.15
 
 /**
- * A card that has never been graded.
- *
- * Deliberately *not* the same as [isDue]: nothing about an unseen card is late, and conflating the
- * two made a freshly imported 1669-card deck open on "1669 due" (#101 §7). New cards are still
- * studiable — they are simply counted, headlined and queued separately.
+ * A card that has never been graded. Deliberately *not* the same as [isDue]: nothing about an unseen
+ * card is late, and conflating the two made a freshly imported 1669-card deck open on "1669 due"
+ * (#101 §7). New cards are still studiable — simply counted, headlined and queued separately.
  */
 fun SrsState?.isNew(): Boolean = this == null
 
@@ -50,14 +45,13 @@ fun SrsState?.isDue(now: Long): Boolean = this != null && dueAt <= now
 
 /**
  * Compute the next [SrsState] after grading. Receiver is the card's current state, or `null` for a
- * card reviewed for the first time. [cardId] is required so a fresh state can be created.
+ * first review; [cardId] is required so a fresh state can be created.
  *
  * The due date is `now` plus the days [settings] gives that grade — the card's current interval is
- * not an input, so the number on the button is the number the card gets on its first review and on
- * its fiftieth. Two consequences worth knowing. Changing a setting is **not** retroactive: an
- * already-scheduled card keeps the date it was given and picks the new number up at its next
- * grade. And `Again` is a 10-minute retry that resets `repetitions` and zeroes `intervalDays`,
- * which is what makes a lapsed card count as unlearned again for mastery.
+ * not an input, so the number on the button is what the card gets on its first review and its
+ * fiftieth. Two consequences: changing a setting is **not** retroactive, and `Again` is a 10-minute
+ * retry that resets `repetitions` and zeroes `intervalDays`, which makes a lapsed card count as
+ * unlearned again for mastery.
  */
 fun SrsState?.review(
     cardId: String,
@@ -95,14 +89,12 @@ fun SrsState?.review(
 }
 
 /**
- * Short, human-readable interval each grade would produce, keyed by grade — used to label the
- * SRSRow buttons live per card (the design's "each shows the next interval").
+ * Short, human-readable interval each grade would produce, for labelling the grade buttons.
  *
- * [cap] ceilings every grade at that one, for the reverse half of a card being studied both ways:
- * the pair is scheduled from whichever direction went worse, so tapping Easy after a Hard on the
- * way out really does schedule the Hard interval. Grades above the cap therefore show the cap's
- * label, and two buttons reading the same is the honest outcome — a label promising more than its
- * button delivers would not be. Null, the default, leaves every grade speaking for itself.
+ * [cap] ceilings every grade, for the reverse half of a card studied both ways: the pair is
+ * scheduled from whichever direction went worse, so tapping Easy after a Hard really does schedule
+ * the Hard interval. Two buttons reading the same is the honest outcome — a label promising more
+ * than its button delivers would not be. Null leaves every grade speaking for itself.
  */
 fun SrsState?.previewIntervals(
     cardId: String,
@@ -120,14 +112,11 @@ fun SrsState?.previewIntervals(
  * How far [cardIds] have been carried toward maturity, `0f..1f`.
  *
  * Each card contributes its own share of [thresholdDays] rather than a yes/no, so the number moves
- * on day one. A binary count of mature cards was what left the only progress number in the app
- * frozen at 0% through exactly the window it had to work in (#101 §1), and partial credit still
- * means the same thing at 100%.
+ * on day one — a binary count of mature cards left the only progress number in the app frozen at 0%
+ * through exactly the window it had to work in (#101 §1). A card lapsed by `Again` has
+ * `intervalDays = 0` and contributes nothing.
  *
- * A card lapsed by `Again` has `intervalDays = 0` and contributes nothing, which is honest.
- *
- * Callers pass [thresholdDays] from [StudySettings.maturityThresholdDays]. Note that summing
- * fractions cannot be compared to `1f` for "fully mastered" — three mature cards land on
+ * Summing fractions cannot be compared to `1f` for "fully mastered" — three mature cards land on
  * 0.99999994. Use [isFullyMastered].
  */
 fun masteryShare(cardIds: List<String>, states: Map<String, SrsState>, thresholdDays: Int): Float {
@@ -143,11 +132,9 @@ fun isFullyMastered(cardIds: List<String>, states: Map<String, SrsState>, thresh
     cardIds.isNotEmpty() && cardIds.all { (states[it]?.intervalDays ?: 0) >= thresholdDays }
 
 /**
- * Always days, never weeks/months/years.
- *
- * The label's whole job is now to echo the setting, and the setting is entered in days: rounding
- * an Easy of 30 to `4w` made the button disagree with the number the user typed two screens away,
- * which is the bug this scheduler exists to remove — in a smaller form. It also used to round away
- * the number maturity is measured against (#101 §6), and that reason still stands.
+ * Always days, never weeks/months/years. The label's job is to echo the setting, and the setting is
+ * entered in days: rounding an Easy of 30 to `4w` made the button disagree with the number the user
+ * typed two screens away. It also used to round away the number maturity is measured against
+ * (#101 §6).
  */
 private fun formatInterval(days: Int): String = if (days <= 0) "<10m" else "${days}d"

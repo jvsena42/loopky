@@ -88,6 +88,7 @@ val sharedModule = module {
             studyProgress = get(),
             preferences = get(),
             unsplashKeyStore = get(),
+            deckCache = get(),
         )
     }
 
@@ -107,7 +108,7 @@ val sharedModule = module {
     single<SessionRevalidator> { SessionRevalidatorImpl(get(), get(), get()) }
 
     single<CardRepository> { CardRepositoryImpl(get(), get(), get()) }
-    single<DeckRepository> { DeckRepositoryImpl(get(), get(), get(), get(), get(), get(), get()) }
+    single<DeckRepository> { DeckRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get()) }
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ImportRepository> { ImportRepositoryImpl() }
     single<SignupRepository> {
@@ -164,8 +165,8 @@ val sharedModule = module {
             registerHeldKey = params.getOrNull() ?: false,
         )
     }
-    viewModel { BackupStartViewModel(keyBackup = get(), ringPresence = get()) }
-    viewModel { BackupPhraseViewModel(keyBackup = get()) }
+    viewModel { BackupStartViewModel(keyBackup = get(), ringPresence = get(), passwordManager = get()) }
+    viewModel { BackupPhraseViewModel(keyBackup = get(), passwordManager = get()) }
     viewModel { BackupQuizViewModel(keyBackup = get()) }
     viewModel { BackupFileViewModel(keyBackup = get()) }
     viewModel { BackupRingViewModel(keyBackup = get(), ringPresence = get()) }
@@ -250,6 +251,7 @@ val sharedModule = module {
             deckRepository = get(),
             srsRepository = get(),
             discoveryRepository = get(),
+            appPreferences = get(),
             pubkyEnvironment = get(),
         )
     }

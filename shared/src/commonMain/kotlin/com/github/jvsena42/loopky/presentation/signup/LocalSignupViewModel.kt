@@ -112,7 +112,7 @@ class LocalSignupViewModel(
                     _state.update {
                         it.copy(isWorking = false, error = null, pubky = account.pubky, isComplete = true)
                     }
-                    _effects.emit(LocalSignupEffect.NavigateBackup)
+                    _effects.emit(LocalSignupEffect.NavigateHome)
                 }
                 .onFailure { error ->
                     // Class name only. The repository below deliberately withholds the message
@@ -174,13 +174,14 @@ data class LocalSignupUiState(
  */
 sealed interface LocalSignupEffect {
     /**
-     * Straight to the backup step, not to home.
+     * Into the app, not into the backup flow.
      *
-     * This is the only moment in the app where a key exists that **nobody has a copy of** — not
-     * Pubky Ring, not a phrase on paper, nothing but this device's keystore. Backing up is still
-     * skippable from there, but it is not something to discover later in Settings.
+     * The account exists and nobody has a second copy of its key, but a wall between signing up
+     * and using the app is the wrong place to say so: backing up is offered by the Profile card
+     * above sign-out and by Settings, and the sign-out guard refuses to erase an un-backed-up key
+     * without an explicit choice.
      */
-    data object NavigateBackup : LocalSignupEffect
+    data object NavigateHome : LocalSignupEffect
 
     /** Back to the method picker, with the dead token dropped. */
     data object NavigateStartOver : LocalSignupEffect

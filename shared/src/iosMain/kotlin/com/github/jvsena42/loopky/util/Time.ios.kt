@@ -3,6 +3,8 @@ package com.github.jvsena42.loopky.util
 import platform.Foundation.NSCalendar
 import platform.Foundation.NSCalendarUnitDay
 import platform.Foundation.NSCalendarUnitEra
+import platform.Foundation.NSCalendarUnitHour
+import platform.Foundation.NSCalendarUnitMinute
 import platform.Foundation.NSDate
 import platform.Foundation.dateWithTimeIntervalSince1970
 import platform.Foundation.timeIntervalSince1970
@@ -26,3 +28,14 @@ internal actual fun localDayIndex(millis: Long): Int {
         forDate = date,
     ).toInt()
 }
+
+internal actual fun localMinuteOfDay(millis: Long): Int {
+    val date = NSDate.dateWithTimeIntervalSince1970(millis.toDouble() / MILLIS_PER_SECOND)
+    val parts = NSCalendar.currentCalendar.components(
+        NSCalendarUnitHour or NSCalendarUnitMinute,
+        fromDate = date,
+    )
+    return parts.hour.toInt() * MINUTES_PER_HOUR + parts.minute.toInt()
+}
+
+private const val MINUTES_PER_HOUR = 60

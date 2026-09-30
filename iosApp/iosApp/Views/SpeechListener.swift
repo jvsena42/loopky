@@ -17,12 +17,15 @@ final class SpeechListener {
 
     private init() {}
 
-    /// Why a listen could not start, so the screen can say which of them it was.
+    /// Why a listen produced no answer, so the sheet can say which of them it was rather than
+    /// closing on all of them alike. Mirrors the shared `SpeechError` the ViewModel takes.
     enum Failure {
         /// The user said no to the microphone or to speech recognition.
         case permission
-        /// iOS has no recogniser for the deck's declared language, or none at all.
+        /// iOS has no recognition service available at all right now.
         case unavailable
+        /// Recognition exists, but not for the deck's declared language.
+        case languageUnavailable
         /// Recognition ran but matched nothing.
         case noMatch
     }
@@ -102,8 +105,14 @@ final class SpeechListener {
         onResult: @escaping (String) -> Void,
         onFailure: @escaping (Failure) -> Void
     ) throws {
-        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: languageTag)),
-              recognizer.isAvailable else {
+        // A nil recogniser and an unavailable one are different failures: the first says iOS has
+        // no model for the deck's language — which the reader can install — and the second that
+        // recognition is off right now.
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: languageTag)) else {
+            onFailure(.languageUnavailable)
+            return
+        }
+        guard recognizer.isAvailable else {
             onFailure(.unavailable)
             return
         }

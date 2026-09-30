@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- vi takes only CLDR `other`: Vietnamese does not inflect nouns for number, so every
+         count reads the same ("1 thẻ", "5 thẻ"). -->
+    <plurals name="duration_minutes">
+        <item quantity="other">%1$d phút</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="other">%1$d giờ</item>
+    </plurals>
+    <plurals name="duration_days">
+        <item quantity="other">%1$d ngày</item>
+    </plurals>
+    <plurals name="card_count">
+        <item quantity="other">%1$d thẻ</item>
+    </plurals>
+    <plurals name="cards_ready">
+        <item quantity="other">%1$d thẻ đã sẵn sàng</item>
+    </plurals>
+    <plurals name="cards_discarded">
+        <item quantity="other">%1$d thẻ bị bỏ khi duyệt</item>
+    </plurals>
+    <plurals name="cards_published">
+        <item quantity="other">%1$d thẻ giờ đã công khai.</item>
+    </plurals>
+    <plurals name="study_goal_reached_count">
+        <item quantity="other">%1$d thẻ mới hôm nay</item>
+    </plurals>
+    <plurals name="cards_reviewed">
+        <item quantity="other">Bạn đã ôn %1$d thẻ.</item>
+    </plurals>
+    <plurals name="cards_incomplete">
+        <item quantity="other">%1$d chưa hoàn chỉnh</item>
+    </plurals>
+    <plurals name="public_decks_count">
+        <item quantity="other">Bộ thẻ công khai · %1$d</item>
+    </plurals>
+    <plurals name="profile_decks_count">
+        <item quantity="other">Tất cả bộ thẻ · %1$d</item>
+    </plurals>
+    <plurals name="bulk_cards_parsed">
+        <item quantity="other">Đã đọc được %1$d thẻ</item>
+    </plurals>
+    <plurals name="bulk_import_cards">
+        <item quantity="other">Nhập %1$d thẻ</item>
+    </plurals>
+    <plurals name="bulk_duplicates">
+        <item quantity="other">Đã gộp %1$d thẻ trùng lặp</item>
+    </plurals>
+    <plurals name="bulk_truncated">
+        <item quantity="other">%1$d dòng vượt quá giới hạn không được nhập</item>
+    </plurals>
+    <plurals name="bulk_dropped_notes">
+        <item quantity="other">%1$d ghi chú không có mặt trước và mặt sau để dùng</item>
+    </plurals>
+    <plurals name="bulk_images_skipped">
+        <item quantity="other">%1$d hình ảnh vượt quá giới hạn không được nhập</item>
+    </plurals>
+    <plurals name="deck_detail_clones">
+        <item quantity="other">%1$d bản sao</item>
+    </plurals>
+    <plurals name="home_deck_due_cards">
+        <item quantity="other">%1$d cần ôn · %2$d thẻ</item>
+    </plurals>
+    <plurals name="home_deck_new_cards">
+        <item quantity="other">%1$d mới · %2$d thẻ</item>
+    </plurals>
+    <plurals name="deck_detail_clone_dialog_message">
+        <item quantity="other">Bạn sẽ sở hữu một bản sao có thể chỉnh sửa gồm %1$d thẻ. Bản sao sẽ không nhận cập nhật từ tác giả, và tiến độ của bạn bắt đầu lại từ đầu.</item>
+    </plurals>
+    <plurals name="publish_progress_count">
+        <item quantity="other">Đang xuất bản %1$d/%2$d thẻ…</item>
+    </plurals>
+    <plurals name="cards_tried">
+        <item quantity="other">Bạn đã thử %1$d thẻ.</item>
+    </plurals>
+</resources>

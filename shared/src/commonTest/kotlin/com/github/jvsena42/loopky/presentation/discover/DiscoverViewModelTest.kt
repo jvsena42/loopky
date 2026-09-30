@@ -239,7 +239,7 @@ class DiscoverViewModelTest {
         vm.onTagSelected(Tag("spanish"))
         advanceUntilIdle()
 
-        assertNull(vm.state.value.selectedTag)
+        assertEquals(emptyList(), vm.state.value.selectedTags)
         assertEquals(ReservedTags.DECK, discovery.globalRequests.last().first)
         assertEquals(listOf("spanish", "biology"), vm.state.value.following.items.map { it.id })
     }
@@ -281,13 +281,14 @@ class DiscoverViewModelTest {
         val gate = CompletableDeferred<Unit>()
         discovery.globalGate = gate
         vm.onTagSelected(Tag("chess"))
+        vm.onTagSelected(Tag("chess"))
         vm.onTagSelected(Tag("kanji"))
         gate.complete(Unit)
         advanceUntilIdle()
 
         // Cancelling the in-flight job can miss a suspension point, so the selection itself has to
         // be the token — otherwise chess's result lands on top of kanji's.
-        assertEquals(Tag("kanji"), vm.state.value.selectedTag)
+        assertEquals(listOf(Tag("kanji")), vm.state.value.selectedTags)
         assertEquals(listOf("kanjideck"), vm.state.value.browse.items.map { it.id })
     }
 
@@ -320,6 +321,39 @@ class DiscoverViewModelTest {
 
         // loopky-* is Loopky's index, not a topic — a chip for it would filter to nothing.
         assertEquals(listOf(Tag("history"), Tag("spanish")), vm.state.value.topics.items)
+    }
+
+    @Test
+    fun `an unreachable indexer shows the topics as failed rather than empty`() = runTest(mainDispatcher) {
+        seedFeed()
+        tagRepo.deckTagsError = RuntimeException("Unable to resolve host \"nexus.test\"")
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val topics = vm.state.value.topics
+        assertNotNull(topics.error)
+        assertFalse(topics.isLoading)
+        // The followed feed's labels never needed the indexer, so they stay beside the error.
+        assertEquals(listOf(Tag("spanish"), Tag("biology")), topics.items)
+    }
+
+    @Test
+    fun `retrying topics asks the indexer again and clears the error`() = runTest(mainDispatcher) {
+        tagRepo.deckTagsError = RuntimeException("boom")
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertNotNull(vm.state.value.topics.error)
+        val asked = tagRepo.deckTagRequests.size
+
+        tagRepo.deckTagsError = null
+        tagRepo.deckTags = listOf(Tag("history"))
+        vm.onRetryTopics()
+        advanceUntilIdle()
+
+        assertEquals(asked + 1, tagRepo.deckTagRequests.size)
+        assertNull(vm.state.value.topics.error)
+        assertEquals(listOf(Tag("history")), vm.state.value.topics.items)
     }
 
     // ── tiles ────────────────────────────────────────────────────────────
@@ -487,4 +521,193 @@ class DiscoverViewModelTest {
             assertEquals(listOf<DiscoverEffect>(DiscoverEffect.RequireSignIn(SignInReason.FollowPerson)), effects)
             assertTrue(discovery.follows.isEmpty())
         }
+
+    // ── paging (#321) ────────────────────────────────────────────────────
+
+    private fun seedManyGlobalDecks(count: Int) {
+        discovery.globalDecks = (0 until count).map {
+            testDeck(id = "deck$it", authorPubky = "stranger$it", tags = listOf(Tag("chess")))
+        }
+    }
+
+    @Test
+    fun `browse appends the next page instead of replacing the grid`() = runTest(mainDispatcher) {
+        seedManyGlobalDecks(DiscoverViewModel.BROWSE_LIMIT * 2)
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        val first = vm.state.value.browse.items.map { it.id }
+        assertEquals(DiscoverViewModel.BROWSE_LIMIT, first.size)
+        assertTrue(vm.state.value.browse.hasMore)
+
+        vm.onBrowseEndReached()
+        advanceUntilIdle()
+
+        val all = vm.state.value.browse.items.map { it.id }
+        assertEquals(DiscoverViewModel.BROWSE_LIMIT * 2, all.size)
+        // The page arrived under what was already there, in order — not in place of it.
+        assertEquals(first, all.take(first.size))
+        assertFalse(vm.state.value.browse.hasMore)
+    }
+
+    @Test
+    fun `a page load never blanks the grid it is extending`() = runTest(mainDispatcher) {
+        seedManyGlobalDecks(DiscoverViewModel.BROWSE_LIMIT * 2)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        discovery.globalGate = CompletableDeferred()
+        vm.onBrowseEndReached()
+        advanceUntilIdle()
+
+        // isLoadingMore draws a footer; isLoading would take the whole strip away mid-scroll.
+        assertTrue(vm.state.value.browse.isLoadingMore)
+        assertFalse(vm.state.value.browse.isLoading)
+        assertEquals(DiscoverViewModel.BROWSE_LIMIT, vm.state.value.browse.items.size)
+        discovery.globalGate?.complete(Unit)
+    }
+
+    @Test
+    fun `a second end-reached while one page is in flight asks for nothing`() =
+        runTest(mainDispatcher) {
+            seedManyGlobalDecks(DiscoverViewModel.BROWSE_LIMIT * 3)
+            val vm = viewModel()
+            advanceUntilIdle()
+            val afterFirstPaint = discovery.globalRequests.size
+
+            discovery.globalGate = CompletableDeferred()
+            vm.onBrowseEndReached()
+            advanceUntilIdle()
+            // A scroll position fires this repeatedly; each extra call must cost nothing.
+            vm.onBrowseEndReached()
+            vm.onBrowseEndReached()
+            advanceUntilIdle()
+
+            assertEquals(afterFirstPaint + 1, discovery.globalRequests.size)
+            discovery.globalGate?.complete(Unit)
+        }
+
+    @Test
+    fun `end-reached does nothing once the indexer is exhausted`() = runTest(mainDispatcher) {
+        seedGlobal()
+        val vm = viewModel()
+        advanceUntilIdle()
+        val requests = discovery.globalRequests.size
+        assertFalse(vm.state.value.browse.hasMore)
+
+        vm.onBrowseEndReached()
+        advanceUntilIdle()
+
+        assertEquals(requests, discovery.globalRequests.size)
+    }
+
+    @Test
+    fun `choosing a topic restarts browse at the first page`() = runTest(mainDispatcher) {
+        seedManyGlobalDecks(DiscoverViewModel.BROWSE_LIMIT * 2)
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onBrowseEndReached()
+        advanceUntilIdle()
+        assertEquals(DiscoverViewModel.BROWSE_LIMIT * 2, vm.state.value.browse.items.size)
+
+        vm.onTagSelected(Tag("chess"))
+        advanceUntilIdle()
+
+        // A fresh question, not a continuation of the last one: the old cursor would page into
+        // the middle of a different result set.
+        assertEquals(DiscoverViewModel.BROWSE_LIMIT, vm.state.value.browse.items.size)
+    }
+
+    @Test
+    fun `the people carousel pages too`() = runTest(mainDispatcher) {
+        discovery.loopkyUsers = (0 until DiscoverViewModel.PEOPLE_LIMIT * 2).map {
+            PubkyIdentity("person$it", displayName = "Person $it", avatarUrl = null, bio = null)
+        }
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertEquals(DiscoverViewModel.PEOPLE_LIMIT, vm.state.value.people.items.size)
+        assertTrue(vm.state.value.people.hasMore)
+
+        vm.onPeopleEndReached()
+        advanceUntilIdle()
+
+        val pubkys = vm.state.value.people.items.map { it.identity.pubky }
+        assertEquals(DiscoverViewModel.PEOPLE_LIMIT * 2, pubkys.size)
+        assertEquals(pubkys.distinct(), pubkys)
+        assertFalse(vm.state.value.people.hasMore)
+    }
+
+    // ── an unreachable indexer is not an empty network (#321) ────────────
+
+    @Test
+    fun `an unreachable indexer shows an error rather than the empty state`() = runTest(mainDispatcher) {
+        // "Nothing published here yet" is a claim about the world. A device that never heard from
+        // the indexer cannot make it, and used to make it confidently and with no way to retry.
+        discovery.globalError = RuntimeException("Unable to resolve host \"nexus.test\"")
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val browse = vm.state.value.browse
+        assertNotNull(browse.error)
+        assertFalse(browse.isEmpty, "a failed read must not read as an empty network")
+        assertTrue(browse.items.isEmpty())
+    }
+
+    @Test
+    fun `retrying browse asks again and clears the error`() = runTest(mainDispatcher) {
+        discovery.globalError = RuntimeException("boom")
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertNotNull(vm.state.value.browse.error)
+
+        discovery.globalError = null
+        seedGlobal()
+        vm.onRetryBrowse()
+        advanceUntilIdle()
+
+        assertNull(vm.state.value.browse.error)
+        assertEquals(2, vm.state.value.browse.items.size)
+    }
+
+    @Test
+    fun `a failed page keeps the decks already on screen`() = runTest(mainDispatcher) {
+        seedManyGlobalDecks(DiscoverViewModel.BROWSE_LIMIT * 2)
+        val vm = viewModel()
+        advanceUntilIdle()
+        val first = vm.state.value.browse.items.size
+
+        discovery.globalError = RuntimeException("boom")
+        vm.onBrowseEndReached()
+        advanceUntilIdle()
+
+        val browse = vm.state.value.browse
+        // A footer that could not load, not a strip that could not load.
+        assertEquals(first, browse.items.size)
+        assertNotNull(browse.pageError)
+        assertNull(browse.error)
+        assertFalse(browse.isLoadingMore, "the footer would spin forever")
+        // And it must not re-ask on every recomposition of the sentinel.
+        assertFalse(browse.canLoadMore)
+    }
+
+    @Test
+    fun `retrying a failed page resumes from the same cursor`() = runTest(mainDispatcher) {
+        seedManyGlobalDecks(DiscoverViewModel.BROWSE_LIMIT * 2)
+        val vm = viewModel()
+        advanceUntilIdle()
+        discovery.globalError = RuntimeException("boom")
+        vm.onBrowseEndReached()
+        advanceUntilIdle()
+
+        discovery.globalError = null
+        vm.onRetryBrowsePage()
+        advanceUntilIdle()
+
+        val items = vm.state.value.browse.items.map { it.id }
+        assertEquals(DiscoverViewModel.BROWSE_LIMIT * 2, items.size)
+        assertEquals(items.distinct(), items)
+        assertNull(vm.state.value.browse.pageError)
+    }
 }

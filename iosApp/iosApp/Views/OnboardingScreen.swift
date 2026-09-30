@@ -45,15 +45,17 @@ struct OnboardingScreen: View {
 
     var body: some View {
         Group {
-            if isRestoring {
+            if holdSplash {
                 SplashView()
             } else {
                 OnboardingView(
                     isWorking: isWorking,
                     errorMessage: errorMessage,
+                    stillWaiting: awaiting?.stillWaiting ?? false,
                     onSignInTapped: { viewModel?.onSignInClick(handoff: handoff) },
                     onRestoreTapped: onRestore,
                     onCreatePubkyTapped: onCreatePubky,
+                    onCancelTapped: { viewModel?.onCancelSignIn() },
                     // Inline only where there is a column to put it in; narrower windows get the
                     // same panel as a sheet, below.
                     scan: widthClass.isExpanded ? scanPrompt : nil
@@ -74,9 +76,9 @@ struct OnboardingScreen: View {
                 RingScanSheet(
                     authUrl: scanPrompt.authUrl,
                     ringInstalledHere: scanPrompt.ringInstalledHere,
+                    stillWaiting: scanPrompt.stillWaiting,
                     onOpenRingHere: scanPrompt.onOpenRingHere,
-                    onGetRing: scanPrompt.onGetRing,
-                    onCancel: scanPrompt.onCancel
+                    onGetRing: scanPrompt.onGetRing
                 )
             }
         }
@@ -86,12 +88,9 @@ struct OnboardingScreen: View {
         uiState as? OnboardingUiStateAwaitingApproval
     }
 
-    /// Where the user is expected to approve this sign-in.
-    ///
-    /// A phone's key is in Ring on that same phone, so the deeplink is the shortest path. An iPad's
-    /// owner keeps their key on their phone, where the deeplink cannot reach, so the way in is a
-    /// code that phone can scan — and Ring being installed *here* does not change it, because an
-    /// iPad that happens to have Ring may still not have this user's key.
+    /// Where the user is expected to approve this sign-in — the code's presentation, and nothing
+    /// else. An iPad's sign-in column has room for it inline; a phone's is full of hero, so the
+    /// same panel arrives as a sheet over it. Neither opens Ring on its own.
     ///
     /// Computed from the window on every layout, never captured at launch: an iPad in Slide Over is
     /// a phone-shaped column, and rotation and a Split View divider both move the answer while the
@@ -100,20 +99,17 @@ struct OnboardingScreen: View {
         widthClass.isAtLeastMedium ? RingHandoff.anotherdevice : RingHandoff.thisdevice
     }
 
-    /// The pending authorisation, when it is waiting on a device this one cannot deeplink to.
+    /// The live authorisation, as the code that approves it.
     ///
-    /// The shared VM fires `OpenDeeplink` only when the handoff is `ThisDevice` *and* Ring is
-    /// actually installed here, so anything else leaves the authorisation live with nothing driving
-    /// it — the code is then the user's only way to approve it. Both halves of that condition
-    /// matter: reading `ringInstalledHere` alone would leave an iPad **with** Ring installed
-    /// waiting forever on a deeplink the VM deliberately never fired.
+    /// The shared VM never fires `OpenDeeplink` on its own, on any device — Ring being installed
+    /// here says nothing about whose key is in it — so every live authorisation has the code as its
+    /// way in, and `ringInstalledHere` only decides whether the panel also offers to open Ring.
     private var scanPrompt: RingScanPrompt? {
         guard let awaiting else { return nil }
-        let deeplinkFired = awaiting.handoff == RingHandoff.thisdevice && awaiting.ringInstalledHere
-        guard !deeplinkFired else { return nil }
         return RingScanPrompt(
             authUrl: awaiting.authUrl,
             ringInstalledHere: awaiting.ringInstalledHere,
+            stillWaiting: awaiting.stillWaiting,
             onOpenRingHere: { viewModel?.onOpenRingOnThisDevice() },
             onGetRing: { viewModel?.onGetRingClick() },
             onCancel: { viewModel?.onCancelSignIn() }
@@ -130,10 +126,19 @@ struct OnboardingScreen: View {
         )
     }
 
-    /// Cold start, still reading the persisted session back. Showing the splash here keeps a
-    /// returning user from seeing the sign-in CTA flash by on the way home.
-    private var isRestoring: Bool {
-        uiState is OnboardingUiStateRestoring
+    /// Every state in which this screen is on its way somewhere else, and so must show the
+    /// branded splash rather than a sign-in wall the user is never given the chance to act on.
+    ///
+    /// Three of the four are not `Restoring`. `uiState` is `nil` until the first `StateFlow` value
+    /// crosses the bridge, which is a frame or more *before* the cold start's `Restoring` arrives;
+    /// `Success` is always followed by navigating home, so the CTA would otherwise be drawn for the
+    /// whole navigation; and a launch with no session is handed to browsing by `onExplore`, which
+    /// Android holds the splash for in the same way.
+    private var holdSplash: Bool {
+        guard let uiState else { return true }
+        if uiState is OnboardingUiStateRestoring { return true }
+        if uiState is OnboardingUiStateSuccess { return true }
+        return autoExplore && hasNoSession
     }
 
     /// The ViewModel has finished looking and found nothing to restore.
@@ -158,8 +163,14 @@ struct OnboardingScreen: View {
         guard viewModel == nil else { return }
         let vm = IosDependencies.shared.onboardingViewModel()
         viewModel = vm
-        stateSink = FlowEffectSink(vm.state) { uiState = $0 }
         let signedIn = onSignedIn
+        // Home is reached off the `Success` state, not an effect: the cold start decides it in the
+        // ViewModel's `init`, which can run before `effectSink` below is attached, and a zero-replay
+        // effect emitted then is lost — leaving a returning user on the splash.
+        stateSink = FlowEffectSink(vm.state) { state in
+            uiState = state
+            if state is OnboardingUiStateSuccess { signedIn() }
+        }
         effectSink = FlowEffectSink(vm.effects) { effect in
             switch effect {
             case let open as OnboardingEffectOpenDeeplink:
@@ -172,8 +183,6 @@ struct OnboardingScreen: View {
                 }
             case let install as OnboardingEffectOpenInstallPage:
                 if let url = URL(string: install.url) { openURL(url) }
-            case is OnboardingEffectNavigateHome:
-                signedIn()
             case let unregistered as OnboardingEffectNavigateUnregistered:
                 onUnregistered(unregistered.pubky)
             default:

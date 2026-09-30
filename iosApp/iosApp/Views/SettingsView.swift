@@ -1,3 +1,4 @@
+import Shared
 import SwiftUI
 
 /// Settings, as a native grouped `List` rather than a hand-built stack of cards — so it inherits
@@ -7,6 +8,7 @@ struct SettingsView: View {
     var onCopyPubky: () -> Void = {}
     var onCopyHomeserver: () -> Void = {}
     var onShareOnPubkyChanged: (Bool) -> Void = { _ in }
+    var onThemeChanged: (AppTheme) -> Void = { _ in }
     var onGoalChanged: (Int) -> Void = { _ in }
     var onIntervalChanged: (StudyGrade, Int) -> Void = { _, _ in }
     var onSaveUnsplashKey: (String) -> Void = { _ in }
@@ -17,6 +19,7 @@ struct SettingsView: View {
     var onDismissDeleteAccount: () -> Void = {}
     var onOpenUrl: (String) -> Void = { _ in }
     var onBackUpNow: () -> Void = {}
+    var onOpenAppSettings: () -> Void = {}
 
     @State private var unsplashKey = ""
 
@@ -25,6 +28,8 @@ struct SettingsView: View {
     var body: some View {
         List {
             identitySection
+            appearanceSection
+            languageSection
             studyingSection
             sharingSection
             imageSearchSection
@@ -36,7 +41,7 @@ struct SettingsView: View {
         // A column of settings rows — the case `PaneWidth.reading` exists for. Unbounded, a
         // 1366pt-wide row puts its label at one edge and its toggle at the other.
         .contentPane()
-        .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+        .loopkyScreenBackground()
         .navigationTitle(Text("settings_title"))
         .navigationBarTitleDisplayMode(.inline)
         .alert(
@@ -88,40 +93,153 @@ struct SettingsView: View {
         }
     }
 
+    /// The palette, which Loopky owns rather than iOS — unlike the language row below it.
+    ///
+    /// A segmented `Picker` rather than a row that pushes: three mutually exclusive options that
+    /// repaint the screen behind the control, so the result of the tap is visible without leaving.
+    private var appearanceSection: some View {
+        Section {
+            Picker(
+                selection: Binding(get: { state.theme }, set: onThemeChanged),
+                label: Text("settings_theme_label")
+            ) {
+                Text("settings_theme_system").tag(AppTheme.system)
+                Text("settings_theme_auto").tag(AppTheme.scheduled)
+                Text("settings_theme_light").tag(AppTheme.light)
+                Text("settings_theme_dark").tag(AppTheme.dark)
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings_theme")
+        } header: {
+            Text("settings_section_appearance")
+        } footer: {
+            // The hours are named rather than left to be discovered: without them "Auto" is a
+            // control whose behaviour you can only learn by waiting until evening.
+            Text(String(
+                format: NSLocalizedString("settings_theme_description", comment: ""),
+                Self.hourLabel(Int(DayNightSchedule.shared.darkFromHour)),
+                Self.hourLabel(Int(DayNightSchedule.shared.darkUntilHour))
+            ))
+        }
+    }
+
+    /// The app language, which iOS owns rather than Loopky.
+    ///
+    /// The picker itself is the system's own per-app Language screen, so this row shows the
+    /// current choice and hands the user to Settings. Writing `AppleLanguages` from here would
+    /// reach the same preference, but iOS resolves it at launch — the app would keep rendering
+    /// the old language until it was relaunched, which reads as the setting not working.
+    private var languageSection: some View {
+        Section {
+            Button(action: onOpenAppSettings) {
+                LabeledContent {
+                    Text(Self.currentLanguageName)
+                } label: {
+                    Text("settings_language_label")
+                }
+            }
+            .tint(LoopkyColor.foregroundPrimary)
+            .accessibilityIdentifier("settings_language")
+        } header: {
+            Text("settings_section_language")
+        } footer: {
+            Text("settings_language_description")
+        }
+    }
+
+    /// An o'clock hour as the reader's own device writes it — "8 PM" or "20:00".
+    ///
+    /// `.short` follows the device's 24-hour switch, so this matches a setting the user has already
+    /// made elsewhere. Interpolating the raw number gave "20:00" to someone whose phone has never
+    /// shown them a 24-hour clock.
+    private static func hourLabel(_ hour: Int) -> String {
+        let date = Calendar.current.date(from: DateComponents(hour: hour, minute: 0)) ?? Date()
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    /// The language's own name for itself — "English", "Português (Brasil)".
+    private static var currentLanguageName: String {
+        let tag = Bundle.main.preferredLocalizations.first ?? "en"
+        let locale = Locale(identifier: tag)
+        let name = locale.localizedString(forIdentifier: tag) ?? tag
+        return name.prefix(1).uppercased() + name.dropFirst()
+    }
+
     /// The daily goal is **announced, never enforced** — the queue serves every due card and every
     /// new one regardless. The description says so; wording it as a limit would describe a feature
     /// Loopky does not have.
     private var studyingSection: some View {
         Section {
             Stepper(value: Binding(get: { state.newCardsGoal }, set: onGoalChanged), in: 1...100) {
-                LabeledContent("settings_new_cards_goal_label", value: "\(state.newCardsGoal)")
+                settingRow(
+                    "settings_new_cards_goal_label",
+                    caption: "settings_new_cards_goal_description",
+                    value: "\(state.newCardsGoal)"
+                )
             }
-            intervalRow("settings_interval_hard_label", grade: .hard, days: state.hardDays)
+            intervalRow(
+                "settings_interval_hard_label",
+                caption: "settings_interval_description",
+                grade: .hard,
+                days: state.hardDays
+            )
             intervalRow("settings_interval_good_label", grade: .good, days: state.goodDays)
-            intervalRow("settings_interval_easy_label", grade: .easy, days: state.easyDays)
+            intervalRow(
+                "settings_interval_easy_label",
+                caption: "settings_interval_mastery_note",
+                grade: .easy,
+                days: state.easyDays
+            )
         } header: {
             Text("settings_section_studying")
         } footer: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("settings_new_cards_goal_description")
-                Text("settings_interval_description")
-                Text("settings_interval_mastery_note")
-                if !state.canEditStudySettings {
-                    // The repository refuses a write before the record has been read, so that a
-                    // save cannot put defaults over what the user really had.
-                    Text("settings_study_unavailable").foregroundStyle(LoopkyColor.danger)
-                }
+            if !state.canEditStudySettings {
+                // The repository refuses a write before the record has been read, so that a
+                // save cannot put defaults over what the user really had.
+                Text("settings_study_unavailable").foregroundStyle(LoopkyColor.danger)
             }
         }
         .disabled(!state.canEditStudySettings)
     }
 
-    private func intervalRow(_ label: LocalizedStringKey, grade: StudyGrade, days: Int) -> some View {
+    private func intervalRow(
+        _ label: LocalizedStringKey,
+        caption: LocalizedStringKey? = nil,
+        grade: StudyGrade,
+        days: Int
+    ) -> some View {
         Stepper(
             value: Binding(get: { days }, set: { onIntervalChanged(grade, $0) }),
             in: 1...365
         ) {
-            LabeledContent(label, value: "\(days)d")
+            settingRow(label, caption: caption, value: "\(days)d")
+        }
+    }
+
+    /// A stepper row whose caption sits under the label it explains, rather than in the section
+    /// footer: three captions stacked below four rows leave the reader to work out which line
+    /// belongs to which setting, and the mastery note in particular only makes sense beside the
+    /// Easy interval it is measured against. Mirrors Android's `StudySettingsSection`.
+    private func settingRow(
+        _ label: LocalizedStringKey,
+        caption: LocalizedStringKey?,
+        value: String
+    ) -> some View {
+        LabeledContent {
+            Text(value)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                if let caption {
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
     }
 

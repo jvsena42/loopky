@@ -6,7 +6,10 @@ import com.github.jvsena42.loopky.testing.FakeIdentityRepository
 import com.github.jvsena42.loopky.testing.FakeSignupRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -38,6 +41,27 @@ class LocalSignupViewModelTest {
         signupRepository = signupRepo,
         identityRepository = identityRepo,
     )
+
+    private fun TestScope.collectEffects(vm: LocalSignupViewModel): List<LocalSignupEffect> {
+        val effects = mutableListOf<LocalSignupEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.effects.collect { effects.add(it) }
+        }
+        return effects
+    }
+
+    @Test
+    fun aCreatedAccountGoesStraightIntoTheAppRatherThanIntoABackupWall() = runTest {
+        // Backing up is offered by the Profile card above sign-out and by Settings, and the
+        // sign-out guard refuses to erase an un-backed-up key. A screen between signing up and
+        // using the app buys none of that.
+        signupRepo = FakeSignupRepository(redeemable())
+
+        val effects = collectEffects(viewModel())
+        advanceUntilIdle()
+
+        assertEquals(listOf(LocalSignupEffect.NavigateHome), effects)
+    }
 
     @Test
     fun theStoredTokenIsSpentRatherThanANewOneBeingMinted() = runTest {

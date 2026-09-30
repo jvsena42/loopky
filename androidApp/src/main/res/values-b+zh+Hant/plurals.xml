@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Traditional Chinese has only the CLDR `other` category, so each set carries a single
+         form. Counts take a measure word (張, 個, 則, 列, 筆) instead of a plural ending. -->
+    <plurals name="duration_minutes">
+        <item quantity="other">%1$d 分鐘</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="other">%1$d 小時</item>
+    </plurals>
+    <plurals name="duration_days">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
+    <plurals name="card_count">
+        <item quantity="other">%1$d 張卡片</item>
+    </plurals>
+    <plurals name="cards_ready">
+        <item quantity="other">%1$d 張卡片已就緒</item>
+    </plurals>
+    <plurals name="cards_discarded">
+        <item quantity="other">檢視時捨棄了 %1$d 張</item>
+    </plurals>
+    <plurals name="cards_published">
+        <item quantity="other">%1$d 張卡片現已公開。</item>
+    </plurals>
+    <plurals name="study_goal_reached_count">
+        <item quantity="other">今天學了 %1$d 張新卡片</item>
+    </plurals>
+    <plurals name="cards_reviewed">
+        <item quantity="other">你複習了 %1$d 張卡片。</item>
+    </plurals>
+    <plurals name="cards_incomplete">
+        <item quantity="other">%1$d 張不完整</item>
+    </plurals>
+    <plurals name="public_decks_count">
+        <item quantity="other">公開牌組 · %1$d</item>
+    </plurals>
+    <plurals name="profile_decks_count">
+        <item quantity="other">所有牌組 · %1$d</item>
+    </plurals>
+    <plurals name="bulk_cards_parsed">
+        <item quantity="other">已解析 %1$d 張卡片</item>
+    </plurals>
+    <plurals name="bulk_import_cards">
+        <item quantity="other">匯入 %1$d 張卡片</item>
+    </plurals>
+    <plurals name="bulk_duplicates">
+        <item quantity="other">已合併 %1$d 筆重複項目</item>
+    </plurals>
+    <plurals name="bulk_truncated">
+        <item quantity="other">有 %1$d 列超過上限，未匯入</item>
+    </plurals>
+    <plurals name="bulk_dropped_notes">
+        <item quantity="other">有 %1$d 則筆記缺少可用的正面和背面</item>
+    </plurals>
+    <plurals name="bulk_images_skipped">
+        <item quantity="other">有 %1$d 張圖片超過上限，未匯入</item>
+    </plurals>
+    <plurals name="deck_detail_clones">
+        <item quantity="other">%1$d 個複本</item>
+    </plurals>
+    <plurals name="home_deck_due_cards">
+        <item quantity="other">%1$d 張待複習 · 共 %2$d 張卡片</item>
+    </plurals>
+    <plurals name="home_deck_new_cards">
+        <item quantity="other">%1$d 張新卡片 · 共 %2$d 張卡片</item>
+    </plurals>
+    <plurals name="deck_detail_clone_dialog_message">
+        <item quantity="other">你將擁有這 %1$d 張卡片的可編輯複本。它不會收到作者的更新，你的學習進度也會重新開始。</item>
+    </plurals>
+    <plurals name="publish_progress_count">
+        <item quantity="other">正在發布 %1$d/%2$d 張卡片…</item>
+    </plurals>
+    <plurals name="cards_tried">
+        <item quantity="other">你試了 %1$d 張卡片。</item>
+    </plurals>
+</resources>

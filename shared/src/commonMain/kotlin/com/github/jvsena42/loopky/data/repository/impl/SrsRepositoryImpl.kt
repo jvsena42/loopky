@@ -57,21 +57,18 @@ import kotlinx.serialization.encodeToString
 /**
  * [SrsRepository] backed by [PubkyClient]. Review state lives batched at
  * `/pub/loopky/srs/{authorPubky}/{deckId}/{n}.json` — on **your** homeserver, keyed by the deck's
- * author, for any deck including ones you do not own (see [PubkyPaths.srsChunk]).
+ * author, for any deck including ones you do not own.
  *
  * SRS has the opposite access pattern to cards: writes are one card at a time and frequent, reads
- * need everything at once (`dueForDeck` must know every card's `due_at`). So reads are chunked,
- * and **writes buffer in memory and flush per chunk** — grading 100 cards costs one chunk write
- * at the end instead of 100 record writes as it goes.
+ * need everything at once. So reads are chunked and **writes buffer in memory and flush per chunk**
+ * — grading 100 cards costs one chunk write at the end instead of 100 as it goes.
  *
- * The flush deliberately does not live in the study ViewModel: `viewModelScope` is cancelled in
- * `onCleared()`, so a flush started there would be killed before it finished. This class owns an
- * app-scoped [CoroutineScope] instead, and also flushes every [FLUSH_EVERY] reviews so a crash
- * costs a few cards rather than a whole session.
+ * The flush cannot live in the study ViewModel: `viewModelScope` is cancelled in `onCleared()`, so
+ * a flush started there would be killed before it finished. This class owns an app-scoped scope
+ * instead, and also flushes every [FLUSH_EVERY] reviews so a crash costs a few cards, not a session.
  */
 // LongParameterList: every one is a collaborator this repo genuinely needs, and the last is the
-// injectable scope that makes the async flush testable. Grouping them into a holder would only
-// move the same list behind one more type.
+// injectable scope that makes the async flush testable.
 @Suppress("TooManyFunctions", "LongParameterList")
 class SrsRepositoryImpl(
     private val pubky: PubkyClient,
@@ -87,15 +84,15 @@ class SrsRepositoryImpl(
     private val dayIndex: (Long) -> Int = ::localDayIndex,
 ) : SrsRepository {
 
-    /** (authorPubky, deckId, cardId) — deck-and-author scoped, so ids cannot collide across decks. */
+    /** Deck-and-author scoped, so card ids cannot collide across decks. */
     private data class StateKey(val authorPubky: String, val deckId: String, val cardId: String)
 
     private val cache = mutableMapOf<StateKey, SrsState>()
 
     /**
      * Which chunk each state belongs to. Recorded when the state is loaded or written, never
-     * re-derived — a flush that computed the chunk differently from the write that dirtied it
-     * would persist the state into the wrong record.
+     * re-derived — a flush computing the chunk differently from the write that dirtied it would
+     * persist the state into the wrong record.
      */
     private val stateChunks = mutableMapOf<StateKey, Int>()
 
@@ -104,8 +101,8 @@ class SrsRepositoryImpl(
 
     /**
      * The individual states behind [dirty], which is chunk-granular. The journal has to record the
-     * reviews themselves, and a chunk is a poor proxy: it also contains states already on the
-     * homeserver, and re-writing those on restore would resurrect stale values over newer ones.
+     * reviews themselves: a chunk also contains states already on the homeserver, and re-writing
+     * those on restore would resurrect stale values over newer ones.
      */
     private val dirtyStates = mutableSetOf<StateKey>()
 
@@ -118,11 +115,10 @@ class SrsRepositoryImpl(
     private val cacheAccount = AccountStamp(session)
 
     /**
-     * Take [cacheLock], dropping everything in it first if the account has changed.
-     *
-     * Every read and write of the caches goes through this rather than through `cacheLock`directly,
-     * because the alternative — a check at each of the twenty-odd call sites — is one missed path
-     * away from serving a new account the previous one's review history.
+     * Take [cacheLock], dropping everything in it first if the account has changed. Every read and
+     * write goes through this rather than `cacheLock` directly, because a check at each of the
+     * twenty-odd call sites is one missed path away from serving a new account the previous one's
+     * review history.
      */
     private suspend fun <T> withCaches(block: suspend () -> T): T = cacheLock.withLock {
         evictOnAccountChangeLocked()
@@ -132,10 +128,9 @@ class SrsRepositoryImpl(
     /**
      * Drop every cached map when the signed-in account changes. Caller holds [cacheLock].
      *
-     * Safe to lose the dirty set here: reviews are journalled to disk as they are graded, not only
-     * when they flush, and the journal is now owner-scoped — so the previous account's unflushed
-     * work is still on the device waiting for it to sign back in. [journalRestored] resets for the
-     * same reason: the new account has its own journal to fold in.
+     * Safe to lose the dirty set: reviews are journalled as they are graded, not only when they
+     * flush, and the journal is owner-scoped, so the previous account's unflushed work waits on the
+     * device for it to sign back in. [journalRestored] resets for the same reason.
      */
     private fun evictOnAccountChangeLocked() {
         if (cacheAccount.changed()) {
@@ -149,8 +144,8 @@ class SrsRepositoryImpl(
             sinceFlush = 0
         }
         // Re-stamped on every acquisition, not only after an eviction: the stamp is what makes the
-        // *next* change detectable, so skipping it while nothing had changed would mean the caches
-        // were never claimed by anyone and no later switch would ever register.
+        // *next* change detectable, so skipping it would mean the caches were never claimed by
+        // anyone and no later switch would register.
         cacheAccount.mark()
     }
 
@@ -166,9 +161,8 @@ class SrsRepositoryImpl(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
 
-    // replay = 1 so a screen that subscribes after the failure still learns about it. flushAsync
-    // runs on this class's own scope precisely because the study screen may be going away as it
-    // starts, which would otherwise make the emission land on nobody.
+    // replay = 1 so a screen subscribing after the failure still learns about it. flushAsync runs on
+    // this class's own scope precisely because the study screen may be going away as it starts.
     override val flushFailures: SharedFlow<ErrorReason> = _flushFailures.asSharedFlow()
 
     /**
@@ -201,20 +195,20 @@ class SrsRepositoryImpl(
         )
     }
 
-    /** Whether this deck's review state has actually been read this session. */
     private suspend fun isLoadedFor(deckId: String): Boolean {
         val author = withCaches { deckAuthors[deckId] } ?: return false
         return withCaches { loadedDecks.contains(author to deckId) }
     }
 
-    override suspend fun countsToday(): Map<String, DeckCounts> {
+    override suspend fun countsToday(decks: List<Deck>?): Map<String, DeckCounts> {
         if (restoreJournal()) flushAsync()
-        return studiableDecks().associate { deck ->
-            deck.id to queueForDeck(deck.id).let { DeckCounts(due = it.due.size, new = it.new.size) }
+        return (decks ?: studiableDecks()).associate { deck ->
+            deck.id to queueForDeck(deck.id, known = deck)
+                .let { DeckCounts(due = it.due.size, new = it.new.size) }
         }
     }
 
-    /** Decks you can study: the ones you own plus the ones you follow. */
+    /** The ones you own plus the ones you follow. */
     private suspend fun studiableDecks(): List<Deck> {
         val owned = deckRepository.listOwned()
         // A followed deck lives on someone else's homeserver, so listing it can fail on its own.
@@ -229,28 +223,34 @@ class SrsRepositoryImpl(
     override suspend fun dueForDeck(deckId: String): List<Card> =
         queueForDeck(deckId).let { it.due + it.new }
 
-    /** A deck's study queue, kept split so callers can count the two halves separately. */
+    /** Kept split so callers can count the two halves separately. */
     private data class DeckQueue(val due: List<Card>, val new: List<Card>)
 
     /**
-     * Builds one deck's queue: cards actually due for review, soonest first, then cards never seen,
-     * in the deck's own study order.
-     *
-     * The order is the point. A 1669-card import used to present every card as due and hand the
-     * user an unclimbable wall (#101 §7); reviews-then-new means a big deck opens on what you
-     * already know. Nothing is capped — [com.github.jvsena42.loopky.domain.model.StudySettings]'s
-     * new-cards goal is a goal, and withholding cards is exactly what it must not do.
+     * Cards actually due for review, soonest first, then cards never seen, in the deck's own study
+     * order. The order is the point: a 1669-card import used to present every card as due and hand
+     * the user an unclimbable wall (#101 §7). Nothing is capped — the new-cards goal is a goal, and
+     * withholding cards is exactly what it must not do.
      */
-    private suspend fun queueForDeck(deckId: String): DeckQueue {
+    private suspend fun queueForDeck(deckId: String, known: Deck? = null): DeckQueue {
         settingsRepository.ensureLoaded()
         // Before anything reads the cache: a journal from a previous process holds reviews newer
-        // than the homeserver's, and a queue built without them would re-show cards already graded.
-        // Recovered reviews are sent straight away — nothing else would, short of the user
-        // starting another session and grading FLUSH_EVERY more cards.
+        // than the homeserver's, and a queue built without them would re-show graded cards.
+        // Recovered reviews are sent straight away — nothing else would, short of the user starting
+        // another session and grading FLUSH_EVERY more cards.
         if (restoreJournal()) flushAsync()
-        val deck = deckRepository.sync(deckId)
-            .onFailure { Log.e(TAG, "queueForDeck: sync failed for $deckId — ${it.message}", it) }
-            .getOrNull() ?: deckRepository.getLocal(deckId)
+        // A caller that just listed the library holds the manifest already, so only the *chunk*
+        // half of a sync is owed — [DeckRepository.sync] would re-GET a manifest fetched seconds
+        // ago, once per deck, behind the spinner the listing is already being waited on for.
+        val deck = if (known != null) {
+            cardRepository.fetchByDeck(known)
+                .onFailure { Log.e(TAG, "queueForDeck: chunks unreadable for $deckId — ${it.message}", it) }
+            known
+        } else {
+            deckRepository.sync(deckId)
+                .onFailure { Log.e(TAG, "queueForDeck: sync failed for $deckId — ${it.message}", it) }
+                .getOrNull() ?: deckRepository.getLocal(deckId)
+        }
         val author = deck?.authorPubky ?: session.current()?.identity?.pubky
             ?: return DeckQueue(emptyList(), emptyList())
         withCaches { deckAuthors[deckId] = author }
@@ -292,9 +292,9 @@ class SrsRepositoryImpl(
     }
 
     /**
-     * Cache-only, so this must not call [dueForDeck] — that syncs the manifest, which is the whole
-     * cost this exists to avoid. [deckAuthors] is the record of which decks have been loaded, so
-     * iterating it is what bounds the answer to decks the cache can actually speak for.
+     * Cache-only, so this must not call [dueForDeck] — that syncs the manifest, the whole cost this
+     * exists to avoid. [deckAuthors] records which decks have been loaded, so iterating it is what
+     * bounds the answer to decks the cache can speak for.
      */
     override suspend fun dueCountsCached(): Map<String, DeckCounts> {
         val now = epochMillis()
@@ -328,8 +328,7 @@ class SrsRepositoryImpl(
 
     /**
      * The reverse half of a pair: re-schedule from where the pair started, not from the forward
-     * result already written. No [recordStudied] — one card studied both ways is one review, and
-     * the forward half already counted it.
+     * result already written. No [recordStudied] — one card studied both ways is one review.
      */
     override suspend fun reviewFrom(
         card: Card,
@@ -369,12 +368,9 @@ class SrsRepositoryImpl(
     }
 
     /**
-     * Count one graded card against today.
-     *
      * [isNewCard] is measured *before* grading, since grading is what stops it being new. It can
-     * over-count if a chunk read failed silently and an already-seen card looked unseen — an
-     * inflated goal is the cheap failure here, and the alternative (a network read per grade to be
-     * certain) is not worth it for a motivational number.
+     * over-count if a chunk read failed silently — an inflated goal is the cheap failure, and a
+     * network read per grade is not worth it for a motivational number.
      */
     private suspend fun recordStudied(isNewCard: Boolean) {
         val today = dayIndex(epochMillis())
@@ -395,10 +391,8 @@ class SrsRepositoryImpl(
     private val progressAccount = AccountStamp(session)
 
     /**
-     * Persist today's counters, if there is anyone to persist them for.
-     *
-     * Signed out there is no owner to attribute them to, and writing them under the next account
-     * to sign in is the whole bug this guards.
+     * Persist today's counters, if there is anyone to persist them for. Signed out there is no owner
+     * to attribute them to, and writing them under the next account to sign in is the bug this guards.
      */
     private suspend fun saveProgress(progress: DailyStudyProgress, message: (String?) -> String) {
         val owner = session.current()?.identity?.pubky ?: return
@@ -409,8 +403,8 @@ class SrsRepositoryImpl(
     /** Caller holds [progressLock]. Reads the stored counters once, then keeps them in memory. */
     private suspend fun restoreProgressLocked() {
         val today = dayIndex(epochMillis())
-        // Today's tally is a claim about a person, so a change of account starts it again from
-        // zero rather than congratulating the new one for the last one's session.
+        // Today's tally is a claim about a person, so a change of account starts it again from zero
+        // rather than congratulating the new one for the last one's session.
         if (progressAccount.changed()) progressRestored = false
         progressAccount.mark()
         if (!progressRestored) {
@@ -424,8 +418,8 @@ class SrsRepositoryImpl(
             _dailyProgress.value = (stored ?: DailyStudyProgress(dayIndex = today)).forToday(today)
             return
         }
-        // Re-applied on every read, not only at restore: a session left open across midnight
-        // would otherwise carry yesterday's count all through the new day.
+        // Re-applied on every read, not only at restore: a session left open across midnight would
+        // otherwise carry yesterday's count all through the new day.
         _dailyProgress.value = _dailyProgress.value.forToday(today)
     }
 
@@ -449,13 +443,11 @@ class SrsRepositoryImpl(
     private fun currentSettings(): StudySettings = settingsRepository.studySettings.value.settings
 
     /**
-     * Whether review state may be written for [deckId] at all: it has to be a deck you own or one
-     * you follow.
+     * Whether review state may be written for [deckId] at all: it has to be a deck you own or follow.
      *
      * Browsing someone else's deck from Discover is not keeping it, and grading it would strand
-     * review state under a deck that never appears in your library or your due queue — progress the
-     * user can neither see nor resume. Keeping the deck is the deliberate act that earns SRS state,
-     * so the UI offers Follow (or Clone) before Study, and this is the same rule at the repository.
+     * review state under a deck that never appears in your library or your due queue. Keeping the
+     * deck is the deliberate act that earns SRS state, and this is that rule at the repository.
      */
     private suspend fun isStudiable(deckId: String): Boolean {
         val deck = deckRepository.getLocal(deckId) ?: return false
@@ -498,9 +490,9 @@ class SrsRepositoryImpl(
 
         val owner = session.requireSession().identity.pubky
         // Not error handling — a restore-on-abnormal-exit, which is why it rethrows unconditionally
-        // and catches Throwable rather than using runSuspendCatching. Cancellation has to restore
-        // too: flush() is reachable from review()/upsert() on viewModelScope, so closing the study
-        // screen mid-flush would otherwise drop up to FLUSH_EVERY reviews on the floor.
+        // and catches Throwable. Cancellation has to restore too: flush() is reachable from
+        // review()/upsert() on viewModelScope, so closing the study screen mid-flush would otherwise
+        // drop up to FLUSH_EVERY reviews on the floor.
         @Suppress("TooGenericExceptionCaught")
         try {
             pending.mapConcurrently { (author, deckId, chunk) ->
@@ -524,9 +516,9 @@ class SrsRepositoryImpl(
         scope.launch {
             flush().onFailure { err ->
                 Log.e(TAG, "flushAsync: FAILED — ${err.message}", err)
-                // Surfaced rather than only logged. The reviews are safe — they are back in the
-                // dirty set and on disk — but silence is what let a full quota eat a whole study
-                // session without the user seeing anything go wrong (#91).
+                // Surfaced rather than only logged. The reviews are safe — back in the dirty set and
+                // on disk — but silence is what let a full quota eat a whole study session without
+                // the user seeing anything go wrong (#91).
                 _flushFailures.tryEmit(err.toErrorReason())
             }
         }
@@ -536,11 +528,10 @@ class SrsRepositoryImpl(
      * Fold a journal left by a previous process back into the buffer, once per instance.
      *
      * Restored into [cache] unconditionally, unlike [loadChunksFor]'s read: a journalled review is
-     * newer than whatever is on the homeserver by definition — it is the write that never landed.
+     * newer than the homeserver's by definition — it is the write that never landed.
      *
-     * Returns true when it actually recovered something, so the caller can send it. Safe to call
-     * from [flush], which is why it does not flush itself: the guard flag is set before the load,
-     * so the nested call returns false rather than recursing.
+     * Returns true when it recovered something, so the caller can send it. Safe to call from
+     * [flush]: the guard flag is set before the load, so the nested call returns false.
      */
     private suspend fun restoreJournal(): Boolean {
         val alreadyRestored = withCaches {
@@ -557,8 +548,8 @@ class SrsRepositoryImpl(
             return false
         }
             // The journal is one device-wide file and may hold another account's unflushed work.
-            // Restoring theirs would both show this user reviews they never did and, on the next
-            // flush, write them to *this* account's homeserver.
+            // Restoring theirs would show this user reviews they never did and, on the next flush,
+            // write them to *this* account's homeserver.
             .filter { it.ownerPubky == owner }
         if (entries.isEmpty()) return false
 
@@ -578,8 +569,7 @@ class SrsRepositoryImpl(
 
     /**
      * Mirror the unflushed buffer to disk. Written whole rather than appended to, so it can never
-     * describe more than is actually pending — a stale entry would re-write an old state over a
-     * newer one on the next restore.
+     * describe more than is pending — a stale entry would re-write an old state over a newer one.
      */
     private suspend fun writeJournal() {
         val owner = session.current()?.identity?.pubky ?: return
@@ -590,9 +580,8 @@ class SrsRepositoryImpl(
                 state.toPendingReview(owner, key.authorPubky, key.deckId, chunk)
             }
         }
-        // "Written whole" now means whole *for this account*. The file is device-wide, so
-        // overwriting it with only our own entries — which is what this did — would throw away
-        // another account's unflushed reviews the moment we flushed ours.
+        // "Written whole" means whole *for this account*. The file is device-wide, so overwriting it
+        // with only our own entries would throw away another account's unflushed reviews.
         val theirs = runSuspendCatching { pendingReviews.load() }
             .getOrDefault(emptyList())
             .filter { it.ownerPubky != owner }
@@ -623,10 +612,10 @@ class SrsRepositoryImpl(
     /**
      * Read every SRS chunk for a deck, concurrently, once per session.
      *
-     * The chunk set is **discovered** by listing rather than derived from the card count. Deriving
-     * it would silently miss any chunk the writer placed elsewhere — and [chunkFor] does exactly
-     * that when a card's deck position is not yet known, so a guessed range would make those
-     * reviews permanently unreadable.
+     * The chunk set is **discovered** by listing rather than derived from the card count: deriving
+     * it would miss any chunk the writer placed elsewhere, and [chunkFor] does exactly that when a
+     * card's deck position is not yet known, so a guessed range would make those reviews
+     * permanently unreadable.
      */
     private suspend fun loadChunksFor(author: String, deckId: String) {
         val owner = session.current()?.identity?.pubky ?: return
@@ -634,10 +623,10 @@ class SrsRepositoryImpl(
         if (loaded) return
 
         val root = PubkyPaths.srsRoot(owner, author, deckId)
-        // Paged: one chunk record per ~100 cards, and the homeserver's default page is 100
-        // records, so a 10,000-card deck would have its later chunks silently omitted — which
-        // the discovery contract above forbids, since an unread chunk both hides review state
-        // and lets a later write clobber it.
+        // Paged: one chunk record per ~100 cards against a default page of 100 records, so a
+        // 10,000-card deck would have its later chunks silently omitted — which the discovery
+        // contract above forbids, since an unread chunk both hides review state and lets a later
+        // write clobber it.
         val urls = pubky.listAllEntriesOrEmpty(root)
 
         urls.mapConcurrently { url ->
@@ -672,9 +661,9 @@ class SrsRepositoryImpl(
      * Which SRS chunk a card's state belongs in, for a card seen for the first time.
      *
      * Mirrors the card's own position in the deck, so a deck's SRS chunks line up with its card
-     * chunks and a study session touches few of them. Falls back to a hash when the deck's card
-     * order is not loaded — still correct, just less tidy. Whichever answer is used, it is then
-     * recorded in [stateChunks] and never recomputed.
+     * chunks and a session touches few of them. Falls back to a hash when the card order is not
+     * loaded — still correct, just less tidy. Either way it is recorded in [stateChunks] and never
+     * recomputed.
      */
     private suspend fun chunkFor(deckId: String, cardId: String): Int {
         val index = cardRepository.listByDeck(deckId).indexOfFirst { it.id == cardId }
@@ -701,8 +690,7 @@ class SrsRepositoryImpl(
 
 /**
  * Journal entry for one unflushed review. Mirrors [SrsState] plus the routing the flush needs —
- * whose deck it is and which chunk record it belongs in — since neither is recoverable from the
- * state alone.
+ * whose deck it is and which chunk it belongs in — since neither is recoverable from the state alone.
  */
 private fun SrsState.toPendingReview(
     ownerPubky: String,

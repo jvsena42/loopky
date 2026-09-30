@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.presentation.settings
 import com.github.jvsena42.loopky.data.nexus.HttpError
 import com.github.jvsena42.loopky.data.unsplash.UnsplashClient
 import com.github.jvsena42.loopky.data.unsplash.UnsplashError
+import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
@@ -99,6 +100,38 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.state.value.shareOnPubky)
+    }
+
+    // --- Appearance ---
+
+    @Test
+    fun `the theme starts on System`() = runTest(mainDispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(AppTheme.System, vm.state.value.themeMode)
+    }
+
+    @Test
+    fun `picking a theme persists the choice`() = runTest(mainDispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onThemeModeChange(AppTheme.Dark)
+        advanceUntilIdle()
+
+        assertEquals(AppTheme.Dark, vm.state.value.themeMode)
+        assertEquals(AppTheme.Dark, preferences.themeMode.value)
+    }
+
+    @Test
+    fun `a stored theme survives into a new session`() = runTest(mainDispatcher) {
+        preferences.setThemeMode(AppTheme.Light)
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(AppTheme.Light, vm.state.value.themeMode)
     }
 
     // --- Unsplash access key ---

@@ -123,14 +123,14 @@ class StudySessionTypingTest {
         vm.onReveal()
         vm.onSpeak()
         advanceUntilIdle()
-        assertEquals(StudySessionEffect.Speak("hola", "es-ES"), effects.single())
+        assertEquals(StudySessionEffect.Speak("hola", "es-ES"), effects.excludingHaptics().single())
 
         // A correct check is what unmasks the back, and only then does Listen follow it there.
         vm.onAnswerChange("hello")
         vm.onCheckAnswer()
         vm.onSpeak()
         advanceUntilIdle()
-        assertEquals(StudySessionEffect.Speak("hello", "en-US"), effects.last())
+        assertEquals(StudySessionEffect.Speak("hello", "en-US"), effects.excludingHaptics().last())
         job.cancel()
     }
 

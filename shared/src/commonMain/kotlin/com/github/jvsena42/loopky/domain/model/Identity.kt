@@ -54,7 +54,48 @@ data class Session(
     val sessionSecret: String,
     val capabilities: List<Capability>,
     val homeserver: String,
-)
+) {
+    /**
+     * Whether this session was granted write access to the pubky.app namespace.
+     *
+     * True for the two apps, which ask for `DEFAULT_CAPABILITIES`; false for the headless client,
+     * which asks for `/pub/loopky/:rw` and nothing else (#54). The point of asking is that a
+     * pubky.app write from a session without the capability is not a *failure worth reporting* —
+     * it is a request that should never have been made, and making it costs a round trip and
+     * writes a warning about something working exactly as designed.
+     *
+     * Only ever a reason to **skip** an optional write, never to substitute one. A caller that
+     * genuinely needs the namespace should fail rather than silently do something else.
+     */
+    val canWritePubkyApp: Boolean
+        get() = capabilities.any { it.grantsWriteTo(PUBKY_APP_NAMESPACE) }
+}
 
+/**
+ * One capability as the homeserver states it: a path prefix and the letters granted on it,
+ * `"/pub/loopky/:rw"`.
+ */
 @JvmInline
-value class Capability(val value: String)
+value class Capability(val value: String) {
+    /**
+     * True when this grants writes at or above [path].
+     *
+     * "At or above" because a grant on `/pub/` covers `/pub/pubky.app/`, and comparing for
+     * equality would read a broader grant as a narrower one. The letters are checked for `w`
+     * specifically: a read-only `:r` on the same prefix is not permission to write.
+     *
+     * **This is a hint, never an authorisation check.** It is a plain string prefix, so a
+     * capability ending mid-segment (`/pub/pubky.ap`) would answer true for `/pub/pubky.app/`.
+     * That costs nothing where it is used — one optional write attempted instead of skipped, which
+     * is what happened before this existed — and the homeserver is what actually enforces the
+     * scope. Do not promote it to a gate on anything that matters.
+     */
+    fun grantsWriteTo(path: String): Boolean {
+        val prefix = value.substringBeforeLast(':', missingDelimiterValue = value)
+        val actions = value.substringAfterLast(':', missingDelimiterValue = "")
+        return 'w' in actions && path.startsWith(prefix)
+    }
+}
+
+/** The namespace pubky.app's own records live under — profiles, posts, follows and their tags. */
+private const val PUBKY_APP_NAMESPACE = "/pub/pubky.app/"

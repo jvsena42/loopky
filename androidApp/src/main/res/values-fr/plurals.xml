@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- fr takes CLDR `one` (i = 0..1), `many` (exact millions and up, which take "de":
+         "1 000 000 de cartes") and `other`. -->
+    <plurals name="duration_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="many">%1$d de minutes</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="one">%1$d heure</item>
+        <item quantity="many">%1$d d’heures</item>
+        <item quantity="other">%1$d heures</item>
+    </plurals>
+    <plurals name="duration_days">
+        <item quantity="one">%1$d jour</item>
+        <item quantity="many">%1$d de jours</item>
+        <item quantity="other">%1$d jours</item>
+    </plurals>
+    <plurals name="card_count">
+        <item quantity="one">%1$d carte</item>
+        <item quantity="many">%1$d de cartes</item>
+        <item quantity="other">%1$d cartes</item>
+    </plurals>
+    <plurals name="cards_ready">
+        <item quantity="one">%1$d carte prête</item>
+        <item quantity="many">%1$d de cartes prêtes</item>
+        <item quantity="other">%1$d cartes prêtes</item>
+    </plurals>
+    <plurals name="cards_discarded">
+        <item quantity="one">%1$d écartée à la vérification</item>
+        <item quantity="many">%1$d écartées à la vérification</item>
+        <item quantity="other">%1$d écartées à la vérification</item>
+    </plurals>
+    <plurals name="cards_published">
+        <item quantity="one">%1$d carte est maintenant publique.</item>
+        <item quantity="many">%1$d de cartes sont maintenant publiques.</item>
+        <item quantity="other">%1$d cartes sont maintenant publiques.</item>
+    </plurals>
+    <plurals name="study_goal_reached_count">
+        <item quantity="one">%1$d nouvelle carte aujourd’hui</item>
+        <item quantity="many">%1$d de nouvelles cartes aujourd’hui</item>
+        <item quantity="other">%1$d nouvelles cartes aujourd’hui</item>
+    </plurals>
+    <plurals name="cards_reviewed">
+        <item quantity="one">Tu as révisé %1$d carte.</item>
+        <item quantity="many">Tu as révisé %1$d de cartes.</item>
+        <item quantity="other">Tu as révisé %1$d cartes.</item>
+    </plurals>
+    <plurals name="cards_incomplete">
+        <item quantity="one">%1$d incomplète</item>
+        <item quantity="many">%1$d incomplètes</item>
+        <item quantity="other">%1$d incomplètes</item>
+    </plurals>
+    <plurals name="public_decks_count">
+        <item quantity="one">Paquet public · %1$d</item>
+        <item quantity="many">Paquets publics · %1$d</item>
+        <item quantity="other">Paquets publics · %1$d</item>
+    </plurals>
+    <plurals name="profile_decks_count">
+        <item quantity="one">Tous les paquets · %1$d</item>
+        <item quantity="many">Tous les paquets · %1$d</item>
+        <item quantity="other">Tous les paquets · %1$d</item>
+    </plurals>
+    <plurals name="bulk_cards_parsed">
+        <item quantity="one">%1$d carte lue</item>
+        <item quantity="many">%1$d de cartes lues</item>
+        <item quantity="other">%1$d cartes lues</item>
+    </plurals>
+    <plurals name="bulk_import_cards">
+        <item quantity="one">Importer %1$d carte</item>
+        <item quantity="many">Importer %1$d de cartes</item>
+        <item quantity="other">Importer %1$d cartes</item>
+    </plurals>
+    <plurals name="bulk_duplicates">
+        <item quantity="one">%1$d doublon fusionné</item>
+        <item quantity="many">%1$d de doublons fusionnés</item>
+        <item quantity="other">%1$d doublons fusionnés</item>
+    </plurals>
+    <plurals name="bulk_truncated">
+        <item quantity="one">%1$d ligne au-delà de la limite n’a pas été importée</item>
+        <item quantity="many">%1$d de lignes au-delà de la limite n’ont pas été importées</item>
+        <item quantity="other">%1$d lignes au-delà de la limite n’ont pas été importées</item>
+    </plurals>
+    <plurals name="bulk_dropped_notes">
+        <item quantity="one">%1$d note n’avait pas de recto et de verso utilisables</item>
+        <item quantity="many">%1$d de notes n’avaient pas de recto et de verso utilisables</item>
+        <item quantity="other">%1$d notes n’avaient pas de recto et de verso utilisables</item>
+    </plurals>
+    <plurals name="bulk_images_skipped">
+        <item quantity="one">%1$d image au-delà de la limite n’a pas été importée</item>
+        <item quantity="many">%1$d d’images au-delà de la limite n’ont pas été importées</item>
+        <item quantity="other">%1$d images au-delà de la limite n’ont pas été importées</item>
+    </plurals>
+    <plurals name="deck_detail_clones">
+        <item quantity="one">%1$d copie</item>
+        <item quantity="many">%1$d de copies</item>
+        <item quantity="other">%1$d copies</item>
+    </plurals>
+    <!-- The plural agrees with the *card* count, so the quantity argument is %2$d. -->
+    <plurals name="home_deck_due_cards">
+        <item quantity="one">%1$d à réviser · %2$d carte</item>
+        <item quantity="many">%1$d à réviser · %2$d de cartes</item>
+        <item quantity="other">%1$d à réviser · %2$d cartes</item>
+    </plurals>
+    <plurals name="home_deck_new_cards">
+        <item quantity="one">%1$d à découvrir · %2$d carte</item>
+        <item quantity="many">%1$d à découvrir · %2$d de cartes</item>
+        <item quantity="other">%1$d à découvrir · %2$d cartes</item>
+    </plurals>
+    <plurals name="deck_detail_clone_dialog_message">
+        <item quantity="one">Tu auras une copie modifiable de ce paquet de %1$d carte. Elle ne recevra pas les mises à jour de l’auteur, et ta progression repart de zéro.</item>
+        <item quantity="many">Tu auras une copie modifiable de ce paquet de %1$d de cartes. Elle ne recevra pas les mises à jour de l’auteur, et ta progression repart de zéro.</item>
+        <item quantity="other">Tu auras une copie modifiable de ce paquet de %1$d cartes. Elle ne recevra pas les mises à jour de l’auteur, et ta progression repart de zéro.</item>
+    </plurals>
+    <plurals name="publish_progress_count">
+        <item quantity="one">Publication de %1$d sur %2$d carte…</item>
+        <item quantity="many">Publication de %1$d sur %2$d de cartes…</item>
+        <item quantity="other">Publication de %1$d sur %2$d cartes…</item>
+    </plurals>
+    <plurals name="cards_tried">
+        <item quantity="one">Tu as essayé %1$d carte.</item>
+        <item quantity="many">Tu as essayé %1$d de cartes.</item>
+        <item quantity="other">Tu as essayé %1$d cartes.</item>
+    </plurals>
+</resources>

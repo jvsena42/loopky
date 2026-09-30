@@ -157,7 +157,7 @@ class StudySessionReverseTest {
         vm.onSpeak()
         advanceUntilIdle()
 
-        val spoken = assertIs<StudySessionEffect.Speak>(effects.last())
+        val spoken = assertIs<StudySessionEffect.Speak>(effects.excludingHaptics().last())
         assertEquals("dog", spoken.text)
         assertEquals("en-US", spoken.languageTag, "read in the wrong side's language")
         job.cancel()

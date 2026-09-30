@@ -9,6 +9,8 @@ import Shared
 struct PublishDeckScreen: View {
     var onBack: () -> Void = {}
     var onPublished: (String) -> Void = { _ in }
+    /// The session was ended from the error row's "Sign in again" — go collect a new one.
+    var onSignedOut: () -> Void = {}
 
     @State private var viewModel: PublishDeckViewModel?
     @State private var uiState: PublishDeckUiState?
@@ -89,6 +91,9 @@ struct PublishDeckScreen: View {
             titleError: FormErrorCopy.message(for: state.titleError),
             descriptionError: FormErrorCopy.message(for: state.descriptionError),
             errorMessage: Self.publishErrorText(state.error),
+            onSignInAgain: (Self.publishErrorReason(state.error)?.offersSignIn ?? false)
+                ? { viewModel?.onSignInAgainClick() }
+                : nil,
             sharePromptPreview: state.sharePrompt?.preview,
             isSharing: state.sharePrompt?.isPosting ?? false
         )
@@ -106,6 +111,18 @@ struct PublishDeckScreen: View {
             return "\(NSLocalizedString("publish_error_undo", comment: "")) \(ErrorCopy.message(for: undo.reason))"
         default:
             return nil
+        }
+    }
+
+    /// The classified cause, matched on the concrete classes rather than read off the sealed
+    /// interface: a Kotlin sealed interface crosses as an ObjC protocol, and a property read
+    /// through the erased value is not something to rely on here.
+    private static func publishErrorReason(_ error: PublishError?) -> ErrorReason? {
+        switch error {
+        case let publish as PublishErrorPublish: return publish.reason
+        case let cancel as PublishErrorCancel: return cancel.reason
+        case let undo as PublishErrorUndo: return undo.reason
+        default: return nil
         }
     }
 
@@ -131,7 +148,13 @@ struct PublishDeckScreen: View {
         effectSink = FlowEffectSink(vm.effects) { effect in
             switch effect {
             case is PublishDeckEffectNavigateBack: onBack()
+            case is PublishDeckEffectNavigateToOnboarding: onSignedOut()
             case let published as PublishDeckEffectPublished: onPublished(published.deckId)
+            case is PublishDeckEffectShared, is PublishDeckEffectShareFailed:
+                // Deliberately not shown. Announcing is best-effort, and the `Published` that
+                // follows it immediately pops this screen — a toast raised here would be torn
+                // down with it before anyone read it.
+                break
             default: break
             }
         }
@@ -163,6 +186,9 @@ struct PublishViewState {
     var titleError: String?
     var descriptionError: String?
     var errorMessage: String?
+    /// Offered beside `errorMessage` only when signing in again could clear it — see
+    /// `ErrorReason.offersSignIn`.
+    var onSignInAgain: (() -> Void)?
     var sharePromptPreview: String?
     var isSharing: Bool = false
 

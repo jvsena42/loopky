@@ -8,29 +8,63 @@ import com.github.jvsena42.loopky.domain.model.ErrorReason
  * "unknown error", never to silently wrong behaviour.
  */
 
-/** The path does not exist on the homeserver. For a list, that means "nothing here yet". */
+/**
+ * The path does not exist on the homeserver. For a list that means "nothing here yet"; for a
+ * profile, "this account has published none" — an answer, not a failure to get one.
+ *
+ * Prefers [PubkyError.status] when the message named one, so a 500 whose body happens to say "not
+ * found" is not read as an absent record. Falls back to substrings otherwise, where the FFI's own
+ * wording (`"not found: pubky://…"`) and every non-HTTP miss land.
+ */
 internal fun Throwable.isNotFound(): Boolean {
+    (this as? PubkyError)?.status?.let { return it == HTTP_NOT_FOUND }
     val msg = message?.lowercase() ?: return false
-    return "not found" in msg || "notfound" in msg || "404" in msg
+    return "not found" in msg || "notfound" in msg || STATUS_404.containsMatchIn(msg)
 }
+
+private const val HTTP_NOT_FOUND = 404
+
+/**
+ * `404` as a status code rather than as three digits inside something else — same reasoning as
+ * [STATUS_507], and the same hazard: every failure message carries a `pubky://` URL, and deck
+ * and card ids are random alphanumerics.
+ */
+private val STATUS_404 = Regex("(?<![0-9a-z])404(?![0-9a-z])")
 
 /**
  * `get_homeserver` answered `Ok(None)`: this pubky has published no homeserver record, so it has
- * never had an account anywhere. The fork turns that into an *error* carrying this exact wording
- * (`pubky-core-ffi-fork/src/lib.rs`, `get_homeserver`), which is why it needs classifying at all.
+ * never had an account anywhere. The fork turns that into an *error* carrying this exact wording,
+ * which is why it needs classifying at all.
  *
- * Deliberately ordered **ahead of** [isNetworkFailure] in [toErrorReason], and that is not
- * tidiness. The `Err(...)` arm of the same FFI call reports a DHT failure as
- * `"Failed to get homeserver: ... failed to resolve ..."`, and `"failed to resolve"` is in
- * [isNetworkFailure]'s list. Letting the transport classifier win would answer "you're offline"
- * for a phrase that simply belongs to no account — a verdict on the user's connection when we
- * have the real answer in hand (#147).
+ * Deliberately ordered **ahead of** [isNetworkFailure] in [toErrorReason]. The `Err(...)` arm of the
+ * same FFI call reports a DHT failure as `"Failed to get homeserver: … failed to resolve …"`, and
+ * `"failed to resolve"` is in [isNetworkFailure]'s list — letting the transport classifier win would
+ * answer "you're offline" for a phrase that simply belongs to no account (#147).
  *
- * Safe this early because the string comes from one call site in the fork: no deck, card or
- * profile read can produce it, so it cannot swallow an ordinary not-found.
+ * Safe this early because the string comes from one call site in the fork, so it cannot swallow an
+ * ordinary not-found.
  */
 internal fun Throwable.isNoHomeserverRecord(): Boolean =
     message?.lowercase()?.contains("no homeserver found") == true
+
+/**
+ * pkarr could not turn the homeserver's key into an address: both relays timed out, or the DHT
+ * did not answer (#389). Two wordings reach here. The fork's own, from a sign-in that resolves
+ * before it spends Ring's approval. And a proxy refusing to tunnel to a `_pubky.<key>` or bare-key
+ * host, which is what an unresolved name looks like from an older binary: that name means nothing
+ * outside pkarr, so the proxy cannot have allowed it — reading it as an allowlist problem sends
+ * the user to change a network policy `loopky doctor` finds nothing wrong with.
+ *
+ * Ahead of [isNetworkFailure] and of the CLI's proxy-refusal check, both of which also match it.
+ */
+internal fun Throwable.isHomeserverUnresolved(): Boolean {
+    val msg = message?.lowercase() ?: return false
+    return "homeserver could not be resolved" in msg ||
+        ("tunnel error" in msg && PKARR_HOST_URL.containsMatchIn(msg))
+}
+
+/** A request URL whose host is a pkarr name — `_pubky.<z32>` or a bare 52-character z32 key. */
+private val PKARR_HOST_URL = Regex("https://(_pubky\\.)?[ybndrfg8ejkmcpqxot1uwisza345h769]{52}(?=[/:)?\\s]|$)")
 
 /**
  * The request never reached the homeserver: no connectivity, DNS failure, TLS problem or
@@ -40,22 +74,74 @@ internal fun Throwable.isNoHomeserverRecord(): Boolean =
  */
 internal fun Throwable.isNetworkFailure(): Boolean {
     val msg = message?.lowercase() ?: return false
-    return "transport" in msg ||
-        "error sending request" in msg ||
-        "timed out" in msg ||
-        "timeout" in msg ||
-        "dns" in msg ||
-        "connection refused" in msg ||
-        "failed to resolve" in msg ||
-        "network" in msg
+    return NETWORK_FAILURE_PHRASES.any { it in msg }
 }
 
 /**
- * The homeserver answered 429: too many requests in flight or too quickly.
+ * Wordings that mean the request never left the device, from all three stacks Loopky talks through.
  *
- * Measured, not assumed — publishing a 1,200-card deck with 8 concurrent writes reliably trips
- * this. It is a *transient* failure: the request was well-formed and will succeed after a pause,
- * so callers back off and retry rather than surfacing it.
+ * The first group is the Rust FFI's. The rest are the **platform HTTP clients**, which reach the UI
+ * now that indexer failures are reported rather than swallowed (#321): Android's
+ * `UnknownHostException` reads `Unable to resolve host "…": No address associated with hostname`,
+ * and iOS hands over `NSError.localizedDescription`, which is "A server with the specified hostname
+ * could not be found." or "The Internet connection appears to be offline.". None of them matched
+ * `failed to resolve`, so an offline Discover said "Something went wrong" while the strip above it —
+ * reading the same dead connection through the FFI — correctly said "You're offline".
+ */
+private val NETWORK_FAILURE_PHRASES = listOf(
+    "transport",
+    "error sending request",
+    "timed out",
+    "timeout",
+    "dns",
+    "connection refused",
+    "failed to resolve",
+    "network",
+    // Platform HTTP clients.
+    "unable to resolve",
+    "no address associated",
+    "hostname could not be found",
+    "connection appears to be offline",
+    "unable to connect",
+)
+
+/**
+ * The FFI could not import the session secret at all — the wording every `*_with_session` entry point
+ * returns when `restore_session` fails.
+ *
+ * On its own it says nothing about *why*: the fork wraps whatever went wrong behind that one prefix,
+ * so an expiry, a 429 and a dead connection arrive worded identically. Only ever useful combined
+ * with a second classifier, which is why it maps to no reason by itself.
+ */
+internal fun Throwable.isSessionImportFailure(): Boolean =
+    message?.lowercase()?.contains("failed to import session") == true
+
+/**
+ * The session round trip that opens every authenticated write could not be made, for a reason that
+ * is not the homeserver *refusing* the session.
+ *
+ * A *narrower* statement than [isNetworkFailure], and the narrowing is the point. Measured on device
+ * over three separate hours-long sessions (#165): pkarr resolved, `homeserver.pubky.app` answered
+ * 200, TCP to its advertised port connected, and only the session preamble failed. Reporting that as
+ * [ErrorReason.Offline] sent the user to check a connection that was fine.
+ *
+ * Everything the preamble can fail with that is *not* a refusal lands here, not only a dead
+ * connection: a `500` from the homeserver and a `502` from whatever sits in front of it fail the
+ * write without saying anything about the session. This is the residual by construction — an import
+ * failure is either an expiry, one of the two failures with a remedy of their own (a 429 to back off
+ * from, a 507 to stop at), or this — so a wording the fork changes tomorrow degrades to "try again"
+ * rather than to [ErrorReason.Unknown], and never to signing the user out.
+ */
+internal fun Throwable.isSessionUnreachable(): Boolean =
+    isSessionImportFailure() &&
+        !isSessionExpired() &&
+        !isRateLimited() &&
+        !isQuotaExceeded()
+
+/**
+ * The homeserver answered 429. Measured, not assumed — publishing a 1,200-card deck with 8
+ * concurrent writes reliably trips it. Transient: the request was well-formed and will succeed after
+ * a pause, so callers back off rather than surfacing it.
  */
 internal fun Throwable.isRateLimited(): Boolean {
     val msg = message?.lowercase() ?: return false
@@ -66,13 +152,12 @@ internal fun Throwable.isRateLimited(): Boolean {
  * The homeserver refused the write because the account is out of its storage quota: **507
  * Insufficient Storage**, body `"Disk space quota exceeded"`.
  *
- * Matched on three independent substrings because the homeserver builds this answer in two
- * places — a pre-flight check against `used_bytes` before the write, and the storage layer's own
- * `DiskSpaceQuotaExceeded` — and the wording reaching the FFI need not be identical.
+ * Matched on three independent substrings because the homeserver builds this answer in two places —
+ * a pre-flight check against `used_bytes`, and the storage layer's own `DiskSpaceQuotaExceeded` — and
+ * the wording reaching the FFI need not be identical.
  *
- * Terminal, unlike every other classifier here: [isRateLimited] and [isNetworkFailure] are
- * transient and worth retrying, this one succeeds only after the user frees space. Callers must
- * treat it as a stop, not a backoff.
+ * Terminal, unlike every other classifier here: this one succeeds only after the user frees space, so
+ * callers must treat it as a stop, not a backoff.
  */
 internal fun Throwable.isQuotaExceeded(): Boolean {
     val msg = message?.lowercase() ?: return false
@@ -100,6 +185,9 @@ fun Throwable.toErrorReason(): ErrorReason = when {
     // homeserver record" and "the DHT did not answer" through the same call, and only the first
     // is a fact about the user's key. See the note on isNoHomeserverRecord.
     isNoHomeserverRecord() -> ErrorReason.NoHomeserverAccount
+    // Ahead of the transport classifier, which its wording also matches: a pkarr lookup that did not
+    // answer is not the device being offline (#389).
+    isHomeserverUnresolved() -> ErrorReason.HomeserverLookupFailed
     // Checked ahead of the transient classifiers on purpose. Nothing they match collides with the
     // 507 body *today*, but "quota" is the word a future bandwidth limit will also reach for, and
     // reading a full disk as "the server is busy" would retry against it forever.
@@ -108,6 +196,10 @@ fun Throwable.toErrorReason(): ErrorReason = when {
     // Offline — it answered, so the device's connection is fine and saying otherwise sends the
     // user to check something that is not broken.
     isRateLimited() -> ErrorReason.ServerBusy
+    // Ahead of the transport classifier it is a special case of, because the two lead to opposite
+    // advice: this one means the session round trip could not be made while the device's
+    // connection is fine, and Offline's copy tells the user to go check that connection (#165).
+    isSessionUnreachable() -> ErrorReason.SessionUnreachable
     isNetworkFailure() -> ErrorReason.Offline
     isNotFound() -> ErrorReason.NotFound
     else -> ErrorReason.Unknown

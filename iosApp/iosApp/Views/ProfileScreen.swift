@@ -19,7 +19,7 @@ struct ProfileScreen: View {
     @State private var uiState: ProfileUiState?
     @State private var stateSink: FlowEffectSink?
     @State private var effectSink: FlowEffectSink?
-    @State private var shareItem: ShareItem?
+    @State private var shareTarget: ShareLinkTarget?
     @State private var toast: String?
 
     /// Edit-sheet fields are owned here while typing, like every other text input in the app.
@@ -32,10 +32,16 @@ struct ProfileScreen: View {
             editName: $editName,
             editBio: $editBio,
             onEditProfile: {
-                editName = uiState?.editName ?? ""
-                editBio = uiState?.editBio ?? ""
+                // Seeded from the identity on screen, not from `uiState.editName`: that field is
+                // filled by the `onEditProfileClick()` below, so reading it here hands back the
+                // *previous* open's values — empty on the first. Someone who opened the sheet and
+                // saved published a blank name over their own.
+                editName = uiState?.identity?.displayName ?? ""
+                editBio = uiState?.identity?.bio ?? ""
                 viewModel?.onEditProfileClick()
             },
+            onDismissNameNudge: { viewModel?.onDismissNameNudge() },
+            onDismissAvatarNudge: { viewModel?.onDismissAvatarNudge() },
             onDismissEdit: { viewModel?.onDismissEditSheet() },
             onSaveEdit: { viewModel?.onSaveClick() },
             onEditNameChanged: { viewModel?.onEditNameChanged(text: $0) },
@@ -49,7 +55,7 @@ struct ProfileScreen: View {
             onOpenSettings: onOpenSettings,
             onBackUpNow: onBackUpNow
         )
-        .sheet(item: $shareItem) { ShareSheet(items: [$0.text]) }
+        .sheet(item: $shareTarget) { ShareLinkSheet(target: $0) }
         .overlay(alignment: .bottom) {
             if let toast {
                 Text(toast)
@@ -75,16 +81,20 @@ struct ProfileScreen: View {
         guard let state = uiState else { return ProfileViewState() }
         let identity = state.identity.map { IdentityData($0) }
         return ProfileViewState(
-            isLoading: state.isLoading,
+            showLoadingScreen: state.showLoadingScreen,
             label: identity?.label ?? "",
             shortPubky: identity?.shortPubky ?? "",
             initial: identity?.initial ?? "?",
             avatarUrl: identity?.avatarUrl,
             needsBackup: state.needsBackup,
+            showNameNudge: state.showNameNudge,
+            showAvatarNudge: state.showAvatarNudge,
             bio: state.identity?.bio,
             deckCount: Int(state.deckCount),
             cardCount: Int(state.cardCount),
             dueCount: Int(state.dueCount),
+            libraryCountsKnown: state.libraryCountsKnown,
+            dueCountKnown: state.dueCountKnown,
             followingCount: state.followingCount.map { Int(truncating: $0) },
             followerCount: state.followerCount.map { Int(truncating: $0) },
             showEditSheet: state.showEditSheet,
@@ -102,7 +112,7 @@ struct ProfileScreen: View {
             case is ProfileEffectNavigateToOnboarding:
                 onSignedOut()
             case let share as ProfileEffectShareProfile:
-                shareItem = ShareItem(text: "\(IdentityData(share.identity).label) on Loopky\n\(share.uri)")
+                shareTarget = ShareLinkTarget(profile: share.identity, uri: share.uri)
             case let copy as ProfileEffectCopyToClipboard:
                 UIPasteboard.general.string = copy.text
                 flash(NSLocalizedString("profile_copied", comment: ""))
@@ -133,7 +143,9 @@ struct ProfileScreen: View {
 }
 
 struct ProfileViewState {
-    var isLoading: Bool = true
+    /// Nothing cached to draw yet, so the screen is a spinner. See `ProfileUiState.showLoadingScreen`:
+    /// an ordinary launch paints from the persisted session instead and refreshes underneath.
+    var showLoadingScreen: Bool = true
     var label: String = ""
     var shortPubky: String = ""
     var initial: String = "?"
@@ -141,10 +153,19 @@ struct ProfileViewState {
     /// Loopky holds the only copy of this account's key and no method has been completed yet.
     /// Goes away as soon as one has — Settings keeps the permanent door.
     var needsBackup: Bool = false
+    /// This account has published no display name and has not waved the prompt away.
+    var showNameNudge: Bool = false
+    /// This account has published no photo, has not waved the prompt away, and is not already
+    /// being asked for a name — the two cards never stack.
+    var showAvatarNudge: Bool = false
     var bio: String?
     var deckCount: Int = 0
     var cardCount: Int = 0
     var dueCount: Int = 0
+    /// False while `deckCount`/`cardCount` are placeholders — the stat card draws a dash.
+    var libraryCountsKnown: Bool = true
+    /// The same for `dueCount`, which resolves later: review state is not cached across launches.
+    var dueCountKnown: Bool = true
     var followingCount: Int?
     var followerCount: Int?
     var showEditSheet: Bool = false

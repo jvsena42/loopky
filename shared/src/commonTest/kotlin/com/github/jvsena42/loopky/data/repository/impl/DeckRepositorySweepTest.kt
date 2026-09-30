@@ -12,6 +12,7 @@ import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FakeBackgroundTasks
+import com.github.jvsena42.loopky.testing.FakeDeckCacheStore
 import com.github.jvsena42.loopky.testing.FakeMediaRepository
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
@@ -54,6 +55,7 @@ class DeckRepositorySweepTest {
         tagRepo = RecordingTagRepository(),
         mediaRepo = media,
         backgroundTasks = backgroundTasks,
+        deckCache = FakeDeckCacheStore(),
         scope = CoroutineScope(
             backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler),
         ),
@@ -90,7 +92,7 @@ class DeckRepositorySweepTest {
     ): Pair<DeckRepositoryImpl, Deck> {
         val repo = repo()
         putRemoteDeck(cards, cover)
-        val clone = repo.clone(repo.fetchRemote("friendpk", "orig").getOrThrow()).getOrThrow()
+        val clone = repo.clone(repo.fetchRemote("friendpk", "orig").getOrThrow(), "My copy").getOrThrow()
         media.rehosts.clear()
         return repo to clone
     }
@@ -278,7 +280,7 @@ class DeckRepositorySweepTest {
         putRemoteDeck(listOf(cardWith("c1", pinnedImage("sha1"))))
         val before = backgroundTasks.scheduled
 
-        repo.clone(repo.fetchRemote("friendpk", "orig").getOrThrow()).getOrThrow()
+        repo.clone(repo.fetchRemote("friendpk", "orig").getOrThrow(), "My copy").getOrThrow()
 
         // Scheduled from the repository, not a ViewModel: a clone's media is entirely pinned, and
         // no screen should have to remember to ask.

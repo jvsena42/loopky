@@ -8,8 +8,6 @@ import UniformTypeIdentifiers
 /// by the same paste parser, `.apkg` by `ApkgReader`, which on iOS reads the zip with the system
 /// zlib and the collection through a SQLite cinterop.
 struct BulkImportScreen: View {
-    @Environment(\.openURL) private var openURL
-
     /// A file the system handed us via "Open with", read on appear instead of showing the picker.
     var incomingFile: URL?
 
@@ -32,8 +30,8 @@ struct BulkImportScreen: View {
             onChooseFields: { isChoosingFields = true },
             onConfirm: { viewModel?.onConfirm() },
             onCancel: { viewModel?.onCancel() },
-            onBrowseSharedDecks: {
-                if let url = URL(string: ankiWebSharedDecksUrl) { openURL(url) }
+            onCopyCliPrompt: {
+                UIPasteboard.general.string = NSLocalizedString("bulk_cli_prompt", comment: "")
             }
         )
         .fileImporter(
@@ -241,9 +239,6 @@ let maxImportFileBytes = 500 * 1024 * 1024
 
 /// Bytes in a megabyte, for the size copy.
 let bytesPerMegabyte = 1024 * 1024
-
-/// Where someone with no deck yet can find one.
-private let ankiWebSharedDecksUrl = "https://ankiweb.net/shared/decks"
 
 enum BulkImportPhase { case idle, reading, parsing, ready, failed }
 

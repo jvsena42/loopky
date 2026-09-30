@@ -17,6 +17,8 @@ class AndroidSecureSessionStore(context: Context) : SecureSessionStore {
     // repositories is not.
     private val vault: KVault? = openVaultOrNull(context, SESSION_SERVICE_NAME)
 
+    override val location: String = "the Android keystore (EncryptedSharedPreferences $SESSION_SERVICE_NAME)"
+
     override suspend fun save(session: Session) = withContext(Dispatchers.IO) {
         val json = sessionStoreJson.encodeToString(StoredSession.fromDomain(session))
         vault?.set(SESSION_STORAGE_KEY, json)

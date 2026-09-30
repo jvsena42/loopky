@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The dark half of `values/colors.xml`, mirroring LoopkyDarkColors.
+
+  These are resolved by the *system's* night setting, not Loopky's preference, and there is no
+  fixing that: the splash window is drawn before the app exists to be asked. It is right for the
+  default (System) and for anyone whose choice agrees with their device; a user who forced Light
+  on a dark phone sees one dark splash frame before Compose paints cream over it.
+-->
+<resources>
+    <color name="brand_surface">#14101C</color>
+    <color name="brand_accent_soft">#FF3D2415</color>
+</resources>

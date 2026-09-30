@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
 import com.github.jvsena42.loopky.data.nexus.NexusClient
+import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.AccountStamp
 import com.github.jvsena42.loopky.data.pubky.FollowDto
 import com.github.jvsena42.loopky.data.pubky.PostDto
@@ -18,9 +19,11 @@ import com.github.jvsena42.loopky.data.pubky.isNotFound
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
 import com.github.jvsena42.loopky.data.pubky.putWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.requireSession
+import com.github.jvsena42.loopky.data.repository.DeckPage
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
+import com.github.jvsena42.loopky.data.repository.PeoplePage
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.data.storage.AppPreferences
@@ -41,17 +44,16 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 
 /**
- * [DiscoveryRepository] backed by [PubkyClient]. Follows are stored as pubky.app-native records
- * (`/pub/pubky.app/follows/{followee}`) on the follower's homeserver, mirroring [DeckRepositoryImpl]:
- * Pubky is the source of truth with a [Mutex]-guarded in-memory follow-set cache for the session.
+ * [DiscoveryRepository] backed by [PubkyClient]. Follows are pubky.app-native records
+ * (`/pub/pubky.app/follows/{followee}`) on the follower's homeserver, with a [Mutex]-guarded
+ * in-memory follow-set cache for the session.
  *
- * [decksByTag] is a local filter over decks the user can already reach (following + own).
- * [decksByTagGlobal] and [loopkyUsers] go wider, through the Nexus indexer — and everything they
- * read is untrusted, so each entry is verified before it is returned (see [verifiedDeck]).
+ * [decksByTag] is a local filter over decks the user can already reach. [decksByTagGlobal] and
+ * [loopkyUsers] go wider through the Nexus indexer, and everything they read is untrusted, so each
+ * entry is verified before it is returned (see [verifiedDeck]).
  *
- * The discovery reads — [decksFromFollowing] and [decksByTagGlobal] — leave out the signed-in
- * account's own decks. Those already have a home in Library, and on a young network they are
- * otherwise most of what Discover has to show. [decksByTag] is deliberately not one of them.
+ * The discovery reads leave out the signed-in account's own decks — Library is where those live,
+ * and on a young network they are otherwise most of what Discover has to show.
  */
 // Nine collaborators is a lot, but every one is a distinct source this repo has to join —
 // homeserver, session, deck/tag/identity repos, indexer, and the share preference that gates
@@ -83,11 +85,10 @@ class DiscoveryRepositoryImpl(
             cache
         }?.let { return it.toList() }
         val owner = session.current()?.identity?.pubky ?: return emptyList()
-        // Propagate transport failures for the same reason as DeckRepositoryImpl.listByAuthor:
-        // "couldn't reach the homeserver" must not render as "you follow nobody".
-        // Paged: `follows/` is one flat record per followee and it is shared with pubky.app
-        // proper, so an account active there passes the homeserver's 100-record default page
-        // easily — and a truncated set makes `isFollowing` deny someone you do follow.
+        // Propagate transport failures like DeckRepositoryImpl.listByAuthor: "couldn't reach the
+        // homeserver" must not render as "you follow nobody". Paged, because `follows/` is shared
+        // with pubky.app proper — an account active there passes the 100-record default page
+        // easily, and a truncated set makes `isFollowing` deny someone you do follow.
         val entries = pubky.listAllEntries(PubkyPaths.followsRoot(owner))
             .getOrElse { if (it.isNotFound()) null else throw it }
         val followees = entries?.let(::parseFollowees) ?: emptyList()
@@ -135,11 +136,10 @@ class DiscoveryRepositoryImpl(
             val body = loopkyJson.encodeToString(
                 PostDto(
                     content = announcement.content,
-                    // A link post either way: the body always carries the deck's URI, and the
-                    // cover — when there is one — travels as a link in the body too rather than
-                    // as an attachment. `attachments` is left empty on purpose; pubky.app
-                    // resolves it strictly as pubky.app file records and renders nothing for
-                    // anything else, so a URL there was invisible. See DeckAnnouncement.content.
+                    // A link post either way: the body always carries the deck's URI, and the cover
+                    // travels as a link in the body too. `attachments` is left empty on purpose —
+                    // pubky.app resolves it strictly as pubky.app file records, so a URL there was
+                    // invisible. See DeckAnnouncement.content.
                     kind = PostKinds.LINK,
                     // A `short` embed is how Nexus spells "repost", and it then demands the
                     // embedded URI already be an indexed post — see PostKinds.
@@ -157,17 +157,13 @@ class DiscoveryRepositoryImpl(
     /**
      * Label the announcement post with the deck's topics and [ReservedTags.DECK].
      *
-     * **This is the only way a deck's topics can ever trend.** Nexus admits a label into its
-     * global tag index only when the subject is a pubky.app post or profile
-     * (`nexus-common/src/db/graph/queries/get.rs:614-640`); a deck manifest can only be a generic
-     * resource, so the manifest tags Loopky already writes are invisible to `/v0/tags/hot`,
-     * `/v0/search/posts/by_tag/{label}` and every other app's feed. Tagging the *post* puts them
-     * all in reach. The manifest tags stay regardless — they are how Loopky finds its own decks,
-     * and they keep working when announcing is switched off (Architecture.md §7.7).
+     * **This is the only way a deck's topics can ever trend.** Nexus admits a label into its global
+     * tag index only when the subject is a pubky.app post or profile; a deck manifest can only be a
+     * generic resource, so the manifest tags Loopky writes are invisible to `/v0/tags/hot` and every
+     * other app's feed. The manifest tags stay regardless — they are how Loopky finds its own decks,
+     * and they keep working when announcing is off (Architecture.md §7.7).
      *
-     * Best-effort, one label at a time: the post is already written and worth having, so a tag
-     * that fails is logged and the rest still go out. Written after the post so the subject
-     * exists — Nexus retries a tag whose post it has not indexed yet, but only for a while.
+     * Best-effort, one label at a time. Written after the post so the subject exists.
      */
     private suspend fun tagAnnouncement(postUri: PubkyUri, tags: List<Tag>) {
         for (tag in tags) {
@@ -202,9 +198,8 @@ class DiscoveryRepositoryImpl(
 
     /**
      * The [candidates] that are Loopky accounts, as resolved profiles, in the order given.
-     *
-     * [exclude] drops the person whose list this is — following yourself is reachable, and seeing
-     * yourself in your own follower list is a puzzle rather than information.
+     * [exclude] drops the person whose list this is — seeing yourself in your own follower list is
+     * a puzzle rather than information.
      */
     private suspend fun loopkyAccountsAmong(
         candidates: List<String>,
@@ -236,24 +231,19 @@ class DiscoveryRepositoryImpl(
                 "decksFromFollowing: querying ${considered.size} of ${followees.size} follows",
             )
         }
-        // Concurrent, not a serial loop — measured at ~6.5s per author walking a real account,
-        // still going minutes after Discover opened, which is how a slow strip came to look like
-        // the app being stuck.
+        // Concurrent, not a serial loop — measured at ~6.5s per author on a real account, still
+        // going minutes after Discover opened.
         //
         // **At the default MAX_IN_FLIGHT, and do not raise it here.** These requests do not spread
-        // across many servers: Nexus indexes exactly one homeserver, and Loopky's follows are the
-        // pubky.app follow graph, so every followee is hosted there — 22 of 22 resolvable authors
-        // sampled off a real account came back with the same `8um71us3…` target. This is N
-        // requests at ONE homeserver, which is the 429 case MAX_IN_FLIGHT was measured against.
-        //
-        // What the wall-clock actually buys is a pkarr resolution per author, not a connection to
-        // a distinct server — and 9 of those 31 sampled followees have no `_pubky` record at all,
-        // so they can only ever time out, on every Discover open.
+        // across servers: Nexus indexes exactly one homeserver and Loopky's follows are the
+        // pubky.app graph, so every followee is hosted there — 22 of 22 resolvable authors sampled
+        // off a real account had the same target. This is N requests at ONE homeserver, the 429 case
+        // MAX_IN_FLIGHT was measured against. The wall-clock buys a pkarr resolution per author, and
+        // 9 of 31 sampled followees have no `_pubky` record at all, so they can only time out.
         //
         // The per-author catch has to stay inside the transform: [mapConcurrently] fails fast, so
-        // one unresolvable author would otherwise cancel every other author's request. Swallowing
-        // here is right for the same reason it always was — a stranger's record being absent is
-        // not this user's error to see. `runSuspendCatching` still lets cancellation through.
+        // one unresolvable author would otherwise cancel every other request. `runSuspendCatching`
+        // still lets cancellation through.
         return considered
             .mapConcurrently { author ->
                 runSuspendCatching { deckRepository.listByAuthor(author) }.getOrElse {
@@ -274,29 +264,57 @@ class DiscoveryRepositoryImpl(
             .sortedByDescending { it.updatedAt }
     }
 
-    override suspend fun decksByTagGlobal(tag: Tag, limit: Int): List<Deck> {
-        // [limit] is spent at the indexer, before anything here drops an entry, so a browse can
-        // come back shorter than asked for — same as the verification drops below.
-        val subjects = tagRepository.taggedSubjects(tag, limit)
-        val decks = subjects.mapConcurrently { subject -> verifiedDeck(subject) }
-        val kept = decks.filterNotNull().distinctBy { it.id }
-        Log.d(TAG, "decksByTagGlobal('${tag.value}'): ${kept.size} kept of ${subjects.size}")
-        return kept
+    override suspend fun decksByTagGlobalPage(
+        tag: Tag,
+        limit: Int,
+        cursor: Int,
+        alsoTagged: Set<Tag>,
+    ): DeckPage {
+        val kept = mutableListOf<Deck>()
+        // Author-scoped, not by deck id alone: two authors can publish the same deck id, and the
+        // `distinctBy { it.id }` this replaced dropped the second one as a duplicate.
+        val seen = mutableSetOf<String>()
+        var skip = cursor
+        var requests = 0
+        var exhausted = false
+
+        while (kept.size < limit && requests < MAX_REFILL_REQUESTS) {
+            requests++
+            val window = limit - kept.size
+            val subjects = tagRepository.taggedSubjects(tag, window, skip, NexusResourceSorting.Timeline)
+            // Advanced by what was *asked for*, never by what came back: `skip` is an offset into
+            // the indexer's raw sorted set and a page is routinely short of entries it dropped
+            // itself. Advancing by `subjects.size` would re-read those positions forever.
+            skip += window
+            if (subjects.isEmpty()) {
+                exhausted = true
+                break
+            }
+            subjects
+                .mapConcurrently { subject -> verifiedDeck(subject) }
+                .filterNotNull()
+                // After verification, off the manifest: the indexer's tag list is cut at five.
+                .filter { deck -> deck.tags.containsAll(alsoTagged) }
+                .forEach { deck -> if (seen.add(deck.authorPubky + "/" + deck.id)) kept += deck }
+        }
+
+        Log.d(
+            TAG,
+            "decksByTagGlobalPage('${tag.value}' + ${alsoTagged.map { it.value }}): " +
+                "${kept.size}/$limit in $requests requests, " +
+                "cursor $cursor -> $skip, hasMore=${!exhausted}",
+        )
+        return DeckPage(decks = kept, nextCursor = skip, hasMore = !exhausted)
     }
 
     /**
      * Turn one indexer entry into a deck, or `null` if it fails any check. Anyone can tag any URI
-     * with any label, so a claim is only worth as much as what it resolves to (#40):
+     * with any label, so a claim is worth only what it resolves to (#40): the URI has to be shaped
+     * like a deck manifest, the tagger has to be the deck's own author, and the manifest has to
+     * fetch and parse — which is what makes a forged entry useless rather than merely unlikely.
      *
-     * 1. the URI has to be shaped like a deck manifest — that alone rules out a tag pointed at an
-     *    arbitrary record, a media blob, or another app's data;
-     * 2. the tagger has to be the deck's own author, so labelling someone else's deck does nothing;
-     * 3. the manifest has to fetch and parse, which is what makes a forged entry useless rather
-     *    than merely unlikely.
-     *
-     * And then one rule that is about relevance rather than trust: a deck of your own is dropped,
-     * because Library is where it belongs. Checked off the URI, before the manifest fetch, so your
-     * own decks cost nothing to skip.
+     * Then one rule about relevance rather than trust: a deck of your own is dropped, checked off
+     * the URI before the manifest fetch so it costs nothing to skip.
      */
     private suspend fun verifiedDeck(subject: TaggedSubject): Deck? {
         val ref = PubkyUris.parseDeckManifest(subject.uri.value) ?: return null
@@ -370,10 +388,9 @@ class DiscoveryRepositoryImpl(
     /**
      * The decks a title search runs against, fetched once per session.
      *
-     * The lock is held across the fetch on purpose: it is ~[DiscoveryRepository.SEARCH_DECK_SAMPLE]
-     * manifest reads, and a second keystroke landing mid-fetch should wait for that one rather
-     * than start its own. An empty result is never cached — an indexer that was down for one query
-     * must not leave search dead for the rest of the session.
+     * The lock is held across the fetch on purpose: it is ~[SEARCH_DECK_SAMPLE] manifest reads, and
+     * a second keystroke landing mid-fetch should wait rather than start its own. An empty result is
+     * never cached — an indexer down for one query must not leave search dead for the session.
      */
     private suspend fun searchableDecks(): List<Deck> = deckSampleLock.withLock {
         deckSample?.let { return@withLock it }
@@ -396,13 +413,10 @@ class DiscoveryRepositoryImpl(
     override suspend fun loopkyUsers(limit: Int): List<PubkyIdentity> {
         val me = session.current()?.identity?.pubky
         val candidates = directoryCandidates(limit).filterNot { it == me }.take(limit)
-        // keepUnresolved, for the same reason every other caller passes it: the self-tag has
-        // already proved this is a real Loopky account, and a missing `pubky.app/profile.json` is
-        // a 404 on a record signing up never had to write. Dropping on it silently emptied the
-        // directory of exactly the accounts it exists to surface — someone who has published no
-        // deck has no second way in, whereas a deck author is picked up again by
-        // [suggestedPeople]'s deck branch, which does keep an unresolved profile. Measured on
-        // staging: 4 kept of 10 candidates, all six drops a profile 404.
+        // keepUnresolved, like every other caller: the self-tag has already proved this is a real
+        // Loopky account, and a missing `pubky.app/profile.json` is a 404 on a record signing up
+        // never had to write. Dropping on it emptied the directory of exactly the accounts it exists
+        // to surface. Measured on staging: 4 kept of 10, all six drops a profile 404.
         val kept = candidates
             .mapConcurrently { pubky -> verifiedUser(pubky, keepUnresolved = true) }
             .filterNotNull()
@@ -411,16 +425,13 @@ class DiscoveryRepositoryImpl(
     }
 
     /**
-     * The pubkys worth asking about, from three indexer reads at once. See
+     * The pubkys worth asking about, from three indexer reads at once — see
      * [DiscoveryRepository.loopkyUsers] for why it takes all three.
      *
-     * Each source swallows its own failure rather than emptying the union: the profile-tag search
-     * is a 404 on an indexer that predates it (#134), and an indexer down for one read is no
-     * reason to discard the other two. Deduped in source order, so a self-tagged account keeps its
-     * place ahead of one merely inferred from a deck.
-     *
-     * The [limit] is spent per source, not across them — every candidate is verified afterwards
-     * and most of the deck-derived ones collapse onto an author already in the list.
+     * Each source swallows its own failure rather than emptying the union: the profile-tag search is
+     * a 404 on an indexer that predates it (#134). Deduped in source order, so a self-tagged account
+     * keeps its place ahead of one merely inferred from a deck. The [limit] is spent per source, not
+     * across them.
      */
     private suspend fun directoryCandidates(limit: Int): List<String> = coroutineScope {
         val selfTagged = async {
@@ -431,11 +442,18 @@ class DiscoveryRepositoryImpl(
                 .getOrElse { emptyList() }
         }
         val deckOwners = async {
-            tagRepository
-                .taggedSubjects(ReservedTags.DECK, DiscoveryRepository.DIRECTORY_DECK_SAMPLE)
-                // The author is the URI's owner, and parsing it is also what rules out a label
-                // pointed at something that is not a deck manifest at all.
-                .mapNotNull { PubkyUris.parseDeckManifest(it.uri.value)?.authorPubky }
+            // Swallowed here, unlike everywhere else this read is made: the union's whole job is
+            // that no single source can empty it, and the people strip has the browse strip's
+            // error standing beside it already.
+            runSuspendCatching {
+                tagRepository
+                    .taggedSubjects(ReservedTags.DECK, DiscoveryRepository.DIRECTORY_DECK_SAMPLE)
+                    // The author is the URI's owner, and parsing it is also what rules out a label
+                    // pointed at something that is not a deck manifest at all.
+                    .mapNotNull { PubkyUris.parseDeckManifest(it.uri.value)?.authorPubky }
+            }
+                .onFailure { Log.w(TAG, "loopkyUsers: deck sample unavailable — ${it.message}") }
+                .getOrElse { emptyList() }
         }
         val announcers = async { tagRepository.postAuthorsTagged(ReservedTags.DECK) }
         val union = (selfTagged.await() + deckOwners.await() + announcers.await()).distinct()
@@ -443,44 +461,92 @@ class DiscoveryRepositoryImpl(
         union
     }
 
-    override suspend fun suggestedPeople(seedDecks: List<Deck>, limit: Int): List<PubkyIdentity> {
+    override suspend fun suggestedPeoplePage(
+        seedDecks: List<Deck>,
+        limit: Int,
+        cursor: Int,
+    ): PeoplePage {
         val me = session.current()?.identity?.pubky
         // A failure here must not empty the strip — worst case we suggest someone already followed.
         val followed = runSuspendCatching { following() }.getOrElse { emptyList() }.toSet()
-        fun worthSuggesting(pubky: String) = pubky != me && pubky !in followed
+        val roll = candidateRoll(seedDecks)
 
-        val directory = loopkyUsers(limit).filter { worthSuggesting(it.pubky) }
-        val seen = directory.mapTo(mutableSetOf()) { it.pubky }
-
-        val authors = seedDecks
-            .map { it.authorPubky }
-            .distinct()
-            .filter { worthSuggesting(it) && seen.add(it) }
-            .take((limit - directory.size).coerceAtLeast(0))
-
-        // Their deck already proved them real, so an unresolved profile downgrades the entry to a
-        // bare pubky instead of dropping a genuine Loopky user off the strip.
-        val fromDecks = authors.mapConcurrently { pubky ->
-            identityRepository.fetchProfile(pubky).getOrNull()
-                ?: PubkyIdentity(pubky, displayName = null, avatarUrl = null, bio = null)
+        val kept = mutableListOf<PubkyIdentity>()
+        var index = cursor
+        while (kept.size < limit && index < roll.size) {
+            // A batch at a time rather than one candidate at a time: each costs a self-tag check
+            // and a profile fetch, and the whole point of a cursor here is that those are the
+            // expensive part. Asking for exactly what is missing keeps the last batch small.
+            val batch = roll.subList(index, minOf(index + limit - kept.size, roll.size))
+            index += batch.size
+            batch
+                .filterNot { it.pubky == me || it.pubky in followed }
+                .mapConcurrently { candidate -> resolveCandidate(candidate) }
+                .filterNotNullTo(kept)
         }
 
-        Log.d(TAG, "suggestedPeople: ${directory.size} from directory, ${fromDecks.size} from decks")
-        return (directory + fromDecks).take(limit)
+        Log.d(
+            TAG,
+            "suggestedPeoplePage: ${kept.size}/$limit, cursor $cursor -> $index of ${roll.size}",
+        )
+        return PeoplePage(people = kept, nextCursor = index, hasMore = index < roll.size)
     }
 
     /**
+     * Every pubky worth asking about this session, in a stable order a cursor can index.
+     *
+     * Built once from the three directory reads and then only ever appended to, because a cursor
+     * into a list that reorders itself between pages is not a cursor. [seedDecks] authors go on the
+     * end as browse turns up more of them, keeping their place behind the directory.
+     */
+    private suspend fun candidateRoll(seedDecks: List<Deck>): List<Candidate> =
+        candidateLock.withLock {
+            val roll = candidates
+                ?: directoryCandidates(DiscoveryRepository.DIRECTORY_CANDIDATE_LIMIT)
+                    .mapTo(mutableListOf()) { Candidate(it, fromDeck = false) }
+                    .also { candidates = it }
+            val known = roll.mapTo(mutableSetOf()) { it.pubky }
+            seedDecks.forEach { deck ->
+                if (known.add(deck.authorPubky)) roll += Candidate(deck.authorPubky, fromDeck = true)
+            }
+            roll.toList()
+        }
+
+    /**
+     * Turn a candidate into someone worth showing, or null.
+     *
+     * **[Candidate.fromDeck] skips the self-tag check, and that is the point of tracking it.** A
+     * directory entry is only ever a claim by whoever wrote the label, so it has to prove itself;
+     * an author whose manifest [decksByTagGlobalPage] has already fetched and parsed has proved it
+     * by publishing. Holding them to the self-tag as well drops exactly the people the seed exists
+     * to reach — the ones whose `loopky-user` record never got written.
+     *
+     * Either way an unresolved `profile.json` downgrades to a bare pubky rather than dropping the
+     * account: it is a record signing up never had to write.
+     */
+    private suspend fun resolveCandidate(candidate: Candidate): PubkyIdentity? = when {
+        candidate.fromDeck -> identityRepository.fetchProfile(candidate.pubky).getOrNull()
+            ?: PubkyIdentity(candidate.pubky, displayName = null, avatarUrl = null, bio = null)
+        else -> verifiedUser(candidate.pubky, keepUnresolved = true)
+    }
+
+    /** One entry of the people roll, with how it got there. */
+    private data class Candidate(val pubky: String, val fromDeck: Boolean)
+
+    /** The candidate order this session's [suggestedPeoplePage] cursors index into. */
+    private var candidates: MutableList<Candidate>? = null
+    private val candidateLock = Mutex()
+
+    /**
      * Kept only if the account tagged *itself* with [ReservedTags.USER] — tagger and subject being
-     * the same account is what makes the claim verifiable rather than someone's claim about
-     * someone else.
+     * the same is what makes the claim verifiable rather than someone's claim about someone else.
      *
-     * [keepUnresolved] returns the account under a bare pubky when its profile does not resolve,
-     * for callers whose entry is already corroborated by the self-tag and would rather show a
-     * truncated key than silently drop a real person.
+     * [keepUnresolved] returns the account under a bare pubky when its profile does not resolve, for
+     * callers already corroborated by the self-tag that would rather show a truncated key than drop
+     * a real person.
      *
-     * The self-tag answer is cached for the session: a follow list asks it of every candidate, and
-     * the profile screen's counts ask it of the same people again moments later. It costs an
-     * indexer round-trip and does not change while the app is open.
+     * The self-tag answer is cached for the session: a follow list asks it of every candidate and the
+     * profile screen asks the same people again moments later.
      */
     private suspend fun verifiedUser(
         pubky: String,
@@ -507,14 +573,12 @@ class DiscoveryRepositoryImpl(
     private val selfTagLock = Mutex()
 
     /**
-     * Followee pubkys out of an already-decoded listing of `pubky://…` urls — the followee is
-     * the last path segment of each.
+     * Followee pubkys out of an already-decoded listing of `pubky://…` urls.
      *
-     * Decoded per entry rather than scanned for `/pub/pubky.app/follows/`: a substring scan has no
-     * way to tell where one url ends and the next begins, so it cut every id at the following
-     * entry's `pubky://` and yielded debris like `friend1","pubky:`. `followUser` seeds the cache
-     * optimistically, so that only surfaced on a cold cache — i.e. after a restart, when the whole
-     * follow feed silently emptied. Decoding is [parsePubkyUrlsFromList]'s job, one layer down.
+     * Decoded per entry rather than scanned for `/pub/pubky.app/follows/`: a substring scan cannot
+     * tell where one url ends, so it cut every id at the next entry's `pubky://` and yielded debris
+     * like `friend1","pubky:`. `followUser` seeds the cache optimistically, so that only surfaced on
+     * a cold cache — after a restart, when the whole follow feed silently emptied.
      */
     private fun parseFollowees(entries: List<String>): List<String> =
         entries.mapNotNull { url ->
@@ -531,6 +595,15 @@ class DiscoveryRepositoryImpl(
 
         /** pubky-app-specs post ids are microsecond timestamps; commonMain's clock is millis. */
         private const val MICROS_PER_MILLI = 1_000L
+
+        /**
+         * How many indexer reads one [decksByTagGlobalPage] may spend refilling a page.
+         *
+         * A corpus where nothing verifies — a stale index, or an author whose homeserver is down —
+         * would otherwise walk the whole tag index one window at a time before returning a single
+         * deck. Four keeps a short page short instead of turning it into a long one.
+         */
+        private const val MAX_REFILL_REQUESTS = 4
     }
 }
 

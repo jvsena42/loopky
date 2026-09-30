@@ -19,8 +19,13 @@
     <action>Enter "Media Deck" into the field with resource-id "publish_title" and tap the element with resource-id "publish_button"</action>
     <action>Tap the element with resource-id "publish_done" and verify the deck detail screen shows the chosen cover image (not a letter placeholder)</action>
     <action>Tap the element with resource-id "deck_edit" to open the deck editor</action>
+    <action>Verify the element with resource-id "deck_editor_cover" shows the chosen cover image, not the title's first letter — this is the one screen that can replace a cover, so it has to show the cover it is replacing (#166)</action>
+    <action>Verify the cover tile is clipped to its own square and does not spill over the "DECK TITLE" label or the title text beside it — a fill-scaled image overflows its box unless the clip is applied after the frame, and it only overflows once there is a cover to draw</action>
+    <action>Verify the tile is centred on the label + title field together, matching iOS; the character counter belongs below the whole row, not in the column beside the cover</action>
     <action>Change the deck title to "Media Deck Renamed" and save it</action>
     <action>Verify the deck detail screen still shows the cover image — it must NOT have reverted to a letter placeholder</action>
-    <action>Open the deck editor again and verify the first card still shows its image indicator</action>
+    <action>Open the deck editor again and verify the first card still shows its image indicator, and that "deck_editor_cover" still shows the cover</action>
+    <action>Tap "deck_editor_cover", tap "image_pick_gallery", pick a photo, and verify the cover box shows it immediately; save, reopen the editor, and verify the box shows that photo again — a gallery cover is a homeserver blob with no URL, so it takes a different path to the screen than an Unsplash one</action>
+    <action>On an account that owns no decks, the same checks can be reached without publishing one: follow any deck from Discover, tap "deck_edit" on it, name the copy and confirm (#254), then open the copy's editor. A copy's cover is pinned to the source author's blob, which is the same Base64 path a gallery cover takes.</action>
   </actions>
 </journey>

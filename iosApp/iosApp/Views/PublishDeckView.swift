@@ -30,7 +30,7 @@ struct PublishDeckView: View {
                 form
             }
         }
-        .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+        .loopkyScreenBackground()
         .navigationBarHidden(true)
         .sheet(isPresented: $pickingCover) {
             ImagePickerSheet(
@@ -49,16 +49,21 @@ struct PublishDeckView: View {
             )
         }
         // Announcing is opt-in per action: off means never asked and never posted.
-        .confirmationDialog(
+        //
+        // An alert, not a confirmationDialog, for the reason `SignInPromptView.sharePrompt` is one:
+        // the dialog's `.cancel` button is detached from its action list and may not render at all,
+        // which would leave "Not now" — the safe, common answer — reachable only by guessing that a
+        // tap outside dismisses. The message stays the announcement preview rather than the shared
+        // modifier's static body, because this is the one place the post is shown before it is sent.
+        .alert(
             Text("share_prompt_title"),
-            isPresented: Binding(get: { state.sharePromptPreview != nil }, set: { if !$0 { onShareDismiss() } }),
-            titleVisibility: .visible
+            isPresented: Binding(get: { state.sharePromptPreview != nil }, set: { if !$0 { onShareDismiss() } })
         ) {
             Button("share_prompt_confirm", action: onShareConfirm).disabled(state.isSharing)
             Button("share_prompt_never", role: .destructive, action: onShareNeverAsk)
             Button("share_prompt_dismiss", role: .cancel, action: onShareDismiss)
         } message: {
-            if let preview = state.sharePromptPreview { Text(preview) }
+            if let preview = state.sharePromptPreview { Text(verbatim: preview) }
         }
     }
 
@@ -187,8 +192,10 @@ struct PublishDeckView: View {
         VStack(alignment: .leading, spacing: 8) {
             if let progress = state.publishProgress {
                 ProgressView(value: progress).tint(LoopkyColor.accentPrimary)
-                Text(String(
-                    format: NSLocalizedString("publish_progress_count", comment: ""),
+                // The plural agrees with the *total*, so the catalog binds it to argument 2
+                // through a named substitution — which only this formatter resolves (#267).
+                Text(String.localizedStringWithFormat(
+                    NSLocalizedString("publish_progress_count", comment: ""),
                     state.publishedCardCount, state.cardCount
                 ))
                 .font(.system(size: 12))
@@ -240,13 +247,28 @@ struct PublishDeckView: View {
         .padding(24)
     }
 
+    /// The message, plus the one way out when the failure is a session the app cannot reach.
+    ///
+    /// "Check your connection and try again" was the whole of what this screen said while every
+    /// write was dying on the `/session` round trip, and it pointed at the one thing that was fine
+    /// (#165). A Button, never a tappable Text: a bare `.onTapGesture` is announced by nothing and
+    /// found by `snapshot-ui` not at all.
     private func errorRow(_ message: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "exclamationmark.circle.fill").font(.system(size: 13))
-            Text(message).font(.system(size: 13, weight: .medium))
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.circle.fill").font(.system(size: 13))
+                Text(message).font(.system(size: 13, weight: .medium))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(LoopkyColor.danger)
+
+            if let onSignInAgain = state.onSignInAgain {
+                Button(NSLocalizedString("error_sign_in_again", comment: ""), action: onSignInAgain)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(LoopkyColor.accentPrimary)
+                    .accessibilityIdentifier("publish_sign_in_again")
+            }
         }
-        .foregroundStyle(LoopkyColor.danger)
     }
 
     private var publicNotice: some View {

@@ -1,8 +1,12 @@
 name: CI
 
 on:
+  # No `branches:` filter on pull_request, deliberately. A stacked PR targets the branch below it
+  # rather than `main`, and a `branches: [main]` filter gives every PR in a stack but the bottom one
+  # zero checks — the reviewer sees a green tick that was never earned. The per-job path filtering
+  # below is what keeps the macOS rows off work that cannot affect them; the trigger is not the
+  # place to economise.
   pull_request:
-    branches: [main]
   push:
     branches: [main]
 
@@ -14,27 +18,117 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    # **Per-job path filtering, because two of the jobs below run on `macos-14`** — which bills at
+    # a 10× minute multiplier, and GitHub's own `paths:` filter is workflow-wide. So one cheap
+    # ubuntu job works out what the push or the PR actually touched and publishes two booleans the
+    # expensive jobs gate on.
+    #
+    # Inline `git diff` rather than a path-filter action, for the same reason the failing-tests
+    # reporter is inline: this decides whether a check runs at all, and a check that can be
+    # skipped by a dependency going wrong is not a check.
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      cli: ${{ steps.filter.outputs.cli }}
+      # `cli` plus the shared test sources. Two outputs rather than one because the jobs gating on
+      # them cost different amounts: a test-only change cannot affect a GraalVM native image, so
+      # `cli-binary-macos` stays on `cli` at the 10× multiplier while the 2× Windows row widens.
+      cliTests: ${{ steps.filter.outputs.cliTests }}
+      ios: ${{ steps.filter.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The base commit has to be in the history for any of this to be answerable.
+          fetch-depth: 0
+
+      - id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT" = pull_request ]; then
+            RANGE="origin/$BASE_REF...HEAD"
+          else
+            RANGE="$BEFORE..HEAD"
+          fi
+
+          # A range git cannot resolve — a force push, a branch's first push, a rewritten history
+          # — is not a reason to skip a check. Fall back to "everything changed", which costs
+          # macOS minutes and never costs correctness. That direction is not negotiable: the whole
+          # point of #239 is that a check nobody runs hid a broken artifact for months.
+          if FILES=$(git diff --name-only "$RANGE" 2>/dev/null); then
+            echo "changed against $RANGE:"
+            printf '%s\n' "$FILES" | sed 's/^/  /'
+          else
+            echo "cannot diff $RANGE — assuming everything changed"
+            FILES=$(git ls-files)
+          fi
+
+          # What can break the **macOS binary**: the reachability metadata, the JVM-family sources
+          # the image is compiled from, and the dependency versions behind both. Not `commonMain`
+          # — the macOS row fails on reaching a JDK *native* library, and nothing in commonMain
+          # can name one.
+          CLI='^(cli/|shared/src/jvmMain/|shared/src/jvmSharedMain/|(shared/)?build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle/(libs\.versions\.toml|wrapper/)|\.github/(workflows/ci\.yml|actions/))'
+          # **What can break a *test* row, which `CLI` deliberately does not cover.**
+          # `shared/src/jvmTest/` reaches no native image, so adding it to `CLI` would put a
+          # `macos-14` `nativeCompile` on the 10× multiplier behind a change that cannot affect it.
+          # It does reach `cli-windows`, and a job skipped by `if:` still satisfies a required check
+          # — so without this a jvmTest-only PR goes green having run the Windows arm nowhere. That
+          # matters for exactly one shape, and it is the shape this stack is building toward: a test
+          # that assumes an ACL filesystem skips on Linux by construction and has no other row.
+          CLI_TESTS="${CLI%)}|shared/src/jvmTest/)"
+          # What can break **iOS**: anything shared, because that is the arrangement — business
+          # logic is shared, so a commonMain change breaks iOS as easily as Android.
+          IOS='^(shared/|iosApp/|build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle/(libs\.versions\.toml|wrapper/)|\.github/(workflows/ci\.yml|actions/))'
+
+          decide() {
+            if printf '%s\n' "$FILES" | grep -qE "$2"; then echo "$1=true"; else echo "$1=false"; fi
+          }
+          { decide cli "$CLI"; decide cliTests "$CLI_TESTS"; decide ios "$IOS"; } | tee -a "$GITHUB_OUTPUT"
+
   lint:
     name: Kotlin lint (detekt)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      # The wrapper jar is the one supply-chain input nothing else asserts on: it is a binary in
+      # the repo that every other job executes before any of them can check anything. This
+      # compares it against Gradle's published checksums. Its companion is `distributionSha256Sum`
+      # in gradle-wrapper.properties — that pins the distribution the jar downloads, this pins the
+      # jar itself, and neither covers the other.
+      - name: The wrapper jar is the one Gradle published
+        uses: gradle/actions/wrapper-validation@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
+      # **v5, not v6, and not for lack of looking.** v6 moved this action's caching into a
+      # separate `gradle-actions-caching` component that is no longer open-source and whose Terms
+      # of Use you accept by upgrading, and it dropped the configuration-cache support this build
+      # uses. v5 is the Node 24 runtime and nothing else, which is all the deprecation asked for.
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Run detekt
         run: ./gradlew detektAll
 
+      # Reads two files and compares them, so it belongs on the always-run ubuntu job rather than
+      # the path-filtered macOS one — the defect it catches lives half in `iosApp` and half in
+      # `androidApp`, and either half alone can introduce it.
+      - name: Count strings are plurals on both platforms
+        run: ./gradlew checkStringPlurals
+
       - name: Upload detekt reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: detekt-reports
           path: '**/build/reports/detekt/'
@@ -44,27 +138,1040 @@ jobs:
     name: Unit tests + Android build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Run unit tests
-        run: ./gradlew :shared:testDebugUnitTest :composeApp:testDebugUnitTest
+        run: ./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest
+
+      # Builds the AAR, which finalizes `checkJniLibsArePackaged`. `assembleDebug` below does not
+      # reach it — AGP consumes `:shared`'s intermediate artifacts rather than the packaged AAR —
+      # so without this step the one assertion that the FFI libraries ship would run nowhere CI
+      # can see, which is the shape of #239 all over again.
+      - name: The AAR carries libpubkycore.so for every ABI
+        run: ./gradlew :shared:assembleAndroidMain
 
       - name: Assemble Android debug
-        run: ./gradlew :composeApp:assembleDebug
+        run: ./gradlew :androidApp:assembleDebug
+
+      # Which test failed and why, in the log. The artifact below is still uploaded; this is so
+      # that reading the failure does not require downloading it (#239).
+      - name: Say which tests failed
+        if: failure()
+        uses: ./.github/actions/failing-tests
 
       - name: Upload test reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: '**/build/reports/tests/'
           if-no-files-found: ignore
+
+  cli-linux:
+    # The row that matters most for #54: a headless Linux x86_64 box with no desktop session and
+    # no libsecret, which is exactly what a GitHub runner is. Verified here rather than assumed —
+    # the 1,271 shared tests run against a fake client and would pass on a machine where
+    # `linux-x86-64/libpubkycore.so` is missing or the wrong architecture, and that failure only
+    # shows up at the first homeserver call as an ordinary-looking transport error.
+    name: CLI on Linux x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      # Runs the whole shared suite on the jvm() target, including the FFI smoke test that loads
+      # the real .so and derives a keypair through it.
+      - name: Shared tests on the JVM target
+        run: ./gradlew :shared:jvmTest :cli:test
+
+      - name: Build the distribution
+        run: ./gradlew :cli:installDist
+
+      # The contract an agent branches on, asserted on the actual binary rather than in a unit
+      # test: distinguishable exit codes, and a parseable failure envelope on stdout. Deliberately
+      # offline — nothing here needs a homeserver, so a network blip cannot make it flake.
+      - name: Smoke-test the binary
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-ci
+          # The ambient update check is off for the assertions below, so a green PR never depends
+          # on github.com answering (#209). `update --check` further down is the one step that is
+          # allowed to reach the network, and it exits 0 whether or not it can.
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/install/loopky/bin/loopky
+
+          "$BIN" --version
+          "$BIN" --help > /dev/null
+
+          # No session anywhere: exit 3, and the JSON says so in words as well as a number.
+          set +e
+          OUT=$("$BIN" whoami --json)
+          CODE=$?
+          set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          echo "$OUT" | grep -q '"schema":1'
+          # Every result names the network it ran against, so an empty answer can never be
+          # mistaken for an answer from the wrong one.
+          echo "$OUT" | grep -q '"environment":"production"'
+
+          # `update_available` is on every envelope, and null when there is nothing to say — which
+          # is what makes a caller that ignores it stay correct, and what made adding it legal
+          # under `schema: 1` (#209).
+          echo "$OUT" | grep -q '"update_available":null'
+
+          # An unknown command is a usage error, not a crash and not a silent success.
+          set +e
+          "$BIN" frobnicate --json > /dev/null
+          CODE=$?
+          set -e
+          test "$CODE" -eq 2
+
+          # A bad input file is its own code, distinct from both of the above.
+          set +e
+          "$BIN" import /no/such/file.tsv --title T --json > /dev/null
+          CODE=$?
+          set -e
+          test "$CODE" -eq 3   # not signed in is checked first, before the file is read
+
+      # The one thing a unit test cannot check about a generated shell script: whether the shell
+      # will parse it. `CompletionTest` asserts what is in each script; nothing in Kotlin notices
+      # an unbalanced quote or a `case` missing its `esac`, and the failure lands in the user's
+      # `.bashrc` as a syntax complaint about a file nobody wrote. `-n` is parse-only, so this
+      # needs no session, no network and no homeserver.
+      - name: The completion scripts parse in the shells they are for
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends zsh fish > /dev/null
+          BIN=cli/build/install/loopky/bin/loopky
+          "$BIN" completion bash > /tmp/loopky.bash
+          "$BIN" completion zsh  > /tmp/_loopky
+          "$BIN" completion fish > /tmp/loopky.fish
+          bash -n /tmp/loopky.bash
+          zsh  -n /tmp/_loopky
+          fish -n /tmp/loopky.fish
+          # Sourcing is the other half: a script that parses can still fail to define anything.
+          bash -c 'source /tmp/loopky.bash && complete -p loopky' | grep -q _loopky
+
+      # The same argument as the step above, one file over — and it binds harder here. The two
+      # installers are the files this project asks strangers to pipe into a shell, and **nothing
+      # else in CI executes `install.ps1` at all**: the job that runs it lives in the release
+      # workflow behind `on: push: tags`, so an unbalanced quote, or a here-string terminator that
+      # drifted off column 0, would first surface while cutting a release. Parsing is not running,
+      # so this needs no network, no session and no Windows.
+      - name: The installers parse in the shells they are for
+        run: |
+          set -euo pipefail
+          # A *positive* precondition. Without it the whole step goes quietly vacuous the day this
+          # image stops shipping pwsh — a `command -v pwsh || true` guard would "pass" forever, and
+          # the one file nobody can run locally would be the one nothing checks.
+          command -v pwsh > /dev/null || { echo "::error::pwsh is not on this image — this check would be vacuous"; exit 1; }
+          sh -n cli/install.sh
+          pwsh -NoProfile -Command '
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path ./cli/install.ps1), [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) {
+              $errors | ForEach-Object {
+                Write-Host "::error file=cli/install.ps1,line=$($_.Extent.StartLineNumber)::$($_.Message)"
+              }
+              exit 1
+            }
+            Write-Host "cli/install.ps1 parses"
+          '
+
+      # Which test failed and why, in the log. The artifact below is still uploaded; this is so
+      # that reading the failure does not require downloading it (#239).
+      - name: Say which tests failed
+        if: failure()
+        uses: ./.github/actions/failing-tests
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-test-reports
+          path: '**/build/reports/tests/'
+          if-no-files-found: ignore
+
+  agent-plugin:
+    # **The agent plugin under `plugins/` (#388), checked the way Claude Code loads it.** The skill's
+    # commands, flags, exit codes and version are held against the binary by `AgentPluginTest` in
+    # `:cli:test` (cli-linux); this checks the parts no JVM test can: the manifests as Claude Code
+    # parses them, and Codex handing the model the same skill. The plugin ships no hooks: a hook that
+    # installs a binary holds a directory submission for review (#405), and the skill installs
+    # `loopky` itself.
+    # Ungated: it is cheap, and a skill that silently stopped loading is invisible otherwise.
+    # Behavioural evals cost model calls, so they live in `plugin-evals.yml` instead.
+    name: Agent plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The mechanical drift fails `AgentPluginTest`; the judgment cannot be tested (CLAUDE.md,
+      # "The agent skill …"). So a PR that changes what the CLI or the import/deck logic does, and
+      # leaves the skill alone, gets a visible annotation asking whether that was deliberate. A
+      # warning, never a failure: most such changes need no skill edit.
+      - name: A logic change asks about the skill
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          FILES=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || true)
+          LOGIC='^(cli/src/main/|shared/src/commonMain/kotlin/com/github/jvsena42/loopky/(data|domain)/)'
+          if printf '%s\n' "$FILES" | grep -qE "$LOGIC" && ! printf '%s\n' "$FILES" | grep -q '^plugins/'; then
+            echo "::warning title=Agent skill not touched::This PR changes CLI or import/deck logic and leaves plugins/loopky/skills/loopky/SKILL.md alone. Check whether an agent following the skill would now do the wrong thing, and say so in the PR description."
+          fi
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      # `--strict` fails on unrecognised fields and missing metadata that the runtime would only
+      # tolerate — which is what a directory reviewer checks for.
+      - name: The plugin and the marketplace validate
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code
+          claude plugin validate plugins/loopky --strict
+          claude plugin validate . --strict
+
+      # Codex reads the same skill through `.codex-plugin/plugin.json` and `.agents/plugins/`.
+      # `debug prompt-input` renders what the model would be handed, with no login and no model
+      # call, so this asserts the skill really reaches a Codex session rather than that a JSON
+      # file parses. CODEX_HOME is throwaway: a runner has no Codex config of its own to protect.
+      - name: Codex installs the plugin and hands the model the skill
+        run: |
+          set -euo pipefail
+          npm install --global @openai/codex
+          export CODEX_HOME="$RUNNER_TEMP/codex-home"
+          mkdir -p "$CODEX_HOME"
+          # The real marketplace serves the last release tag, which may predate this PR's plugin, so
+          # install from a copy whose source is this checkout.
+          MP="$RUNNER_TEMP/codex-marketplace"
+          mkdir -p "$MP/.agents/plugins"
+          ln -s "$PWD/plugins" "$MP/plugins"
+          jq '.plugins[].source = {"source": "local", "path": "./plugins/loopky"}' \
+            .agents/plugins/marketplace.json > "$MP/.agents/plugins/marketplace.json"
+          codex plugin marketplace add "$MP"
+          codex plugin add loopky@loopky
+          codex plugin list --json | jq -e '.installed[] | select(.pluginId == "loopky@loopky" and .enabled)'
+          (cd "$RUNNER_TEMP" && codex debug prompt-input "make me flashcards") > "$RUNNER_TEMP/codex-prompt.json"
+          grep -q 'loopky:loopky' "$RUNNER_TEMP/codex-prompt.json" \
+            || { echo "::error::Codex installed the plugin but the loopky skill is not in the model's prompt"; exit 1; }
+
+      # The installers the skill runs instead of piping a download into a shell (#405). Run for
+      # real against the latest release, so an asset rename or a checksum format change fails here
+      # rather than in a user's session; the PowerShell one is parsed, since no Windows row runs it.
+      # Anthropic's directory runs lints `claude plugin validate` does not, and publishes neither
+      # the rules nor a way to run them. This approximates the ones it has applied to this plugin,
+      # so a PR sees them before a release puts them in front of the directory. Its levels are the
+      # directory's: an error fails here as it fails submission; a warning is an annotation, since
+      # the directory shows it to reviewers rather than refusing (#388).
+      - name: The plugin passes the directory's lints (approximation)
+        run: python3 .github/scripts/plugin_directory_lint.py plugins/loopky
+
+      - name: The skill's shipped installers work
+        env:
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          sh -n plugins/loopky/skills/loopky/scripts/install.sh
+          shellcheck --shell=sh plugins/loopky/skills/loopky/scripts/install.sh
+          LOOPKY_INSTALL_DIR="$RUNNER_TEMP/skill-bin" sh plugins/loopky/skills/loopky/scripts/install.sh
+          "$RUNNER_TEMP/skill-bin/loopky" --version
+          command -v pwsh > /dev/null || { echo "::error::pwsh is not on this image — the parse below would be vacuous"; exit 1; }
+          pwsh -NoProfile -Command '
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path ./plugins/loopky/skills/loopky/scripts/install.ps1), [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) { $errors | ForEach-Object { Write-Host "::error::$($_.Message)" }; exit 1 }
+            Write-Host "install.ps1 parses"
+          '
+
+      - name: The plugin branch check is portable sh
+        run: |
+          set -euo pipefail
+          sh -n .github/scripts/plugin-branch-check.sh
+          shellcheck --shell=sh .github/scripts/plugin-branch-check.sh
+
+  cli-windows:
+    # **The third row (#301).** `win32-x86-64/pubkycore.dll` is in the jar and `SupportedHost` has
+    # a Windows entry, so this runs the FFI rather than working around its absence. It is also the
+    # only job that reaches a set of branches no other row can: an ACL where POSIX modes are a
+    # silent no-op, a config home that is not `~/.config`, `SetStdHandle` where `dup2` is
+    # meaningless. Each replaces something that used to fail open rather than loudly.
+    #
+    # **`:shared:jvmTest` is unfiltered, and that is the marker.** Earlier versions of this job held
+    # packages out because the library did not exist, and named the filter's removal as the sign the
+    # row was real. It is gone. What that turns on is `UniffiPubkyClientJvmTest`, which loads the
+    # DLL through JNA and derives a keypair through it — the only test that can tell a shipped row
+    # from a missing one, since the ~1,300 shared tests run against a fake client and pass
+    # identically where the library is absent, the wrong architecture, or one directory off.
+    #
+    # `windows-latest` bills at 2×, so it is gated rather than unconditional — but on `cliTests`
+    # rather than `cli`, because this row runs `:shared:jvmTest` and `cli` does not cover
+    # `shared/src/jvmTest/`. A job skipped by `if:` still satisfies a required status check, so
+    # gating on `cli` would let a jvmTest-only PR go green having run the Windows arm nowhere.
+    name: CLI on Windows x86_64
+    needs: changes
+    if: needs.changes.outputs.cliTests == 'true'
+    runs-on: windows-latest
+    # bash, not the image's default pwsh: every other job here is written in it, and a second
+    # dialect would be one more thing that can differ between the rows for no reason.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: The CLI's own tests
+        run: ./gradlew :cli:test
+
+      # **Unfiltered, and that is the whole point of this change.** Every earlier version of this
+      # step held packages out because `win32-x86-64/pubkycore.dll` did not exist, and said so —
+      # the filter's removal was named there as the marker that the row is real. It is real, so the
+      # marker is gone.
+      #
+      # What this now runs that nothing could before is `UniffiPubkyClientJvmTest`, which loads the
+      # DLL out of the jar through JNA and derives a keypair through it. That is the only thing in
+      # the suite that can tell a shipped row from a missing one: the ~1,300 shared tests run
+      # against a fake client and pass identically on a machine where the library is absent, the
+      # architecture is wrong, or the file is one directory off.
+      - name: The whole shared suite, FFI included
+        run: ./gradlew :shared:jvmTest
+
+      # **The only place `CryptProtectData` is ever called, asserted rather than assumed** (#301).
+      #
+      # The step above passing says nothing about it. Gradle prints no test names for a passing
+      # task, so a green `:shared:jvmTest` is equally consistent with the DPAPI round trip having
+      # run and with it having returned early — and `DpapiSecureItemTest` guards that test with
+      # `if (!dpapiEligible()) return`, which JUnit records as a **pass**, not a skip. The results
+      # XML is uploaded only on failure, so after a green run the distinction is unrecoverable.
+      #
+      # What makes this real evidence is the host: on `windows-latest` `dpapiEligible()` cannot be
+      # false, so "that case ran and did not fail *here*" is exactly the statement that the two
+      # crypt32 calls executed against a real Windows profile. Everywhere else in the suite the
+      # store is exercised through a fake, which can never say anything about the binding.
+      - name: The DPAPI round trip really ran
+        run: |
+          python - <<'PY'
+          import glob, sys, xml.etree.ElementTree as ET
+
+          files = glob.glob("shared/build/test-results/jvmTest/TEST-*DpapiSecureItemTest.xml")
+          # A positive precondition: no results file means the class never ran, which would make
+          # every assertion below vacuously true by having nothing to assert against.
+          if not files:
+              sys.exit("::error::no DpapiSecureItemTest results — the shared suite did not run it")
+
+          wanted = "real DPAPI round trip"
+          for path in files:
+              root = ET.parse(path).getroot()
+              case = next((c for c in root.iter("testcase") if wanted in c.get("name", "")), None)
+              if case is None:
+                  sys.exit(f"::error::{path} has no '{wanted}' case — was it renamed or deleted?")
+              if case.find("skipped") is not None:
+                  sys.exit("::error::the DPAPI round trip was skipped on Windows, so crypt32 was never called")
+              if case.find("failure") is not None or case.find("error") is not None:
+                  sys.exit("::error::the DPAPI round trip failed — see the uploaded test report")
+              print(f"CryptProtectData exercised: {case.get('name')} ({case.get('time')}s)")
+          PY
+
+      # Which test failed and why, in the log — the same reporter `test-build` and `cli-linux`
+      # carry (#239). It matters most here: this is the only row in the matrix a contributor on
+      # macOS or Linux cannot re-run locally, so "download and unzip the artifact to find out which
+      # test broke" is a worse tax than anywhere else. `shell: bash` + `python3`, both on the image.
+      # **After the JDK 17 steps, never before.** `setup-graalvm` rewrites `JAVA_HOME`, and the two
+      # steps above resolve their Gradle toolchain from it — putting this first would silently run
+      # the test suites on 25 instead of the 17 every other row uses.
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the binary
+        run: ./gradlew :cli:nativeCompile
+
+      # The same block the other two binary rows carry. It is here rather than trusted to them
+      # because the defect `cli-binary-macos` exists for was one metadata entry that left Linux
+      # clean and broke macOS — three rows fail differently, and a check on two is a check on two.
+      - name: One file, and it works
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-native-windows
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/native/nativeCompile/loopky.exe
+          ls -la cli/build/native/nativeCompile
+          test "$(ls cli/build/native/nativeCompile | wc -l)" -eq 1
+
+          "$BIN" --version
+          "$BIN" --help > /dev/null
+
+          # **Diagnostic first, and non-fatal.** `--verbose` sets `Log.debugEnabled` at `Main.kt:96`,
+          # before `startCli` at `:134`, so `StdoutGuard`'s "could not reserve stdout: <message>"
+          # reaches stderr — which is the only way to tell a kernel32 lookup that failed in a
+          # closed-world image from a handle JNA mapped to null. Without it the strict check below
+          # reports only *that* the guard failed, which is what a first run already told us.
+          echo "--- guard diagnostic (non-fatal) ---"
+          "$BIN" --verbose whoami 2>&1 | grep -iE "reserve stdout|RUST_LOG|UnsatisfiedLink|kernel32|Unable to load" || true
+          echo "--- end diagnostic ---"
+
+          set +e; OUT=$("$BIN" whoami --json); CODE=$?; set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          echo "$OUT" | grep -q '"schema":1'
+          echo "$OUT" | grep -q '"environment":"production"'
+          echo "$OUT" | grep -q '"update_available":null'
+
+          set +e; "$BIN" frobnicate --json > /dev/null; CODE=$?; set -e
+          test "$CODE" -eq 2
+
+          # The FFI, which is the whole of the difficulty: this reaches `_UniFFILib.INSTANCE`, so
+          # it loads `pubkycore.dll` out of the binary's own resources, checks its API checksums
+          # and registers a JNA callback. A missing reachability registration dies here and
+          # nowhere earlier — and the registrations are exactly what differs between rows. 13 is
+          # nobody approving, 5 an unreachable relay; anything else is the FFI.
+          set +e; "$BIN" login --url-only --timeout 15 > /dev/null 2> qr.log; CODE=$?; set -e
+          cat qr.log
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 or 5"; exit 1;; esac
+          grep -q '^pubkyauth://' qr.log
+          # `RustLog.kt` through `SetEnvironmentVariableW` rather than libc `setenv`, which msvcrt
+          # does not export — so a regression here is the SDK logging at its own verbose default.
+          test "$(grep -c 'DEBUG\|INFO' qr.log || true)" -eq 0
+
+          # stdout carries the envelope and nothing else, proved by provoking the failure. The
+          # exit code first: a regressed `StdoutGuard` makes `startCli` refuse `--json` and throw
+          # before Koin, so the SDK never loads, stderr is empty, and `fail()` prints one
+          # well-formed envelope — every check below would pass on an unprotected channel.
+          set +e; RUST_LOG=trace "$BIN" login --url-only --timeout 5 --json > pure.json 2> loud.log; CODE=$?; set -e
+          echo "--- stdout ---"; cat pure.json; echo "--- stderr ---"; cat loud.log
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 (timeout) or 5"; exit 1;; esac
+          grep -qiE 'TRACE|DEBUG' loud.log
+          test -s pure.json
+          while read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s' "$line" | python -c 'import json,sys; json.loads(sys.stdin.read())' \
+              || { echo "::error::stdout was not pure JSON: $line"; exit 1; }
+          done < pure.json
+
+          # **The premise `loopky update` rests on, observed rather than argued** (#301). Windows
+          # refuses to let a running image be *written over*, which is why `replaceInPlace` renames
+          # it away instead — and every test of that lives on a file nobody is executing, so the one
+          # claim that matters was exercised nowhere. It is checkable here for about ten lines,
+          # because this job already runs a command that holds the image open for fifteen seconds.
+          #
+          # `mv` from Git Bash is the same `MoveFileEx` the JDK calls, so this is the real syscall
+          # against a real running `.exe`, not a simulation. What it proves: the rename succeeds
+          # while the process runs, the process survives it (its exit code is still 13 or 5, so it
+          # kept executing through the swap), a replacement can take the installed name, and the
+          # superseded copy is deletable once the process is gone — which is exactly what
+          # `sweepSupersededBinary` does on the next start-up.
+          echo "--- renaming a running image out from under itself ---"
+          "$BIN" login --url-only --timeout 15 > /dev/null 2> running.log &
+          LOGIN_PID=$!
+          # Long enough for the FFI to load and the relay poll to start; well inside the 15s bound.
+          sleep 5
+          kill -0 "$LOGIN_PID" || { echo "::error::the login process exited early — nothing was held open"; exit 1; }
+          mv "$BIN" "$BIN.old"
+          cp "$BIN.old" "$BIN"
+          test -f "$BIN" && test -f "$BIN.old"
+          set +e; wait "$LOGIN_PID"; CODE=$?; set -e
+          case "$CODE" in
+            13|5) echo "the process survived having its image renamed (exit $CODE)" ;;
+            *) echo "::error::login exited $CODE after the rename, expected 13 or 5"; exit 1 ;;
+          esac
+          # Deletable now the process is gone. Before it exited this would have failed, which is the
+          # whole reason `update` leaves the file behind for a later run to collect.
+          rm "$BIN.old"
+          "$BIN" --version > /dev/null
+          echo "--- end rename check ---"
+
+          # SQLite is JNA's problem over again in a second library, on a third native row:
+          # `org/sqlite/native/Windows/x86_64` rather than `Linux/x86_64`, extracted reflectively.
+          python cli/tools/make-sample-apkg.py sample.apkg
+          "$BIN" import sample.apkg --dry-run --json | tee apkg.json
+          grep -q '"cards":3' apkg.json
+          grep -q '"format":"apkg"' apkg.json
+
+      # **The assertion the build cannot make for itself.** A downloaded `.exe` that imports a DLL
+      # which is not in-box fails to start on a clean machine — and this runner has the Visual C++
+      # redistributable installed, so the build and every check above are green either way. Import
+      # names sit in the PE import directory as plain ASCII, so this needs no `dumpbin` and no
+      # Visual Studio environment.
+      #
+      # `loopky.exe` **does** need that redistributable: `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll`
+      # are the only two of its 23 imports not in-box on Windows 10+. That is accepted rather than
+      # fixed (#301) — GraalVM's prebuilt Windows JDK libraries are compiled against the dynamic
+      # CRT, `--static` is Linux-only, and `-H:NativeLinkerOption=/MT` is rejected by link.exe
+      # because `/MT` is a *compiler* switch; cli/build.gradle.kts carries the detail and
+      # cli/README.md tells the user. So this pins the **whole** import list rather than banning two
+      # names. Banning goes green on any *other* new non-in-box dependency; set equality fails on a
+      # change in either direction, and fails closed — a parse returning nothing is a failure here,
+      # where the old `bad = [...]` filter would have called it a pass.
+      - name: The binary imports exactly the pinned set
+        run: |
+          python - <<'PY'
+          import struct, sys
+
+          # **The PE import directory, not a substring search over the whole file.** A byte scan of
+          # the 66 MB image also covers the image heap and every embedded resource — and this build
+          # embeds three DLLs, a set that grew by two entries in this same PR. The next library
+          # added could carry `vcruntime140` in *its* import table and fail this step for a reason
+          # that has nothing to do with loopky.exe, which is how a check guarding the shipped
+          # artifact gets relaxed rather than investigated. Twenty lines of struct.unpack_from, no
+          # dependency, and the full import list in the error where it is actually useful.
+          exe = "cli/build/native/nativeCompile/loopky.exe"
+          data = open(exe, "rb").read()
+
+          pe = struct.unpack_from("<I", data, 0x3C)[0]
+          assert data[pe:pe + 4] == b"PE\0\0", "not a PE file"
+          opt = pe + 24
+          magic = struct.unpack_from("<H", data, opt)[0]
+          # Data directories start at 96 in PE32, 112 in PE32+; import table is directory 1.
+          dirs = opt + (112 if magic == 0x20B else 96)
+          imp_rva = struct.unpack_from("<I", data, dirs + 8)[0]
+
+          # Directory 13 is the **delay-load** import descriptor, and everything below is blind to
+          # it: a delay-loaded DLL is resolved on first call rather than at load, and it does not
+          # appear in directory 1 at all. It is empty today, and asserting that is the difference
+          # between a pinned list that is complete and one that merely looks complete — a
+          # delay-loaded `vcruntime` would sail straight through the set comparison below.
+          delay_rva = struct.unpack_from("<I", data, dirs + 13 * 8)[0]
+          assert delay_rva == 0, (
+              f"delay-load import directory is not empty (RVA {delay_rva:#x}). There are imports "
+              "this check cannot see — parse it too rather than deleting this line."
+          )
+
+          # Section headers, to map an RVA onto a file offset.
+          nsec = struct.unpack_from("<H", data, pe + 6)[0]
+          secs = pe + 24 + struct.unpack_from("<H", data, pe + 20)[0]
+          sections = [struct.unpack_from("<IIII", data, secs + i * 40 + 8) for i in range(nsec)]
+
+          def off(rva):
+              for vsize, vaddr, rsize, raddr in sections:
+                  if vaddr <= rva < vaddr + max(vsize, rsize):
+                      return raddr + (rva - vaddr)
+              raise ValueError(f"RVA {rva:#x} in no section")
+
+          names, cur = [], off(imp_rva)
+          while True:
+              name_rva = struct.unpack_from("<I", data, cur + 12)[0]
+              if name_rva == 0:
+                  break
+              end = data.index(b"\0", off(name_rva))
+              names.append(data[off(name_rva):end].decode("ascii", "replace"))
+              cur += 20
+
+          # Frozen from the first green Windows image (#301). Lower-cased, because PE import names
+          # are not consistently cased even within one image — `IPHLPAPI.DLL` sits beside
+          # `KERNEL32.dll` — so a case-sensitive compare would fail on a re-link that changed
+          # nothing.
+          EXPECTED = {
+              # Win32, in-box.
+              "advapi32.dll", "crypt32.dll", "iphlpapi.dll", "kernel32.dll", "mswsock.dll",
+              "ncrypt.dll", "secur32.dll", "user32.dll", "userenv.dll", "version.dll",
+              "winhttp.dll", "ws2_32.dll",
+              # The Universal CRT: in-box since Windows 10, shipped by Windows Update before that.
+              "api-ms-win-crt-convert-l1-1-0.dll", "api-ms-win-crt-environment-l1-1-0.dll",
+              "api-ms-win-crt-filesystem-l1-1-0.dll", "api-ms-win-crt-heap-l1-1-0.dll",
+              "api-ms-win-crt-locale-l1-1-0.dll", "api-ms-win-crt-math-l1-1-0.dll",
+              "api-ms-win-crt-runtime-l1-1-0.dll", "api-ms-win-crt-stdio-l1-1-0.dll",
+              "api-ms-win-crt-string-l1-1-0.dll",
+              # **Not** in-box: the Visual C++ redistributable, and the whole reason the note in
+              # cli/README.md exists.
+              "vcruntime140.dll", "vcruntime140_1.dll",
+          }
+          REDIST = {"vcruntime140.dll", "vcruntime140_1.dll"}
+
+          got = {n.lower() for n in names}
+          print(f"{exe}: {len(data)} bytes, {len(names)} imported libraries")
+          for n in sorted(got):
+              print(f"  {n}" + ("   <- needs the VC++ redistributable" if n in REDIST else ""))
+
+          added, gone = sorted(got - EXPECTED), sorted(EXPECTED - got)
+          if added or gone:
+              sys.exit(
+                  f"::error::the import list changed — added: {added or 'none'}; gone: "
+                  f"{gone or 'none'}. A new entry that is not in-box means a downloaded loopky.exe "
+                  "stops starting on a clean machine, which no other check here can see. Decide "
+                  "what it costs a user, then update this set and cli/README.md together."
+              )
+          print(f"pinned: {len(got)} imports, {len(REDIST)} needing the VC++ redistributable")
+          PY
+
+      - name: Say which tests failed
+        if: failure()
+        uses: ./.github/actions/failing-tests
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-windows-test-reports
+          path: '**/build/reports/tests/'
+          if-no-files-found: ignore
+
+  cli-binary:
+    # The packaging, checked on every change rather than at a tag (#210). Everything above this
+    # job passes on a build that needs a JRE 17 installed, which is the thing the binary exists to
+    # remove — so a regression here is invisible to all of it.
+    #
+    # Two properties, both of which have already broken once and neither of which a green
+    # `assembleDebug` says anything about:
+    #
+    #  - **it is one file.** `native-image` does not fail when it cannot fold a JDK native library
+    #    into the executable; it emits the library beside it and reports success. Reaching
+    #    `javax.imageio` from anywhere adds three `libawt*.so`, and `curl … -o ~/.local/bin/loopky`
+    #    quietly stops being an install. The guard that *enforces* this is
+    #    `:cli:checkNativeImageIsOneFile` inside the builder, which fails the `docker build`; the
+    #    `export` stage copies the whole output directory so the count below is a real assertion
+    #    rather than a tautology about a stage that copies one named file.
+    #  - **it runs.** JNA extracts `libpubkycore` from the image's own resources through a code
+    #    path a closed-world binary has to be told about by hand, and a missing registration is a
+    #    runtime failure with a green build behind it.
+    #
+    # Built through `cli/Dockerfile` rather than on the runner, so this is the same recipe the
+    # release uses and there is no second one to drift.
+    name: CLI as a native binary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # **Only the `toolchain` stage is cached, and in a scope of its own.** That stage is
+      # ubuntu 22.04, a C toolchain and a 250 MB GraalVM tarball; it is byte-identical from run to
+      # run, and on a fresh runner — which every runner is — it is fetched and unpacked from
+      # nothing every time. That is the part of these six minutes that is pure waste.
+      # `native-image` itself still runs on every change, which is the job.
+      #
+      # Deliberately **not** `cache-to: mode=max` over the whole build. The `builder` stage carries
+      # the entire checkout plus a resolved Gradle cache, every commit invalidates it, and
+      # exporting it would write a fresh multi-gigabyte entry into the repository's 10 GB Actions
+      # cache on every run — evicting the `setup-gradle` caches the other three jobs depend on.
+      # Caching the stable stage is the win; caching the volatile one buys this job a little and
+      # charges the others for it.
+      - name: Warm the toolchain layer
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: cli/Dockerfile
+          target: toolchain
+          cache-from: type=gha,scope=cli-toolchain
+          cache-to: type=gha,mode=max,scope=cli-toolchain
+
+      # `provenance: false` is load-bearing, not tidiness. `build-push-action` attaches a SLSA
+      # provenance attestation by default, and with `type=local` that arrives as a second file —
+      # `dist/provenance.json` beside the binary. The one-file assertion below caught it on the
+      # first run, which is the assertion being worth having: `curl … -o ~/.local/bin/loopky`
+      # installs whatever is at that path and nothing else, so an attestation the installer never
+      # fetches is exactly the kind of stray this job exists to refuse. `sbom` is off for the same
+      # reason, before it is ever switched on by default.
+      - name: Build the binary
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: cli/Dockerfile
+          target: export
+          outputs: type=local,dest=dist
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=cli-toolchain
+
+      - name: One file, and it works
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-native
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          ls -la dist
+          test "$(ls dist | wc -l)" -eq 1
+          chmod +x dist/loopky
+
+          dist/loopky --version
+          dist/loopky --help > /dev/null
+
+          # Same assertions as the jar's smoke test, on the artifact people actually install.
+          set +e; OUT=$(dist/loopky whoami --json); CODE=$?; set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          echo "$OUT" | grep -q '"schema":1'
+          echo "$OUT" | grep -q '"environment":"production"'
+
+          echo "$OUT" | grep -q '"update_available":null'
+
+          set +e; dist/loopky frobnicate --json > /dev/null; CODE=$?; set -e
+          test "$CODE" -eq 2
+
+          # `update --check` on the artifact people actually install (#209). Two properties, and
+          # the second is why this is here rather than in a unit test: it needs no session, and a
+          # release page it cannot reach — no egress, a proxy, a tag with no manifest on it yet —
+          # is reported and exits **0**. A self-updater that fails the shell it is called from
+          # because GitHub was slow is worse than one that never checks.
+          dist/loopky update --check --json | tee update.json
+          grep -q '"command":"update"' update.json
+          grep -q '"install":' update.json
+
+          # The FFI, which is the whole of the difficulty and the one thing a JVM run cannot
+          # vouch for: this reaches `_UniFFILib.INSTANCE`, so it loads `libpubkycore` out of the
+          # binary's own resources, checks its API checksums and registers a JNA callback. A
+          # missing reachability registration dies here and nowhere earlier.
+          #
+          # It then blocks on a human approving in Ring, so it bounds itself: `--timeout` rather
+          # than the `timeout -s TERM … || true` wrapper this used to need (#240). Offline-safe on
+          # purpose — the URL is built locally from a generated secret and printed before the
+          # relay is polled, so this asserts the FFI and nothing about the network. 13 is nobody
+          # approving, which is the expected outcome; 5 is the relay being unreachable, which must
+          # not fail a PR. Anything else is the FFI, and `|| true` used to hide exactly that.
+          set +e; dist/loopky login --url-only --timeout 15 > /dev/null 2> qr.log; CODE=$?; set -e
+          cat qr.log
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 (timeout) or 5"; exit 1;; esac
+          grep -q '^pubkyauth://' qr.log
+
+          # And the SDK's tracing stays quiet by default. There is no start script on a binary to
+          # export RUST_LOG, so this is `RustLog.kt` doing it through libc — verified here because
+          # the failure is four ANSI-coloured lines on the channel an agent captures.
+          test "$(grep -c 'DEBUG\|INFO' qr.log || true)" -eq 0
+
+          # **stdout carries the envelope and nothing else, proved by provoking the failure** (#301).
+          # `--json` is a versioned API an agent parses, which only means anything if nothing else
+          # can land on that channel — and `StdoutGuard` is what keeps the SDK's `tracing` writer
+          # off it. Asking politely is not a test: RUST_LOG=trace makes the SDK as loud as it gets,
+          # so if the guard is not working, stdout is where those lines go.
+          #
+          # The stderr check is the positive precondition, and it is the half that stops this going
+          # vacuous: without it, an SDK that logged nothing at all would pass while proving nothing.
+          set +e; RUST_LOG=trace dist/loopky login --url-only --timeout 5 --json > pure.json 2> loud.log; CODE=$?; set -e
+          echo "--- stdout ---"; cat pure.json; echo "--- stderr ---"; cat loud.log
+          # **The exit code first, because the failure this step exists for is a *clean* one.** If
+          # the guard regresses, `startCli` refuses `--json` and throws before Koin — so
+          # libpubkycore never loads, stderr is empty, and `fail()` prints one well-formed envelope
+          # to stdout. Every check below would pass on a binary whose result channel is exactly as
+          # unprotected as before. 13 is nobody approving and 5 is an unreachable relay; anything
+          # else, this refused. Same gate the FFI check 20 lines up uses.
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 (timeout) or 5"; exit 1;; esac
+          # `grep -q` *is* the assertion — no `test -s` in front of it. A command that fails while
+          # not last in an `&&` list is exempt from `set -e`, so `test -s loud.log && grep …` could
+          # never fail: an empty stderr skipped the grep and carried on. That is the precondition
+          # written to stop this going vacuous being the one part of it that could not.
+          grep -qiE 'TRACE|DEBUG' loud.log
+          test -s pure.json
+          while read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s' "$line" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' \
+              || { echo "::error::stdout was not pure JSON: $line"; exit 1; }
+          done < pure.json
+
+          # SQLite, which is JNA's problem all over again in a second library (#211). `.apkg`
+          # import opens its collection through the JDBC driver, which extracts a native library
+          # from the image's own resources — reflective loading, the one thing a closed-world
+          # binary has to be told about by hand. Nothing else the CLI does touches `org.sqlite`,
+          # so without this the first Anki import on a user's machine is the first time anyone
+          # finds out. `--dry-run` needs no session and no network, so it cannot flake.
+          python3 cli/tools/make-sample-apkg.py sample.apkg
+          dist/loopky import sample.apkg --dry-run --json | tee apkg.json
+          # Three notes in, three cards out, and the front is field **2** — the deck's first
+          # column is database ids, which is the failure the headless field picker exists for.
+          grep -q '"cards":3' apkg.json
+          grep -q '"front_index":2' apkg.json
+          grep -q '"format":"apkg"' apkg.json
+
+      # For `cli-sandbox-sim`, which puts this exact binary behind the proxies.
+      - name: Keep the binary for the proxy rows
+        uses: actions/upload-artifact@v7
+        with:
+          name: loopky-linux-x86-64
+          path: dist/loopky
+          retention-days: 3
+          if-no-files-found: error
+
+  cli-sandbox-sim:
+    # **The CLI behind the networks agent sandboxes give it (#364).** `cli/sandbox-sim` reproduces
+    # them in Docker — Claude Code's Trusted and Custom allowlists, Codex's presets, a proxy wanting
+    # credentials, one intercepting TLS, no egress at all — and this holds every row's exit code to `cli/sandbox-sim/expected.tsv`. Run
+    # against the jar *and* the binary because two of the findings it was built for were
+    # native-only: native-image froze the JDK's proxy auth-scheme properties at build time, so the
+    # binary took a 407 where the jar went through.
+    #
+    # **Linux only: the macOS and Windows native rows stay unverified behind a proxy.** A hosted
+    # macOS or Windows runner has no Docker to put them behind one.
+    #
+    # Most rows reach the production relay, pkarr and Nexus. `check.sh` runs a drifting profile a
+    # second time before failing, because `doctor` gives each host 5s and one slow answer reads as
+    # unreachable (#369). And `run.sh`'s preflight refuses outright — exit 3, a red job, never a
+    # quietly different table — if the runner's own egress ever starts intercepting TLS.
+    name: CLI behind sandbox proxies (${{ matrix.build }})
+    needs: [changes, cli-binary]
+    if: needs.changes.outputs.cli == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [jar, native]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        if: matrix.build == 'jar'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        if: matrix.build == 'jar'
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build the distribution
+        if: matrix.build == 'jar'
+        run: ./gradlew :cli:installDist
+
+      - name: Take the binary `cli-binary` built
+        if: matrix.build == 'native'
+        uses: actions/download-artifact@v8
+        with:
+          name: loopky-linux-x86-64
+          path: native/bin
+
+      # `LOOPKY_DIST` is a directory holding `bin/loopky`, absolute because Compose resolves a
+      # relative one against `cli/sandbox-sim/`. Artifacts lose the executable bit.
+      - name: Hold every profile to expected.tsv
+        env:
+          BUILD: ${{ matrix.build }}
+        run: |
+          set -euo pipefail
+          if [ "$BUILD" = native ]; then
+            chmod +x native/bin/loopky
+            export LOOPKY_DIST="$GITHUB_WORKSPACE/native"
+          fi
+          cli/sandbox-sim/check.sh "$BUILD"
+
+  cli-binary-macos:
+    # **The other row (#239).** `cli-binary` above builds `linux-x86-64`; the macOS binary was
+    # built only by `release.yml`, on a tag.
+    #
+    # In #237 that turned out to be load-bearing. `:cli:checkNativeImageIsOneFile` had *always*
+    # failed on macOS — ten JDK dylibs beside the executable, so `curl … -o ~/.local/bin/loopky`
+    # was dead on that row — and nothing reported it, because nobody had run `nativeCompile` on a
+    # Mac. The cause was one entry in `reflect-config.json` that leaves Linux perfectly clean. A
+    # green CI said nothing, and the first failure would have been the release job, at the worst
+    # possible moment.
+    #
+    # The general shape is the problem rather than that one entry: **the two rows fail
+    # differently, and only one was built.** Any reachability-metadata change, any Koin binding
+    # that drags in AWT, any dependency that reaches `javax.imageio` can be clean on Linux and
+    # broken here.
+    #
+    # `macos-14` bills at a 10× multiplier, hence the `changes` gate rather than running it on
+    # every PR.
+    name: CLI as a native binary (macOS aarch64)
+    needs: changes
+    if: needs.changes.outputs.cli == 'true'
+    # arm64 and only arm64: there is one `darwin-aarch64` row of `libpubkycore` and an Intel build
+    # would have nothing to load (#54).
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      # `checkNativeImageIsOneFile` is wired as `finalizedBy` on this task, so the property that
+      # broke in #237 is asserted by the build itself — the step below is what a reader can see.
+      - name: Build the binary
+        run: ./gradlew :cli:nativeCompile
+
+      - name: One file, and it works
+        env:
+          LOOPKY_CONFIG_HOME: ${{ runner.temp }}/loopky-native-macos
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          BIN=cli/build/native/nativeCompile/loopky
+          ls -la cli/build/native/nativeCompile
+          test "$(ls cli/build/native/nativeCompile | wc -l)" -eq 1
+
+          "$BIN" --version
+          "$BIN" --help > /dev/null
+
+          set +e; OUT=$("$BIN" whoami --json); CODE=$?; set -e
+          echo "$OUT"
+          test "$CODE" -eq 3
+          echo "$OUT" | grep -q '"code":"not_signed_in"'
+          echo "$OUT" | grep -q '"schema":1'
+          echo "$OUT" | grep -q '"environment":"production"'
+          echo "$OUT" | grep -q '"update_available":null'
+
+          set +e; "$BIN" frobnicate --json > /dev/null; CODE=$?; set -e
+          test "$CODE" -eq 2
+
+          # The FFI, which is the whole of the difficulty: this reaches `_UniFFILib.INSTANCE`, so
+          # it loads `libpubkycore.dylib` out of the binary's own resources, checks its API
+          # checksums and registers a JNA callback. A missing reachability registration dies here
+          # and nowhere earlier — and the registrations are exactly what differs between the rows.
+          # 13 is nobody approving in Ring, which is the expected outcome; 5 is the relay being
+          # unreachable, which must not fail a PR. Anything else is the FFI.
+          set +e; "$BIN" login --url-only --timeout 15 > /dev/null 2> qr.log; CODE=$?; set -e
+          cat qr.log
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 or 5"; exit 1;; esac
+          grep -q '^pubkyauth://' qr.log
+          # The SDK's tracing stays quiet by default — `RustLog.kt` through libc, since a binary
+          # has no start script to export RUST_LOG from.
+          test "$(grep -c 'DEBUG\|INFO' qr.log || true)" -eq 0
+
+          # **stdout carries the envelope and nothing else, proved by provoking the failure** (#301).
+          # Here as well as on the Linux row, and that symmetry is the point: the defect this job
+          # exists for was one metadata entry that left Linux clean and broke macOS, so a check on
+          # one row is a check on one row. RUST_LOG=trace makes the SDK as loud as it gets; if the
+          # guard is not working, that is where those lines land.
+          #
+          # The stderr check is the positive precondition and the half that stops this going
+          # vacuous: without it an SDK that logged nothing would pass while proving nothing.
+          set +e; RUST_LOG=trace "$BIN" login --url-only --timeout 5 --json > pure.json 2> loud.log; CODE=$?; set -e
+          echo "--- stdout ---"; cat pure.json; echo "--- stderr ---"; cat loud.log
+          # The exit code first: a regressed guard refuses `--json` and throws before Koin, so the
+          # SDK never loads, stderr is empty, and `fail()` prints one well-formed envelope — every
+          # check below would pass on an unprotected channel. 13 is nobody approving, 5 an
+          # unreachable relay; anything else, this refused.
+          case "$CODE" in 13|5) ;; *) echo "login exited $CODE, expected 13 (timeout) or 5"; exit 1;; esac
+          # `grep -q` is the assertion. `test -s X && grep …` could never fail, because a command
+          # that fails while not last in an `&&` list is exempt from `set -e`.
+          grep -qiE 'TRACE|DEBUG' loud.log
+          test -s pure.json
+          while read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s' "$line" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' \
+              || { echo "::error::stdout was not pure JSON: $line"; exit 1; }
+          done < pure.json
+
+          # SQLite is JNA's problem over again in a second library, on a second native row:
+          # `org/sqlite/native/Mac/aarch64` rather than `Linux/x86_64`, extracted reflectively.
+          # `--dry-run` needs no session and no network, so it cannot flake.
+          python3 cli/tools/make-sample-apkg.py sample.apkg
+          "$BIN" import sample.apkg --dry-run --json | tee apkg.json
+          grep -q '"cards":3' apkg.json
+          grep -q '"format":"apkg"' apkg.json
+
+      # Deliberately *without* `LOOPKY_CONFIG_HOME`: setting it opts the session back into a file
+      # (#213), so the step above never touches the Keychain — and the Keychain is reached by
+      # spawning `security(1)`, which is the one thing about this row a native image could
+      # plausibly get wrong and still exit cleanly. A read that cannot run the tool degrades to
+      # the file store with a warning on stderr, so the warning's *absence* is the assertion, and
+      # the precondition has to be positive or the whole step goes vacuous the day a runner image
+      # starts exporting one of these.
+      - name: The Keychain path works in the binary, not just on a JVM
+        env:
+          LOOPKY_NO_UPDATE_CHECK: '1'
+        run: |
+          set -euo pipefail
+          test -z "${LOOPKY_CONFIG_HOME:-}"
+          test -z "${XDG_CONFIG_HOME:-}"
+          BIN=cli/build/native/nativeCompile/loopky
+          set +e; "$BIN" whoami --json > out.txt 2> err.txt; CODE=$?; set -e
+          cat out.txt err.txt
+          test "$CODE" -eq 3
+          grep -q '"code":"not_signed_in"' out.txt
+          ! grep -qi 'keychain' err.txt
+
+  ios:
+    # **Nothing in this workflow touched iOS (#239).** `:shared:allTests` is never run — only
+    # `:shared:testAndroidHostTest` and `:shared:jvmTest` — so `:shared:compileKotlinIosSimulatorArm64`
+    # was never checked and `lintSwift` existed as a Gradle task CI never called.
+    #
+    # Business logic is shared, so a `commonMain` change breaks iOS as easily as Android. #237
+    # added a member to `SecureSessionStore`, which required editing `IosSecureSessionStore` —
+    # caught only because somebody happened to compile it locally. An agent trusting a green CI
+    # would have merged a shared module that does not build for one of its two consumers.
+    #
+    # **The test source set is compiled too, not just `main`.** `compileKotlinIosSimulatorArm64`
+    # left `commonTest` unchecked, and the two backends disagree about what a declaration may be
+    # *called*: Kotlin/Native refuses a `,` inside a backticked name and the JVM accepts it. So a
+    # test named `refused, whatever its case` compiled on Android, passed both required contexts,
+    # and broke `:shared:allTests` for everyone on a Mac — found on `main`, during a release.
+    # Compiled and not **run**: that wants a booted simulator, and this whole class of failure is
+    # a compile error.
+    #
+    # What this does **not** cover, so nobody reads more into a green tick than is there: the
+    # SwiftUI app is linted, not compiled. Compiling it needs `linkDebugFrameworkIosSimulatorArm64`
+    # plus an `xcodebuild`, which is most of an iOS build's wall clock at a 10× multiplier. The
+    # Kotlin half is where a shared change lands, and that is what is checked here; the Swift half
+    # is checked by driving the app (`journeys/RESULTS.md`).
+    name: iOS compiles, and its Swift lints
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      # `~/.konan` is the Kotlin/Native compiler plus its platform libraries — a few hundred MB
+      # that `setup-gradle` does not cache, and that would otherwise be downloaded on every run of
+      # the job that bills at 10×.
+      - name: Cache the Kotlin/Native distribution
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: konan-${{ runner.os }}-
+
+      - name: Compile the shared module for the iOS simulator, tests included
+        run: ./gradlew :shared:compileTestKotlinIosSimulatorArm64
+
+      # `lintSwift` no-ops with a friendly hint when SwiftLint is absent, which is right for a
+      # contributor and wrong for CI: it would turn this into a step that always passes and
+      # checks nothing. `macos-14` ships SwiftLint, so this is a guard rather than an install.
+      - name: SwiftLint is present, so the next step is not a no-op
+        run: command -v swiftlint || brew install swiftlint
+
+      - name: Lint the Swift
+        run: ./gradlew lintSwift

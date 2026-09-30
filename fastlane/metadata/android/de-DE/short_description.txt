@@ -1,0 +1,1 @@
+Karteikarten mit verteilter Wiederholung. Anki-Import.

@@ -8,7 +8,9 @@ struct BulkImportView: View {
     var onChooseFields: () -> Void = {}
     var onConfirm: () -> Void = {}
     var onCancel: () -> Void = {}
-    var onBrowseSharedDecks: () -> Void = {}
+    var onCopyCliPrompt: () -> Void = {}
+
+    @State private var didCopyPrompt = false
 
     var body: some View {
         ScrollView {
@@ -28,12 +30,15 @@ struct BulkImportView: View {
             // still reaches both edges of an iPad and only the content inside is bounded.
             .contentPane()
         }
-        .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+        .loopkyScreenBackground()
         .navigationBarHidden(true)
     }
 
     private var importLabel: String {
-        String(format: NSLocalizedString("bulk_import_cards", comment: ""), state.cardCount)
+        String.localizedStringWithFormat(
+            NSLocalizedString("bulk_import_cards", comment: ""),
+            state.cardCount
+        )
     }
 
     private var header: some View {
@@ -62,8 +67,7 @@ struct BulkImportView: View {
 
     /// The empty state, which is where most of this screen's job gets done.
     ///
-    /// Mirrors Android's: a hero, the two formats that work and what each brings over, and — since
-    /// the spec pitches Loopky at Anki refugees (§1) — a way out for someone who has no deck yet.
+    /// Mirrors Android's: a hero, and the two formats that work with what each brings over.
     /// Prose over blank space says nothing about what a "file" means here.
     private var formats: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -90,25 +94,39 @@ struct BulkImportView: View {
             .foregroundStyle(LoopkyColor.foregroundMuted)
             .frame(maxWidth: .infinity)
 
-            ankiWebRow
+            cliPromptCard
         }
     }
 
-    /// The screen assumes you already have a file, which an Anki refugee does and a new user does
-    /// not. AnkiWeb's shared decks are the shortest route from empty to something to import.
-    private var ankiWebRow: some View {
-        HStack(spacing: 6) {
-            Text("bulk_idle_no_deck")
+    /// A pitch for `loopky`, the headless client, on the screen whose whole premise is that the
+    /// deck already exists somewhere else. The prompt is copied rather than shown, because the
+    /// reader's agent lives on another machine and nobody retypes an install line from a phone.
+    private var cliPromptCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("bulk_cli_title")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(LoopkyColor.foregroundPrimary)
+            Text("bulk_cli_body")
                 .font(.system(size: 13))
-                .foregroundStyle(LoopkyColor.foregroundMuted)
-            Button("bulk_idle_browse_ankiweb", action: onBrowseSharedDecks)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(LoopkyColor.accentPrimary)
-                .underline()
-                .accessibilityIdentifier("bulk_browse_ankiweb")
+                .foregroundStyle(LoopkyColor.foregroundSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(didCopyPrompt ? "bulk_cli_copied" : "bulk_cli_copy") {
+                onCopyCliPrompt()
+                withAnimation { didCopyPrompt = true }
+                Task {
+                    try? await Task.sleep(for: .seconds(2))
+                    withAnimation { didCopyPrompt = false }
+                }
+            }
+            .buttonStyle(.loopkySoft)
+            .accessibilityIdentifier("bulk_cli_copy")
+            .padding(.top, 2)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 6)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14).fill(LoopkyColor.surfaceCard))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(LoopkyColor.borderSubtle, lineWidth: 1))
+        .padding(.top, 10)
     }
 
     /// The same idiom as the paste screen's fox and Home's book stack: an emoji on the brand
@@ -197,7 +215,10 @@ struct BulkImportView: View {
                 .foregroundStyle(LoopkyColor.foregroundPrimary)
 
             HStack(spacing: 8) {
-                chip(String(format: NSLocalizedString("bulk_cards_parsed", comment: ""), state.cardCount))
+                chip(String.localizedStringWithFormat(
+                    NSLocalizedString("bulk_cards_parsed", comment: ""),
+                    state.cardCount
+                ))
                 if !state.separatorLabel.isEmpty {
                     chip(String(
                         format: NSLocalizedString("bulk_detected_separator", comment: ""),
@@ -237,7 +258,9 @@ struct BulkImportView: View {
     @ViewBuilder
     private func note(_ count: Int, _ key: String) -> some View {
         if count > 0 {
-            Text(String(format: NSLocalizedString(key, comment: ""), count))
+            // localizedStringWithFormat, not String(format:): every key this is called with
+            // is a plural entry, and only this one resolves the variation (#267).
+            Text(String.localizedStringWithFormat(NSLocalizedString(key, comment: ""), count))
                 .font(.system(size: 12))
                 .foregroundStyle(LoopkyColor.foregroundMuted)
         }

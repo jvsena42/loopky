@@ -19,6 +19,7 @@ struct SearchScreen: View {
     @State private var effectSink: FlowEffectSink?
     @State private var signInReason: SignInReason?
     @State private var isScanning = false
+    @State private var followError: String?
 
     var body: some View {
         SearchView(
@@ -49,6 +50,17 @@ struct SearchScreen: View {
             onSignIn: { signInReason = nil; onSignIn() },
             onDismiss: { signInReason = nil }
         )
+        .overlay(alignment: .bottom) {
+            if let followError {
+                Text(verbatim: followError)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(LoopkyColor.foregroundOnAccent)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Capsule().fill(LoopkyColor.foregroundPrimary.opacity(0.9)))
+                    .padding(.bottom, 90)
+            }
+        }
         .onAppear { attach() }
         .onDisappear { detach() }
     }
@@ -107,10 +119,22 @@ struct SearchScreen: View {
                 onOpenDeck(open.deckId, open.authorPubky)
             case let require as SearchEffectRequireSignIn:
                 signInReason = require.reason
+            case let failed as SearchEffectShowFollowError:
+                // The pill reverts itself, but silently — without this the follow just undoes
+                // itself and the reason never reaches the user. Discover already says it, and so
+                // does Android's search.
+                flash(ErrorCopy.message(for: failed.reason))
             default:
-                // A failed follow reverts its own pill; nothing here has to navigate.
                 break
             }
+        }
+    }
+
+    private func flash(_ message: String) {
+        withAnimation { followError = message }
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation { followError = nil }
         }
     }
 

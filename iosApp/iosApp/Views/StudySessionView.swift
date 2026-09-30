@@ -40,10 +40,13 @@ struct StudySessionView: View {
             if let syncErrorMessage = state.syncErrorMessage { syncBanner(syncErrorMessage) }
             // Over everything, including the sync banner: it is the one modal moment in a session.
             if state.goalReached {
+                // Met on the last card, there is nothing to keep studying: the one way out
+                // uncovers the summary underneath.
                 GoalCelebrationView(
                     newCardsToday: state.newCardsToday,
+                    sessionEnded: state.phase == .complete,
                     onKeepStudying: onContinueAfterGoal,
-                    onDone: onClose
+                    onDone: state.phase == .complete ? onContinueAfterGoal : onClose
                 )
             }
         }
@@ -238,7 +241,7 @@ struct StudySessionView: View {
             .padding(.vertical, 12)
             .background(RoundedRectangle(cornerRadius: 14).fill(grade.color))
         }
-        .accessibilityIdentifier("study_\(grade.label.lowercased())")
+        .accessibilityIdentifier("study_\(grade.id)")
     }
 
     /// The end of a preview has nothing to report — no reviews were stored, so there is no

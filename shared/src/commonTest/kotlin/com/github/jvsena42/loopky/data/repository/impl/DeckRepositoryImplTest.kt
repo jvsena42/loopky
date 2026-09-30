@@ -16,6 +16,7 @@ import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FailingChunkCardRepository
 import com.github.jvsena42.loopky.testing.FakeBackgroundTasks
+import com.github.jvsena42.loopky.testing.FakeDeckCacheStore
 import com.github.jvsena42.loopky.testing.FakeMediaRepository
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
@@ -428,11 +429,11 @@ class DeckRepositoryImplTest {
             listOf(testCard("c1", deckId = "orig"), testCard("c2", deckId = "orig")),
         )
 
-        val clone = repo.clone(source).getOrThrow()
+        val clone = repo.clone(source, "My copy").getOrThrow()
 
         assertEquals(TEST_PUBKY, clone.authorPubky)
         assertTrue(clone.id != source.id, "the clone reused the source's deck id")
-        assertEquals(source.title, clone.title)
+        assertEquals("My copy", clone.title)
         assertEquals(expected = 2, actual = clone.cardCount)
 
         // New card ids are what stop grading the clone from moving the original's review state:
@@ -455,7 +456,7 @@ class DeckRepositoryImplTest {
     fun cloneRecordsProvenanceThatSurvivesAFetchRoundTrip() = runTest {
         val source = putRemoteDeck("friendpk", "orig", listOf(testCard("c1", deckId = "orig")))
 
-        val clone = repo.clone(source).getOrThrow()
+        val clone = repo.clone(source, "My copy").getOrThrow()
 
         // Read it back off the homeserver rather than trusting the in-memory copy.
         val refetched = DeckRepositoryImpl(
@@ -466,6 +467,7 @@ class DeckRepositoryImplTest {
             tagRepo,
             FakeMediaRepository(),
             FakeBackgroundTasks(),
+            FakeDeckCacheStore(),
         ).fetchRemote(TEST_PUBKY, clone.id).getOrThrow()
 
         assertEquals(DeckSource.Kind.Clone, refetched.source?.kind)
@@ -489,7 +491,7 @@ class DeckRepositoryImplTest {
         )
         val source = putRemoteDeck("friendpk", "orig", listOf(card))
 
-        val clone = repo.clone(source).getOrThrow()
+        val clone = repo.clone(source, "My copy").getOrThrow()
 
         // Clone-by-reference: the ref points at the author's blob, so cloning an Anki-sized deck
         // costs card records and nothing else.
@@ -517,7 +519,7 @@ class DeckRepositoryImplTest {
         )
         val source = putRemoteDeck("friendpk", "orig", listOf(card))
 
-        val clone = repo.clone(source).getOrThrow()
+        val clone = repo.clone(source, "My copy").getOrThrow()
 
         val ref = assertNotNull(cardRepo.listByDeck(clone.id).single().front.imageRef)
         assertEquals("https://images.unsplash.com/photo-1", ref.url)
@@ -539,7 +541,7 @@ class DeckRepositoryImplTest {
             .copy(back = CardSide(text = "back", imageRef = alreadyPinned))
         val source = putRemoteDeck("friendpk", "orig", listOf(card))
 
-        val clone = repo.clone(source).getOrThrow()
+        val clone = repo.clone(source, "My copy").getOrThrow()
 
         // friendpk never hosted this blob either — pointing at them would break the chain.
         val ref = assertNotNull(cardRepo.listByDeck(clone.id).single().back.imageRef)
@@ -551,7 +553,7 @@ class DeckRepositoryImplTest {
         val source = putRemoteDeck("friendpk", "orig", listOf(testCard("c1", deckId = "orig")))
         repo.followDeck(source).getOrThrow()
 
-        val clone = repo.clone(source).getOrThrow()
+        val clone = repo.clone(source, "My copy").getOrThrow()
 
         // The loopky-cloned label goes on the *source*, so credit accrues to the original author.
         assertTrue(source.pubkyUri to ReservedTags.CLONED in tagRepo.putReservedTags)
@@ -564,7 +566,7 @@ class DeckRepositoryImplTest {
     @Test
     fun editingACloneNeverTouchesTheOriginal() = runTest {
         val source = putRemoteDeck("friendpk", "orig", listOf(testCard("c1", deckId = "orig")))
-        val clone = repo.clone(source).getOrThrow()
+        val clone = repo.clone(source, "My copy").getOrThrow()
         val cardId = cardRepo.listByDeck(clone.id).single().id
         pubky.puts.clear()
 
@@ -582,10 +584,28 @@ class DeckRepositoryImplTest {
     }
 
     @Test
+    fun cloneRefusesABlankTitleRatherThanFallingBackToTheSourceName() = runTest {
+        val source = putRemoteDeck("friendpk", "orig", listOf(testCard("c1", deckId = "orig")))
+
+        // The copy lands next to the deck it forked; two identical titles there are the thing the
+        // mandatory rename exists to prevent, so a blank one is a failure and never a default.
+        val writesBefore = pubky.puts.size
+        assertTrue(repo.clone(source, "   ").isFailure)
+        assertEquals(writesBefore, pubky.puts.size, "a refused clone still wrote records")
+    }
+
+    @Test
+    fun cloneTrimsTheTitleItIsGiven() = runTest {
+        val source = putRemoteDeck("friendpk", "orig", listOf(testCard("c1", deckId = "orig")))
+
+        assertEquals("My copy", repo.clone(source, "  My copy  ").getOrThrow().title)
+    }
+
+    @Test
     fun cloningYourOwnDeckDuplicatesItRatherThanFailing() = runTest {
         val mine = repo.publish(testDeck(id = "deck1"), listOf(testCard("c1"))).getOrThrow()
 
-        val clone = repo.clone(mine).getOrThrow()
+        val clone = repo.clone(mine, "My copy").getOrThrow()
 
         assertTrue(clone.id != mine.id)
         assertEquals(TEST_PUBKY, clone.authorPubky)

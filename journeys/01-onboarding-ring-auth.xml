@@ -15,11 +15,17 @@
     flow the FFI had already consumed, which replaced the real cause with "No auth flow in
     progress" and blamed Pubky Ring for a relay outage.
 
-    DRIVE THE HAPPY PATH FAST. The three taps — sign in, the identity row, Authorize — must be
-    chained with roughly 2s and 1s between them and NOTHING in between: no layout dump, no
-    screenshot, no verification step. Driven at a normal scripted pace (4s+ per step, or a
-    layout read between taps) the same flow fails with "the authorisation relay isn't
-    responding" on an otherwise healthy network. That is very likely what the "manual sign-ins
+    Sign-in no longer opens Ring on its own, on any device. Tapping sign in raises the QR
+    handoff — a sheet on a phone, the sign-in column on a tablet — and "I have Pubky Ring on
+    this device" is what fires the deeplink. Ring being installed says only that some app
+    answers `pubkyauth://`, not that it holds this user's key, and the old auto-deeplink walked
+    a phone straight past the code that is the only way in for a key kept on another phone.
+
+    DRIVE THE HAPPY PATH FAST. The four taps — sign in, "I have Pubky Ring on this device", the
+    identity row, Authorize — must be chained with roughly 1s, 2s and 1s between them and
+    NOTHING in between: no layout dump, no screenshot, no verification step. Driven at a normal
+    scripted pace (4s+ per step, or a layout read between taps) the same flow fails with "the
+    authorisation relay isn't responding" on an otherwise healthy network. That is very likely what the "manual sign-ins
     succeed where scripted ones don't" note in RESULTS.md was really observing — a human taps
     through in a couple of seconds. Verify AFTER the chain, and on failure retry the whole
     chain from the onboarding screen rather than waiting inside it: the FFI auth flow is
@@ -32,15 +38,20 @@
     <action>Verify BOTH provider labels render in full at every width. They were tried side by side and truncated to "Continue with Pubky" / "Use a recovery" — a clipped label reads as the whole label, so stacked is deliberate</action>
     <action>Launch the Loopky app (package com.github.jvsena42.loopky)</action>
     <action>Verify the onboarding screen is shown with the headline "Learn anything, remember everything." and a "Sign in with Pubky Ring" button (resource-id: onboarding_signin)</action>
-    <action>Chain these three taps with no verification between them — ~2s after the first, ~1s after the second: tap "onboarding_signin"; tap the identity row in Pubky Ring's "Select Pubky" list; tap Pubky Ring's "ConfirmAuthAuthorizeButton". On a 1080x2424 emulator those land at (540, 1962), (540, 844) and (789, 2245). Anything slower fails on a healthy relay — see the description.</action>
+    <action>Chain these four taps with no verification between them — ~1s, ~2s, ~1s apart: tap "onboarding_signin"; tap "onboarding_qr_open_here" in the sheet that appears; tap the identity row in Pubky Ring's "Select Pubky" list; tap Pubky Ring's "ConfirmAuthAuthorizeButton". On a 1080x2424 emulator the first lands at (540, 1962) and the last two at (540, 844) and (789, 2245). Anything slower fails on a healthy relay — see the description.</action>
     <action>Verify Loopky returns to the foreground and lands on the Home screen (the bottom tab bar is visible and the onboarding screen is gone)</action>
-    <action>If the onboarding screen is still shown with "Loopky signs you in through Pubky's authorisation relay, and it isn't responding", retry the whole three-tap chain from the top — do not tap Authorize again, the flow is consumed</action>
+    <action>If the onboarding screen is still shown with "Loopky signs you in through Pubky's authorisation relay, and it isn't responding", retry the whole four-tap chain from the top — do not tap Authorize again, the flow is consumed</action>
 
     <action>THE RELAY-FAILURE BRANCH. Force it deterministically by disabling the radios before tapping sign in: adb shell svc wifi disable &amp;&amp; adb shell svc data disable</action>
-    <action>Tap the element with resource-id "onboarding_signin", then return to Loopky (Pubky Ring still opens; press back or re-launch MainActivity)</action>
+    <action>Tap the element with resource-id "onboarding_signin", then "onboarding_qr_open_here", then return to Loopky (Pubky Ring still opens; press back or re-launch MainActivity)</action>
     <action>Verify the onboarding screen shows "Loopky signs you in through Pubky's authorisation relay, and it isn't responding. Try again in a moment." — NOT "You're offline" (the relay is a different host from the homeserver) and NOT "Loopky couldn't confirm the authorisation with Pubky Ring" (Ring never saw the request)</action>
     <action>Verify logcat contains "complete: FAILED — PubkyError: Auth approval failed" carrying the real transport error, and does NOT contain "awaitApproval: transport failure" or "No auth flow in progress" — either would mean the retry removed in #59 is back</action>
     <action>Re-enable the radios, then tap "onboarding_signin" ONCE</action>
-    <action>Verify a single tap starts a whole new flow — logcat shows "state=Starting, calling beginSignIn" and a new authUrl with a different secret, and Pubky Ring reopens. The FFI auth flow is single-use, so restarting is the only recovery; a tap that merely clears the error is the two-tap regression #59 fixed.</action>
+    <action>Verify a single tap starts a whole new flow — logcat shows "state=Starting, calling beginSignIn" and a new authUrl with a different secret, and the QR sheet reappears carrying it. The FFI auth flow is single-use, so restarting is the only recovery; a tap that merely clears the error is the two-tap regression #59 fixed.</action>
+
+    <action>THE HANDOFF ITSELF, with Ring installed. Tap "onboarding_signin" and verify Loopky STAYS in the foreground — nothing is deeplinked — and a sheet shows "Scan with Pubky Ring", a QR code, "I have Pubky Ring on this device" (resource-id: onboarding_qr_open_here) and "Copy sign-in link". The body must read "Open Pubky Ring on your phone, tap Authorize, and scan this code", NOT the "Pubky Ring isn't on this device" wording, and there must be no "Get the app" link</action>
+    <action>Verify "onboarding_qr_open_here" opens Ring with the SAME authorisation — the authUrl in logcat is unchanged and logcat shows no second "calling beginSignIn". A fresh flow would invalidate the code a phone may already be pointing at</action>
+    <action>Swipe the sheet away and verify the sign-in screen is back with its CTA enabled, no error shown</action>
+    <action>WITHOUT RING. Disable it (adb shell pm disable-user --user 0 to.pubky.ring), tap "onboarding_signin", and verify the same sheet appears with the "Pubky Ring isn't on this device…" body, "Don't have Pubky Ring? Get the app" (resource-id: onboarding_qr_get_ring) and NO "onboarding_qr_open_here". Restore with adb shell pm enable to.pubky.ring</action>
   </actions>
 </journey>

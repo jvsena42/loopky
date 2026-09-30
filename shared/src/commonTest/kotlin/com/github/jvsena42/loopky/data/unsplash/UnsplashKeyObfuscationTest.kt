@@ -7,7 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 
 /**
- * The round trip between `composeApp/build.gradle.kts` and [deobfuscateUnsplashKey].
+ * The round trip between `androidApp/build.gradle.kts` and [deobfuscateUnsplashKey].
  *
  * A Gradle script cannot import from `commonMain`, so the salt and the XOR are written out twice.
  * Nothing but this test connects them: change one copy and a release build silently ships an
@@ -18,7 +18,7 @@ import kotlin.test.assertNotEquals
 class UnsplashKeyObfuscationTest {
 
     /**
-     * Byte-for-byte what `obfuscateUnsplashKey` in `composeApp/build.gradle.kts` does. Duplicated
+     * Byte-for-byte what `obfuscateUnsplashKey` in `androidApp/build.gradle.kts` does. Duplicated
      * on purpose: a helper shared with the production code would pass no matter how wrong both
      * halves were.
      */

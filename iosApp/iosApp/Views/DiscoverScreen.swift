@@ -34,6 +34,12 @@ struct DiscoverScreen: View {
                 viewModel?.onOpenDeck(authorPubky: author, deckId: deckId)
             },
             onRetryFollowing: { viewModel?.onRetryFollowing() },
+            onRetryTopics: { viewModel?.onRetryTopics() },
+            onBrowseEndReached: { viewModel?.onBrowseEndReached() },
+            onPeopleEndReached: { viewModel?.onPeopleEndReached() },
+            onRetryBrowse: { viewModel?.onRetryBrowse() },
+            onRetryBrowsePage: { viewModel?.onRetryBrowsePage() },
+            onGridColumnsChanged: { viewModel?.onGridColumnsChanged(columns: Int32($0)) },
             isGuest: isGuest,
             onSignIn: onSignIn
         )
@@ -60,7 +66,8 @@ struct DiscoverScreen: View {
     private var viewState: DiscoverViewState {
         guard let state = uiState else { return DiscoverViewState() }
         return DiscoverViewState(
-            topics: state.topics.items.map { KotlinInterop.tagLabel($0) },
+            topics: state.visibleTopics.map { KotlinInterop.tagLabel($0) },
+            topicsFailed: state.topics.error != nil,
             people: section(state.people) { person in
                 let identity = IdentityData(person.identity)
                 return DiscoverPersonData(
@@ -75,7 +82,7 @@ struct DiscoverScreen: View {
             },
             browse: section(state.browse, transform: deckData),
             following: section(state.following, transform: deckData),
-            selectedTag: state.selectedTag.map { KotlinInterop.tagLabel($0) }
+            selectedTags: state.selectedTags.map { KotlinInterop.tagLabel($0) }
         )
     }
 
@@ -91,16 +98,15 @@ struct DiscoverScreen: View {
         )
     }
 
-    /// `Tag` is a Kotlin value class, so it crosses the bridge as an opaque `id` and cannot be
-    /// rebuilt in Swift — `Tag(value:)` does not exist. The tag the user tapped is therefore
-    /// looked up among the ones the state already carries and handed back unchanged.
+    /// Selects by **label**, never by handing back the `Tag` found in state.
+    ///
+    /// `Tag` is a Kotlin value class: boxed inside `List<Tag>`, but erased to `String` at a
+    /// parameter position. Passing the boxed object to `onTagSelected` therefore gave the bridge a
+    /// Kotlin object where it expected an `NSString`, and the reinterpreted pointer read back a
+    /// null `value` — crashing in `sanitizeLabel` the moment a topic chip was tapped. The label
+    /// crosses as itself, and Kotlin rebuilds the `Tag` on its own side.
     private func selectTag(labelled label: String?) {
-        guard let label else {
-            viewModel?.onTagSelected(tag: nil)
-            return
-        }
-        let original = uiState?.topics.items.first { KotlinInterop.tagLabel($0) == label }
-        viewModel?.onTagSelected(tag: original)
+        viewModel?.onTagLabelSelected(label: label)
     }
 
     /// Item types erase to `Any` across the bridge, so each strip is mapped from its erased list.
@@ -111,7 +117,10 @@ struct DiscoverScreen: View {
         DiscoverSection(
             items: state.items.compactMap { ($0 as? Wire).map(transform) },
             isLoading: state.isLoading,
-            errorMessage: state.error.map { ErrorCopy.message(for: $0) }
+            errorMessage: state.error.map { ErrorCopy.message(for: $0) },
+            hasMore: state.hasMore,
+            isLoadingMore: state.isLoadingMore,
+            pageErrorMessage: state.pageError.map { ErrorCopy.message(for: $0) }
         )
     }
 

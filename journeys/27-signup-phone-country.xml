@@ -1,0 +1,21 @@
+<journey name="Signup — the phone number's country is picked, not typed">
+  <description>
+    SMS verification is limited per number, weekly and yearly, and both limits are terminal — so a
+    number sent in the wrong shape costs an attempt the user does not get back. The country picker
+    exists so nobody has to know their calling code or remember to drop a trunk 0.
+
+    Stops before "Send code": sending spends a real SMS attempt.
+  </description>
+  <actions>
+    <action>From a signed-out Loopky, tap "onboarding_create_pubky", then "signup_method_sms"</action>
+    <action>Verify "signup_phone_country" shows the device region's flag and calling code (an en-US emulator shows 🇺🇸 +1), and "signup_phone_hint" reads "Choose your country, then enter your number."</action>
+    <action>Tap "signup_phone_country". Verify a full-height sheet titled "Country" lists every country by name in the app's language, each with its calling code</action>
+    <action>Type "bra" into the search field. Verify Brazil is listed and the sheet keeps its height while the list shrinks</action>
+    <action>Clear it and type "+49". Verify only Germany remains — the search matches calling codes too</action>
+    <action>Type "zzq". Verify "No matching countries"</action>
+    <action>Search "brazil" and tap it. Verify the sheet closes and the button reads 🇧🇷 +55</action>
+    <action>Type 86998006407 into "signup_phone_input". Verify the hint turns into "We'll text +55 86998006407." and "Send code" is enabled</action>
+    <action>Replace the number with +447700900123 (as a paste or autofill would give it). Verify the button moves to 🇬🇧 +44 and the field keeps only 7700900123 — the calling code is never doubled</action>
+    <action>Replace the number with 07700900123. Verify the hint still reads "We'll text +44 7700900123." — the trunk 0 is dropped</action>
+  </actions>
+</journey>

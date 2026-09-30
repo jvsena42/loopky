@@ -16,7 +16,9 @@
     <action>Tap the tag chip</action>
     <action>Verify the tag-browse screen opens (resource-id: tag_browse_screen) with "#tag" in the top bar and a back button (resource-id: tag_browse_back)</action>
     <action>Verify EITHER a grid of deck tiles (resource-id: tag_browse_tile) — which must include the deck you came from, since it carries the tag — OR the empty block (resource-id: tag_browse_empty) if the indexer has not ingested it yet</action>
-    <action>Confirm in logcat that the screen queried the indexer rather than filtering locally: look for "Loopky/TagBrowseVM: load('&lt;tag&gt;'): N decks" and "Loopky/DiscoveryRepo: decksByTagGlobal('&lt;tag&gt;'): N kept of M"</action>
+    <action>Confirm in logcat that the screen queried the indexer rather than filtering locally: look for "Loopky/TagBrowseVM: load('&lt;tag&gt;'): N decks, hasMore=…" and "Loopky/DiscoveryRepo: decksByTagGlobalPage('&lt;tag&gt;'): N/30 in K requests"</action>
+    <action>If the log reports hasMore=true, scroll to the foot of the grid and verify another page appends under the tiles already there, with no duplicates and no blank-and-repopulate (#321)</action>
+    <action>Turn the device radios off and reopen the tag chip. Verify the screen shows "You're offline" with a Retry (resource-id: tag_browse_error) and NOT the empty block — "No decks tagged X yet" is a claim about the network, and a device that never reached the indexer cannot make it. Turn the radios back on, tap Retry, and verify the grid loads.</action>
     <action>Tap a deck tile in the grid and verify its deck detail opens</action>
     <action>Navigate back twice and verify you return to tag browse and then to the original deck detail</action>
     <action>Tap the element with resource-id "tag_browse_back" and verify you return to deck detail</action>

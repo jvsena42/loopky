@@ -1,0 +1,36 @@
+# Exit codes each profile must produce, per build — the table check.sh (and CI) holds run.sh to.
+# Tab-separated: profile, command (as run.sh labels it), jar, native. See README.md for what the
+# numbers mean.
+# profile	command	jar	native
+claude-trusted	import --dry-run	0	0
+claude-trusted	doctor	14	14
+claude-trusted	tag trending	14	14
+claude-trusted	login (5s)	14	14
+claude-custom	import --dry-run	0	0
+claude-custom	doctor	0	0
+claude-custom	tag trending	0	0
+claude-custom	login (5s)	13	13
+codex-common	import --dry-run	0	0
+codex-common	doctor	14	14
+codex-common	tag trending	14	14
+codex-common	login (5s)	14	14
+codex-custom	import --dry-run	0	0
+codex-custom	doctor	0	0
+codex-custom	tag trending	0	0
+codex-custom	login (5s)	13	13
+codex-custom-readonly	import --dry-run	0	0
+codex-custom-readonly	doctor	14	14
+codex-custom-readonly	tag trending	0	0
+codex-custom-readonly	login (5s)	13	13
+intercepting	import --dry-run	0	0
+intercepting	doctor	0	0
+intercepting	tag trending	0	0
+intercepting	login (5s)	13	13
+authenticated	import --dry-run	0	0
+authenticated	doctor	0	0
+authenticated	tag trending	0	0
+authenticated	login (5s)	13	13
+offline	import --dry-run	0	0
+offline	doctor	5	5
+offline	tag trending	5	5
+offline	login (5s)	5	5

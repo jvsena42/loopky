@@ -16,6 +16,7 @@ import com.github.jvsena42.loopky.data.repository.impl.AccountEraser
 import com.github.jvsena42.loopky.data.repository.impl.DeckRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.IdentityRepositoryImpl
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.LocalKeyStore
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.SecureSessionStore
@@ -152,6 +153,7 @@ fun testDeck(
     chunks: List<ChunkMeta> = emptyList(),
     createdAt: Long = 1_000L,
     updatedAt: Long = 2_000L,
+    coverEmoji: String? = null,
     coverImageRef: MediaRef.Image? = null,
     frontLang: String? = null,
     backLang: String? = null,
@@ -162,7 +164,7 @@ fun testDeck(
     authorPubky = authorPubky,
     title = title,
     description = null,
-    coverEmoji = null,
+    coverEmoji = coverEmoji,
     coverImageRef = coverImageRef,
     tags = tags,
     createdAt = createdAt,
@@ -207,6 +209,7 @@ fun deckRepository(
     tagRepo: TagRepository = RecordingTagRepository(),
     mediaRepo: MediaRepository = FakeMediaRepository(),
     backgroundTasks: BackgroundTasks = FakeBackgroundTasks(),
+    deckCache: DeckCacheStore = FakeDeckCacheStore(),
     scope: CoroutineScope = CoroutineScope(SupervisorJob()),
 ): DeckRepositoryImpl = DeckRepositoryImpl(
     pubky = pubky,
@@ -216,6 +219,7 @@ fun deckRepository(
     tagRepo = tagRepo,
     mediaRepo = mediaRepo,
     backgroundTasks = backgroundTasks,
+    deckCache = deckCache,
     scope = scope,
 )
 
@@ -239,6 +243,7 @@ internal fun identityRepository(
     preferences: AppPreferences = FakeAppPreferences(),
     unsplashKeyStore: UnsplashKeyStore = FakeUnsplashKeyStore(),
     localKeyStore: LocalKeyStore = FakeLocalKeyStore(),
+    deckCache: DeckCacheStore = FakeDeckCacheStore(),
     /** Defaults to the caller's scope so `runTest` can await the fire-and-forget cleanup. */
     scope: CoroutineScope = CoroutineScope(SupervisorJob()),
 ): IdentityRepositoryImpl = IdentityRepositoryImpl(
@@ -258,11 +263,13 @@ internal fun identityRepository(
         studyProgress = studyProgress,
         preferences = preferences,
         unsplashKeyStore = unsplashKeyStore,
+        deckCache = deckCache,
     ),
 )
 
 /** A [SecureSessionStore] that remembers nothing, for tests that never read the session back. */
 class NoopSessionStore : SecureSessionStore {
+    override val location: String = "nowhere"
     override suspend fun save(session: Session) = Unit
     override suspend fun load(): Session? = null
     override suspend fun clear() = Unit

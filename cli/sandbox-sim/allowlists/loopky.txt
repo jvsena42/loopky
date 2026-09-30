@@ -1,0 +1,11 @@
+# What `loopky doctor` prints for production. Keep in step with cli/README.md "Behind a proxy".
+httprelay.pubky.app
+pkarr.pubky.app
+pkarr.pubky.org
+homeserver.pubky.app
+nexus.pubky.app
+github.com
+release-assets.githubusercontent.com
+# Recommended, not required: card pictures. `doctor` reports these under `recommended`.
+upload.wikimedia.org
+commons.wikimedia.org

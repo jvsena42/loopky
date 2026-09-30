@@ -2,10 +2,13 @@ package com.github.jvsena42.loopky.presentation.discover
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.jvsena42.loopky.data.pubky.toErrorReason
+import com.github.jvsena42.loopky.data.repository.DeckPage
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.domain.model.Deck
+import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.util.Log
@@ -44,6 +47,7 @@ class TagBrowseViewModel(
     val effects: SharedFlow<TagBrowseEffect> = _effects.asSharedFlow()
 
     private var loadJob: Job? = null
+    private var moreJob: Job? = null
     private val authors = mutableMapOf<String, PubkyIdentity>()
 
     val label: String get() = tag.value
@@ -54,21 +58,91 @@ class TagBrowseViewModel(
 
     fun onRetry() = load()
 
+    /** Retries the page that failed, from its own cursor — the grid already on screen stays. */
+    fun onRetryPage() {
+        val content = _state.value as? TagBrowseUiState.Content ?: return
+        if (content.pageError == null) return
+        _state.update { if (it is TagBrowseUiState.Content) it.copy(pageError = null) else it }
+        onEndReached()
+    }
+
     private fun load() {
         if (loadJob?.isActive == true) return
         loadJob = viewModelScope.launch {
             _state.update { TagBrowseUiState.Loading }
-            // Indexer-backed and documented never to throw, so an empty result is the failure
-            // mode too — there is nothing to distinguish "offline" from "nobody tagged this" yet.
-            val decks = runSuspendCatching { discoveryRepository.decksByTagGlobal(tag, BROWSE_LIMIT) }
-                .onFailure { Log.e(TAG, "load('${tag.value}'): FAILED — ${it.message}", it) }
-                .getOrElse { emptyList() }
+            val result = runSuspendCatching {
+                discoveryRepository.decksByTagGlobalPage(tag, BROWSE_LIMIT, DeckPage.START)
+            }.onFailure { Log.e(TAG, "load('${tag.value}'): FAILED — ${it.message}", it) }
 
-            Log.d(TAG, "load('${tag.value}'): ${decks.size} decks")
-            _state.update {
-                if (decks.isEmpty()) TagBrowseUiState.Empty else TagBrowseUiState.Content(decks.toCards(authors))
+            // "Offline" and "nobody tagged this" are different answers and this screen now tells
+            // them apart — an unreachable indexer used to render as "No decks tagged X yet", which
+            // is a claim about the network made by a device that never reached it (#321).
+            result.exceptionOrNull()?.let { err ->
+                _state.update { TagBrowseUiState.Error(err.toErrorReason()) }
+                return@launch
             }
-            loadAuthorProfiles(decks)
+
+            val page = result.getOrThrow()
+            Log.d(TAG, "load('${tag.value}'): ${page.decks.size} decks, hasMore=${page.hasMore}")
+            _state.update {
+                if (page.decks.isEmpty()) {
+                    TagBrowseUiState.Empty
+                } else {
+                    TagBrowseUiState.Content(
+                        decks = page.decks.toCards(authors),
+                        cursor = page.nextCursor,
+                        hasMore = page.hasMore,
+                    )
+                }
+            }
+            loadAuthorProfiles(page.decks)
+        }
+    }
+
+    /**
+     * The next page, appended. Driven from a scroll position, so it is called repeatedly and out of
+     * order — [TagBrowseUiState.Content.canLoadMore] is the guard, alongside the job itself.
+     */
+    fun onEndReached() {
+        val content = _state.value as? TagBrowseUiState.Content ?: return
+        if (!content.canLoadMore || moreJob?.isActive == true) return
+        val cursor = content.cursor
+        _state.update { if (it is TagBrowseUiState.Content) it.copy(isLoadingMore = true) else it }
+
+        moreJob = viewModelScope.launch {
+            val page = runSuspendCatching {
+                discoveryRepository.decksByTagGlobalPage(tag, BROWSE_LIMIT, cursor)
+            }
+                .onFailure { Log.e(TAG, "onEndReached('${tag.value}'): FAILED — ${it.message}", it) }
+                // A failed page keeps the grid: this is a footer that could not load, not a screen
+                // that could not load. `pageError` stops it retrying on every recomposition.
+                .getOrElse { err ->
+                    _state.update {
+                        if (it is TagBrowseUiState.Content) {
+                            it.copy(isLoadingMore = false, pageError = err.toErrorReason())
+                        } else {
+                            it
+                        }
+                    }
+                    return@launch
+                }
+
+            _state.update { current ->
+                if (current !is TagBrowseUiState.Content) {
+                    current
+                } else {
+                    val shown = current.decks.mapTo(mutableSetOf()) { it.authorPubky + "/" + it.id }
+                    current.copy(
+                        decks = current.decks + page.decks.toCards(authors)
+                            .filterNot { (it.authorPubky + "/" + it.id) in shown },
+                        cursor = page.nextCursor,
+                        hasMore = page.hasMore,
+                        isLoadingMore = false,
+                    )
+                }
+            }
+            Log.d(TAG, "onEndReached('${tag.value}'): +${page.decks.size}, hasMore=${page.hasMore}")
+            loadAuthorProfiles(page.decks)
         }
     }
 
@@ -111,7 +185,27 @@ class TagBrowseViewModel(
 sealed interface TagBrowseUiState {
     data object Loading : TagBrowseUiState
     data object Empty : TagBrowseUiState
-    data class Content(val decks: List<DiscoverDeck>) : TagBrowseUiState
+
+    /**
+     * [hasMore] comes from the repository rather than `decks.size == limit`: verification drops
+     * entries, so a short page routinely has more behind it and a full one can be the last.
+     */
+    data class Content(
+        val decks: List<DiscoverDeck>,
+        val cursor: Int = DeckPage.START,
+        val hasMore: Boolean = false,
+        val isLoadingMore: Boolean = false,
+        /** A failed *page*, shown under the grid rather than instead of it. */
+        val pageError: ErrorReason? = null,
+    ) : TagBrowseUiState {
+        val canLoadMore: Boolean get() = hasMore && !isLoadingMore && pageError == null
+    }
+
+    /**
+     * The indexer did not answer. Distinct from [Empty], which is a claim about the network and is
+     * only ever made after actually hearing from it.
+     */
+    data class Error(val reason: ErrorReason) : TagBrowseUiState
 }
 
 sealed interface TagBrowseEffect {

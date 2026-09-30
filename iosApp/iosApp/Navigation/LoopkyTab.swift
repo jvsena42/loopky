@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 /// The four primary destinations. Drives the native `TabView` in `MainView`.
 enum LoopkyTab: String, CaseIterable {
@@ -17,14 +17,15 @@ enum LoopkyTab: String, CaseIterable {
         }
     }
 
-    /// Title-cased label shown under the native tab item.
-    var title: String {
+    /// Label shown under the native tab item. A catalog key, not a literal: these four were the
+    /// last English strings on screen once pt-BR landed.
+    var title: LocalizedStringKey {
         switch self {
         // Renders Home (the daily queue), not a study screen — matches Android.
-        case .study: return "Today"
-        case .decks: return "Decks"
-        case .discover: return "Discover"
-        case .profile: return "Profile"
+        case .study: return "nav_tab_study"
+        case .decks: return "nav_tab_decks"
+        case .discover: return "nav_tab_discover"
+        case .profile: return "nav_tab_profile"
         }
     }
 }

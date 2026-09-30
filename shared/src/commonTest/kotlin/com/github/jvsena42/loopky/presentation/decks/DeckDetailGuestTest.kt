@@ -119,13 +119,15 @@ class DeckDetailGuestTest {
         }
 
     @Test
-    fun `cloning with no account raises the prompt instead of the confirm dialog`() =
+    fun `reaching for edit with no account raises the prompt instead of the confirm dialog`() =
         runTest(mainDispatcher) {
             seed(cards = 1)
 
             val vm = viewModel()
             advanceUntilIdle()
-            vm.onCloneClick()
+            // Edit is the only way to a copy now (#254), and a copy is written under a pubky a
+            // guest does not have.
+            vm.onEditClick()
             advanceUntilIdle()
 
             val state = assertIs<DeckDetailUiState.Content>(vm.state.value)

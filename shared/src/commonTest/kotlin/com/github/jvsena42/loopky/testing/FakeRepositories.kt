@@ -3,20 +3,25 @@ package com.github.jvsena42.loopky.testing
 import com.github.jvsena42.loopky.data.anki.BulkNote
 import com.github.jvsena42.loopky.data.homegate.LnInvoice
 import com.github.jvsena42.loopky.data.homegate.MethodAvailability
+import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.CardChunking
 import com.github.jvsena42.loopky.data.repository.AuthFlowHandle
+import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.CompactionOutcome
+import com.github.jvsena42.loopky.data.repository.DeckPage
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.data.repository.ImportRepository
 import com.github.jvsena42.loopky.data.repository.MediaRepository
+import com.github.jvsena42.loopky.data.repository.PeoplePage
 import com.github.jvsena42.loopky.data.repository.PinnedBlob
 import com.github.jvsena42.loopky.data.repository.PublishProgress
 import com.github.jvsena42.loopky.data.repository.RehostOutcome
 import com.github.jvsena42.loopky.data.repository.SettingsOrigin
 import com.github.jvsena42.loopky.data.repository.SettingsRepository
+import com.github.jvsena42.loopky.data.repository.SignOutOutcome
 import com.github.jvsena42.loopky.data.repository.SignupAvailability
 import com.github.jvsena42.loopky.data.repository.SignupRepository
 import com.github.jvsena42.loopky.data.repository.SrsRepository
@@ -24,12 +29,17 @@ import com.github.jvsena42.loopky.data.repository.StudySettingsSnapshot
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.PendingReview
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.PendingSignup
 import com.github.jvsena42.loopky.data.storage.SignupTokenStore
 import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
+import com.github.jvsena42.loopky.data.storage.decodeDeckCache
+import com.github.jvsena42.loopky.data.storage.encodeDeckCache
+import com.github.jvsena42.loopky.domain.model.AppTheme
+import com.github.jvsena42.loopky.domain.model.BACK_FIELD
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.DailyStudyProgress
 import com.github.jvsena42.loopky.domain.model.Deck
@@ -39,6 +49,7 @@ import com.github.jvsena42.loopky.domain.model.DeckMastery
 import com.github.jvsena42.loopky.domain.model.DeckSource
 import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.ErrorReason
+import com.github.jvsena42.loopky.domain.model.FRONT_FIELD
 import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.ImportDraft
 import com.github.jvsena42.loopky.domain.model.KeyCustody
@@ -95,6 +106,9 @@ class FakeIdentityRepository(var session: Session? = fakeSession()) : IdentityRe
      */
     var completionNeverReturns = false
 
+    /** When set, [AuthFlowHandle.complete] answers only once this completes — an approval that arrives late. */
+    var completionGate: CompletableDeferred<Unit>? = null
+
     /** Profiles served by [fetchProfile]; a pubky that is absent fails as an unpublished one would. */
     val profiles = mutableMapOf<String, PubkyIdentity>()
     val fetchedProfiles = mutableListOf<String>()
@@ -140,12 +154,27 @@ class FakeIdentityRepository(var session: Session? = fakeSession()) : IdentityRe
     var signOutRefusal: Throwable? = null
     val forcedSignOuts = mutableListOf<Boolean>()
 
-    override suspend fun signOut(force: Boolean): Result<Unit> {
+    /** Whether the homeserver confirms revocation. False models a revoke that could not be made. */
+    var revokesRemotely = true
+
+    /** Secrets handed to [revokeSession], and what it should answer with. */
+    val revokedSecrets = mutableListOf<String>()
+    var revokeSessionResult: Result<Unit> = Result.success(Unit)
+
+    override suspend fun signOut(force: Boolean): Result<SignOutOutcome> {
         forcedSignOuts.add(force)
         signOutRefusal?.takeIf { !force }?.let { return Result.failure(it) }
         signOutCount++
+        val had = session != null
         session = null
-        return Result.success(Unit)
+        return Result.success(
+            SignOutOutcome(revokedRemotely = revokesRemotely && had, hadSession = had, clearedLocally = true),
+        )
+    }
+
+    override suspend fun revokeSession(sessionSecret: String): Result<Unit> {
+        revokedSecrets += sessionSecret
+        return revokeSessionResult
     }
 
     /** Records what [createLocalAccount] was asked for, and how many keys were minted. */
@@ -210,18 +239,38 @@ class FakeIdentityRepository(var session: Session? = fakeSession()) : IdentityRe
         return deleteAccountResult
     }
 
-    override suspend fun beginSignIn(capabilities: String): Result<AuthFlowHandle> {
+    /** What the last [beginSignIn] asked for, so a caller can be shown to have suppressed them. */
+    var lastBeginSignInReturnToApp: Boolean? = null
+        private set
+
+    override suspend fun beginSignIn(
+        capabilities: String,
+        returnToApp: Boolean,
+    ): Result<AuthFlowHandle> {
         beginSignInCount++
+        lastBeginSignInReturnToApp = returnToApp
         beginSignInError?.let { return Result.failure(it) }
         return Result.success(
             object : AuthFlowHandle {
                 override val authUrl = this@FakeIdentityRepository.authUrl
                 override suspend fun complete(): Result<Session> {
                     if (completionNeverReturns) awaitCancellation()
+                    completionGate?.await()
                     return completionResult
                 }
             },
         )
+    }
+
+    /** Secrets handed to [adoptSession], and what it should answer with. */
+    val adoptedSecrets = mutableListOf<String>()
+    var adoptSessionResult: Result<Session>? = null
+
+    override suspend fun adoptSession(sessionSecret: String): Result<Session> {
+        adoptedSecrets += sessionSecret
+        val result = adoptSessionResult ?: completionResult
+        result.onSuccess { session = it }
+        return result
     }
 
     /** Records what [beginSignUp] was asked for, so a retry can be shown to reuse the token. */
@@ -248,6 +297,15 @@ class FakeIdentityRepository(var session: Session? = fakeSession()) : IdentityRe
 
 class FakeDeckRepository : DeckRepository {
     val decks = mutableMapOf<String, Deck>()
+
+    /** What [listCached] answers with. Null — no snapshot yet — is the default, as on a fresh install. */
+    var cached: CachedDecks? = null
+
+    /** Holds [listOwned] open, so a test can assert on what is on screen before it answers. */
+    var listOwnedGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun listCached(): CachedDecks? = cached
+
     val published = mutableListOf<Pair<Deck, List<Card>>>()
     val deleted = mutableListOf<String>()
     val rehostedBlobs = mutableListOf<Pair<String, String>>()
@@ -349,6 +407,7 @@ class FakeDeckRepository : DeckRepository {
 
     override suspend fun listOwned(): List<Deck> {
         listOwnedCount++
+        listOwnedGate?.await()
         listOwnedError?.let { throw it }
         return decks.values.toList()
     }
@@ -369,6 +428,20 @@ class FakeDeckRepository : DeckRepository {
         upsertedCards.add(deckId to card)
         val deck = decks[deckId] ?: return Result.failure(IllegalStateException("deck $deckId not found"))
         val updated = deck.copy(cardCount = deck.cardCount + 1)
+        decks[deckId] = updated
+        _changes.tryEmit(Unit)
+        return Result.success(updated)
+    }
+
+    /** Batches handed to [appendCards], so a caller can be shown to send one rather than a loop. */
+    val appendedBatches = mutableListOf<Pair<String, List<Card>>>()
+    var appendCardsError: Throwable? = null
+
+    override suspend fun appendCards(deckId: String, cards: List<Card>): Result<Deck> {
+        appendCardsError?.let { return Result.failure(it) }
+        appendedBatches.add(deckId to cards)
+        val deck = decks[deckId] ?: return Result.failure(IllegalStateException("deck $deckId not found"))
+        val updated = deck.copy(cardCount = deck.cardCount + cards.size)
         decks[deckId] = updated
         _changes.tryEmit(Unit)
         return Result.success(updated)
@@ -428,7 +501,12 @@ class FakeDeckRepository : DeckRepository {
 
     override suspend fun isFollowingDeck(deckId: String): Boolean = deckId in followedDecks
 
+    /** How often the followed list was read — asserted where it must run beside [listOwned]. */
+    var listFollowedCount = 0
+        private set
+
     override suspend fun listFollowed(): List<Deck> {
+        listFollowedCount++
         listFollowedError?.let { throw it }
         return followedDecks.values.toList()
     }
@@ -458,12 +536,17 @@ class FakeDeckRepository : DeckRepository {
     /** Held open so a test can act while a clone is still in flight. */
     var cloneGate: CompletableDeferred<Unit>? = null
 
-    override suspend fun clone(source: Deck): Result<Deck> {
+    /** Titles handed to [clone], so a test can assert the copy was renamed rather than duplicated. */
+    val cloneTitles = mutableListOf<String>()
+
+    override suspend fun clone(source: Deck, title: String): Result<Deck> {
         cloneError?.let { return Result.failure(it) }
         cloneGate?.await()
         cloned.add(source)
+        cloneTitles.add(title)
         val copy = source.copy(
             id = "clone-of-${source.id}",
+            title = title,
             authorPubky = TEST_PUBKY,
             source = DeckSource(kind = DeckSource.Kind.Clone, uri = source.pubkyUri.value),
         )
@@ -658,9 +741,15 @@ class FakeSrsRepository : SrsRepository {
         return countsFor(due.filter { it.deckId == deckId })
     }
 
-    override suspend fun countsToday(): Map<String, DeckCounts> {
-        knownDecks += due.map { it.deckId }
-        return knownDecks.associateWith { deckId -> countsFor(due.filter { it.deckId == deckId }) }
+    /**
+     * [decks] is a **scope**, not a hint: the real implementation answers for exactly the decks it
+     * is handed. Unioning them into [knownDecks] and answering for all of those instead is a fake
+     * answering politely — it made a caller that passed the wrong set indistinguishable from one
+     * that passed the right set, which is the only thing a test here can check.
+     */
+    override suspend fun countsToday(decks: List<Deck>?): Map<String, DeckCounts> {
+        val scope = decks?.map { it.id } ?: (knownDecks + due.map { it.deckId })
+        return scope.associateWith { deckId -> countsFor(due.filter { it.deckId == deckId }) }
     }
 
     override suspend fun mastery(deckId: String, cardIds: List<String>): DeckMastery? {
@@ -866,11 +955,35 @@ class FakeDiscoveryRepository : DiscoveryRepository {
     /** Exact per-label results, when a test needs finer control than [globalDecks] gives. */
     var globalDecksByTag: Map<Tag, List<Deck>>? = null
 
-    override suspend fun decksByTagGlobal(tag: Tag, limit: Int): List<Deck> {
+    /** When set, the indexer read throws — the "unreachable", not "nothing published", case. */
+    var globalError: Throwable? = null
+
+    /** Answers every [decksByTagGlobalPage] as given — for page shapes [globalDecks] cannot produce. */
+    var globalPageOverride: ((tag: Tag, cursor: Int, alsoTagged: Set<Tag>) -> DeckPage)? = null
+
+    /** The [decksByTagGlobalPage] `alsoTagged` filter of each request, in step with [globalRequests]. */
+    val globalAlsoTagged = mutableListOf<Set<Tag>>()
+
+    override suspend fun decksByTagGlobalPage(
+        tag: Tag,
+        limit: Int,
+        cursor: Int,
+        alsoTagged: Set<Tag>,
+    ): DeckPage {
         globalRequests.add(tag to limit)
+        globalAlsoTagged.add(alsoTagged)
         globalGate?.await()
-        globalDecksByTag?.let { return it[tag].orEmpty().take(limit) }
-        return globalDecks.filter { tag in it.tags || tag == ReservedTags.DECK }.take(limit)
+        globalError?.let { throw it }
+        globalPageOverride?.let { return it(tag, cursor, alsoTagged) }
+        val all = globalDecksByTag?.get(tag).orEmpty()
+            .ifEmpty { globalDecks.filter { tag in it.tags || tag == ReservedTags.DECK } }
+            .filter { it.tags.containsAll(alsoTagged) }
+        val page = all.drop(cursor).take(limit)
+        return DeckPage(
+            decks = page,
+            nextCursor = cursor + page.size,
+            hasMore = cursor + page.size < all.size,
+        )
     }
 
     override suspend fun loopkyUsers(limit: Int): List<PubkyIdentity> = loopkyUsers.take(limit)
@@ -899,7 +1012,11 @@ class FakeDiscoveryRepository : DiscoveryRepository {
     }
 
     /** Mirrors the real union: directory first, then deck authors, minus self and follows. */
-    override suspend fun suggestedPeople(seedDecks: List<Deck>, limit: Int): List<PubkyIdentity> {
+    override suspend fun suggestedPeoplePage(
+        seedDecks: List<Deck>,
+        limit: Int,
+        cursor: Int,
+    ): PeoplePage {
         suggestedRequests.add(limit)
         peopleGate?.await()
         val directory = loopkyUsers.filterNot { it.pubky in follows }
@@ -908,7 +1025,13 @@ class FakeDiscoveryRepository : DiscoveryRepository {
             .distinct()
             .filter { it !in follows && seen.add(it) }
             .map { PubkyIdentity(it, displayName = null, avatarUrl = null, bio = null) }
-        return (directory + authors).take(limit)
+        val all = directory + authors
+        val page = all.drop(cursor).take(limit)
+        return PeoplePage(
+            people = page,
+            nextCursor = cursor + page.size,
+            hasMore = cursor + page.size < all.size,
+        )
     }
 }
 
@@ -946,10 +1069,11 @@ class RecordingTagRepository : TagRepository {
     /** Deck topics the indexer would aggregate to; recorded so a test can pin the ask. */
     var deckTags: List<Tag> = emptyList()
     val deckTagRequests = mutableListOf<Pair<Int, Int>>()
+    var deckTagsError: Throwable? = null
 
-    override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): List<Tag> {
+    override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): Result<List<Tag>> {
         deckTagRequests.add(sampleSize to limit)
-        return deckTags.take(limit)
+        return deckTagsError?.let { Result.failure(it) } ?: Result.success(deckTags.take(limit))
     }
 
     /** Indexer reads, canned per label. */
@@ -972,9 +1096,22 @@ class RecordingTagRepository : TagRepository {
     /** Every indexer read, so a test can pin how often a caller asks for the same thing. */
     val taggedRequests = mutableListOf<Pair<Tag, Int>>()
 
-    override suspend fun taggedSubjects(tag: Tag, limit: Int): List<TaggedSubject> {
+    /** Every read with its cursor, for the paging assertions. */
+    val taggedWindows = mutableListOf<Triple<Tag, Int, Int>>()
+
+    /** Every order asked for — paging is only sound under one of them. */
+    val taggedSortings = mutableListOf<NexusResourceSorting>()
+
+    override suspend fun taggedSubjects(
+        tag: Tag,
+        limit: Int,
+        skip: Int,
+        sorting: NexusResourceSorting,
+    ): List<TaggedSubject> {
         taggedRequests.add(tag to limit)
-        return subjectsByTag[tag].orEmpty().take(limit)
+        taggedWindows.add(Triple(tag, limit, skip))
+        taggedSortings.add(sorting)
+        return subjectsByTag[tag].orEmpty().drop(skip).take(limit)
     }
 
     override suspend fun usersTagged(tag: Tag, limit: Int): List<String> {
@@ -1008,7 +1145,8 @@ class FakeImportRepository(var draft: ImportDraft? = null) : ImportRepository {
     private val triageDecisions = mutableMapOf<Int, TriageDecision>()
     private val rowEdits = mutableMapOf<Int, Pair<String, String>>()
 
-    override fun currentDraft(): ImportDraft? = draft
+    override fun currentDraft(): ImportDraft? =
+        draft?.let { d -> if (rowEdits.isEmpty()) d else d.copy(rows = d.rows.map(::applyEdit)) }
 
     override suspend fun parse(rawText: String, separator: Separator?): Result<ImportDraft> =
         draft?.let { Result.success(it) } ?: Result.failure(IllegalStateException("no draft"))
@@ -1097,7 +1235,20 @@ class FakeImportRepository(var draft: ImportDraft? = null) : ImportRepository {
     override fun rowImage(rowIndex: Int, isFront: Boolean): DraftCardImage? = rowImages[rowIndex to isFront]
 
     override fun keptRows(): List<ParsedRow> =
-        draft?.rows?.filter { triageDecisions[it.index] != TriageDecision.Discard } ?: emptyList()
+        draft?.rows
+            ?.filter { triageDecisions[it.index] != TriageDecision.Discard }
+            ?.map(::applyEdit)
+            ?: emptyList()
+
+    /** Mirrors `ImportRepositoryImpl.applyEdit`. A fake that ignores edits tests nothing about them. */
+    private fun applyEdit(row: ParsedRow): ParsedRow {
+        val (front, back) = rowEdits[row.index] ?: return row
+        val fields = row.fields.toMutableList()
+        while (fields.size <= BACK_FIELD) fields.add("")
+        fields[FRONT_FIELD] = front
+        fields[BACK_FIELD] = back
+        return row.copy(fields = fields, isValid = front.isNotBlank() || back.isNotBlank())
+    }
 
     override fun clear() {
         clearCount++
@@ -1155,13 +1306,24 @@ class FakeMediaRepository : MediaRepository {
 
     val gets = mutableListOf<Triple<String, String, MediaRef>>()
 
+    /** Blob bytes by sha256, for a test that cares what [get] actually returns. */
+    val blobs = mutableMapOf<String, ByteArray>()
+
+    /** When set, [get] fails with this instead of returning bytes. */
+    var failGetWith: Throwable? = null
+
+    /** When set, [get] blocks on it — so a test can act while a fetch is in flight. */
+    var getGate: CompletableDeferred<Unit>? = null
+
     override suspend fun get(
         authorPubky: String,
         deckId: String,
         ref: MediaRef,
     ): Result<ByteArray> {
         gets.add(Triple(authorPubky, deckId, ref))
-        return Result.success(ByteArray(0))
+        getGate?.await()
+        failGetWith?.let { return Result.failure(it) }
+        return Result.success(blobs[ref.sha256] ?: ByteArray(0))
     }
 
     val rehosts = mutableListOf<Pair<String, MediaRef>>()
@@ -1225,6 +1387,9 @@ class FakeAppPreferences(
     shareOnPubky: Boolean = true,
     pubkyEnvironment: String = "",
     cachedStudySettings: String = "",
+    themeMode: AppTheme = AppTheme.System,
+    nameNudgeDismissed: Boolean = false,
+    avatarNudgeDismissed: Boolean = false,
 ) : AppPreferences {
     private val _shareOnPubky = MutableStateFlow(shareOnPubky)
     override val shareOnPubky: Flow<Boolean> = _shareOnPubky.asStateFlow()
@@ -1254,6 +1419,33 @@ class FakeAppPreferences(
 
     override suspend fun setCachedStudySettings(json: String) {
         _cachedStudySettings.update { json }
+    }
+
+    private val _themeMode = MutableStateFlow(themeMode)
+    override val themeMode: StateFlow<AppTheme> = _themeMode.asStateFlow()
+
+    override suspend fun setThemeMode(theme: AppTheme) {
+        _themeMode.update { theme }
+    }
+
+    private val _nameNudgeDismissed = MutableStateFlow(nameNudgeDismissed)
+    override val nameNudgeDismissed: Flow<Boolean> = _nameNudgeDismissed.asStateFlow()
+
+    /** The current value, for a test that asserts on it without collecting. */
+    val nameNudgeDismissedValue: Boolean get() = _nameNudgeDismissed.value
+
+    override suspend fun setNameNudgeDismissed(dismissed: Boolean) {
+        _nameNudgeDismissed.update { dismissed }
+    }
+
+    private val _avatarNudgeDismissed = MutableStateFlow(avatarNudgeDismissed)
+    override val avatarNudgeDismissed: Flow<Boolean> = _avatarNudgeDismissed.asStateFlow()
+
+    /** The current value, for a test that asserts on it without collecting. */
+    val avatarNudgeDismissedValue: Boolean get() = _avatarNudgeDismissed.value
+
+    override suspend fun setAvatarNudgeDismissed(dismissed: Boolean) {
+        _avatarNudgeDismissed.update { dismissed }
     }
 }
 
@@ -1289,7 +1481,13 @@ class FakeSignupRepository(pending: PendingSignup? = null) : SignupRepository {
         return availabilityError?.let { throw it } ?: availability
     }
 
-    override suspend fun sendSmsCode(phoneNumber: String): Result<Unit> = sendSmsResult
+    /** Every number an SMS was requested for, as it would reach Homegate. */
+    val sentSmsNumbers = mutableListOf<String>()
+
+    override suspend fun sendSmsCode(phoneNumber: String): Result<Unit> {
+        sentSmsNumbers += phoneNumber
+        return sendSmsResult
+    }
 
     override suspend fun redeemSmsCode(phoneNumber: String, code: String): Result<PendingSignup.Redeemable> = mint()
 
@@ -1397,6 +1595,22 @@ class FakeSettingsRepository(
         _studySettings.update { it.copy(origin = SettingsOrigin.Remote) }
     }
 
+    /**
+     * The device mirror, as [SettingsRepository.restoreCachedSettings] serves it. Null means this
+     * device has none, which is what a first-ever launch has.
+     */
+    var mirrored: StudySettings? = null
+
+    var mirrorRestores = 0
+        private set
+
+    override suspend fun restoreCachedSettings() {
+        mirrorRestores++
+        val cached = mirrored ?: return
+        if (_studySettings.value.origin != SettingsOrigin.Defaults) return
+        _studySettings.update { StudySettingsSnapshot(cached.sanitized(), SettingsOrigin.Cached) }
+    }
+
     /** Set the settings directly, as a homeserver record already holding them would. */
     fun setStudySettings(settings: StudySettings) {
         _studySettings.update { it.copy(settings = settings.sanitized()) }
@@ -1412,6 +1626,35 @@ class FakeSettingsRepository(
 }
 
 /** In-memory [StudyProgressStore]. */
+/**
+ * In-memory [DeckCacheStore] that holds the *encoded* payload, exactly as every real
+ * implementation does.
+ *
+ * Storing the objects instead would be the shorter fake and a misleading one: the chunk table is
+ * dropped by `encodeDeckCache`, so a fake that skips the round trip hands back a snapshot carrying
+ * one — the single thing this store must never do.
+ */
+class FakeDeckCacheStore(stored: CachedDecks? = null) : DeckCacheStore {
+    private var payload: String? = stored?.let { encodeDeckCache(TEST_PUBKY, it) }
+    val saved = mutableListOf<CachedDecks>()
+
+    override suspend fun load(ownerPubky: String): CachedDecks? = decodeDeckCache(payload, ownerPubky)
+
+    override suspend fun save(ownerPubky: String, decks: CachedDecks) {
+        payload = encodeDeckCache(ownerPubky, decks)
+        saved.add(decks)
+    }
+
+    override suspend fun clear() {
+        payload = null
+        cleared = true
+    }
+
+    /** So a test can tell "cleared" from "saved empty" — the distinction the eraser now draws. */
+    var cleared = false
+        private set
+}
+
 class FakeStudyProgressStore(private var stored: DailyStudyProgress? = null) : StudyProgressStore {
     val saved = mutableListOf<DailyStudyProgress>()
 

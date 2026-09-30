@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.data.pubky.CHUNK_SIZE
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FakeBackgroundTasks
+import com.github.jvsena42.loopky.testing.FakeDeckCacheStore
 import com.github.jvsena42.loopky.testing.FakeMediaRepository
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
@@ -43,6 +44,7 @@ class DeckRepositoryWriteLockTest {
         tagRepo = RecordingTagRepository(),
         mediaRepo = FakeMediaRepository(),
         backgroundTasks = FakeBackgroundTasks(),
+        deckCache = FakeDeckCacheStore(),
     )
 
     @Test

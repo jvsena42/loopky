@@ -30,7 +30,21 @@ class ImportRepositoryImpl : ImportRepository {
     /** Serialises parses, which can genuinely interleave now that they run off the main thread. */
     private val parseLock = Mutex()
 
-    override fun currentDraft(): ImportDraft? = draft
+    /**
+     * The draft as the user has it, triage edits included.
+     *
+     * The edits are stored beside the parse rather than in it, so that a re-parse — changing the
+     * separator — can drop them wholesale. Handing the *raw* rows back made every reader of the
+     * draft disagree with the deck that would be published: triage kept showing the text a card
+     * had before it was fixed, the card editor reopened on it, and a row edited into having a
+     * back still counted as missing one. Only [keptRows] applied them, which is to say only at
+     * publish, which is the one moment nobody can see.
+     */
+    override fun currentDraft(): ImportDraft? {
+        val current = draft ?: return null
+        if (rowEdits.isEmpty()) return current
+        return current.copy(rows = current.rows.map(::applyEdit))
+    }
 
     override fun decisions(): Map<Int, TriageDecision> = triageDecisions.toMap()
 

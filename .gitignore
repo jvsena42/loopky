@@ -30,3 +30,14 @@ node_modules/
 
 # App Store asset staging (large videos; screenshots are mirrored in screenshots/ios-*)
 appstore/
+
+# Play Store listing asset staging. Generated from the launcher icon and brand palette rather
+# than authored by hand, so they are reproducible and not worth versioning: play/icon-512.png
+# is the adaptive icon composited flat, play/feature-1024x500.png the same lockup at 1024x500.
+play/
+
+# Personal Claude Code permissions — per-developer, not project config.
+.claude/settings.json
+
+# `claude plugin eval` writes its reports beside the cases.
+plugins/*/evals/results/

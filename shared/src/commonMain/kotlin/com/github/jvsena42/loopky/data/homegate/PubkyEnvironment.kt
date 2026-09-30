@@ -1,12 +1,20 @@
 package com.github.jvsena42.loopky.data.homegate
 
 /**
- * A Homegate instance paired with the homeserver it issues signup tokens for.
+ * Every endpoint that is scoped to a Pubky network, fused into one value.
  *
- * **These two values must never be configured separately.** A token minted by one Homegate is only
+ * **These values must never be configured separately.** A token minted by one Homegate is only
  * valid on *its* homeserver; spending it anywhere else is rejected, and because a signup token is
  * single-use, that rejection is permanent — the user's payment or SMS attempt is simply gone. Two
  * independent config strings make that a one-typo mistake, so they travel as one value instead.
+ *
+ * The indexer is here for a quieter version of the same problem (#205). Staging and production
+ * Nexus deployments index separate networks, and a mismatched one does not error — it answers
+ * normally, for the other network, so every read comes back empty: discovery, trending tags,
+ * tagged subjects, follower counts, user search, and **every avatar**, since `avatarDisplayUrl`
+ * is built from this host. Homeserver reads and writes resolve over pkarr and do not care, so the
+ * app still signs in, publishes and studies — and the symptom reads as a regression in the social
+ * half of the app rather than as a misconfiguration. There is no wire for it to travel on alone.
  *
  * The homeserver here is only a **fallback for the invite-code path**, which makes no Homegate call
  * and so has nothing to learn a homeserver from. Whenever Homegate does answer, the
@@ -28,23 +36,26 @@ enum class PubkyEnvironment(
     val homegateBaseUrl: String,
     val defaultHomeserver: String,
     val webBaseUrl: String,
+    val nexusBaseUrl: String,
 ) {
     Staging(
         homegateBaseUrl = "https://homegate.staging.pubky.app",
         defaultHomeserver = "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
         webBaseUrl = "https://staging.pubky.app",
+        nexusBaseUrl = "https://nexus.staging.pubky.app",
     ),
     Production(
         homegateBaseUrl = "https://homegate.pubky.app",
         defaultHomeserver = "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
         webBaseUrl = "https://pubky.app",
+        nexusBaseUrl = "https://nexus.pubky.app",
     ),
     ;
 
     /**
      * Where [pubky]'s profile lives on the pubky.app web client for *this* environment.
      *
-     * It has to follow the environment for the same reason the indexer does: a staging account
+     * It has to follow the environment for the same reason [nexusBaseUrl] does: a staging account
      * does not exist on production, so a build that always linked to `pubky.app` would send every
      * debug user to a 404 for their own profile. The path is pubky.app's own share route
      * (`useProfileMenuActions` builds `{origin}/profile/{pubky}`), so a link handed out from here

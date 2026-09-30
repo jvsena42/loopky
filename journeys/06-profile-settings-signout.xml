@@ -7,6 +7,17 @@
     <action>Launch the Loopky app and verify the Home screen is shown</action>
     <action>Tap the element with resource-id "tab_profile" in the bottom tab bar</action>
     <action>Verify the profile screen shows the user's identity (name or truncated pubky)</action>
+    <action>Force-stop and relaunch the app, then tap "tab_profile" again and verify the hero (avatar, name, pubky chip) and the Decks/Cards counts are on screen immediately, with no full-screen "Loading your profile" spinner covering them — the persisted session and the deck snapshot are painted first and refreshed underneath</action>
+    <action>On that first paint verify the "Due" stat reads an em dash rather than "0", and that it becomes a real number once the load finishes; review state is not cached across launches, so a zero there would be a guess</action>
+    <action>If the account has no display name (the hero falls back to the pubky), verify the "What should we call you?" card is shown under the hero with "Add name" (resource-id: profile_name_nudge_action) and "Not now" (resource-id: profile_name_nudge_dismiss); on a named account verify no such card appears</action>
+    <action>If the card is shown, tap "Add name" and verify the Edit Profile sheet opens with an empty name field, then dismiss it</action>
+    <action>If the card is shown, tap "Not now" and verify the card disappears; relaunch the app, return to the profile tab and verify it stays gone</action>
+    <action>Verify a camera badge (resource-id: profile_edit_avatar) sits on the bottom-right of the hero avatar, drawn as a whole circle rather than clipped by the avatar's edge</action>
+    <action>Tap it and verify a "Change your photo" dialog appears saying photos are set on pubky.app with the same key, offering "Open pubky.app" (resource-id: profile_avatar_open_pubky_app) and "Not now"; tap "Not now" to close it</action>
+    <action>If the account has a display name but no profile photo, verify the "How about a photo?" card is shown under the hero with "Open pubky.app" (resource-id: profile_avatar_nudge_action) and "Not now" (resource-id: profile_avatar_nudge_dismiss); on an account with a photo verify no such card appears</action>
+    <action>Verify the photo card and the name card are never shown together: on a nameless account only the "What should we call you?" card appears, and the photo card returns once a name is published</action>
+    <action>If the photo card is shown, tap "Open pubky.app" and verify the browser opens this environment's pubky.app profile page, then return to Loopky</action>
+    <action>If the photo card is shown, tap "Not now" and verify the card disappears while the camera badge stays; relaunch the app, return to the profile tab and verify the card stays gone</action>
     <action>Tap the element with resource-id "profile_settings"</action>
     <action>Verify the Settings screen is shown with an Identity section (truncated pubky, homeserver) and a "Sign out" row (resource-id: settings_signout)</action>
     <action>Tap the element with resource-id "settings_copy_pubky" and verify no crash occurs</action>

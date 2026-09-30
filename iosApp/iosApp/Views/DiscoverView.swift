@@ -25,20 +25,31 @@ struct DiscoverDeckData: Identifiable {
 }
 
 /// One independently-loading strip, mirroring the shared `SectionState`.
+///
+/// `isLoadingMore` is separate from `isLoading` on purpose: a first load is a strip that is not
+/// there yet, a page load is a footer under one the reader is already looking at. Collapsing them
+/// replaces the whole grid with a spinner on every "load more".
 struct DiscoverSection<Item> {
     var items: [Item] = []
     var isLoading: Bool = false
     var errorMessage: String?
+    var hasMore: Bool = false
+    var isLoadingMore: Bool = false
+    /// A failed *page*, shown under the items rather than instead of them.
+    var pageErrorMessage: String?
 
     var isEmpty: Bool { items.isEmpty && !isLoading && errorMessage == nil }
 }
 
 struct DiscoverViewState {
     var topics: [String] = []
+    /// The indexer did not answer — distinct from `topics` being empty, which means nothing trends.
+    var topicsFailed = false
     var people = DiscoverSection<DiscoverPersonData>()
     var browse = DiscoverSection<DiscoverDeckData>()
     var following = DiscoverSection<DiscoverDeckData>()
-    var selectedTag: String?
+    /// In the order they were chosen; several narrow browse to decks carrying all of them.
+    var selectedTags: [String] = []
 }
 
 /// Pure layout — state comes from the shared `DiscoverViewModel` via `DiscoverScreen`.
@@ -53,10 +64,20 @@ struct DiscoverView: View {
     var onFollowTap: (String) -> Void = { _ in }
     var onDeckTap: (String, String) -> Void = { _, _ in }
     var onRetryFollowing: () -> Void = {}
+    var onRetryTopics: () -> Void = {}
+    var onBrowseEndReached: () -> Void = {}
+    var onPeopleEndReached: () -> Void = {}
+    var onRetryBrowse: () -> Void = {}
+    var onRetryBrowsePage: () -> Void = {}
+    var onGridColumnsChanged: (Int) -> Void = { _ in }
     var isGuest: Bool = false
     var onSignIn: () -> Void = {}
 
     @Environment(\.loopkyWidthClass) private var widthClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// How close to the end of the people row asking for the next page starts.
+    private let peoplePrefetchDistance = 2
 
     var body: some View {
         ScrollView {
@@ -64,24 +85,34 @@ struct DiscoverView: View {
                 header
                 if isGuest { guestBanner }
                 if !state.topics.isEmpty { topicRow }
+                if state.topicsFailed { topicsError }
                 // Picking a topic is an explicit question, so its answer leads. Unfiltered, browse
                 // is the fallback firehose and sits under the people and decks you chose — which
                 // costs a new account nothing, because the followed strip hides itself when empty.
-                if state.selectedTag != nil { browseStrip }
+                if !state.selectedTags.isEmpty { browseStrip }
                 if !state.people.isEmpty { peopleStrip }
                 if !state.following.items.isEmpty || state.following.errorMessage != nil {
                     followingStrip
                 }
-                if state.selectedTag == nil { browseStrip }
+                if state.selectedTags.isEmpty { browseStrip }
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
-            .padding(.bottom, 24)
+            // The tab bar floats over the content, so the grid reserves room for it the way Home
+            // and the library do — without it the last row's title and caption end the scroll
+            // behind the bar and cannot be read at all. A guest has no tab bar (`MainView`'s
+            // guest shell is Discover alone), so there is nothing there to clear.
+            .padding(.bottom, isGuest ? 24 : 100)
             // Mostly tile grids and horizontal strips, so it gets the widest ceiling — but a
             // ceiling all the same, or the guest banner's two lines of copy run the full 1366pt.
             .contentPane(PaneWidth.wide)
         }
         .background(LoopkyColor.surfacePrimary)
+        // A page is counted in rows, so the ViewModel has to know how wide the grid is: twelve
+        // tiles is six rows on an iPhone and three on an iPad. Reported rather than read, because
+        // the size class is a SwiftUI concern and it changes on rotation and in Split View.
+        .onAppear { onGridColumnsChanged(deckGridColumns(widthClass)) }
+        .onChange(of: widthClass) { _, new in onGridColumnsChanged(deckGridColumns(new)) }
     }
 
     /// What replaces the three tabs a guest does not have: a way *in*, not a wall.
@@ -132,14 +163,46 @@ struct DiscoverView: View {
         }
     }
 
+    /// Animated because a selection narrows the row to the tags that still match: chips popping in
+    /// and out with nothing moving reads as a flicker rather than a filter. The chosen chips lead
+    /// the row, so a change of selection scrolls back to the start to show them.
     private var topicRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(state.topics, id: \.self) { topic in
-                    TagChipView(tag: topic, onTap: { onTagTap(topic) })
-                        .opacity(state.selectedTag == nil || state.selectedTag == topic ? 1 : 0.5)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(state.topics, id: \.self) { topic in
+                        TagChipView(
+                            tag: topic,
+                            onTap: { onTagTap(topic) },
+                            isSelected: state.selectedTags.contains(topic)
+                        )
+                        .id(topic)
+                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
+                }
+                .animation(reduceMotion ? nil : .snappy, value: state.topics)
+            }
+            .onChange(of: state.selectedTags) { _, _ in
+                guard let first = state.topics.first else { return }
+                withAnimation(reduceMotion ? nil : .snappy) {
+                    proxy.scrollTo(first, anchor: .leading)
                 }
             }
+        }
+    }
+
+    /// One line rather than a `retryBlock`: topics are a filter above the content, and a full block
+    /// there would outweigh the decks it filters (#366).
+    private var topicsError: some View {
+        HStack(spacing: 8) {
+            Text("discover_topics_error")
+                .font(.system(size: 13))
+                .foregroundColor(LoopkyColor.foregroundMuted)
+                .accessibilityIdentifier("discover_topics_error")
+            Button("home_retry", action: onRetryTopics)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(LoopkyColor.accentPrimary)
+                .accessibilityIdentifier("discover_topics_retry")
         }
     }
 
@@ -151,8 +214,19 @@ struct DiscoverView: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-                        ForEach(state.people.items) { person in
+                        ForEach(Array(state.people.items.enumerated()), id: \.element.id) { index, person in
                             personTile(person)
+                                // A row has no footer to hang a sentinel off, so the trigger rides
+                                // the tiles: ask once the reader is within a tile of the end, early
+                                // enough that the page lands before the row runs out.
+                                .onAppear {
+                                    if index >= state.people.items.count - peoplePrefetchDistance {
+                                        onPeopleEndReached()
+                                    }
+                                }
+                        }
+                        if state.people.isLoadingMore {
+                            ProgressView().frame(width: 60)
                         }
                     }
                 }
@@ -204,8 +278,8 @@ struct DiscoverView: View {
     private var browseStrip: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                if let tag = state.selectedTag {
-                    Text(String(format: NSLocalizedString("discover_browse_tag_title", comment: ""), tag))
+                if !state.selectedTags.isEmpty {
+                    Text(verbatim: browseTitle)
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(LoopkyColor.foregroundSecondary)
                     Spacer()
@@ -218,18 +292,84 @@ struct DiscoverView: View {
             }
             if state.browse.isLoading {
                 ProgressView().frame(maxWidth: .infinity)
+            } else if let message = state.browse.errorMessage {
+                // Never the empty block: "Nothing published here yet" is a claim about the network,
+                // and a device that could not reach the indexer has not earned it (#321).
+                retryBlock(message: message, onRetry: onRetryBrowse)
+                    .accessibilityIdentifier("discover_browse_error")
             } else if state.browse.isEmpty {
                 browseEmpty
             } else {
                 deckGrid(state.browse.items)
+                if let message = state.browse.pageErrorMessage {
+                    retryBlock(message: message, onRetry: onRetryBrowsePage)
+                        .accessibilityIdentifier("discover_browse_page_error")
+                } else if state.browse.hasMore {
+                    loadMoreFooter(isLoading: state.browse.isLoadingMore, onLoadMore: onBrowseEndReached)
+                }
             }
         }
     }
 
+    private var browseTitle: String {
+        guard state.selectedTags.count > 1 else {
+            return String(
+                format: NSLocalizedString("discover_browse_tag_title", comment: ""),
+                state.selectedTags.first ?? ""
+            )
+        }
+        let quoted = state.selectedTags.map {
+            String(format: NSLocalizedString("discover_tag_quoted", comment: ""), $0)
+        }
+        return String(
+            format: NSLocalizedString("discover_browse_tags_title", comment: ""),
+            quoted.joined(separator: NSLocalizedString("discover_tag_list_separator", comment: ""))
+        )
+    }
+
+    private var emptyTitleKey: LocalizedStringKey {
+        switch state.selectedTags.count {
+        case 0: "discover_browse_empty_title"
+        case 1: "discover_empty_tag_subtitle"
+        default: "discover_empty_tags_title"
+        }
+    }
+
+    /// What a strip shows when the indexer did not answer: what happened, and a way to ask again.
+    private func retryBlock(message: String, onRetry: @escaping () -> Void) -> some View {
+        VStack(spacing: 8) {
+            Text(verbatim: message)
+                .font(.system(size: 13))
+                .foregroundColor(LoopkyColor.foregroundMuted)
+                .multilineTextAlignment(.center)
+            Button("home_retry", action: onRetry)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(LoopkyColor.accentPrimary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+    }
+
+    /// The sentinel at the foot of the grid: asks for the next page as it scrolls into view.
+    ///
+    /// `onAppear` inside a `LazyVGrid`'s enclosing `ScrollView` fires when the row reaches the
+    /// viewport, so *appearing* already means the reader has reached the end. It fires once per
+    /// appearance and the ViewModel guards the rest — see `SectionState.canLoadMore`.
+    private func loadMoreFooter(isLoading: Bool, onLoadMore: @escaping () -> Void) -> some View {
+        HStack {
+            Spacer()
+            if isLoading { ProgressView() }
+            Spacer()
+        }
+        .frame(height: 44)
+        .onAppear(perform: onLoadMore)
+        .accessibilityIdentifier("load_more_footer")
+    }
+
     private var browseEmpty: some View {
         VStack(spacing: 8) {
-            Text(state.selectedTag == nil ? "🌱" : "🔍").font(.system(size: 36))
-            Text(state.selectedTag == nil ? "discover_browse_empty_title" : "discover_empty_tag_subtitle")
+            Text(state.selectedTags.isEmpty ? "🌱" : "🔍").font(.system(size: 36))
+            Text(emptyTitleKey)
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(LoopkyColor.foregroundPrimary)
             Text("discover_browse_empty_subtitle")

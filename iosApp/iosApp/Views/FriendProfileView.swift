@@ -41,7 +41,7 @@ struct FriendProfileView: View {
             // columns inside the same measure.
             .contentPane()
         }
-        .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+        .loopkyScreenBackground()
         .navigationBarHidden(true)
         .refreshable { onRefresh() }
         // A guest can read the whole profile; only Follow needs an account. The prompt used to

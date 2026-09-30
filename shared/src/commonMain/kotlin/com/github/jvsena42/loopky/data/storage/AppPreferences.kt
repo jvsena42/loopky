@@ -1,6 +1,8 @@
 package com.github.jvsena42.loopky.data.storage
 
+import com.github.jvsena42.loopky.domain.model.AppTheme
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Device-local, non-secret user preferences. Deliberately separate from [SecureSessionStore]:
@@ -64,6 +66,45 @@ interface AppPreferences {
     val cachedStudySettings: Flow<String>
 
     suspend fun setCachedStudySettings(json: String)
+
+    /**
+     * Light, dark, or whatever the device is doing — see [AppTheme].
+     *
+     * A `StateFlow` rather than a `Flow`, alone among these, because the app's root reads it to
+     * decide the palette it paints the very first frame in. A `Flow` collected into Compose or
+     * SwiftUI needs an initial value to hand back before the first emission, and that value is a
+     * guess: on a light device with Dark chosen it is one frame of white.
+     */
+    val themeMode: StateFlow<AppTheme>
+
+    suspend fun setThemeMode(theme: AppTheme)
+
+    /**
+     * Whether the reader has waved away the "add a name" prompt on their own profile.
+     *
+     * Device-local rather than a profile field, because it records what this person did with a
+     * prompt, not who they are — and the prompt has to stay dismissed for someone who signs in on
+     * a phone with no intention of naming themselves. Publishing a name retires it on its own; the
+     * flag is only for the reader who never will.
+     *
+     * Emits the current value immediately and again on every change.
+     */
+    val nameNudgeDismissed: Flow<Boolean>
+
+    suspend fun setNameNudgeDismissed(dismissed: Boolean)
+
+    /**
+     * Whether the reader has waved away the "add a photo" prompt on their own profile.
+     *
+     * Device-local for the same reason as [nameNudgeDismissed], and separate from it because the
+     * two prompts are refused for different reasons: a photo cannot be set in Loopky at all, so
+     * "not now" here often means "not until I am at a browser".
+     *
+     * Emits the current value immediately and again on every change.
+     */
+    val avatarNudgeDismissed: Flow<Boolean>
+
+    suspend fun setAvatarNudgeDismissed(dismissed: Boolean)
 }
 
 internal const val PREFERENCES_NAME = "loopky.preferences"
@@ -73,3 +114,9 @@ internal const val KEY_PUBKY_ENVIRONMENT = "pubky_environment"
 internal const val DEFAULT_PUBKY_ENVIRONMENT = ""
 internal const val KEY_CACHED_STUDY_SETTINGS = "cached_study_settings"
 internal const val DEFAULT_CACHED_STUDY_SETTINGS = ""
+internal const val KEY_THEME_MODE = "theme_mode"
+internal val DEFAULT_THEME_MODE = AppTheme.System
+internal const val KEY_NAME_NUDGE_DISMISSED = "name_nudge_dismissed"
+internal const val DEFAULT_NAME_NUDGE_DISMISSED = false
+internal const val KEY_AVATAR_NUDGE_DISMISSED = "avatar_nudge_dismissed"
+internal const val DEFAULT_AVATAR_NUDGE_DISMISSED = false

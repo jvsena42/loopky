@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Launch theme. The window the system draws before MainActivity exists: Loopky's cream
+      surface with the fox on a soft-accent circle, which is exactly how the branded splash
+      Compose draws next looks — so the handoff between them is invisible.
+    -->
+    <style name="Theme.Loopky.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/brand_surface</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/brand_accent_soft</item>
+        <item name="postSplashScreenTheme">@style/Theme.Loopky</item>
+    </style>
+
+    <!--
+      The activity's own theme. `windowBackground` is the one frame between the splash handing
+      over and Compose painting `surfacePrimary`; left at the platform's white it is a flash on
+      every dark launch.
+    -->
+    <style name="Theme.Loopky" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/brand_surface</item>
+    </style>
+</resources>

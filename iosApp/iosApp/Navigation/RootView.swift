@@ -9,6 +9,7 @@ enum DeckRoute: Hashable, Identifiable {
     case importPaste
     case importBulk(URL?)
     case importTriage
+    case importTriageEditCard(Int)
     case importPublish
     /// `nil` means everything due across the library, which is what Home asks for.
     case study(String?)
@@ -28,6 +29,7 @@ enum DeckRoute: Hashable, Identifiable {
         case .importPaste: return "import-paste"
         case .importBulk(let url): return "import-bulk-\(url?.lastPathComponent ?? "picker")"
         case .importTriage: return "import-triage"
+        case .importTriageEditCard(let rowIndex): return "import-triage-edit-\(rowIndex)"
         case .importPublish: return "import-publish"
         case .study(let id): return "study-\(id ?? "all")"
         case .studyPreview(let id, let author): return "preview-\(id)-\(author ?? "self")"
@@ -63,7 +65,7 @@ struct RootView: View {
     /// did nothing at all, silently. A path also gives back its real meaning — one step, rather
     /// than clearing the whole stack.
     @State private var deckPath: [DeckRoute] = []
-    /// The signed-out flows. A path, not a single destination: signup and backup go
+    /// The signed-out flows. A path, not a single destination: signup and restore go
     /// several pushes deep.
     @State private var identityPath: [IdentityRoute] = []
     /// Backup, reached from Settings or the Profile nag. A sheet, not a push — see `BackupFlowView`.
@@ -72,7 +74,7 @@ struct RootView: View {
     var body: some View {
         // Two stacks, not one. The signed-in side pushes a single destination at a time
         // (`navigationDestination(item:)`); the signed-out side needs a **path**, because signup
-        // and backup go several pushes deep. A stack cannot do both — a pathless stack ignores
+        // and restore go several pushes deep. A stack cannot do both — a pathless stack ignores
         // appends to `identityPath`, which is what left "Create account" doing nothing.
         Group {
             if isSignedIn || isGuest {
@@ -144,7 +146,8 @@ struct RootView: View {
                 onEditCard: { d, c in deckPath.append(.editCard(d, c)) },
                 // Blank card id: the card editor mints one and appends on save.
                 onNewCard: { d in deckPath.append(.editCard(d, "")) },
-                onSaved: { id in deckPath = [.detail(id, nil)] }
+                onSaved: { id in deckPath = [.detail(id, nil)] },
+                onSignedOut: { signOut() }
             )
         case .editorNew:
             DeckEditorScreen(
@@ -152,7 +155,8 @@ struct RootView: View {
                 onBack: { popDeck() },
                 onEditCard: { d, c in deckPath.append(.editCard(d, c)) },
                 onNewCard: { d in deckPath.append(.editCard(d, "")) },
-                onSaved: { id in deckPath = [.detail(id, nil)] }
+                onSaved: { id in deckPath = [.detail(id, nil)] },
+                onSignedOut: { signOut() }
             )
         case .editCard(let deckId, let cardId):
             EditCardScreen(deckId: deckId, cardId: cardId, onBack: { popDeck() })
@@ -170,8 +174,13 @@ struct RootView: View {
         case .importTriage:
             TriageScreen(
                 onBack: { popDeck() },
-                onPublish: { deckPath.append(.importPublish) }
+                onPublish: { deckPath.append(.importPublish) },
+                onEditCard: { rowIndex in deckPath.append(.importTriageEditCard(rowIndex)) }
             )
+        case .importTriageEditCard(let rowIndex):
+            // Triage re-reads the draft in its `onAppear`, so popping back is all the editor has
+            // to do for its change to show.
+            TriageEditCardScreen(rowIndex: rowIndex, onBack: { popDeck() })
         case .friendProfile(let pubky):
             FriendProfileScreen(
                 pubky: pubky,
@@ -220,7 +229,8 @@ struct RootView: View {
                 onBack: { popDeck() },
                 // The published deck replaces the whole import flow: there is nothing behind it
                 // worth walking back into.
-                onPublished: { deckId in deckPath = [.detail(deckId, nil)] }
+                onPublished: { deckId in deckPath = [.detail(deckId, nil)] },
+                onSignedOut: { signOut() }
             )
         }
     }
@@ -285,7 +295,10 @@ struct RootView: View {
                     // new one, which would leave the pubky on screen account-less forever.
                     identityPath.append(.signupStart(adoptHeldKey: true))
                 },
-                onRegistered: { identityPath.append(.backupStart(enteredFromSettings: false)) },
+                // Into the app, not into a backup wall. The key is only on this device, but
+                // Profile's card above sign-out and Settings both offer the backup, and the
+                // sign-out guard refuses to erase an un-backed-up key without an explicit choice.
+                onRegistered: signIn,
                 onRestoreWithPhrase: { identityPath.append(.restorePhrase) }
             )
         case .signupStart:
@@ -305,32 +318,12 @@ struct RootView: View {
             LocalSignupScreen(
                 onBack: pop,
                 adoptHeldKey: adoptHeldKey,
-                // Straight to backup, and the signup path is dropped: this is the only moment in
-                // the app where a key exists that nobody has a copy of, and there is nothing
-                // behind it worth walking back into.
-                onBackup: { identityPath = [.backupStart(enteredFromSettings: false)] },
+                // Into the app — see `onRegistered` above for why the un-backed-up key does not
+                // earn a wall here. `signIn` drops the whole signup path with it; there is
+                // nothing behind this screen worth walking back into.
+                onCreated: signIn,
                 onStartOver: { identityPath.startSignupOver(adoptHeldKey: adoptHeldKey) }
             )
-        case .backupStart(let enteredFromSettings):
-            BackupStartScreen(
-                // Reached from onboarding the account already exists, so both exits mean "into
-                // the app"; reached from Settings the caller pops us instead.
-                onBack: enteredFromSettings ? pop : signIn,
-                onDone: enteredFromSettings ? pop : signIn,
-                onPhrase: { identityPath.append(.backupPhrase) },
-                onFile: { identityPath.append(.backupFile) },
-                onRing: { identityPath.append(.backupRing) }
-            )
-        case .backupPhrase:
-            BackupPhraseScreen(onBack: pop, onContinue: { identityPath.append(.backupQuiz) })
-        case .backupQuiz:
-            // Back to the menu, not out of the flow: one method done is not a reason to stop
-            // offering the others, and the menu now shows this one ticked.
-            BackupQuizScreen(onBack: pop, onDone: { identityPath.returnToBackupMenu() })
-        case .backupFile:
-            BackupFileScreen(onBack: pop, onDone: { identityPath.returnToBackupMenu() })
-        case .backupRing:
-            BackupRingScreen(onBack: pop, onDone: { identityPath.returnToBackupMenu() })
         }
     }
 

@@ -19,11 +19,11 @@ import kotlinx.serialization.json.jsonPrimitive
  * ```
  *
  * Extra/aliased field names are tolerated so a future FFI bump continues to work. `grant_secret`
- * is one such alias and not a hypothetical: pubky 0.10's grant flow names the field that instead,
- * and the two are interchangeable downstream because the FFI's `restore_session` sniffs which kind
- * of token it was handed. Loopky asks for the cookie flow today (see
- * [PubkyClient.startAuthFlow]), so the alias is what keeps a switch back to grant auth (#130)
- * from failing here with a missing-field error rather than anywhere informative.
+ * is no longer one of the dormant ones: since #130 the Ring deeplink asks for the grant flow (see
+ * [PubkyClient.startAuthFlow]), which names the field that, so this is the alias every sign-in
+ * now arrives on. `session_secret` stays first because [PubkyClient.signIn]/[PubkyClient.signUp]
+ * still take the cookie flow. The two are interchangeable downstream — the FFI's `restore_session`
+ * sniffs which kind of token it was handed.
  */
 internal fun parseSessionPayload(payload: String, json: Json): Session {
     val obj: JsonObject = json.parseToJsonElement(payload).jsonObject

@@ -88,6 +88,16 @@ class SpeakMatcherTest {
     }
 
     @Test
+    fun aHyphenatedCompoundIsHeardWithOrWithoutTheSpace() {
+        // Whether a recognizer emits "self-presentation", "self presentation" or one word is its
+        // own choice, exactly like its choice between "ten" and "10".
+        assertTrue(SpeakMatcher.match("self presentation", "self-presentation").correct)
+        assertTrue(SpeakMatcher.match("self-presentation", "self presentation").correct)
+        assertTrue(SpeakMatcher.match("selfpresentation", "self-presentation").correct)
+        assertTrue(SpeakMatcher.match("bem-vindo", "bem vindo", "pt-BR").correct)
+    }
+
+    @Test
     fun emptyExpectedNeverMatches() {
         assertFalse(SpeakMatcher.match("", "").correct)
         assertFalse(SpeakMatcher.match("anything", "").correct)

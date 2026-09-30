@@ -1,0 +1,26 @@
+Loopky is a free, open source flashcard app with spaced repetition. Import your Anki decks, make your own, or study decks other people have shared.
+
+<b>Import from Anki</b>
+Open .apkg files, images included, and start studying. .txt and .csv files work too, or paste a word list and each line becomes a card.
+
+<b>Spaced repetition you control</b>
+Hard, Good and Easy bring a card back in 1, 3 and 7 days. Change those numbers in settings and every review uses them. New cards have a daily goal of 20, and reviews are never capped.
+
+<b>Ways to study</b>
+• Flip: tap to see the answer
+• Type the answer, accents included
+• Listen: hear the card read aloud
+• Speak: say the answer and have it checked
+• Reverse: get asked the other way round
+Listen and Speak work in 35 languages.
+
+<b>Shared decks</b>
+Find decks by tag, follow the ones you like, or copy one and make it yours. Share your own deck with a link, handy for a class or a study group.
+
+<b>No email, no password</b>
+You sign in with a Pubky key. Your decks and review history live on a homeserver you control, so they follow you to a new phone or tablet. Published decks are public. No ads, no analytics.
+
+Good for vocabulary, language learning, medical school and exam prep. Works on phones and tablets.
+
+Guides: https://loopky.app
+Source code: https://github.com/jvsena42/loopky

@@ -24,7 +24,7 @@ struct DeckDetailContent {
     let masteredPercent: String
     let cards: [CardPreviewData]
     /// Whether anyone is signed in. Deck detail reads fine without an account — the manifest and
-    /// cards are public — so this gates only Follow and Clone, which write.
+    /// cards are public — so this gates only Follow and the copy behind Edit, which write.
     var isSignedIn: Bool = true
     /// Claimed by a publish that never finished, so some cards are missing. Surfaced rather than
     /// hidden: the count comes from the manifest, so the deck otherwise looks complete.
@@ -32,12 +32,24 @@ struct DeckDetailContent {
     var isFollowing: Bool = false
     var isFollowPending: Bool = false
     var isCloning: Bool = false
+    /// The pencil is offered. Wider than `isOwned`: a followed deck carries it too, and there it
+    /// offers a copy rather than the editor (#254).
+    var canEdit: Bool = false
     /// The author this deck was cloned from, when it carries clone provenance.
     var clonedFromLabel: String?
     /// Distinct taggers per the indexer — approximate by nature, so display only.
     var followerCount: Int = 0
+    var clonedCount: Int = 0
     /// This deck can be *tried* without being kept: flip its cards, grading nothing.
     var canPreview: Bool = false
+    /// The deck's study opt-ins, as the reader will actually get them — the shared ViewModel has
+    /// already folded Listen and Speak through `Deck.speechReady`.
+    var listenEnabled: Bool = false
+    var speakEnabled: Bool = false
+    var typeEnabled: Bool = false
+    var reverseEnabled: Bool = false
+
+    var hasStudyFeatures: Bool { listenEnabled || speakEnabled || typeEnabled || reverseEnabled }
 }
 
 struct CardPreviewData: Identifiable {
@@ -56,7 +68,6 @@ struct DeckDetailView: View {
     var onStudy: () -> Void = {}
     var onOpenTag: (String) -> Void = { _ in }
     var onToggleFollow: () -> Void = {}
-    var onClone: () -> Void = {}
     var onRefresh: () async -> Void = {}
 
     @Environment(\.loopkyWidthClass) private var widthClass
@@ -94,8 +105,26 @@ struct DeckDetailView: View {
                 contentBody(content)
             }
         }
-        .background(LoopkyColor.surfacePrimary.ignoresSafeArea())
+        .loopkyScreenBackground()
         .navigationBarHidden(true)
+        .overlay { cloningOverlay }
+    }
+
+    /// A copy is one write per chunk plus the manifest, so a large deck takes a visible while and
+    /// the screen has to say so — it used to be a spinner inside the Clone button, which #254 took
+    /// away with the button.
+    @ViewBuilder
+    private var cloningOverlay: some View {
+        if case .content(let content) = state, content.isCloning {
+            VStack(spacing: 16) {
+                ProgressView()
+                Text("deck_detail_cloning")
+                    .font(.system(size: 14))
+                    .foregroundColor(LoopkyColor.foregroundMuted)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .loopkyScreenBackground()
+        }
     }
 
     @ViewBuilder
@@ -134,7 +163,7 @@ struct DeckDetailView: View {
     /// the iPad was unaffected only because its header was already hoisted out.
     private func compactBody(_ content: DeckDetailContent) -> some View {
         VStack(spacing: 0) {
-            header(isOwned: content.isOwned)
+            header(isOwned: content.isOwned, canEdit: content.canEdit)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .contentPane(PaneWidth.reading)
@@ -169,7 +198,7 @@ struct DeckDetailView: View {
             // Across the top rather than inside the left pane: back and share act on the screen,
             // not on the metadata column, and a back button that scrolls away is one people cannot
             // find.
-            header(isOwned: content.isOwned)
+            header(isOwned: content.isOwned, canEdit: content.canEdit)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
             HStack(alignment: .top, spacing: 28) {
@@ -264,12 +293,29 @@ struct DeckDetailView: View {
                 }
             }
 
-            // Stats
+            // What the deck can be studied with — above the stats, because it is the other half
+            // of the same question: how big the deck is, and what answering it is like. It
+            // carries its own caption for exactly one reason: without it, a second row of pills
+            // under the tags reads as more tags.
+            if content.hasStudyFeatures {
+                DeckFeatureBadges(
+                    listenEnabled: content.listenEnabled,
+                    speakEnabled: content.speakEnabled,
+                    typeEnabled: content.typeEnabled,
+                    reverseEnabled: content.reverseEnabled
+                )
+            }
+
+            // Stats. On a deck you are not studying, Due and Mastered give their room to what
+            // the deck has done — who keeps it, and who has copied it.
             StatsBarView(
                 totalCards: content.totalCards,
                 dueLabel: content.dueLabel,
                 newCards: content.newCards,
-                masteredPercent: content.masteredPercent
+                masteredPercent: content.masteredPercent,
+                showProgress: content.isOwned || content.isFollowing,
+                followerCount: content.followerCount,
+                clonedCount: content.clonedCount
             )
         }
     }
@@ -311,42 +357,34 @@ struct DeckDetailView: View {
         }
     }
 
-    /// Follow and Clone, for a deck that is not yours.
+    /// Follow, for a deck that is not yours — since #254 the only action here.
     ///
-    /// Both write under your pubky, so both raise the sign-in prompt for a guest rather than being
-    /// hidden — the action is what someone came to do, and a missing button explains nothing.
+    /// Clone stood beside it as an equal until then, which asked a reader who had just found a deck
+    /// to choose between two words whose difference they had no reason to know yet. The copy now
+    /// lives behind Edit, where that difference is the question being asked. Follow writes under
+    /// your pubky, so it raises the sign-in prompt for a guest rather than being hidden — the
+    /// action is what someone came to do, and a missing button explains nothing.
     private func foreignDeckActions(_ content: DeckDetailContent) -> some View {
-        HStack(spacing: 10) {
-            // Dimmed while the write is in flight rather than greyed out: the pill has already
-            // flipped optimistically, so it must still read as the state it is claiming.
-            Group {
-                if content.isFollowing {
-                    Button(action: onToggleFollow) {
-                        Label("deck_detail_following", systemImage: "checkmark")
-                    }
-                    .buttonStyle(.loopkySoft)
-                } else {
-                    Button(action: onToggleFollow) {
-                        Label("deck_detail_follow", systemImage: "plus")
-                    }
-                    .buttonStyle(.loopkyFilled)
+        // Dimmed while the write is in flight rather than greyed out: the pill has already flipped
+        // optimistically, so it must still read as the state it is claiming.
+        Group {
+            if content.isFollowing {
+                Button(action: onToggleFollow) {
+                    Label("deck_detail_following", systemImage: "checkmark")
+                        .frame(maxWidth: .infinity)
                 }
-            }
-            .opacity(content.isFollowPending ? 0.6 : 1)
-            .disabled(content.isFollowPending)
-            .accessibilityIdentifier("deck_follow")
-
-            Button(action: onClone) {
-                if content.isCloning {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Label("deck_detail_clone", systemImage: "doc.on.doc")
+                .buttonStyle(.loopkySoft)
+            } else {
+                Button(action: onToggleFollow) {
+                    Label("deck_detail_follow", systemImage: "plus")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.loopkyFilled)
             }
-            .buttonStyle(.loopkyOutline)
-            .disabled(content.isCloning)
-            .accessibilityIdentifier("deck_clone")
         }
+        .opacity(content.isFollowPending ? 0.6 : 1)
+        .disabled(content.isFollowPending)
+        .accessibilityIdentifier("deck_follow")
     }
 
     /// The lines under the actions: an unfinished publish, clone provenance, and how many people
@@ -369,7 +407,9 @@ struct DeckDetailView: View {
             .foregroundColor(LoopkyColor.foregroundMuted)
         }
         // Distinct taggers per the indexer — approximate by nature, so shown and never gated on.
-        if content.followerCount > 0 {
+        // Only while the stats bar is showing your own progress: on a deck you are not studying
+        // the bar carries this count as a column of its own.
+        if content.followerCount > 0, content.isOwned || content.isFollowing {
             Text(verbatim: String(
                 format: NSLocalizedString("deck_detail_followers", comment: ""),
                 content.followerCount
@@ -466,20 +506,27 @@ struct DeckDetailView: View {
         return false
     }
 
+    /// `canEdit` is wider than `isOwned`: a followed deck carries the pencil too, and tapping it
+    /// offers a copy rather than the editor (#254) — wanting to change someone else's deck is the
+    /// one moment owning your own version is the answer.
     @ViewBuilder
-    private func header(isOwned: Bool) -> some View {
+    private func header(isOwned: Bool, canEdit: Bool = false) -> some View {
         HStack(spacing: 10) {
             Button(action: onBack) {
                 circleIcon(systemName: "chevron.left")
             }
             Spacer()
-            if isOwned {
+            if canEdit {
                 Button(action: onEdit) {
                     circleIcon(systemName: "pencil")
                 }
+                .accessibilityIdentifier("deck_edit")
+            }
+            if isOwned {
                 Button(action: onDelete) {
                     circleIcon(systemName: "trash", tint: LoopkyColor.srsAgain)
                 }
+                .accessibilityIdentifier("deck_delete")
             }
             Button(action: onShare) {
                 circleIcon(systemName: "square.and.arrow.up")
@@ -503,51 +550,6 @@ struct DeckDetailView: View {
 /// The metadata column's width — a readable measure for the title and description.
 private let detailPaneWidth: CGFloat = 360
 
-// MARK: - Stats Bar
-
-private struct StatsBarView: View {
-    let totalCards: Int
-    let dueLabel: String
-    let newCards: Int
-    let masteredPercent: String
-
-    var body: some View {
-        HStack {
-            StatColumn(value: "\(totalCards)", label: "component_stats_bar_cards", valueColor: LoopkyColor.foregroundPrimary)
-            Divider().frame(height: 32).overlay(LoopkyColor.borderSubtle)
-            StatColumn(value: dueLabel, label: "component_stats_bar_due", valueColor: LoopkyColor.accentPrimary)
-            Divider().frame(height: 32).overlay(LoopkyColor.borderSubtle)
-            StatColumn(value: "\(newCards)", label: "component_stats_bar_new", valueColor: LoopkyColor.foregroundPrimary)
-            Divider().frame(height: 32).overlay(LoopkyColor.borderSubtle)
-            StatColumn(value: masteredPercent, label: "component_stats_bar_mastered", valueColor: LoopkyColor.srsGood)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(LoopkyColor.surfaceSecondary)
-        )
-    }
-}
-
-private struct StatColumn: View {
-    let value: String
-    let label: LocalizedStringKey
-    let valueColor: Color
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .font(.system(size: 22, weight: .heavy))
-                .foregroundColor(valueColor)
-            Text(label)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(LoopkyColor.foregroundMuted)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
 #Preview("Owned · no cover image") {
     DeckDetailView(
         state: .content(DeckDetailContent(
@@ -567,7 +569,8 @@ private struct StatColumn: View {
             cards: [
                 CardPreviewData(id: "1", front: "el zorro", back: "the fox"),
                 CardPreviewData(id: "2", front: "la casa", back: "the house"),
-            ]
+            ],
+            canEdit: true
         ))
     )
 }

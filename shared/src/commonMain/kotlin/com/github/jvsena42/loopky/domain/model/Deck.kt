@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.domain.model
 
+import com.github.jvsena42.loopky.util.encodeUriComponent
 import kotlin.jvm.JvmInline
 
 data class Deck(
@@ -84,6 +85,15 @@ data class Deck(
     // Built literally rather than via PubkyPaths: that lives in `data/pubky`, and domain models
     // must not depend on the data layer (Architecture §4.1).
     val pubkyUri: PubkyUri get() = PubkyUri("pubky://$authorPubky/pub/loopky/decks/$id/manifest.json")
+
+    /**
+     * The link Loopky shares for this deck: clickable where [pubkyUri] is plain text, opened by the
+     * app as a verified App Link, and a web preview of the deck for anyone without it. Built
+     * literally for the same reason as [pubkyUri]; `PubkyLinks.parse` reads it back, and
+     * `PubkyLinksTest` holds the two together.
+     */
+    val webUrl: String
+        get() = "https://loopky.app/deck/?author=${encodeUriComponent(authorPubky)}&id=${encodeUriComponent(id)}"
 }
 
 /**

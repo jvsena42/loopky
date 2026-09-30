@@ -11,11 +11,12 @@ import Shared
 ///
 /// Mirroring it as a real Swift enum moves that guarantee back. `title(for:)` and `message(for:)`
 /// switch over `LoopkyErrorReason` with **no `default`**, so adding a case here without giving it
-/// copy is a compile error. `init(_:)` below is the single bridge point, and the one place a new
-/// shared reason has to be mapped — the debug assertion catches forgetting it.
+/// copy is a compile error. `bridged` below is the single bridge point, and the one place a new
+/// shared reason has to be mapped — the debug assertion in `init(_:)` catches forgetting it.
 enum LoopkyErrorReason: CaseIterable {
     case offline
     case sessionExpired
+    case sessionUnreachable
     case notFound
     case noHomeserverAccount
     case notSignedIn
@@ -27,27 +28,42 @@ enum LoopkyErrorReason: CaseIterable {
     case homeserverLookupFailed
     case unknown
 
-    /// The only place the bridged singletons are matched. Kotlin enum entries are singletons, so
-    /// identity comparison is well defined.
+    /// The bridged entry each case mirrors. Kotlin enum entries are singletons, so comparing them
+    /// is well defined.
+    ///
+    /// The mapping is written in this direction on purpose. Switching over the *bridged* value can
+    /// never be exhaustive, so a case that nothing matched stayed unreachable without a warning —
+    /// which is how `.unknown` came to crash the debug app (#193): it was the classifier's own
+    /// catch-all and the one case the initializer could not produce. Switching over `self` has no
+    /// `default`, so every case here must name its entry or the build fails.
+    var bridged: ErrorReason {
+        switch self {
+        case .offline: return ErrorReason.offline
+        case .sessionExpired: return ErrorReason.sessionexpired
+        case .sessionUnreachable: return ErrorReason.sessionunreachable
+        case .notFound: return ErrorReason.notfound
+        case .noHomeserverAccount: return ErrorReason.nohomeserveraccount
+        case .notSignedIn: return ErrorReason.notsignedin
+        case .ringNotInstalled: return ErrorReason.ringnotinstalled
+        case .authFailed: return ErrorReason.authfailed
+        case .authRelayUnreachable: return ErrorReason.authrelayunreachable
+        case .serverBusy: return ErrorReason.serverbusy
+        case .storageFull: return ErrorReason.storagefull
+        case .homeserverLookupFailed: return ErrorReason.homeserverlookupfailed
+        case .unknown: return ErrorReason.unknown
+        }
+    }
+
+    /// The only place the bridged singletons are matched.
     init(_ reason: ErrorReason) {
-        switch reason {
-        case ErrorReason.offline: self = .offline
-        case ErrorReason.sessionexpired: self = .sessionExpired
-        case ErrorReason.notfound: self = .notFound
-        case ErrorReason.nohomeserveraccount: self = .noHomeserverAccount
-        case ErrorReason.notsignedin: self = .notSignedIn
-        case ErrorReason.ringnotinstalled: self = .ringNotInstalled
-        case ErrorReason.authfailed: self = .authFailed
-        case ErrorReason.authrelayunreachable: self = .authRelayUnreachable
-        case ErrorReason.serverbusy: self = .serverBusy
-        case ErrorReason.storagefull: self = .storageFull
-        case ErrorReason.homeserverlookupfailed: self = .homeserverLookupFailed
-        default:
-            // A reason added on the Kotlin side and not mapped above lands here. It renders the
+        guard let matched = LoopkyErrorReason.allCases.first(where: { $0.bridged == reason }) else {
+            // A reason added on the Kotlin side and not mirrored above lands here. It renders the
             // generic copy rather than crashing a user, but trips in debug so it is caught.
             assertionFailure("Unmapped ErrorReason: \(reason.name). Add it to LoopkyErrorReason.")
             self = .unknown
+            return
         }
+        self = matched
     }
 }
 
@@ -72,11 +88,16 @@ enum ErrorCopy {
             return NSLocalizedString("You're offline", comment: "Error title: no connectivity")
         case .sessionExpired:
             return NSLocalizedString("Session expired", comment: "Error title: needs re-auth")
+        case .sessionUnreachable:
+            return NSLocalizedString(
+                "Couldn't reconnect",
+                comment: "Error title: the /session round trip failed at the transport layer"
+            )
         case .notFound:
             return NSLocalizedString("Not found", comment: "Error title: missing record")
         case .noHomeserverAccount:
             return NSLocalizedString(
-                "Your Pubky isn't set up yet",
+                "Your account isn't set up yet",
                 comment: "Error title: pubky has no homeserver account"
             )
         case .notSignedIn:
@@ -87,22 +108,22 @@ enum ErrorCopy {
             return NSLocalizedString("Sign-in didn't finish", comment: "Error title: auth failed")
         case .authRelayUnreachable:
             return NSLocalizedString(
-                "Sign-in couldn't reach Pubky",
+                "Sign-in couldn't connect",
                 comment: "Error title: auth relay unreachable"
             )
         case .serverBusy:
             return NSLocalizedString(
-                "Your homeserver is busy",
+                "The server is busy",
                 comment: "Error title: homeserver rate-limiting"
             )
         case .storageFull:
             return NSLocalizedString(
-                "Your Pubky storage is full",
+                "Your storage is full",
                 comment: "Error title: homeserver storage quota exceeded"
             )
         case .homeserverLookupFailed:
             return NSLocalizedString(
-                "We couldn't check that",
+                "Couldn't check that",
                 comment: "Error title: pkarr/DHT lookup did not answer"
             )
         case .unknown:
@@ -113,17 +134,27 @@ enum ErrorCopy {
     static func message(for reason: LoopkyErrorReason) -> String {
         switch reason {
         case .offline:
-            // The reassurance stays, short: Pubky is the only source of truth and there is no
-            // local cache, so this is exactly the moment a user would fear they had lost
+            // The reassurance stays, short: the homeserver is the only source of truth and there
+            // is no local cache, so this is exactly the moment a user would fear they had lost
             // everything.
             return NSLocalizedString(
-                "Check your connection and try again. Your decks are safe on Pubky.",
+                "Check your connection and try again. Your decks are safe.",
                 comment: "Error message: no connectivity"
             )
         case .sessionExpired:
             return NSLocalizedString(
                 "Sign in with Pubky Ring again to get back to your decks.",
                 comment: "Error message: needs re-auth"
+            )
+        case .sessionUnreachable:
+            // Deliberately not the offline copy (#165): the homeserver session round trip is what
+            // failed, and the device's connection was measurably fine every time this was seen —
+            // hence naming it only to rule it out. Short because every screen showing this
+            // composes it after a consequence ("Couldn't save this deck. …"), so length is paid
+            // twice; what was lost is already said there, and "sign in again" is the button.
+            return NSLocalizedString(
+                "Loopky couldn't restore your sign-in. It's not your connection, so try again.",
+                comment: "Error message: the /session round trip failed at the transport layer"
             )
         case .notFound:
             return NSLocalizedString(
@@ -134,8 +165,8 @@ enum ErrorCopy {
             // Deliberately not "sign in again": there is nothing to sign in to. Saying so is the
             // whole point of this case — it used to fall through to the deck-deleted copy.
             return NSLocalizedString(
-                "This Pubky doesn't have a homeserver account yet, so there's nowhere to keep "
-                    + "your decks. Finish setting it up in Pubky Ring, then sign in again.",
+                "There's no account for this key yet, so there's nowhere to keep your decks. "
+                    + "Setting one up takes a minute.",
                 comment: "Error message: pubky has no homeserver account"
             )
         case .notSignedIn:
@@ -150,33 +181,30 @@ enum ErrorCopy {
             )
         case .authFailed:
             return NSLocalizedString(
-                "Loopky couldn't confirm the authorisation with Pubky Ring. "
-                    + "Check your connection and try again.",
+                "Loopky couldn't confirm the sign-in. Check your connection and try again.",
                 comment: "Error message: auth failed"
             )
         case .authRelayUnreachable:
             // Not "you're offline": the relay is its own host, and the homeserver is usually
             // reachable while it is not.
             return NSLocalizedString(
-                "Loopky signs you in through Pubky's authorisation relay, and it isn't "
-                    + "responding. Try again in a moment.",
+                "The sign-in service isn't responding. Try again in a moment.",
                 comment: "Error message: auth relay unreachable"
             )
         case .serverBusy:
             // Not "you're offline": the homeserver answered, so the connection is fine and
             // sending the user to check it points them at something that is not broken.
             return NSLocalizedString(
-                "Your homeserver is rate-limiting Loopky, so this couldn't be finished. "
-                    + "Nothing is wrong with your connection — wait a moment and try again.",
+                "Too many requests at once, so this couldn't be finished. It's not your "
+                    + "connection. Wait a moment and try again.",
                 comment: "Error message: homeserver rate-limiting"
             )
         case .storageFull:
             // Not "please try again" — a retry against a full quota is the one thing that cannot
             // work, so the copy has to name the two things that can: delete something, or buy room.
             return NSLocalizedString(
-                "There's no room left on your homeserver, so this couldn't be saved. "
-                    + "Delete a deck you no longer study to free up space, or upgrade your "
-                    + "Pubky plan for more.",
+                "There's no room left in your account. Delete a deck you no longer study to "
+                    + "free up space, or upgrade your storage plan.",
                 comment: "Error message: homeserver storage quota exceeded"
             )
         case .homeserverLookupFailed:
@@ -184,9 +212,8 @@ enum ErrorCopy {
             // to an account, and it failing means we do not know — saying anything about the
             // phrase here would be a guess presented as an answer.
             return NSLocalizedString(
-                "We couldn't reach the Pubky network to look this up, so we don't know yet. "
-                    + "This often means a network that blocks peer-to-peer traffic. Try again, "
-                    + "or switch to a different Wi-Fi or mobile data.",
+                "Some networks block the connection Loopky needs. Try again, or switch between "
+                    + "Wi-Fi and mobile data.",
                 comment: "Error message: pkarr/DHT lookup did not answer"
             )
         case .unknown:
@@ -195,6 +222,28 @@ enum ErrorCopy {
                 comment: "Error message: generic"
             )
         }
+    }
+}
+
+/// Copy for a failed deck-editor operation, composed from `ErrorCopy` exactly as the publish
+/// flow's is: the consequence differs per operation, the cause is the shared vocabulary.
+///
+/// The editor used to render the throwable's own `message`, which is how the card list came to
+/// show `"Failed to import session: Request failed: HTTP transport error: error sending request
+/// for url (https://_pubky.…/session)"` where the cards belong (#165).
+enum DeckEditorErrorCopy {
+    static func message(for error: DeckEditorError?) -> String? {
+        guard let error else { return nil }
+        let consequence: String
+        switch error.op {
+        case DeckEditorOp.loadcards:
+            consequence = NSLocalizedString("deck_editor_error_cards", comment: "")
+        case DeckEditorOp.movecard:
+            consequence = NSLocalizedString("deck_editor_error_move", comment: "")
+        default:
+            consequence = NSLocalizedString("deck_editor_error_save", comment: "")
+        }
+        return "\(consequence) \(ErrorCopy.message(for: error.reason))"
     }
 }
 

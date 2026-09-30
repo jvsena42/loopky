@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The Pubky FFI needs network access for the DHT + relay HTTP calls. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Speak pronunciation practice (study) records audio for on-device speech recognition.
+         Gallery image picking uses the system photo picker, which needs no storage permission. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- The study loop's verdict haptics are waveforms rather than framework constants, because a
+         prebaked CONFIRM and REJECT render as the same generic buzz on an actuator that has no
+         distinct effect for one of them. Driving the vibrator directly needs this; the tick still
+         goes through performHapticFeedback and would not. See StudyHapticPlayer.kt. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Android 11+ package visibility: without this, resolveActivity() returns null
+         for the `pubkyauth://` deeplink even when Pubky Ring is installed. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="pubkyauth" />
+        </intent>
+        <!-- Ring's *import* scheme, which is a different question from its auth scheme: a device
+             can handle one and not the other, and each needs its own entry here. Without it the
+             "export to Pubky Ring" backup option reports Ring missing on every device that has
+             it — on the one screen whose entire job is getting the key into Ring. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="pubkyring" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <!-- Visibility for the on-device speech recognition service (Speak practice). -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
+    <!-- Backup is off, and this is not an oversight waiting to be "fixed" into a restore feature.
+         Nothing on this device is worth restoring, and two things would actively break.
+
+         The keystore-backed vaults (`loopky.session`, `loopky.secrets`) are EncryptedSharedPreferences:
+         Auto Backup copies the XML, the Android Keystore master key that decrypts it never leaves the
+         device, so a restored file is undecryptable and throws where it is read. Everything else is
+         device-local by design — AppPreferences says so on the interface, and replaying a restored
+         review journal onto a second device would re-flush reviews that already landed.
+
+         The data that matters lives elsewhere: the decks and review state on the homeserver, and the
+         identity either in Pubky Ring or — for an account created or restored in Loopky — in the
+         `loopky.secrets` vault above. That second case makes this setting *more* important, not
+         less: the vault is exactly the file Auto Backup would copy, and it is exactly the file a
+         restore cannot decrypt. Backing it up would produce a device that looks signed in and
+         throws on every read.
+
+         Signing in on a new device is the restore path, and for a locally-held key that means the
+         recovery phrase or recovery file the user was prompted to save (#147) — which is a backup
+         they control, not one Android makes silently.
+
+         `false` also disables Android 12+ D2D transfer, which is the same exposure by another route. -->
+    <application
+        android:name=".LoopkyApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:localeConfig="@xml/locales_config"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Loopky.Starting">
+        <!-- windowSoftInputMode: resize, not the default pan. The study screen's answer input
+             sits mid-screen, and panning slides the card's own header off the top to make room
+             for the keyboard. Resizing lets Modifier.imePadding() give up the space instead. -->
+        <!-- No field in Loopky benefits from autofill, and four of them hold a recovery phrase,
+             a recovery-file passphrase or an API key.
+
+             This attribute is kept as a declaration of intent and because other autofill
+             implementations may honour it — but on Compose Multiplatform 1.10.3 it is **measured
+             to be inert**: focusing a Compose text field still dispatches the view structure to
+             the device's autofill service. `androidx.compose.ui.autofill.AndroidAutofillManager`
+             implements `FocusListener` and notifies the platform directly, independent of the view
+             flags the framework would otherwise consult, and CMP 1.10.3 exposes no per-node
+             opt-out (`contentType`, `contentDataType` and `fillableData` all *describe* a field;
+             none excludes one).
+
+             Do not read this line as protection. See PR #148 for the measurements and for the one
+             approach that would work: a classic `EditText` inside an `AndroidView`, which does
+             honour `importantForAutofill`. -->
+        <activity
+            android:exported="true"
+            android:importantForAutofill="noExcludeDescendants"
+            android:launchMode="singleTask"
+            android:name=".MainActivity"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="loopky" android:host="login-callback" />
+            </intent-filter>
+            <!-- Shared profiles and decks: `pubky://{pubky}` and
+                 `pubky://{pubky}/pub/loopky/decks/{deckId}/manifest.json`. No host is declared
+                 because the host *is* the pubky — every one of them must match. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pubky" />
+            </intent-filter>
+            <!-- The same two things as the `https://loopky.app` links Loopky shares, which are
+                 clickable where `pubky://` is not (pubky.app posts, most chat clients).
+                 `autoVerify` checks `/.well-known/assetlinks.json` on the site at install; until
+                 it passes, Android 12+ opens these in the browser, which shows the deck and the
+                 store link. Apex only: `www` redirects there, and a host that fails verification
+                 would sink the whole filter on Android 11 and below. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="loopky.app" />
+                <data android:pathPrefix="/deck" />
+                <data android:pathPrefix="/profile" />
+            </intent-filter>
+            <!-- Most chat clients do not linkify an unknown scheme, so a shared link usually
+                 arrives as plain text. Sharing that text into Loopky opens what it points at.
+                 The same filter also catches a shared `.txt` export, which arrives as this type
+                 with the file in EXTRA_STREAM — MainActivity checks the stream first. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/csv" />
+                <data android:mimeType="text/comma-separated-values" />
+                <data android:mimeType="text/tab-separated-values" />
+                <!-- `.apkg` has no registered MIME type: providers report it as a zip, as an
+                     opaque blob, or not at all. ApkgReader.canRead sniffs the bytes on arrival,
+                     so these only decide whether to *offer* Loopky, never how to parse. -->
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <!-- A deck tapped in a file manager, a browser download, or a mail attachment:
+                 by declared type here, by file name below.
+
+                 Split rather than combined because the <data> attributes inside a single filter
+                 are cross-multiplied — naming a MIME type and a path pattern together demands
+                 *both*, and a content:// uri rarely has both. One from DocumentsUI carries a real
+                 type and an opaque path ("msf:1000000123"); one from a download or a file-manager
+                 provider carries a real path and, often enough, no type at all.
+
+                 What this set costs: Loopky joins *Open with* for any zip or unrecognised blob.
+                 That is the price of `.apkg` having no registered type, and it is bounded — no
+                 photo, PDF, video or audio file resolves here. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/csv" />
+                <data android:mimeType="text/comma-separated-values" />
+                <data android:mimeType="text/tab-separated-values" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <!-- The by-name half, for the `.apkg` a provider declares as something else again.
+                 Deliberately not `*/*` on its own: that would put Loopky in *Open with* for every
+                 photo and PDF on the device. The extension is what narrows it, so the type is
+                 left open.
+
+                 Only `.apkg` is spelled out here. `.txt`/`.csv`/`.tsv` have registered types that
+                 the filter above already matches — an extension pattern would add nothing but a
+                 second way to be wrong.
+
+                 Twice over, because Android matches a filter that names a MIME type only against
+                 an intent that *has* one, and a filter that names none only against one that has
+                 none. A file manager sends a type; plenty of senders do not.
+
+                 Four patterns per filter, because `pathPattern` is PatternMatcher's simple glob,
+                 which does not backtrack: `.*\.apkg` fails on `japanese.core.apkg` once the
+                 earlier dot has eaten the `.*`. One pattern per leading dot is the workaround.
+
+                 `file://` is deliberately absent from both. Loopky rejects that scheme in
+                 `Intent.importFileUri`, because an exported activity plus a `file://` uri is an
+                 arbitrary read of our own sandbox; declaring it here would only advertise a door
+                 the code closes. Senders on Android 7+ cannot use it anyway. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.apkg" />
+                <data android:pathPattern=".*\\..*\\.apkg" />
+                <data android:pathPattern=".*\\..*\\..*\\.apkg" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.apkg" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.apkg" />
+                <data android:pathPattern=".*\\..*\\.apkg" />
+                <data android:pathPattern=".*\\..*\\..*\\.apkg" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.apkg" />
+            </intent-filter>
+        </activity>
+
+        <!-- The QR image the share sheet attaches. Not exported: the receiving app reads it
+             through the one-shot grant on the ACTION_SEND intent, which is what
+             FLAG_GRANT_READ_URI_PERMISSION there is for. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+</manifest>

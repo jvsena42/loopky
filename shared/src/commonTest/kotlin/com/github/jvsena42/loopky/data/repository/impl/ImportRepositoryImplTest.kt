@@ -339,6 +339,32 @@ class ImportRepositoryImplTest {
         assertEquals("good morning", kept[0].fields[1])
     }
 
+    /**
+     * The edit has to be visible *before* publish, or triage keeps showing the text the card had
+     * before it was fixed and the card editor reopens on it — which is what shipping the edits
+     * only through [ImportRepository.keptRows] did.
+     */
+    @Test
+    fun updateRowShowsInCurrentDraft() = runBlocking {
+        val r = repo()
+        r.parse("hola — hello\ngracias — thanks")
+        r.updateRow(0, "buenos dias", "good morning")
+        val rows = r.currentDraft()?.rows.orEmpty()
+        assertEquals("buenos dias", rows[0].fields[0])
+        assertEquals("good morning", rows[0].fields[1])
+        // The untouched row is left exactly as parsed.
+        assertEquals("gracias", rows[1].fields[0])
+    }
+
+    /** `isValid` is recomputed from the edit, not carried over from the parse. */
+    @Test
+    fun updateRowEmptyingBothSidesInvalidatesTheRow() = runBlocking {
+        val r = repo()
+        r.parse("hola — hello\ngracias — thanks")
+        r.updateRow(0, "", "")
+        assertEquals(false, r.currentDraft()?.rows?.first { it.index == 0 }?.isValid)
+    }
+
     @Test
     fun parseResetsTriageState() = runBlocking {
         val r = repo()

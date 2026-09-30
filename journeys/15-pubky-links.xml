@@ -1,8 +1,13 @@
 <journey name="Pubky links — share a profile or deck, open one back">
   <description>
-    The round trip a shared address makes. Loopky hands out `pubky://` URIs from the share buttons
-    on both profiles and on a deck; this journey checks the other half — that tapping one, or
-    sharing the message that carries it back into Loopky, lands on the screen it names.
+    The round trip a shared address makes. Loopky hands out `https://loopky.app` links from the
+    share buttons on both profiles and on a deck (`/deck/?author=…&amp;id=…`, `/profile/?pubky=…`),
+    and still opens the `pubky://` URIs older shares carry; this journey checks that tapping either,
+    or sharing the message that carries it back into Loopky, lands on the screen it names.
+
+    Until the Play signing fingerprint is in the landing site's assetlinks.json, the https link is
+    unverified and Android 12+ opens it in the browser, so these steps pin the package with `-p`.
+    `adb shell pm get-app-links com.github.jvsena42.loopky` shows the verification state.
 
     Needs a signed-in session (journey 01), one published deck (journey 02) and, for the foreign
     half, one account you follow (journey 04). Deck ids appear in logcat as
@@ -24,10 +29,14 @@
 
     <action>Send a deck link with `adb shell am start -a android.intent.action.VIEW -d "pubky://&lt;author&gt;/pub/loopky/decks/&lt;deckId&gt;/manifest.json"` and verify the deck detail screen opens for that deck. Use a deck by someone else: the author travels with the link, so it must resolve on a cold cache.</action>
 
+    <action>Send the web form of a profile link: `adb shell am start -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -p com.github.jvsena42.loopky -d "'https://loopky.app/profile/?pubky=&lt;their-pubky&gt;'"` and verify the same profile opens</action>
+    <action>Send the web form of a deck link: `-d "'https://loopky.app/deck/?author=&lt;author&gt;&amp;id=&lt;deckId&gt;'"` and verify the deck detail screen opens for that deck</action>
+
     <action>Force-stop the app, send a profile link again, and verify the app cold-starts, restores the session, and still lands on that profile — the link is held until onboarding is past, not dropped</action>
 
     <action>Open your own profile from the Profile tab and tap the Share button</action>
-    <action>Verify the system share sheet carries your name above a `pubky://` address, not a bare key</action>
+    <action>Verify the share sheet (resource-id: share_link_uri) and the system share message carry an `https://loopky.app/profile/?pubky=…` link, not a bare key or a `pubky://` URI</action>
+    <action>Open a deck and tap the element with resource-id "deck_share"; verify the link reads `https://loopky.app/deck/?author=…&amp;id=…`</action>
     <action>Pick Loopky from that share sheet and verify it opens the profile the message points at — this is the ACTION_SEND path a chat client leaves as plain text</action>
 
     <action>Send text with no address in it: `adb shell "am start -a android.intent.action.SEND -t text/plain -e android.intent.extra.TEXT 'definitely not a link' -n com.github.jvsena42.loopky/.MainActivity"`</action>

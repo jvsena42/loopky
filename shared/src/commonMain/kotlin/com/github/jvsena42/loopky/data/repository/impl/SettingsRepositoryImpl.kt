@@ -96,6 +96,16 @@ class SettingsRepositoryImpl(
         }
     }
 
+    override suspend fun restoreCachedSettings() {
+        lock.withLock {
+            resetOnAccountChangeLocked()
+            // `Defaults` only: anything else is this account's real record, or the mirror already
+            // in place, and both are better than what this would put there.
+            if (_studySettings.value.origin != SettingsOrigin.Defaults) return
+            restoreMirror()
+        }
+    }
+
     override suspend fun update(settings: StudySettings): Result<Unit> = runSuspendCatching {
         val sanitized = settings.sanitized()
         lock.withLock {

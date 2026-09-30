@@ -16,7 +16,7 @@ import kotlin.io.encoding.Base64
  * posture is public-but-not-advertised: keep it on a throwaway Unsplash app and expect to rotate
  * it. A user who wants real headroom saves their own key in Settings, which wins over this one.
  *
- * The transform is deliberately trivial and its inverse lives in `composeApp/build.gradle.kts`,
+ * The transform is deliberately trivial and its inverse lives in `androidApp/build.gradle.kts`,
  * which cannot import from `commonMain`. [OBFUSCATION_SALT] is therefore written out twice, and
  * `UnsplashKeyObfuscationTest` is what stops the two copies drifting apart.
  */
@@ -33,7 +33,7 @@ private fun ByteArray.unsaltedString(): String =
         .decodeToString()
 
 /**
- * Must stay byte-for-byte identical to `UNSPLASH_OBFUSCATION_SALT` in `composeApp/build.gradle.kts`.
+ * Must stay byte-for-byte identical to `UNSPLASH_OBFUSCATION_SALT` in `androidApp/build.gradle.kts`.
  * Not a secret — it ships in the same APK as the thing it scrambles.
  */
 private val OBFUSCATION_SALT = "loopky.unsplash.v1".encodeToByteArray()

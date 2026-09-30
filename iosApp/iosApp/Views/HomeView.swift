@@ -13,6 +13,8 @@ struct HomeView: View {
     var onBrowseExamples: () -> Void = {}
     var onStartStudy: () -> Void = {}
     var onOpenDeck: (String) -> Void = { _ in }
+    /// "See all" over today's decks — the full library, i.e. the Decks tab.
+    var onSeeAllDecks: () -> Void = {}
 
     @Environment(\.loopkyWidthClass) private var widthClass
 
@@ -36,7 +38,11 @@ struct HomeView: View {
                             wideContent(content)
                         } else {
                             hero(content)
-                            TodaysDecksSection(decks: content.decks, onOpenDeck: onOpenDeck)
+                            TodaysDecksSection(
+                                decks: content.decks,
+                                onOpenDeck: onOpenDeck,
+                                onSeeAll: onSeeAllDecks
+                            )
                         }
                     case .error(let message):
                         Text("home_error_title")
@@ -74,7 +80,8 @@ struct HomeView: View {
             TodaysDecksSection(
                 decks: content.decks,
                 columns: wideDeckColumns,
-                onOpenDeck: onOpenDeck
+                onOpenDeck: onOpenDeck,
+                onSeeAll: onSeeAllDecks
             )
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -84,7 +91,7 @@ struct HomeView: View {
     /// whose only outcome is "All done!" is a dead end dressed as an action.
     @ViewBuilder
     private func hero(_ content: HomeContentData) -> some View {
-        if content.dueToday == 0 && content.newToday == 0 {
+        if content.countsKnown && content.dueToday == 0 && content.newToday == 0 {
             CaughtUpCard(nextDueAtMillis: content.nextDueAtMillis)
         } else {
             DueTodayHeroCard(
@@ -92,6 +99,7 @@ struct HomeView: View {
                 doneToday: content.doneToday,
                 newCardsToday: content.newCardsToday,
                 newCardsGoal: content.newCardsGoal,
+                countsKnown: content.countsKnown,
                 onStartStudy: onStartStudy
             )
         }
@@ -126,6 +134,10 @@ struct HomeContentData: Equatable {
     var newCardsGoal: Int = 0
     var nextDueAtMillis: Int64?
     var decks: [HomeDeckSummary] = []
+    /// Whether the counts above are real numbers rather than placeholders. False only on the
+    /// cached first paint, where the decks are known and the review state is not — with it
+    /// ignored, a launch opened on "You're all caught up" over a deck with cards due.
+    var countsKnown: Bool = true
 }
 
 struct HomeDeckSummary: Equatable, Identifiable {
@@ -133,7 +145,13 @@ struct HomeDeckSummary: Equatable, Identifiable {
     let title: String
     let cardCount: Int
     let dueCount: Int
-    let coverInitial: String
+    /// Cards never studied. Nothing about an unseen card is late, so the row says "N new" rather
+    /// than "0 due" when a deck has only these.
+    var newCount: Int = 0
+    /// See `HomeContentData.countsKnown`: false means [dueCount] is a placeholder, not a claim.
+    var countsKnown: Bool = true
+    /// The author's cover emoji, or the title's initial when the deck carries none.
+    let coverEmoji: String
     var coverImage: MediaRef.Image?
     var authorPubky: String = ""
 
@@ -141,7 +159,8 @@ struct HomeDeckSummary: Equatable, Identifiable {
     // here — enough for SwiftUI to notice a deck's cover arriving.
     static func == (lhs: HomeDeckSummary, rhs: HomeDeckSummary) -> Bool {
         lhs.id == rhs.id && lhs.title == rhs.title && lhs.cardCount == rhs.cardCount
-            && lhs.dueCount == rhs.dueCount && lhs.coverInitial == rhs.coverInitial
+            && lhs.dueCount == rhs.dueCount && lhs.newCount == rhs.newCount
+            && lhs.coverEmoji == rhs.coverEmoji
             && lhs.coverImage === rhs.coverImage && lhs.authorPubky == rhs.authorPubky
     }
 }
@@ -158,9 +177,9 @@ struct HomeView_Previews: PreviewProvider {
                     dueToday: 24,
                     doneToday: 8,
                     decks: [
-                        HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverInitial: "S"),
-                        HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverInitial: "B"),
-                        HomeDeckSummary(id: "3", title: "Guitar Chords", cardCount: 18, dueCount: 5, coverInitial: "G"),
+                        HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverEmoji: "🇪🇸"),
+                        HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverEmoji: "B"),
+                        HomeDeckSummary(id: "3", title: "Guitar Chords", cardCount: 18, dueCount: 5, coverEmoji: "G"),
                     ]
                 ))
             )

@@ -21,7 +21,7 @@
     <action>Tap the element with resource-id "triage_keep" to keep the second card</action>
     <action>Tap the element with resource-id "triage_keep" to keep the third (last) card and advance to Publish</action>
     <action>Verify the "New deck" publish screen is shown with a "Card Options" section</action>
-    <action>Verify the Listen toggle (resource-id: publish_listen_toggle) and Speak toggle (resource-id: publish_speak_toggle) are both ON by default</action>
+    <action>Verify the Listen toggle (resource-id: publish_listen_toggle) and Speak toggle (resource-id: publish_speak_toggle) are both OFF by default — turning either on obliges the author to declare the deck's language pair, so neither may default on</action>
     <action>Enter "Animals PT" into the field with resource-id "publish_title"</action>
     <action>Tap the element with resource-id "publish_button"</action>
     <action>Verify a "Deck published!" success state appears with an Undo button showing a live countdown (resource-id: publish_undo) and a Done button (resource-id: publish_done)</action>

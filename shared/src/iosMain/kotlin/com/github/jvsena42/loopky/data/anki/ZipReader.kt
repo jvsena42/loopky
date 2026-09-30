@@ -138,10 +138,6 @@ internal object ZipReader {
      * Raw deflate (no zlib or gzip wrapper), which is what a zip entry holds — hence the negative
      * window bits.
      */
-    /**
-     * Raw deflate (no zlib or gzip wrapper), which is what a zip entry holds — hence the negative
-     * window bits.
-     */
     @OptIn(ExperimentalForeignApi::class)
     private fun inflateRaw(source: ByteArray, expectedSize: Int): ByteArray {
         if (source.isEmpty()) return ByteArray(0)

@@ -13,6 +13,8 @@ import kotlinx.serialization.encodeToString
 class IosSecureSessionStore : SecureSessionStore {
     private val vault: KVault = KVault(serviceName = SESSION_SERVICE_NAME, accessGroup = null)
 
+    override val location: String = "the iOS Keychain (service $SESSION_SERVICE_NAME)"
+
     override suspend fun save(session: Session) = withContext(Dispatchers.Default) {
         val json = sessionStoreJson.encodeToString(StoredSession.fromDomain(session))
         vault.set(SESSION_STORAGE_KEY, json)
