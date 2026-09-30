@@ -1,6 +1,6 @@
-# Loopky for Claude Code — Anki-style flashcards, built by Claude
+# Loopky for Claude Code and Codex — Anki-style flashcards, built by your agent
 
-Build [Loopky](https://loopky.app) flashcard decks by asking Claude for them — from a topic, your
+Build [Loopky](https://loopky.app) flashcard decks by asking Claude or Codex for them — from a topic, your
 notes, or an existing Anki `.apkg`. Loopky is a free spaced-repetition app, an Anki alternative for
 Android and iOS with listening and speaking practice built in. The plugin teaches
 Claude the `loopky` CLI workflow — install, check the network, sign in with Pubky Ring, dry-run,
@@ -14,6 +14,13 @@ You study the result in the Loopky app on Android or iOS.
 /plugin install loopky@loopky
 ```
 
+Codex reads the same plugin:
+
+```shell
+codex plugin marketplace add jvsena42/loopky
+codex plugin add loopky@loopky
+```
+
 Then ask for what you want to learn: *"Make me 30 Spanish flashcards for ordering at a restaurant"*.
 
 ## What it contains
@@ -24,6 +31,12 @@ Then ask for what you want to learn: *"Make me 30 Spanish flashcards for orderin
 - **A SessionStart hook** that installs `loopky` in Claude Code on the web containers
   (`CLAUDE_CODE_REMOTE=true`) and does nothing anywhere else. It uses the release's installer from
   `github.com`, which the web's default *Trusted* network level allows.
+
+On Codex the install hook is left out (`hooks/codex-hooks.json` is empty): a Codex cloud
+environment's agent phase has no internet by default, so `loopky` belongs in the environment's
+setup script — `curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh`
+— with the hosts `loopky doctor` lists added to its allowlist. Locally a hook would only raise a
+trust prompt for nothing.
 
 ## What it cannot do for you
 
@@ -37,6 +50,7 @@ Then ask for what you want to learn: *"Make me 30 Spanish flashcards for orderin
 
 `cli/src/test/.../AgentPluginTest.kt` fails the build when the skill names a command or flag the
 binary does not have, when its exit-code table disagrees with `ExitCode`, or when the plugin's
-version drifts from `loopkyCliVersion`. CI also runs `claude plugin validate --strict` and the
-install hook in a simulated cloud container, and `evals/` holds behavioural cases run with
+version drifts from `loopkyCliVersion`. CI also runs `claude plugin validate --strict`, installs the plugin into Codex and checks the
+skill reaches the model's prompt (`codex debug prompt-input`), runs the install hook in a simulated
+cloud container, and `evals/` holds behavioural cases run with
 `claude plugin eval`.

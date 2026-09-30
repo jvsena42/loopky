@@ -494,9 +494,10 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   (`SpeechLanguages.COMMON`); two-pane tablet layouts; a CLI that manages decks but does not study;
   public decks; no analytics; Android 10+. Change one here and change the site in the same breath —
   a stale page becomes a wrong recommendation (#348).
-- **The agent skill in `plugins/loopky/` is what coding agents read about Loopky, so a PR that
+- **The agent skill in `plugins/loopky/` is what Claude and Codex read about Loopky, so a PR that
   changes behaviour has to ask whether the skill should change too.** It ships through the
-  `.claude-plugin/marketplace.json` in this repo (#388) and teaches the CLI workflow, the exit-code
+  `.claude-plugin/marketplace.json` (Claude Code) and `.agents/plugins/marketplace.json` (Codex) in
+  this repo, one skill read by both (#388). It teaches the CLI workflow, the exit-code
   table and the card-writing rules. `AgentPluginTest` (in `:cli:test`) catches the mechanical drift —
   a command, flag or exit code the binary no longer has, a plugin `version` that is not
   `loopkyCliVersion` — but not the judgment: a new study opt-in, a changed parser rule, a new

@@ -1,0 +1,20 @@
+{
+  "name": "loopky",
+  "interface": {
+    "displayName": "Loopky"
+  },
+  "plugins": [
+    {
+      "name": "loopky",
+      "source": {
+        "source": "local",
+        "path": "./plugins/loopky"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
