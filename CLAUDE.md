@@ -516,7 +516,9 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   checks it at the same step — never edit it by hand. Nothing under `plugins/` may download and run code in one
   step (`curl … | sh`, `irm … | iex`) — the directory flags it even in a README — so the skill
   installs through `skills/loopky/scripts/install.{sh,ps1}`, which `AgentPluginTest` holds to the
-  release installers' assets.
+  release installers' assets. The directory's own lints are not published or runnable;
+  `.github/scripts/plugin_directory_lint.py` reproduces the ones it has applied here and CI runs it
+  — replay it against a new report's commit when the directory flags something it missed.
 - **Paste-to-Import is the v1 primary import flow.** The implemented spine is `PasteImportViewModel` (parse + live preview) → `PublishDeckViewModel` (commit to Pubky). Every other import source (AI, OCR, URL) listed in spec §14 must reuse this same spine. Don't build parallel commit flows.
 - **Parser rules are prescriptive.** The paste parser (on `ImportRepository`) must follow the exact rule order in spec §6 and the edge-case table in spec §9. Use them as the test matrix.
 - **No use-case layer.** Don't introduce `*UseCase` interfaces or a `domain/usecase/` package. If a piece of logic doesn't fit any existing repo, extend the most relevant repo or add a new one — keep the surface area flat.
