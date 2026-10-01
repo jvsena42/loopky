@@ -9,7 +9,7 @@
 
 Loopky is a **Kotlin Multiplatform** flashcards app targeting iOS and Android. Business logic — domain models, repositories, and ViewModels — lives in a single `shared` module (`commonMain`). Repositories own the business logic; there is no separate use-case layer. Each platform renders its own native UI: **Jetpack Compose** on Android (`androidApp/src/main`) and **SwiftUI** on iOS (`iosApp/`). Identity, social graph, tags, and published decks are backed by **Pubky**, accessed through the UniFFI bindings that `pubky-core-ffi-fork` generates (§7).
 
-**Android is feature-built end to end; iOS is wired but unproven.** Every surface described here runs on Android. The iOS app has its SwiftUI screens, a live Koin bootstrap and the Flow bridge, but has never been driven against a real homeserver — treat its behaviour as unverified rather than blocked.
+**Both apps are feature-built end to end.** Every surface described here runs on Android and on iOS. iOS runs against a real homeserver and is in public beta on TestFlight. `journeys/RESULTS.md` records what has been driven on each.
 
 Deck import — the flow the rest of the product hangs off — is specified in [`docs/specs.md`](./specs.md).
 
@@ -266,7 +266,7 @@ Bulk file import (`BulkImportViewModel`) rejoins this flow at the publish step, 
 - `iosApp/iosApp/Pubky/IosPubkyClient.swift` conforms to **`RawPubkyClient`**, not `PubkyClient` — a dumb pass-through returning the FFI's native `[status, payload]` arrays, because `kotlin.Result` and suspend functions cannot be implemented from Swift. `IosPubkyClientAdapter` (`shared/iosMain/.../data/pubky/`) wraps it into the shared `PubkyClient` contract on the Kotlin side and does the threading. Binary payloads cross the boundary Base64-encoded and are decoded in the Swift layer so blobs land raw on the homeserver.
 - The Xcode target already embeds `PubkyCore.xcframework` and compiles `pubkycore.swift` + `IosPubkyClient.swift`; `iOSApp.swift` hands the client to Koin via `doInitKoin(rawPubkyClient:)`.
 
-**Unproven, not unwired.** Nobody has driven the iOS app against a real homeserver, so treat its behaviour as unverified rather than blocked.
+The iOS app runs against a real homeserver; see the iOS section of `journeys/RESULTS.md` for what has been driven.
 
 ### 7.4 Regenerating bindings
 
