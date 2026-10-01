@@ -116,14 +116,15 @@ class AgentPluginTest {
     /**
      * The directory then rejected the shipped, checksum-verifying installers too: a release binary
      * is not code it reviewed. `loopky` is a prerequisite the user installs, so nothing under
-     * `plugins/` downloads a file at all.
+     * `plugins/` names a downloader at all — `wget URL` and `curl -fsSLo f URL` write to disk with no
+     * separate output flag to match on.
      */
     @Test
-    fun `nothing in a plugin downloads a file`() {
+    fun `nothing in a plugin invokes a downloader`() {
         File(root, "plugins").walk().filter { it.isFile && it.extension in TEXT_EXTENSIONS }.forEach { file ->
             if ("evals" in file.relativeTo(root).invariantSeparatorsPath.split("/")) return@forEach
             file.text().lines().forEachIndexed { index, line ->
-                assertTrue(!DOWNLOAD_TO_FILE.containsMatchIn(line), "${file.relative()}:${index + 1} downloads a file: $line")
+                assertTrue(!DOWNLOADER.containsMatchIn(line), "${file.relative()}:${index + 1} invokes a downloader: $line")
             }
         }
         skills.forEach { assertTrue(!it.resolveSibling("scripts").exists(), "${it.relative()} ships scripts/") }
@@ -264,8 +265,8 @@ class AgentPluginTest {
             Regex("""\b(irm|iwr|Invoke-RestMethod|Invoke-WebRequest)\b[^|]*\|\s*(iex|Invoke-Expression)\b""", RegexOption.IGNORE_CASE),
             Regex("""\b(sh|bash)\s+-c\s+"?\$\((curl|wget)"""),
         )
-        val DOWNLOAD_TO_FILE = Regex(
-            """\b(curl|wget)\b.*\s(-o|-O|--output)\b|\b(Invoke-WebRequest|iwr|irm|Invoke-RestMethod)\b.*-OutFile\b""",
+        val DOWNLOADER = Regex(
+            """\b(curl|wget|iwr|irm|Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer)\b""",
             RegexOption.IGNORE_CASE,
         )
         val EXIT_ROW = Regex("""^\|\s*(\d+)\s*\|\s*([a-z_]+)\s*\|""")

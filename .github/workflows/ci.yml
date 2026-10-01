@@ -387,7 +387,8 @@ jobs:
       # the rules nor a way to run them. This approximates the ones it has applied to this plugin,
       # so a PR sees them before a release puts them in front of the directory. Its levels are the
       # directory's: an error fails here as it fails submission; a warning is an annotation, since
-      # the directory shows it to reviewers rather than refusing (#388).
+      # the directory shows it to reviewers rather than refusing (#388). RUNTIME_FETCH_EXEC is an
+      # error since the directory rejected v1.3.0 on it.
       - name: The plugin passes the directory's lints (approximation)
         run: python3 .github/scripts/plugin_directory_lint.py plugins/loopky
 
