@@ -34,6 +34,14 @@
 				<string>loopky</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.github.jvsena42.loopky.pubky</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pubky</string>
+			</array>
+		</dict>
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<true/>

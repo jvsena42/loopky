@@ -70,6 +70,9 @@ struct RootView: View {
     @State private var identityPath: [IdentityRoute] = []
     /// Backup, reached from Settings or the Profile nag. A sheet, not a push — see `BackupFlowView`.
     @State private var isBackingUp = false
+    /// A shared deck or profile link that arrived before the tabs existed — a cold start lands on
+    /// onboarding first. Held until the app is past it, never dropped, as on Android (#347).
+    @State private var pendingLink: DeckRoute?
 
     var body: some View {
         // Two stacks, not one. The signed-in side pushes a single destination at a time
@@ -87,16 +90,21 @@ struct RootView: View {
             BackupFlowView(onClose: { isBackingUp = false })
         }
         .onOpenURL { url in
-            // Two kinds of URL arrive here. A deck file opened from Files, Mail or a chat app —
+            // Three kinds of URL arrive here. A deck file opened from Files, Mail or a chat app —
             // Android's equivalent is ACTION_VIEW / ACTION_SEND — goes straight to the import
-            // screen with the file already in hand. Anything else is the auth callback, which
+            // screen with the file already in hand. A shared `https://loopky.app` universal link
+            // or `pubky://` address opens what it names. Anything else is the auth callback, which
             // completes over the relay poll and only needs to bring Loopky back to the front.
             if url.isFileURL {
                 deckPath.append(.importBulk(url))
+            } else if let route = Self.linkRoute(url) {
+                pendingLink = route
+                openPendingLink()
             } else {
                 print("[Loopky] received deeplink: \(url.absoluteString)")
             }
         }
+        .onChange(of: isSignedIn || isGuest) { openPendingLink() }
     }
 
     private var signedIn: some View {
@@ -341,6 +349,22 @@ struct RootView: View {
     /// session — Android's `goHomeSignedIn()` pops the entire graph for the same reason.
     private func popDeck() {
         if !deckPath.isEmpty { deckPath.removeLast() }
+    }
+
+    /// Pushed on top of whatever is open, so Back returns there — Home on a cold start. Appended,
+    /// never assigned: see `deckPath`.
+    private func openPendingLink() {
+        guard isSignedIn || isGuest, let route = pendingLink else { return }
+        pendingLink = nil
+        if deckPath.last != route { deckPath.append(route) }
+    }
+
+    private static func linkRoute(_ url: URL) -> DeckRoute? {
+        switch PubkyLinks.shared.parse(text: url.absoluteString) {
+        case let deck as PubkyLinkDeck: return .detail(deck.deckId, deck.pubky)
+        case let profile as PubkyLinkProfile: return .friendProfile(profile.pubky)
+        default: return nil
+        }
     }
 
     /// Swap the top of the stack for another destination.
