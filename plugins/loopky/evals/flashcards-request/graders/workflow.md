@@ -10,4 +10,4 @@ The response plans to publish the deck with the `loopky` CLI and passes all of t
 - The deck declares its language pair with `--front-lang` and `--back-lang` (English and Spanish, e.g. `en-US`/`es-ES`).
 - It verifies afterwards with `loopky deck show <deckId> --json` or `loopky card list <deckId> --json`.
 - The cards file is TSV, one card per line, front and back separated by a tab, with roughly 15 cards, each one fact.
-- It never installs from `raw.githubusercontent.com`.
+- It does not download or install `loopky` itself; if the CLI is missing, it asks the user to install it.

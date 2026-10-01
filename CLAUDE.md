@@ -508,15 +508,17 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   which bills a subscription — CI runs the paid evals only at release), and say in the PR description which you did (or why no change was needed). Keep it
   thin: the binary's `commands --json` is the reference, the skill is the workflow and the
   judgment. The marketplace serves the plugin **from the release tag**, not `main`
-  (`source.ref`, bumped with the version), because the skill and the hook install
+  (`source.ref`, bumped with the version), because the user installs
   `releases/latest` — a skill on `main` teaching an unreleased flag would be an exit 2 for every
   user until the next release. So a skill edit reaches users with the release that ships its binary. Anthropic's plugin directory reads a
   third copy, the **`plugin` branch**, because it downloads a repository's whole archive and this
   one's is ~112 MiB against a 50 MiB limit. `release.yml` is its only writer, and
   checks it at the same step — never edit it by hand. Nothing under `plugins/` may download and run code in one
-  step (`curl … | sh`, `irm … | iex`) — the directory flags it even in a README — so the skill
-  installs through `skills/loopky/scripts/install.{sh,ps1}`, which `AgentPluginTest` holds to the
-  release installers' assets. The directory's own lints are not published or runnable;
+  step (`curl … | sh`, `irm … | iex`) — the directory flags it even in a README — and nothing
+  under it may download a binary at all: the directory rejected even shipped, checksum-verifying
+  installers, since a release binary is not code it reviewed. So `loopky` is a **prerequisite the
+  user installs**; the skill checks `loopky --version` and stops with a link to `cli/README.md`'s
+  Install section, and `AgentPluginTest` refuses a `scripts/` installer coming back. The directory's own lints are not published or runnable;
   `.github/scripts/plugin_directory_lint.py` reproduces the ones it has applied here and CI runs it
   — replay it against a new report's commit when the directory flags something it missed.
 - **Paste-to-Import is the v1 primary import flow.** The implemented spine is `PasteImportViewModel` (parse + live preview) → `PublishDeckViewModel` (commit to Pubky). Every other import source (AI, OCR, URL) listed in spec §14 must reuse this same spine. Don't build parallel commit flows.
