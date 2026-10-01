@@ -28,8 +28,8 @@ PRODUCT_NAME=Loopky
 
 // MARKETING_VERSION is what testers see. CURRENT_PROJECT_VERSION must be unique for
 // every upload to App Store Connect, and is kept equal to Android's versionCode.
-CURRENT_PROJECT_VERSION=40
-MARKETING_VERSION=1.2.4
+CURRENT_PROJECT_VERSION=41
+MARKETING_VERSION=1.3.0
 
 // Associated Domains, so a tapped https://loopky.app/deck/… or /profile/… link opens the app.
 // The site serves the matching /.well-known/apple-app-site-association, which names
