@@ -31,4 +31,13 @@ PRODUCT_NAME=Loopky
 CURRENT_PROJECT_VERSION=40
 MARKETING_VERSION=1.2.4
 
+// Associated Domains, so a tapped https://loopky.app/deck/… or /profile/… link opens the app
+// (#347). The site serves the matching /.well-known/apple-app-site-association, which names
+// TEAM_ID.PRODUCT_BUNDLE_IDENTIFIER — a build signed by any other team is not verified and the
+// link opens Safari instead.
+//
+// A personal (free) team cannot sign this capability and a device build fails with it. To build
+// on one, blank it in Local.xcconfig: `CODE_SIGN_ENTITLEMENTS=`. Links then open the web page.
+CODE_SIGN_ENTITLEMENTS=Configuration/Loopky.entitlements
+
 #include? "Local.xcconfig"
