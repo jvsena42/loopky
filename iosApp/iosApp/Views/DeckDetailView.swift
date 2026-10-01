@@ -243,10 +243,7 @@ struct DeckDetailView: View {
                     .font(.system(size: 28, weight: .heavy))
                     .foregroundColor(LoopkyColor.foregroundPrimary)
                 if let description = content.description, !description.isEmpty {
-                    Text(description)
-                        .font(.system(size: 14))
-                        .foregroundColor(LoopkyColor.foregroundSecondary)
-                        .lineSpacing(4)
+                    ExpandableText(text: description)
                 }
             }
 
