@@ -19,18 +19,13 @@ guessing, and trust them over anything here.
 
 ## Workflow
 
-1. **Install, if `loopky --version` fails,** with the installer shipped in this skill's `scripts/`
-   folder (paths are relative to the skill's directory):
-
-   ```shell
-   sh scripts/install.sh
-   ```
-
-   Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install.ps1`.
-   It downloads the latest release binary, checks its published SHA-256, and puts it in
-   `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\loopky`); add that to `PATH` if the shell
-   cannot find it, then run `loopky --version`. Never pipe a downloaded script into a shell, and
-   never install from `raw.githubusercontent.com`.
+1. **Check the CLI is there:** `loopky --version`. If it fails, **stop** and ask the user to
+   install `loopky`, pointing them at <https://github.com/jvsena42/loopky/tree/main/cli#install>
+   (Homebrew, a `.deb`, or the release installer for Linux, macOS and Windows). Do not download or
+   install it yourself — this plugin runs only code that was reviewed with it. In a cloud session,
+   suggest installing it in the environment's setup script so the next session has it. Once they
+   have, run `loopky --version` again; if the shell cannot find it, it is usually in
+   `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\loopky`), which has to be on `PATH`.
 
 2. **Read the surface:** `loopky commands --json`. No session, no network.
 

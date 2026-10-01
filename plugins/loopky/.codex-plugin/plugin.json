@@ -1,6 +1,6 @@
 {
   "name": "loopky",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Anki-style spaced-repetition flashcards from Codex: build a deck from any topic, import an Anki .apkg or a TSV, add pictures and a language pair for listening and speaking practice, then study it in the free Loopky app on Android and iOS.",
   "author": {
     "name": "Joao Victor Sena",
