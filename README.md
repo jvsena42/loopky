@@ -5,6 +5,7 @@ Anki for most learners. Import your Anki decks, study on your phone or tablet, a
 from your computer with the command line tool. It reads cards aloud, checks your pronunciation, and
 shares decks with your class through one link.
 [Get it on Google Play](https://play.google.com/store/apps/details?id=com.github.jvsena42.loopky) ·
+[iOS beta on TestFlight](https://testflight.apple.com/join/n2TzwMTu) ·
 [loopky.app](https://loopky.app)
 
 ## Features
