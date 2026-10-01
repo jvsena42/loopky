@@ -4091,3 +4091,25 @@ returns the file, then tap a deck link in Notes or Messages on a device with a T
 
 **A link while signed out on purpose.** The same `pendingLink` hold covers it — it opens once the
 user signs in or picks Explore — but this account was not signed out to drive it.
+
+## iOS deck detail: card thumbnails and Read more (#421, #422) — ✅ PASS (2026-10-01)
+
+Debug build on the **iPhone 17 simulator**, decks opened from Discover.
+
+| Step | Result |
+| --- | --- |
+| Dinosaurs (picture fronts), scroll to Cards | ✅ every row shows its thumbnail beside the name |
+| Inglês para viajar de avião (mixed rows) | ✅ thumbnail rows sit flush with their front text; text-only rows unchanged |
+| Read Hieroglyphs: The First 88 Signs | ✅ description clamped to four lines with **Read more** |
+| Read more → Show less | ✅ expands to the full text, then collapses |
+| Dinosaurs (short description) | ✅ no toggle |
+
+### Not reproduced
+
+**#423, the band above the cover.** Opening Dinosaurs with two taps in one batch, and a
+pull-to-refresh, both settled with the cover directly under the toolbar. No change was made for it.
+
+### Not verified here
+
+An iPad simulator. The card list and description are shared by the stacked and side-by-side
+layouts, so the same code runs there.

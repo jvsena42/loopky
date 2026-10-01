@@ -23,6 +23,7 @@ struct DeckDetailContent {
     let canStudy: Bool
     let masteredPercent: String
     let cards: [CardPreviewData]
+    var deckId: String = ""
     /// Whether anyone is signed in. Deck detail reads fine without an account — the manifest and
     /// cards are public — so this gates only Follow and the copy behind Edit, which write.
     var isSignedIn: Bool = true
@@ -50,12 +51,6 @@ struct DeckDetailContent {
     var reverseEnabled: Bool = false
 
     var hasStudyFeatures: Bool { listenEnabled || speakEnabled || typeEnabled || reverseEnabled }
-}
-
-struct CardPreviewData: Identifiable {
-    let id: String
-    let front: String
-    let back: String
 }
 
 /// Pure layout — state comes from the shared `DeckDetailViewModel` via `DeckDetailScreen`.
@@ -248,10 +243,7 @@ struct DeckDetailView: View {
                     .font(.system(size: 28, weight: .heavy))
                     .foregroundColor(LoopkyColor.foregroundPrimary)
                 if let description = content.description, !description.isEmpty {
-                    Text(description)
-                        .font(.system(size: 14))
-                        .foregroundColor(LoopkyColor.foregroundSecondary)
-                        .lineSpacing(4)
+                    ExpandableText(text: description)
                 }
             }
 
@@ -336,21 +328,11 @@ struct DeckDetailView: View {
             } else {
                 LazyVStack(spacing: 8) {
                     ForEach(content.cards) { card in
-                        HStack {
-                            Text(card.front)
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundColor(LoopkyColor.foregroundPrimary)
-                            Spacer()
-                            Text(card.back)
-                                .font(.system(size: 13))
-                                .foregroundColor(LoopkyColor.foregroundMuted)
-                        }
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(LoopkyColor.surfaceCard)
+                        CardPreviewRow(
+                            card: card,
+                            authorPubky: content.author.pubky,
+                            deckId: content.deckId
                         )
-                        .shadow(color: LoopkyColor.shadowElevationLow, radius: 8, x: 0, y: 2)
                     }
                 }
             }
