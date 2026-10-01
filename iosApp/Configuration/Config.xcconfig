@@ -31,8 +31,8 @@ PRODUCT_NAME=Loopky
 CURRENT_PROJECT_VERSION=40
 MARKETING_VERSION=1.2.4
 
-// Associated Domains, so a tapped https://loopky.app/deck/… or /profile/… link opens the app
-// (#347). The site serves the matching /.well-known/apple-app-site-association, which names
+// Associated Domains, so a tapped https://loopky.app/deck/… or /profile/… link opens the app.
+// The site serves the matching /.well-known/apple-app-site-association, which names
 // TEAM_ID.PRODUCT_BUNDLE_IDENTIFIER — a build signed by any other team is not verified and the
 // link opens Safari instead.
 //

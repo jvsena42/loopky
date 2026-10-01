@@ -71,7 +71,7 @@ struct RootView: View {
     /// Backup, reached from Settings or the Profile nag. A sheet, not a push — see `BackupFlowView`.
     @State private var isBackingUp = false
     /// A shared deck or profile link that arrived before the tabs existed — a cold start lands on
-    /// onboarding first. Held until the app is past it, never dropped, as on Android (#347).
+    /// onboarding first. Held until the app is past it, never dropped, as on Android.
     @State private var pendingLink: DeckRoute?
 
     var body: some View {
