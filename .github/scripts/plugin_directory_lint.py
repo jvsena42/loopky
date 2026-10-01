@@ -27,7 +27,8 @@ PACKAGE_RUNNERS = re.compile(r'\b(npx|uvx|pipx\s+run|npm\s+(i|install)|pip3?\s+i
 
 # RUNTIME_FETCH_EXEC: "a command that downloads code and runs it straight away". The directory
 # flagged the one-liners in SKILL.md and README.md, and then the shipped installers, which pipe
-# nothing: fetching an executable to disk and marking it runnable counts too.
+# nothing: fetching an executable to disk and marking it runnable counts too, and v1.3.0's
+# rejection made it a blocker rather than a warning.
 FETCH_EXEC = [
     ('pipes a download into a shell',
      re.compile(r'\b(curl|wget)\b[^|\n]*\|\s*(sudo\s+)?(sh|bash|zsh|python3?)\b')),
@@ -68,8 +69,12 @@ def lint(root: Path):
         # Anywhere in the file, not on one line: the name of what is fetched is often a variable.
         if DOWNLOAD_TO_FILE.search(text) and MAKE_EXECUTABLE.search(text):
             hits.append('downloads a file and marks it executable')
-        if DOWNLOAD_TO_FILE.search(text) and NAMES_EXE.search(text):
+        elif DOWNLOAD_TO_FILE.search(text) and NAMES_EXE.search(text):
             hits.append('downloads an executable to disk')
+        elif DOWNLOAD_TO_FILE.search(text):
+            # The v1.3.0 review rejected installers that verified a pinned checksum: any download
+            # the plugin performs fetches code nobody reviewed with it.
+            hits.append('downloads a file')
         for label in hits:
             add('warning', 'RUNTIME_FETCH_EXEC', path, label)
 
