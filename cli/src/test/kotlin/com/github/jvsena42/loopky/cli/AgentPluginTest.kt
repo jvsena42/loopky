@@ -98,8 +98,7 @@ class AgentPluginTest {
 
     /**
      * Plugin directories flag any file — skill, README, script — that downloads code and runs it in
-     * one step (RUNTIME_FETCH_EXEC), because what runs can change after review (#405). The skill
-     * installs through the scripts it ships instead.
+     * one step (RUNTIME_FETCH_EXEC), because what runs can change after review (#405).
      */
     @Test
     fun `nothing in a plugin downloads and runs code in one step`() {
@@ -114,36 +113,21 @@ class AgentPluginTest {
         }
     }
 
-    @Test
-    fun `the installers a skill names are shipped and executable`() {
-        skills.forEach { skill ->
-            val named = SHIPPED_SCRIPT.findAll(skill.text()).map { it.groupValues[1] }.toSet()
-            assertEquals(setOf("install.sh", "install.ps1"), named, "${skill.relative()} names these installers")
-            named.forEach {
-                assertTrue(skill.resolveSibling("scripts/$it").isFile, "${skill.relative()} names scripts/$it, which is not shipped")
-            }
-            assertTrue(skill.resolveSibling("scripts/install.sh").canExecute(), "scripts/install.sh is not executable")
-        }
-    }
-
     /**
-     * The plugin's installers are its own, since the release's carry the one-liner in their text,
-     * but they must fetch exactly the assets the release installers do from the same release.
+     * The directory then rejected the shipped, checksum-verifying installers too: a release binary
+     * is not code it reviewed. `loopky` is a prerequisite the user installs, so nothing under
+     * `plugins/` names a downloader at all — `wget URL` and `curl -fsSLo f URL` write to disk with no
+     * separate output flag to match on.
      */
     @Test
-    fun `the shipped installers fetch what the release installers fetch`() {
-        skills.forEach { skill ->
-            listOf("install.sh", "install.ps1").forEach { name ->
-                val shipped = skill.resolveSibling("scripts/$name").text()
-                val release = File(root, "cli/$name").text()
-                assertEquals(assets(release), assets(shipped), "assets in scripts/$name")
-                assertTrue(
-                    RELEASE_DOWNLOADS in shipped && REPOSITORY in shipped,
-                    "scripts/$name does not download $REPOSITORY's latest release",
-                )
-                assertTrue(".sha256" in shipped, "scripts/$name does not verify the published checksum")
+    fun `nothing in a plugin invokes a downloader`() {
+        File(root, "plugins").walk().filter { it.isFile && it.extension in TEXT_EXTENSIONS }.forEach { file ->
+            if ("evals" in file.relativeTo(root).invariantSeparatorsPath.split("/")) return@forEach
+            file.text().lines().forEachIndexed { index, line ->
+                assertTrue(!DOWNLOADER.containsMatchIn(line), "${file.relative()}:${index + 1} invokes a downloader: $line")
             }
         }
+        skills.forEach { assertTrue(!it.resolveSibling("scripts").exists(), "${it.relative()} ships scripts/") }
     }
 
     /** One number to bump at release, checked by `release.yml` as well; a stale one hides the update. */
@@ -167,7 +151,7 @@ class AgentPluginTest {
 
     /**
      * The skill a user gets must be the one released with the binary they install. `SKILL.md` is
-     * tested against this commit's surface, but the hook and the skill install `releases/latest`;
+     * tested against this commit's surface, but the user installs `releases/latest`;
      * served from `main`, a skill teaching an unreleased flag would send every agent into exit 2
      * until the next release. Pinned to the tag, the two ship together.
      */
@@ -261,8 +245,6 @@ class AgentPluginTest {
     /** A Windows checkout may carry CRLF, which the frontmatter split would otherwise trip on. */
     private fun File.text(): String = readText().replace("\r\n", "\n")
 
-    private fun assets(text: String): Set<String> = ASSET.findAll(text).map { it.value }.toSet()
-
     private fun File.json(): JsonObject = Json.parseToJsonElement(readText()).jsonObject
 
     private fun File.relative(): String = relativeTo(root).path
@@ -277,16 +259,16 @@ class AgentPluginTest {
         const val CODEX_PROMPTS_MAX = 3
         const val CODEX_PROMPT_MAX = 128
         const val RAW_WARNING = "never install from `raw.githubusercontent.com"
-        const val RELEASE_DOWNLOADS = "/releases/latest/download"
-        const val REPOSITORY = "jvsena42/loopky"
         val TEXT_EXTENSIONS = setOf("md", "sh", "ps1", "json", "txt", "yaml", "yml")
         val FETCH_AND_RUN = listOf(
             Regex("""\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(sh|bash|zsh)\b"""),
             Regex("""\b(irm|iwr|Invoke-RestMethod|Invoke-WebRequest)\b[^|]*\|\s*(iex|Invoke-Expression)\b""", RegexOption.IGNORE_CASE),
             Regex("""\b(sh|bash)\s+-c\s+"?\$\((curl|wget)"""),
         )
-        val SHIPPED_SCRIPT = Regex("""scripts[/\\](install\.(?:sh|ps1))""")
-        val ASSET = Regex("""loopky-(?:linux|macos|windows)-[a-z0-9-]+(?:\.exe)?""")
+        val DOWNLOADER = Regex(
+            """\b(curl|wget|iwr|irm|Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer)\b""",
+            RegexOption.IGNORE_CASE,
+        )
         val EXIT_ROW = Regex("""^\|\s*(\d+)\s*\|\s*([a-z_]+)\s*\|""")
         val INLINE_CODE = Regex("`([^`]+)`")
         val QUOTED = Regex("\"[^\"]*\"")

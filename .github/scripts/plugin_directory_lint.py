@@ -27,7 +27,8 @@ PACKAGE_RUNNERS = re.compile(r'\b(npx|uvx|pipx\s+run|npm\s+(i|install)|pip3?\s+i
 
 # RUNTIME_FETCH_EXEC: "a command that downloads code and runs it straight away". The directory
 # flagged the one-liners in SKILL.md and README.md, and then the shipped installers, which pipe
-# nothing: fetching an executable to disk and marking it runnable counts too.
+# nothing: fetching an executable to disk and marking it runnable counts too, and v1.3.0's
+# rejection made it a blocker rather than a warning.
 FETCH_EXEC = [
     ('pipes a download into a shell',
      re.compile(r'\b(curl|wget)\b[^|\n]*\|\s*(sudo\s+)?(sh|bash|zsh|python3?)\b')),
@@ -38,6 +39,9 @@ FETCH_EXEC = [
 ]
 DOWNLOAD_TO_FILE = re.compile(r'\b(curl|wget)\b[^\n|]*(\s-o\b|\s-O\b|--output\b)'
                               r'|\b(Invoke-WebRequest|iwr|irm|Invoke-RestMethod)\b[^\n|]*-OutFile\b', re.I)
+# Any invocation at all, with or without an output flag: `wget URL` and `curl -fsSLo f URL` write
+# to disk too, and nothing under the plugin has a reason to name a downloader.
+DOWNLOADER = re.compile(r'\b(curl|wget|iwr|irm|Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer)\b', re.I)
 NAMES_EXE = re.compile(r'\.exe\b', re.I)
 MAKE_EXECUTABLE = re.compile(r'\bchmod\s+(\+x|[0-7]?[157][0-7][0-7])\b')
 
@@ -68,10 +72,15 @@ def lint(root: Path):
         # Anywhere in the file, not on one line: the name of what is fetched is often a variable.
         if DOWNLOAD_TO_FILE.search(text) and MAKE_EXECUTABLE.search(text):
             hits.append('downloads a file and marks it executable')
-        if DOWNLOAD_TO_FILE.search(text) and NAMES_EXE.search(text):
+        elif DOWNLOAD_TO_FILE.search(text) and NAMES_EXE.search(text):
             hits.append('downloads an executable to disk')
+        elif DOWNLOADER.search(text):
+            # The v1.3.0 review rejected installers that verified a pinned checksum: any download
+            # the plugin performs fetches code nobody reviewed with it.
+            hits.append('invokes a downloader')
+        # An error, not a warning: since v1.3.0 the directory refuses on it rather than annotating.
         for label in hits:
-            add('warning', 'RUNTIME_FETCH_EXEC', path, label)
+            add('error', 'RUNTIME_FETCH_EXEC', path, label)
 
     for hooks in root.glob('hooks/*.json'):
         for event in json.loads(hooks.read_text()).get('hooks', {}).values():
