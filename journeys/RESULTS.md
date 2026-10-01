@@ -4065,3 +4065,29 @@ pubky-core-ffi-fork#14 (Linux row only). It resolves before spending the token, 
   exchange, because NDK 29 and a Mac were not available. The Windows DLL comes from the fork PR's
   CI run.
 - **Journey 01 was not re-run.** The app's `.so` is unchanged.
+
+## 15 — Pubky links on iOS (#347) — ✅ PASS for routing; universal-link verification pending (2026-10-01)
+
+Debug build on the **iPhone 17 simulator**, staging, signed in as `ma8tms`. Links delivered with
+`simctl openurl`, which hands the URL to the app the same way a tap does once iOS has decided the
+app owns it.
+
+| Step | Result |
+| --- | --- |
+| `pubky://3jubjy…/pub/loopky/decks/z3b3cr0v8bpn/manifest.json`, app running | ✅ deck detail for "Periodic Table: Names and Symbols", pushed over Today |
+| Back | ✅ Today |
+| `pubky://3jubjy…`, app not running (cold start) | ✅ held while the session loaded, then jvsena42's profile with Follow |
+| Back | ✅ Today, so the link opens on top of the tabs |
+| Build entitlements | ✅ `WFQWFBS5H7.com.github.jvsena42.loopky`, `applinks:loopky.app` |
+
+### Not exercised here
+
+**`https://loopky.app/deck/…` and `/profile/…` themselves.** Until the site serves
+`/.well-known/apple-app-site-association` (loopky.github.io PR for #347), iOS does not consider
+the app the owner of those URLs, and `simctl openurl` opens Safari. The parse is
+`PubkyLinks.parse`, the same one the `pubky://` rows went through, so what is left to check is the
+delivery: after the site deploys, confirm `https://app-site-association.cdn-apple.com/a/v1/loopky.app`
+returns the file, then tap a deck link in Notes or Messages on a device with a TestFlight build.
+
+**A link while signed out on purpose.** The same `pendingLink` hold covers it — it opens once the
+user signs in or picks Explore — but this account was not signed out to drive it.
