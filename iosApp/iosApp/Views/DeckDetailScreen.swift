@@ -112,8 +112,14 @@ struct DeckDetailScreen: View {
                 canStudy: content.canStudy,
                 masteredPercent: content.masteredPercent,
                 cards: content.cardPreviews.map {
-                    CardPreviewData(id: $0.id, front: $0.frontText, back: $0.backText)
+                    CardPreviewData(
+                        id: $0.id,
+                        front: $0.frontText,
+                        back: $0.backText,
+                        frontImage: $0.frontImageRef
+                    )
                 },
+                deckId: content.deckId,
                 isSignedIn: content.isSignedIn,
                 isIncomplete: content.isIncomplete,
                 isFollowing: content.isFollowing,
