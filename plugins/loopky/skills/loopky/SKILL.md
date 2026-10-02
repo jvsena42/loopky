@@ -114,13 +114,36 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   makes `--listen` and `--speak` work, and it also tags the deck `language` and `spanish` so learners
   find it. Without the pair the phone reads Spanish in an English voice, so both switches stay off.
   `--type` (typed answers) and `--reverse` (ask both directions) need no pair.
-- **Pictures are `https` URLs, never uploads.** Wikimedia thumbnails exist only at 120, 250, 330,
-  500, 960, 1280 and 1920 px — any other `NNNpx-` width is a blank card. SVG, TIFF, WebM and STL do
-  not render; for an SVG use its `/thumb/…/500px-….svg.png` render. Add `--check-images` to the
-  dry-run when the URLs came from anywhere you have not fetched.
+- **Pictures are `https` URLs, never uploads.** SVG, TIFF, WebM and STL do not render on either
+  phone, whatever the host; use a JPEG, PNG or WebP. Add `--check-images` to the dry-run when the
+  URLs came from anywhere you have not fetched. Where to find them is the next section.
 - **Tags are public** and indexed network-wide. Use a few honest topic words; never copy an Anki
   deck's tags or description without reading them.
 - **Do not pad.** Make the cards the user asked for, at the count they asked for.
+
+## Where to find pictures
+
+Pick the source that fits the topic, not the first one that comes to mind. Every deck is public and
+a card has nowhere to put a credit line, so prefer public-domain or no-attribution images, and
+never take a URL from a host that forbids hotlinking (Pixabay does) or one that only serves
+logged-in users (Google Images results, Pinterest, Instagram).
+
+| Topic | Source | The URL that goes on the card |
+| --- | --- | --- |
+| Anything, a known thing | Wikimedia Commons | `upload.wikimedia.org/…`. Thumbnails exist only at 120, 250, 330, 500, 960, 1280 and 1920 px — any other `NNNpx-` width is a blank card. For an SVG use its `/thumb/…/500px-….svg.png` render. |
+| Everyday objects, food, places | Unsplash, Pexels | `images.unsplash.com/photo-…?w=1080&fm=jpg`, `images.pexels.com/photos/…?auto=compress&w=1080`. Free licences, no attribution needed; their own CDN URLs, never the web page's. |
+| Anything, openly licensed | Openverse (`api.openverse.org/v1/images/?q=…&license=cc0,pdm`, no key) | Each result's `url`. The `license=cc0,pdm` filter keeps it to images that need no credit. |
+| Country flags | flagcdn | `flagcdn.com/w640/<iso-code>.png` (widths double from `w20` to `w2560`, and only those exist) — the PNG, since Wikimedia's flags are SVG. |
+| Space, astronomy | NASA Image Library (`images-api.nasa.gov/search?q=…&media_type=image`) | `images-assets.nasa.gov/image/<nasa_id>/<nasa_id>~medium.jpg`. Public domain. |
+| Paintings, art history, artefacts | The Met (`collectionapi.metmuseum.org`), Art Institute of Chicago (`api.artic.edu`) | Met: the object's `primaryImageSmall`, only where `isPublicDomain` is true. AIC: `www.artic.edu/iiif/2/<image_id>/full/843,/0/default.jpg`, only where `is_public_domain` is true. |
+
+A picture is a prompt, so it goes on the side that asks: a photo of the thing on the front,
+the word on the back. When no source has a picture that shows exactly the card's fact, leave the
+card without one — a near miss teaches the wrong thing.
+
+`loopky doctor` lists only the Wikimedia hosts. A source the sandbox cannot reach can still be
+right — the phone fetches the picture, not you — but then `--check-images` cannot vouch for it,
+so say which URLs went unchecked.
 
 ## Limits worth knowing
 
