@@ -33,6 +33,10 @@ Questions about this policy: open an issue at
 - **No analytics or telemetry.** No usage tracking, no event logging, no advertising identifiers,
   no third-party SDKs for measurement or attribution.
 - **No crash reporting.** Nothing is transmitted when the app fails.
+- **No automatic feedback.** The agent plugin for Claude and Codex may offer, at the end of a
+  session that hit a problem, to open a public GitHub issue about it. It shows you the text first,
+  leaves out your cards and identifiers, and posts nothing unless you approve it, from your own
+  GitHub account.
 - **No advertising**, and no sale or sharing of personal information for advertising.
 - **No account with Loopky.** There is no email address, password, or profile held by us. Your
   account is a Pubky account, held either by Pubky Ring or by Loopky on your own device, and
