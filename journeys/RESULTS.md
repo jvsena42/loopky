@@ -4166,7 +4166,8 @@ test-vector phrase (journey 20).
 - **Sign-out clearing the entry** on a device: there is no way to leave one pending while signed
   in. Covered by `IdentityRepositoryImplTest.signOutForgetsTheDeckRememberedForAFollow`.
 - **iOS**: no Mac in this session. The Swift changes mirror Android (`StudySessionView`'s preview
-  ending, `NavigateSignIn` effect) but have not been compiled or driven.
+  ending, `NavigateSignIn` effect, the share prompt) and pass CI's iOS compile and SwiftLint, but
+  have not been driven on a simulator.
 - **iOS has no posted/failed confirmation** after the prompt: the study screen closes as the result
   arrives, and its flash lives on the screen it is leaving. Android shows a toast.
 - The test-vector account now follows Dinosaurs, the Spanish deck and both "Inglês para…" decks on
