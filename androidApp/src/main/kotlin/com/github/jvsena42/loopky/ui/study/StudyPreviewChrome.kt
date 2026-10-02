@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.github.jvsena42.loopky.R
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.presentation.study.StudySessionUiState
+import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.relativeFromNow
 
@@ -100,6 +101,7 @@ internal fun BoxScope.CenteredMessage(
      */
     secondaryLabel: String? = null,
     onSecondary: () -> Unit = {},
+    actionEnabled: Boolean = true,
 ) {
     val colors = LoopkyTheme.colors
     Column(
@@ -133,12 +135,14 @@ internal fun BoxScope.CenteredMessage(
         Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = onAction,
+            enabled = actionEnabled,
             shape = RoundedCornerShape(50),
             contentPadding = PaddingValues(horizontal = 32.dp, vertical = 14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = colors.accentPrimary,
                 contentColor = colors.foregroundOnAccent,
             ),
+            modifier = Modifier.testTag("study_primary_action"),
         ) {
             Text(
                 text = actionLabel,
@@ -204,31 +208,10 @@ internal fun BoxScope.CompleteMessage(
     state: StudySessionUiState.Complete,
     onDone: () -> Unit,
     onSignIn: () -> Unit,
+    onFollow: () -> Unit,
 ) {
     if (state.isPreview) {
-        CenteredMessage(
-            title = stringResource(R.string.study_preview_complete_title),
-            subtitle = pluralStringResource(R.plurals.cards_tried, state.reviewed, state.reviewed),
-            details = listOf(
-                stringResource(
-                    if (state.isSignedIn) {
-                        R.string.study_preview_member_detail
-                    } else {
-                        R.string.study_preview_guest_detail
-                    },
-                ),
-            ),
-            actionLabel = if (state.isSignedIn) {
-                stringResource(R.string.study_preview_back)
-            } else {
-                stringResource(R.string.study_preview_action_guest)
-            },
-            onAction = if (state.isSignedIn) onDone else onSignIn,
-            // Only for a guest: with an account, "Back to deck" is already the one button, and a
-            // second control saying the same thing is noise.
-            secondaryLabel = stringResource(R.string.study_preview_back).takeUnless { state.isSignedIn },
-            onSecondary = onDone,
-        )
+        PreviewCompleteMessage(state = state, onDone = onDone, onSignIn = onSignIn, onFollow = onFollow)
         return
     }
     CenteredMessage(
@@ -251,6 +234,44 @@ internal fun BoxScope.CompleteMessage(
     )
 }
 
+/**
+ * The end of a preview. The primary action is what keeps the deck: an account for a guest (who
+ * then comes back already following it), Follow for a reader who has one. "Back to deck" is the
+ * quiet way out beside either, and the only button once the deck is already kept.
+ */
+@Composable
+private fun BoxScope.PreviewCompleteMessage(
+    state: StudySessionUiState.Complete,
+    onDone: () -> Unit,
+    onSignIn: () -> Unit,
+    onFollow: () -> Unit,
+) {
+    val back = stringResource(R.string.study_preview_back)
+    CenteredMessage(
+        title = stringResource(R.string.study_preview_complete_title),
+        subtitle = pluralStringResource(R.plurals.cards_tried, state.reviewed, state.reviewed),
+        details = listOfNotNull(
+            stringResource(
+                if (state.isSignedIn) R.string.study_preview_member_detail else R.string.study_preview_guest_detail,
+            ),
+            state.followError?.let { errorMessage(it) },
+        ),
+        actionLabel = when {
+            !state.isSignedIn -> stringResource(R.string.study_preview_action_guest)
+            state.canFollow -> stringResource(R.string.deck_detail_follow)
+            else -> back
+        },
+        onAction = when {
+            !state.isSignedIn -> onSignIn
+            state.canFollow -> onFollow
+            else -> onDone
+        },
+        actionEnabled = !state.isFollowPending,
+        secondaryLabel = back.takeIf { !state.isSignedIn || state.canFollow },
+        onSecondary = onDone,
+    )
+}
+
 /** The height the grade row holds open whether or not anything is standing in it. */
 private val GRADE_ROW_HEIGHT = 72.dp
 
@@ -263,6 +284,7 @@ private fun PreviewCompletePreview() {
                 state = StudySessionUiState.Complete(reviewed = 10, isPreview = true, isSignedIn = false),
                 onDone = {},
                 onSignIn = {},
+                onFollow = {},
             )
         }
     }

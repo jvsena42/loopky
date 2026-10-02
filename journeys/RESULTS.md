@@ -4145,3 +4145,30 @@ pull-to-refresh, both settled with the cover directly under the toolbar. No chan
 
 An iPad simulator. The card list and description are shared by the stacked and side-by-side
 layouts, so the same code runs there.
+
+## Preview → sign in auto-follows; signed-in preview ends on Follow — ✅ PASS on Android (2026-10-02)
+
+Debug build on the **Medium_Phone** emulator against staging, signed in by restoring the BIP-39
+test-vector phrase (journey 20).
+
+| Step | Result |
+| --- | --- |
+| Guest → Dinosaurs → Try these cards → 10 × Next | ✅ ends on **Create account** with Back to deck beside it, as before |
+| Create account | ✅ `pending_deck_follow` = `{author}/dinosaurs0001` in `loopky.preferences` before onboarding opens |
+| Restore with the recovery phrase | ✅ lands on Today with Dinosaurs among Today's decks; logcat `followPendingAfterSignIn: followed dinosaurs0001`; the pending entry is blank again |
+| Signed in → a deck not followed → Try these cards → end | ✅ **Follow deck** is the primary button, **Back to deck** the quiet one |
+| Follow deck | ✅ returns to deck detail already showing the followed state (Study this deck, Edit) |
+| Follow deck, with Share on Pubky on (Pixel_Tablet, landscape) | ✅ "Post about this follow?" with the exact post; **Not now** returns to deck detail as followed. Post was not tapped, to keep the shared test account from publishing; it is covered by `StudySessionPreviewTest` |
+| Guest → Inglês para viajar de avião → Create account → restore (Pixel_Tablet) | ✅ `followPendingAfterSignIn: followed viageming2026a`, entry cleared |
+
+### Not verified here
+
+- **Sign-out clearing the entry** on a device: there is no way to leave one pending while signed
+  in. Covered by `IdentityRepositoryImplTest.signOutForgetsTheDeckRememberedForAFollow`.
+- **iOS**: no Mac in this session. The Swift changes mirror Android (`StudySessionView`'s preview
+  ending, `NavigateSignIn` effect, the share prompt) and pass CI's iOS compile and SwiftLint, but
+  have not been driven on a simulator.
+- **iOS has no posted/failed confirmation** after the prompt: the study screen closes as the result
+  arrives, and its flash lives on the screen it is leaving. Android shows a toast.
+- The test-vector account now follows Dinosaurs, the Spanish deck and both "Inglês para…" decks on
+  staging.

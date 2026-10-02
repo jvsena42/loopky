@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.data.pubky.redactSessionPayload
 import com.github.jvsena42.loopky.data.pubky.toDomain
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.AuthFlowHandle
+import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.data.repository.SignOutOutcome
 import com.github.jvsena42.loopky.data.repository.TagRepository
@@ -65,6 +66,8 @@ internal class IdentityRepositoryImpl(
      */
     private val eraser: AccountEraser,
     private val localKeyStore: LocalKeyStore,
+    /** Follows the deck a visitor was previewing when they left for sign-in — see [followPendingDeck]. */
+    private val decks: DeckRepository,
     /**
      * Fire-and-forget cleanup that has to outlive its caller — see [discardUnregisteredKey].
      * Injectable because the one thing it runs is a *deletion*, and a test that cannot await it
@@ -90,6 +93,7 @@ internal class IdentityRepositoryImpl(
         }
         sessionProvider.set(session)
         selfTagAsLoopkyUser(session)
+        followPendingDeck()
         return session
     }
 
@@ -120,6 +124,10 @@ internal class IdentityRepositoryImpl(
         // ones, whose owner demonstrably holds the phrase or file. Minting here (#147 phase 3)
         // introduces the first key nobody has a copy of — that is what the sign-out confirm is for.
         localKeyStore.clear()
+        // A deck remembered from a guest preview belongs to whoever signs in next from that
+        // preview, never to the next account on this device.
+        runSuspendCatching { decks.forgetPendingFollow() }
+            .onFailure { Log.w(TAG, "signOut: could not forget the pending deck follow", it) }
         sessionProvider.set(null)
         selfTaggedThisProcess = false
         profileCacheLock.withLock { profileCache.clear() }
@@ -477,6 +485,7 @@ internal class IdentityRepositoryImpl(
         sessionStore.save(session)
         sessionProvider.set(session)
         selfTagAsLoopkyUser(session)
+        followPendingDeck()
 
         val profile = runSuspendCatching { fetchProfile(session.identity.pubky).getOrNull() }.getOrNull()
         if (profile != null && (profile.displayName != null || profile.bio != null)) {
@@ -492,6 +501,19 @@ internal class IdentityRepositoryImpl(
             return enriched
         }
         return session
+    }
+
+    /**
+     * Follow the deck a visitor left a preview for, once there is an account to follow it with.
+     * Fire-and-forget like [selfTagAsLoopkyUser]: sign-in must not wait on it, and the library
+     * picks the deck up from [DeckRepository.changes]. Run on every session load as well as on
+     * sign-in, so a follow that failed on a flaky network is retried rather than lost.
+     */
+    private fun followPendingDeck() {
+        scope.launch {
+            decks.followPendingAfterSignIn()
+                .onFailure { Log.w(TAG, "followPendingDeck: will retry on the next session load", it) }
+        }
     }
 
     /**

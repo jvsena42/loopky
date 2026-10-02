@@ -48,7 +48,8 @@ struct StudySessionScreen: View {
             onListen: { viewModel?.onSpeak() },
             onSpeak: { viewModel?.onSpeakTest() },
             onNextCard: { viewModel?.onNextCard() },
-            onSignIn: onSignIn,
+            onSignIn: { viewModel?.onSignIn() },
+            onFollow: { viewModel?.onFollowDeck() },
             onDismissSyncError: { viewModel?.onDismissSyncError() },
             onContinueAfterGoal: { viewModel?.onContinueAfterGoal() }
         )
@@ -60,6 +61,12 @@ struct StudySessionScreen: View {
                 onDismiss: { viewModel?.onSpeakDismiss() }
             )
         }
+        .sharePrompt(
+            prompt: (uiState as? StudySessionUiStateComplete)?.sharePrompt,
+            onConfirm: { viewModel?.onShareConfirm() },
+            onDismiss: { viewModel?.onShareDismiss() },
+            onNeverAsk: { viewModel?.onShareNeverAsk() }
+        )
         .onAppear {
             attach()
             Haptics.prepare()
@@ -87,7 +94,10 @@ struct StudySessionScreen: View {
                 newCardsToday: Int(done.goalCelebration?.newCardsToday ?? 0),
                 reviewed: Int(done.reviewed),
                 isPreview: done.isPreview,
-                isSignedIn: done.isSignedIn
+                isSignedIn: done.isSignedIn,
+                canFollow: done.canFollow,
+                isFollowPending: done.isFollowPending,
+                followErrorMessage: done.followError.map { ErrorCopy.message(for: $0) }
             )
         }
         guard let card = uiState as? StudySessionUiStateReviewing else { return StudyViewState() }
@@ -173,6 +183,8 @@ struct StudySessionScreen: View {
                 Haptics.play(haptic.pattern)
             case is StudySessionEffectClose:
                 onClose()
+            case is StudySessionEffectNavigateSignIn:
+                onSignIn()
             default:
                 break
             }
@@ -308,6 +320,10 @@ struct StudyViewState {
     /// A sample of a deck nobody has kept: no grading, no scheduling, and a different ending.
     var isPreview: Bool = false
     var isSignedIn: Bool = true
+    /// A signed-in reader's preview of a deck they neither own nor follow: Follow leads.
+    var canFollow: Bool = false
+    var isFollowPending: Bool = false
+    var followErrorMessage: String?
     /// Move on without deciding anything — the preview's stand-in for the grade row.
     var previewAdvanceAvailable: Bool = false
 

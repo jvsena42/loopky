@@ -5,14 +5,17 @@ import androidx.lifecycle.viewModelScope
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
+import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.data.repository.SettingsRepository
 import com.github.jvsena42.loopky.data.repository.SrsRepository
+import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.domain.model.AnswerMatcher
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.CardSide
 import com.github.jvsena42.loopky.domain.model.DEFAULT_NEW_CARDS_PER_DAY
 import com.github.jvsena42.loopky.domain.model.Deck
+import com.github.jvsena42.loopky.domain.model.DeckAnnouncement
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.SpeakMatcher
@@ -20,6 +23,7 @@ import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.SrsState
 import com.github.jvsena42.loopky.domain.model.TypedAnswerOutcome
 import com.github.jvsena42.loopky.platform.SpeechError
+import com.github.jvsena42.loopky.presentation.share.DeckSharePrompt
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.Job
@@ -29,6 +33,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -53,6 +58,8 @@ class StudySessionViewModel(
     private val cardRepository: CardRepository,
     private val settingsRepository: SettingsRepository,
     private val identityRepository: IdentityRepository,
+    private val discoveryRepository: DiscoveryRepository,
+    private val appPreferences: AppPreferences,
     private val isPreview: Boolean = false,
     /**
      * Whose homeserver the previewed deck lives on. Only a preview needs it: a real session studies
@@ -135,6 +142,16 @@ class StudySessionViewModel(
      */
     private var isSignedIn = false
 
+    /** The previewed deck, once fetched. What a follow from the end of the preview writes. */
+    private var previewDeck: Deck? = null
+
+    /**
+     * A signed-in reader may follow the previewed deck from the end of the preview: it is neither
+     * theirs nor already followed.
+     */
+    private var canFollow = false
+    private var followJob: Job? = null
+
     /** id → title, warmed lazily from [DeckRepository.listOwned] so multi-deck sessions can label each card. */
     private var deckTitles: Map<String, String> = emptyMap()
     private var gradeJob: Job? = null
@@ -166,9 +183,12 @@ class StudySessionViewModel(
             // Skipped for a preview: resolveDeckTitle falls back to listOwned(), which needs a
             // session, and previewQueue reads the title off the manifest it fetches anyway.
             deckTitle = if (isPreview) "" else deckId?.let { resolveDeckTitle(it) }.orEmpty()
-            if (isPreview) {
-                isSignedIn = runSuspendCatching { identityRepository.currentSession() }.getOrNull() != null
+            val session = if (isPreview) {
+                runSuspendCatching { identityRepository.currentSession() }.getOrNull()
+            } else {
+                null
             }
+            isSignedIn = session != null
             runSuspendCatching {
                 val cards = when {
                     isPreview -> previewQueue()
@@ -227,6 +247,10 @@ class StudySessionViewModel(
             ?: previewAuthorPubky?.let { deckRepository.fetchRemote(it, id).getOrThrow() }
             ?: error("Deck $id is not available to preview")
         deckTitle = deck.title
+        previewDeck = deck
+        canFollow = isSignedIn &&
+            deck.authorPubky != identityRepository.currentSession()?.identity?.pubky &&
+            !runSuspendCatching { deckRepository.isFollowingDeck(id) }.getOrDefault(false)
         return cardRepository.fetchByDeck(deck).getOrThrow().take(PREVIEW_CARDS)
     }
 
@@ -520,6 +544,89 @@ class StudySessionViewModel(
         viewModelScope.launch { _effects.emit(StudySessionEffect.Speak(text, languageTag)) }
     }
 
+    /**
+     * A guest leaving the end of a preview for sign-in. The deck is remembered first, so the
+     * account they come back with already follows it ([DeckRepository.followPendingAfterSignIn]).
+     */
+    fun onSignIn() {
+        viewModelScope.launch {
+            val deck = previewDeck
+            if (isPreview && !isSignedIn && deck != null) {
+                runSuspendCatching { deckRepository.rememberFollowForSignIn(deck.authorPubky, deck.id) }
+                    .onFailure { Log.e(TAG, "onSignIn: could not remember the deck — ${it.message}", it) }
+            }
+            _effects.emit(StudySessionEffect.NavigateSignIn)
+        }
+    }
+
+    /**
+     * Follow the previewed deck from the end of the preview, then return to it — after the "Share
+     * this on Pubky?" offer, when the user has it on (#39). The follow stands whatever is answered.
+     */
+    fun onFollowDeck() {
+        if (!canFollow || followJob?.isActive == true) return
+        val deck = previewDeck ?: return
+        updateComplete { it.copy(isFollowPending = true, followError = null) }
+        followJob = viewModelScope.launch {
+            deckRepository.followDeck(deck)
+                .onSuccess {
+                    canFollow = false
+                    val prompt = if (appPreferences.shareOnPubky.first()) {
+                        DeckSharePrompt(DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Followed, deck.authorPubky))
+                    } else {
+                        null
+                    }
+                    updateComplete { it.copy(isFollowPending = false, canFollow = false, sharePrompt = prompt) }
+                    if (prompt == null) _effects.emit(StudySessionEffect.Close)
+                }
+                .onFailure { err ->
+                    Log.e(TAG, "onFollowDeck: FAILED — ${err.message}", err)
+                    updateComplete { it.copy(isFollowPending = false, followError = err.toErrorReason()) }
+                }
+        }
+    }
+
+    /** Post the announcement, then leave for the deck regardless — the follow itself stands. */
+    fun onShareConfirm() {
+        val prompt = sharePromptIfIdle() ?: return
+        updateComplete { it.copy(sharePrompt = prompt.copy(isPosting = true)) }
+        viewModelScope.launch {
+            discoveryRepository.announceDeck(prompt.announcement)
+                .onSuccess { _effects.emit(StudySessionEffect.Shared) }
+                .onFailure { err ->
+                    Log.e(TAG, "onShareConfirm: FAILED — ${err.message}", err)
+                    _effects.emit(StudySessionEffect.ShareFailed)
+                }
+            resolveSharePrompt()
+        }
+    }
+
+    fun onShareDismiss() {
+        sharePromptIfIdle() ?: return
+        viewModelScope.launch { resolveSharePrompt() }
+    }
+
+    /** Declines *and* turns the offer off, so the prompt and the Settings switch stay one setting. */
+    fun onShareNeverAsk() {
+        sharePromptIfIdle() ?: return
+        viewModelScope.launch {
+            appPreferences.setShareOnPubky(false)
+            resolveSharePrompt()
+        }
+    }
+
+    private fun sharePromptIfIdle(): DeckSharePrompt? =
+        (_state.value as? StudySessionUiState.Complete)?.sharePrompt?.takeIf { !it.isPosting }
+
+    private suspend fun resolveSharePrompt() {
+        updateComplete { it.copy(sharePrompt = null) }
+        _effects.emit(StudySessionEffect.Close)
+    }
+
+    private fun updateComplete(transform: (StudySessionUiState.Complete) -> StudySessionUiState.Complete) {
+        _state.update { current -> (current as? StudySessionUiState.Complete)?.let(transform) ?: current }
+    }
+
     fun onClose() {
         // flushAsync, not a launch here: viewModelScope is cancelled in onCleared(), so a flush
         // started as this screen goes away would be killed before it saved the reviews it exists
@@ -623,6 +730,7 @@ class StudySessionViewModel(
                     gradedCardIds.size,
                     isPreview = true,
                     isSignedIn = isSignedIn,
+                    canFollow = canFollow,
                 )
             }
             return
@@ -810,6 +918,15 @@ sealed interface StudySessionUiState {
         val isPreview: Boolean = false,
         /** Only consulted for a preview: it decides whether the offer is an account or a follow. */
         val isSignedIn: Boolean = false,
+        /**
+         * A signed-in reader's preview of a deck they neither own nor follow: Follow is the primary
+         * action, and Back to deck the quiet one.
+         */
+        val canFollow: Boolean = false,
+        val isFollowPending: Boolean = false,
+        val followError: ErrorReason? = null,
+        /** "Share this on Pubky?" after a follow from here; the screen leaves once it is answered. */
+        val sharePrompt: DeckSharePrompt? = null,
         val syncError: ErrorReason? = null,
         /**
          * When the next card comes up. Without it an empty queue read as a dead end rather than as
@@ -898,6 +1015,13 @@ sealed interface StudySessionEffect {
         val languageTag: String,
     ) : StudySessionEffect
     data object Close : StudySessionEffect
+
+    /** Leave a guest's preview for sign-in, with the deck already remembered for a follow. */
+    data object NavigateSignIn : StudySessionEffect
+
+    /** The announcement after a follow went out, or didn't. Cosmetic either way — the follow stands. */
+    data object Shared : StudySessionEffect
+    data object ShareFailed : StudySessionEffect
 
     /**
      * Buzz the phone. An effect rather than something the screens do on tap, because whether a tap

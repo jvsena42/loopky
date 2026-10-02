@@ -80,6 +80,17 @@ class DeckDetailViewModel(
                 .filter { it == deckId }
                 .collect { refreshSrsCounters() }
         }
+        // A follow made from the end of a preview lands while this screen sits behind it. Reloads
+        // only when the subscription disagrees with what is shown, so this screen's own optimistic
+        // toggle — already reflected — never refetches the deck.
+        viewModelScope.launch {
+            deckRepository.changes.collect {
+                val current = _state.value as? DeckDetailUiState.Content ?: return@collect
+                if (current.isOwned || current.isFollowPending) return@collect
+                val following = runSuspendCatching { deckRepository.isFollowingDeck(deckId) }.getOrNull()
+                if (following != null && following != current.isFollowing) load(silent = true)
+            }
+        }
     }
 
     fun onRefresh() = load()

@@ -103,6 +103,16 @@ internal class FileAppPreferences(private val store: JsonFileStore) : AppPrefere
         withContext(Dispatchers.IO) { store.set(KEY_AVATAR_NUDGE_DISMISSED, dismissed.toString()) }
         _avatarNudgeDismissed.update { dismissed }
     }
+
+    private val _pendingDeckFollow = MutableStateFlow(
+        store.string(KEY_PENDING_DECK_FOLLOW) ?: DEFAULT_PENDING_DECK_FOLLOW,
+    )
+    override val pendingDeckFollow: Flow<String> = _pendingDeckFollow.asStateFlow()
+
+    override suspend fun setPendingDeckFollow(value: String) {
+        withContext(Dispatchers.IO) { store.set(KEY_PENDING_DECK_FOLLOW, value) }
+        _pendingDeckFollow.update { value }
+    }
 }
 
 internal class FilePendingReviewStore(private val store: JsonFileStore) : PendingReviewStore {

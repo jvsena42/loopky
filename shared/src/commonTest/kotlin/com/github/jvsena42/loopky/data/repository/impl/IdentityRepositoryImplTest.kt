@@ -9,6 +9,7 @@ import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Session
+import com.github.jvsena42.loopky.testing.FakeDeckRepository
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
 import com.github.jvsena42.loopky.testing.TEST_PUBKY
@@ -31,6 +32,7 @@ class IdentityRepositoryImplTest {
     private val session = signedInProvider()
     private val store = RecordingSessionStore()
     private val tags = RecordingTagRepository()
+    private val decks = FakeDeckRepository()
 
     // The self-tag is fired and not awaited — it used to sit on the splash screen's critical path
     // for ~5.9s. Unconfined so the launch still runs to completion inline here, which is what lets
@@ -40,6 +42,7 @@ class IdentityRepositoryImplTest {
         sessionStore = store,
         sessionProvider = session,
         tagRepository = tags,
+        deckRepository = decks,
         scope = CoroutineScope(UnconfinedTestDispatcher()),
     )
 
@@ -224,6 +227,27 @@ class IdentityRepositoryImplTest {
         // Local state still goes, which is the half that must not depend on the network.
         assertEquals(null, store.saved)
         assertEquals(null, repo.currentSession())
+    }
+
+    /** A deck remembered from a guest's preview must never be followed into the next account. */
+    @Test
+    fun signOutForgetsTheDeckRememberedForAFollow() = runTest {
+        store.saved = fakeSession()
+        repo.loadPersistedSession()
+        decks.rememberFollowForSignIn("friendpk", "foreign")
+
+        repo.signOut(force = true).getOrThrow()
+
+        assertEquals(null, decks.pendingFollow)
+    }
+
+    @Test
+    fun loadingASessionAppliesThePendingDeckFollow() = runTest {
+        store.saved = fakeSession()
+
+        repo.loadPersistedSession()
+
+        assertEquals(1, decks.followPendingCount)
     }
 
     @Test

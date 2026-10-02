@@ -93,6 +93,18 @@ class AndroidAppPreferences(context: Context) : AppPreferences {
         }
         _avatarNudgeDismissed.update { dismissed }
     }
+
+    private val _pendingDeckFollow = MutableStateFlow(
+        prefs.getString(KEY_PENDING_DECK_FOLLOW, DEFAULT_PENDING_DECK_FOLLOW).orEmpty(),
+    )
+    override val pendingDeckFollow: Flow<String> = _pendingDeckFollow.asStateFlow()
+
+    override suspend fun setPendingDeckFollow(value: String) {
+        withContext(Dispatchers.IO) {
+            prefs.edit().putString(KEY_PENDING_DECK_FOLLOW, value).apply()
+        }
+        _pendingDeckFollow.update { value }
+    }
 }
 
 /**
