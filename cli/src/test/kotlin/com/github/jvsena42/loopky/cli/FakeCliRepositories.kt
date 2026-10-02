@@ -166,6 +166,11 @@ class FakeDeckRepository(
     override suspend fun followDeck(deck: Deck): Result<Unit> = no("followDeck")
     override suspend fun unfollowDeck(authorPubky: String, deckId: String): Result<Unit> = no("unfollowDeck")
     override suspend fun isFollowingDeck(deckId: String): Boolean = no("isFollowingDeck")
+    override suspend fun rememberFollowForSignIn(authorPubky: String, deckId: String) = no("rememberFollowForSignIn")
+
+    // The CLI never remembers a preview, so a session load finds nothing to follow.
+    override suspend fun followPendingAfterSignIn(): Result<Deck?> = Result.success(null)
+    override suspend fun forgetPendingFollow() = Unit
     override suspend fun listFollowed(): List<Deck> = no("listFollowed")
     override suspend fun listFollowedBy(ownerPubky: String): List<Deck> = no("listFollowedBy")
     override suspend fun hasUpdate(deckId: String): Boolean = no("hasUpdate")
