@@ -189,25 +189,28 @@ which dub: a Latin-American and a Castilian dub use different words, and the dec
 **Get the dialogue from subtitles in the dub's language, never from memory.** Use the user's own
 `.srt` files when they have them, then try, in order:
 
-| Source | Good for | Notes |
+| Source | Good for | How |
 | --- | --- | --- |
-| OpenSubtitles — `api.opensubtitles.com/api/v1/subtitles?query=…&season_number=…&episode_number=…&languages=…` | Most shows, most languages | Needs a free API key in the `Api-Key` header and has a daily download quota; ask the user for a key rather than signing up. |
-| Addic7ed — `addic7ed.com` | TV episodes, per release | No API; one page per episode. |
-| SubDL — `subdl.com`, `api.subdl.com` | A broad second search | The API needs a free key. |
-| Podnapisi — `podnapisi.net` | European languages, older shows | |
-| Jimaku — `jimaku.cc`, Kitsunekko — `kitsunekko.net` | Anime in Japanese | Jimaku's API needs a free key. |
-| The show's fan-wiki transcript (`<show>.fandom.com/wiki/<Episode>/transcript`) | English-language shows | Original dialogue only, not a dub. |
+| OpenSubtitles | Most shows, most languages | `rest.opensubtitles.org/search/episode-<n>/query-<show>/season-<n>/sublanguageid-<spa\|por\|fre\|ger\|jpn…>` with the header `User-Agent: TemporaryUserAgent`, no key; path segments stay in that alphabetical order, and dropping `episode-<n>` lists the season. Each result's `SubDownloadLink` (on `dl.opensubtitles.org`) is a gzipped `.srt`, often Latin-1 rather than UTF-8. |
+| Addic7ed | TV episodes, mostly English | `www.addic7ed.com/search.php?search=<show>` lists `serie/<Show>/<season>/<episode>/<Title>` pages; each subtitle's `/original/…` or `/updated/…` link downloads with that page as the `Referer`. |
+| Jimaku — `jimaku.cc` | Anime in Japanese | Each `jimaku.cc/entry/<id>` page links its files under `/entry/<id>/download/…`, no key. |
+| Kitsunekko — `kitsunekko.net` | Anime in Japanese | `kitsunekko.net/dirlist.php?dir=subtitles%2Fjapanese%2F` lists shows; files are `.ass` or `.srt`, sometimes zipped. |
+
+Coverage is uneven — OpenSubtitles had Spanish for three of SpongeBob's first-season segments —
+so search each episode, and say which ones had nothing.
 
 Prefer a subtitle marked as the dub's own transcript (often "SDH" or "for the hearing impaired")
 over a translation of the original: a translated subtitle does not say what the voices say. Check
 the episode list (season, episode number, segment title) against the show's episode guide so
-episode 3 really is episode 3, and tell the user which files you used. `loopky doctor` lists these
-hosts under `recommended` (a fan wiki is one subdomain per show, so name it yourself); when the one
-you need is blocked, ask the user to allow it, as for the required hosts. If no source is reachable or
+episode 3 really is episode 3 — many cartoons split an episode into segments (`s1e01c - Tea at
+the Treedome`), so match on the segment title — and tell the user which files you used.
+`loopky doctor` lists these hosts under `recommended`; when the one you need is blocked, ask the
+user to allow it, as for the required hosts. If no source is reachable or
 none matches the dub, stop and ask for the files: a deck built from the wrong subtitle teaches
 lines the show never says.
 
 **Clean the lines before choosing from them.** Drop timing, speaker labels, `[sound cues]`,
+cues the uploader added (an episode title card, a credit, an advertisement for a website),
 `♪` song lyrics, the opening and closing theme, and character and place names on their own. Join a
 sentence split across two subtitle cues.
 

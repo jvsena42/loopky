@@ -535,12 +535,9 @@ internal val USAGE = """
         images-api.nasa.gov     finding a space picture
         api.artic.edu           finding public-domain art
         collectionapi.metmuseum.org  the same, at the Met
-        api.opensubtitles.com   finding a series' subtitles
-        www.opensubtitles.com   downloading them
+        rest.opensubtitles.org  finding a series' subtitles
+        dl.opensubtitles.org    downloading them
         www.addic7ed.com        TV episode subtitles
-        api.subdl.com           finding a series' subtitles
-        dl.subdl.com            downloading them
-        www.podnapisi.net       TV episode subtitles
         jimaku.cc               Japanese anime subtitles
         kitsunekko.net          the same
 
