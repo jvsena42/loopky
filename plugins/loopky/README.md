@@ -30,10 +30,11 @@ Then ask for what you want to learn: *"Make me 30 Spanish flashcards for orderin
   and exit codes, and the skill points there.
 
 When a session runs into a real problem with `loopky` or the skill (a misleading error, a missing
-flag, a step that was wrong), the skill offers once, at the end, to report it as an issue on this
-repository. It shows you the draft first, leaves out your cards, deck ids, keys and paths, and files
-nothing unless you approve that text: through your own signed-in `gh` or GitHub connector, or as a
-link you open yourself.
+flag, a step that was wrong), the skill asks once, as the last thing it says, whether to report it
+as an issue on this repository. It gathers nothing before you say yes, shows you the draft, keeps
+your cards, deck ids, keys, paths and anything about you out of it, and files nothing unless you
+approve that text: through your own signed-in `gh` or GitHub connector, or as a link you open
+yourself.
 
 The plugin ships **no hooks and no installer**: it downloads nothing and runs only the `loopky`
 you installed, plus your own `gh` if you approve a friction report. The binary is ~70 MB per
