@@ -1,8 +1,11 @@
 package com.github.jvsena42.loopky.presentation.study
 
+import com.github.jvsena42.loopky.domain.model.DeckAnnouncement
 import com.github.jvsena42.loopky.domain.model.SrsGrade
+import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeCardRepository
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
+import com.github.jvsena42.loopky.testing.FakeDiscoveryRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
 import com.github.jvsena42.loopky.testing.FakeSettingsRepository
 import com.github.jvsena42.loopky.testing.FakeSrsRepository
@@ -13,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -43,6 +47,9 @@ class StudySessionPreviewTest {
     private val settingsRepo = FakeSettingsRepository()
     private val identityRepo = FakeIdentityRepository(session = null)
 
+    private val discoveryRepo = FakeDiscoveryRepository()
+    private val preferences = FakeAppPreferences()
+
     private val mainDispatcher = StandardTestDispatcher()
 
     @BeforeTest
@@ -58,6 +65,8 @@ class StudySessionPreviewTest {
         cardRepository = cardRepo,
         settingsRepository = settingsRepo,
         identityRepository = identityRepo,
+        discoveryRepository = discoveryRepo,
+        appPreferences = preferences,
         isPreview = true,
         previewAuthorPubky = "author",
     )
@@ -170,6 +179,8 @@ class StudySessionPreviewTest {
     @Test
     fun `a signed-in reader is offered Follow and returns to the deck once it lands`() = runTest(mainDispatcher) {
         identityRepo.session = fakeSession()
+        // Announcements off: no prompt stands between the follow and the deck.
+        preferences.setShareOnPubky(false)
         seed(cardCount = 1)
         val vm = viewModel()
         advanceUntilIdle()
@@ -188,6 +199,71 @@ class StudySessionPreviewTest {
         assertIs<StudySessionEffect.Close>(effect.await())
         // A guest's remember-for-later is not what a signed-in follow goes through.
         assertEquals(null, deckRepo.pendingFollow)
+    }
+
+    private suspend fun TestScope.followedWithPrompt(): StudySessionViewModel {
+        identityRepo.session = fakeSession()
+        seed(cardCount = 1)
+        val vm = viewModel()
+        advanceUntilIdle()
+        finish(vm, cards = 1)
+        vm.onFollowDeck()
+        advanceUntilIdle()
+        return vm
+    }
+
+    @Test
+    fun `a follow from the preview offers to announce it before leaving`() = runTest(mainDispatcher) {
+        val effects = mutableListOf<StudySessionEffect>()
+        val vm = followedWithPrompt()
+        val collector = launch { vm.effects.collect { effects += it } }
+        advanceUntilIdle()
+
+        val done = assertIs<StudySessionUiState.Complete>(vm.state.value)
+        assertTrue(deckRepo.isFollowingDeck("deck1"))
+        assertEquals(DeckAnnouncement.Kind.Followed, done.sharePrompt?.kind)
+        assertFalse(effects.any { it is StudySessionEffect.Close }, "the screen waits on the answer")
+
+        vm.onShareConfirm()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Spanish"), discoveryRepo.announcements.map { it.deckTitle })
+        assertTrue(effects.any { it is StudySessionEffect.Shared })
+        assertTrue(effects.any { it is StudySessionEffect.Close })
+        collector.cancel()
+    }
+
+    @Test
+    fun `never ask again turns the offer off and leaves without posting`() = runTest(mainDispatcher) {
+        val vm = followedWithPrompt()
+        val effects = mutableListOf<StudySessionEffect>()
+        val collector = launch { vm.effects.collect { effects += it } }
+        advanceUntilIdle()
+
+        vm.onShareNeverAsk()
+        advanceUntilIdle()
+
+        assertTrue(discoveryRepo.announcements.isEmpty())
+        assertFalse(preferences.shareOnPubkyValue)
+        assertTrue(effects.any { it is StudySessionEffect.Close })
+        collector.cancel()
+    }
+
+    @Test
+    fun `a failed announcement still leaves, with the follow intact`() = runTest(mainDispatcher) {
+        discoveryRepo.announceError = IllegalStateException("offline")
+        val vm = followedWithPrompt()
+        val effects = mutableListOf<StudySessionEffect>()
+        val collector = launch { vm.effects.collect { effects += it } }
+        advanceUntilIdle()
+
+        vm.onShareConfirm()
+        advanceUntilIdle()
+
+        assertTrue(deckRepo.isFollowingDeck("deck1"))
+        assertTrue(effects.any { it is StudySessionEffect.ShareFailed })
+        assertTrue(effects.any { it is StudySessionEffect.Close })
+        collector.cancel()
     }
 
     @Test

@@ -206,6 +206,8 @@ val sharedModule = module {
             cardRepository = get(),
             settingsRepository = get(),
             identityRepository = get(),
+            discoveryRepository = get(),
+            appPreferences = get(),
             // A preview samples a deck nobody has kept — no grading, no session. See the VM.
             isPreview = params.values.getOrNull(1) as? Boolean == true,
             previewAuthorPubky = params.values.getOrNull(2) as? String,

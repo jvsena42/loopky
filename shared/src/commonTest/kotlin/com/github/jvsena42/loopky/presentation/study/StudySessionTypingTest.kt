@@ -2,8 +2,10 @@ package com.github.jvsena42.loopky.presentation.study
 
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.TypedAnswerOutcome
+import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeCardRepository
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
+import com.github.jvsena42.loopky.testing.FakeDiscoveryRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
 import com.github.jvsena42.loopky.testing.FakeSettingsRepository
 import com.github.jvsena42.loopky.testing.FakeSrsRepository
@@ -37,6 +39,9 @@ class StudySessionTypingTest {
     private val deckRepo = FakeDeckRepository()
     private val settingsRepo = FakeSettingsRepository()
 
+    private val discoveryRepo = FakeDiscoveryRepository()
+    private val preferences = FakeAppPreferences()
+
     private val mainDispatcher = StandardTestDispatcher()
 
     @BeforeTest
@@ -56,6 +61,8 @@ class StudySessionTypingTest {
         cardRepository = FakeCardRepository(),
         settingsRepository = settingsRepo,
         identityRepository = FakeIdentityRepository(),
+        discoveryRepository = discoveryRepo,
+        appPreferences = preferences,
     )
 
     private suspend fun seedDeck() {
