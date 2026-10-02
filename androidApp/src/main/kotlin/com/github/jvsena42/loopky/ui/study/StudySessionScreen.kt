@@ -104,6 +104,7 @@ import com.github.jvsena42.loopky.ui.components.Confetti
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
 import com.github.jvsena42.loopky.ui.components.PermissionBlockedDialog
 import com.github.jvsena42.loopky.ui.components.PermissionRationaleDialog
+import com.github.jvsena42.loopky.ui.components.SharePromptDialog
 import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.components.errorTitle
 import com.github.jvsena42.loopky.ui.components.rememberReduceMotion
@@ -111,6 +112,7 @@ import com.github.jvsena42.loopky.ui.layout.WindowWidthClass
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
+import com.github.jvsena42.loopky.ui.util.toast
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.collectLatest
@@ -189,6 +191,8 @@ fun StudySessionRoute(
 
                 StudySessionEffect.Close -> currentClose()
                 StudySessionEffect.NavigateSignIn -> currentSignIn()
+                StudySessionEffect.Shared -> context.toast(R.string.share_prompt_posted)
+                StudySessionEffect.ShareFailed -> context.toast(R.string.share_prompt_failed)
             }
         }
     }
@@ -221,6 +225,25 @@ fun StudySessionRoute(
         onDismissSyncError = viewModel::onDismissSyncError,
         onContinueAfterGoal = viewModel::onContinueAfterGoal,
     )
+
+    StudySharePrompt(
+        state = state,
+        onConfirm = viewModel::onShareConfirm,
+        onDismiss = viewModel::onShareDismiss,
+        onNeverAsk = viewModel::onShareNeverAsk,
+    )
+}
+
+/** Raised by a follow from the end of a preview; the screen leaves once it is answered (#39). */
+@Composable
+private fun StudySharePrompt(
+    state: StudySessionUiState,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    onNeverAsk: () -> Unit,
+) {
+    val prompt = (state as? StudySessionUiState.Complete)?.sharePrompt ?: return
+    SharePromptDialog(prompt = prompt, onConfirm = onConfirm, onDismiss = onDismiss, onNeverAsk = onNeverAsk)
 }
 
 @Composable
