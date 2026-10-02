@@ -27,6 +27,8 @@ struct StudySessionView: View {
     var onNextCard: () -> Void = {}
     /// The end of a guest's preview offers an account. Nothing else on this screen does.
     var onSignIn: () -> Void = {}
+    /// The end of a signed-in reader's preview offers to follow the deck.
+    var onFollow: () -> Void = {}
     var onDismissSyncError: () -> Void = {}
     var onContinueAfterGoal: () -> Void = {}
 
@@ -269,8 +271,25 @@ struct StudySessionView: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 28)
+            if let followError = state.followErrorMessage {
+                Text(followError)
+                    .font(.system(size: 13))
+                    .foregroundStyle(LoopkyColor.foregroundSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 28)
+            }
             Spacer()
-            if state.isSignedIn {
+            if state.isSignedIn && state.canFollow {
+                Button("deck_detail_follow", action: onFollow)
+                    .buttonStyle(.loopkyFilled)
+                    .disabled(state.isFollowPending)
+                    .padding(.horizontal, 20)
+                    .accessibilityIdentifier("study_preview_follow")
+                Button("study_preview_back", action: onClose)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(LoopkyColor.foregroundMuted)
+            } else if state.isSignedIn {
                 Button("study_preview_back", action: onClose)
                     .buttonStyle(.loopkyFilled)
                     .padding(.horizontal, 20)
