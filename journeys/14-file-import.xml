@@ -16,10 +16,16 @@
     <action>Verify the file-import CTA (resource-id: decks_import_file) reads "Import from Anki or a file", is horizontally centred, and sits directly under the "Paste to import" card rather than separated from it by the section gap</action>
     <action>Tap the element with resource-id "decks_import_file"</action>
     <action>Verify the "Import file" screen opens on a real empty state — "Bring your deck over", a "WHAT WORKS" section with one card per accepted format (.apkg and .txt/.csv, each saying what it brings over and naming Anki's export path), a "Choose a file" button (resource-id: bulk_pick_file), and the size ceiling. It must NOT be a paragraph of prose over an otherwise blank screen</action>
-    <action>Verify the empty state ends with a "🤖 Or let your agent build it" card pitching the loopky CLI, and that nothing offers to browse AnkiWeb — that row was removed</action>
+    <action>Verify the empty state ends with a "🤖 Let your AI build the deck" card — the landing page's prompt box — and that nothing offers to browse AnkiWeb</action>
+    <action>Verify six idea chips (resource-id: bulk_ai_idea_*), Anime selected, and the request field (resource-id: bulk_ai_request) holding the Naruto request</action>
+    <action>Tap "bulk_ai_idea_series" and verify the request field is replaced with the TV series request; type a few words into it and verify they stick</action>
+    <action>Tap the request field on a phone and verify the keyboard does not cover it, the page still scrolls to "See the full prompt" with the keyboard up, and there is no empty band between the content and the keyboard</action>
     <action>Tap the element with resource-id "bulk_cli_copy" and verify its label flips to "Copied" for about two seconds, then back</action>
-    <action>Paste the clipboard into the paste-import field (tab_decks → decks_paste_cta → paste_input) and verify it holds the whole agent prompt: the Pubky Ring backup instruction first, then the install line, `loopky login`, `loopky commands --json`, and a `loopky deck create` example. Line breaks and the quoted --title must survive</action>
-
+    <action>Tap "bulk_ai_full_prompt" and verify the prompt (resource-id: bulk_ai_prompt_text) starts "Build me a Loopky flashcard deck with the Loopky CLI.", carries the edited request under "What I want:", and sends the agent to the Loopky plugin's skill with SKILL.md and the install.sh / install.ps1 fallbacks</action>
+    <action>Verify four "Open in" icons (resource-id: bulk_ai_open_claudecode / _codex / _jules / _cursor) with clear gaps between them, and that tapping Claude Code opens claude.ai/code?prompt= with that same prompt URL-encoded</action>
+    <action>On a tablet in portrait (medium width), verify one column with the full prompt already open and a "Using Claude Code or Codex?" block listing four plugin commands, EACH in its own row with its own copy button (resource-id: bulk_ai_copy_command) — never two commands in one copyable block, which Add Marketplace refuses as one bad owner/repo (loopky.github.io#19)</action>
+    <action>On a tablet in landscape (expanded width), verify the file import and the AI card stand side by side, and that scrolling the AI pane leaves the file pane where it is</action>
+    <action>Edit the request, rotate the tablet between portrait and landscape, and verify the edited request survives the change of layout</action>
     <action>Tap the element with resource-id "bulk_pick_file" and choose the .apkg from Downloads</action>
     <action>Verify a summary appears reading "N cards parsed" — NOT a swipe-triage queue, which nobody completes for a 20,000-card export</action>
     <action>Verify the detected separator is shown (resource-id: bulk_separator_chip, e.g. "Separator: tab"). It was carried in state and rendered nowhere before #55</action>

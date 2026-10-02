@@ -2957,6 +2957,38 @@ it is only visible in a screenshot.
 translation** — no walk through Settings → Loopky → Language, and it lasts exactly one launch, so
 there is nothing to restore afterwards.
 
+## The AI prompt box on the file-import screen — 2026-10-02, `Medium_Phone` + `Pixel_Tablet` (guest)
+
+`journeys/14-file-import.xml`, the empty state only. The "Copy prompt" card became the landing
+page's prompt box: six idea chips, an editable request, Copy, and Open in Claude Code / Codex /
+Jules / Cursor. The prompt itself is now the site's plugin-first one, built once in
+`AgentPrompt` (shared) instead of eleven translated install scripts.
+
+Driven as a guest, since neither emulator has Pubky Ring: a text file shared into Loopky opens the
+import screen, and a **temporary, uncommitted** rewire of `bulk_repick` to `onPickAnother()`
+returned it to the empty state. Nothing about the card depends on a session.
+
+| Step | Result |
+| --- | --- |
+| Empty state ends with the AI card, no AnkiWeb row | ✅ PASS — phone and tablet |
+| Idea chips replace the request; typing sticks | ✅ PASS — TV series → the Money Heist request; typed text kept |
+| Phone keyboard over the request field | ✅ PASS — field stays visible, page scrolls to the bottom with the keyboard up. First build left a nav-bar-high band above the keyboard (Scaffold padding + `imePadding` both counting the bar); fixed with `consumeWindowInsets` |
+| Full prompt | ✅ PASS — edited request under "What I want:", plugin skill, SKILL.md and both installers |
+| Open in Claude Code | ✅ PASS — `claude.ai/code?prompt=Build%20me%20a%20Loopky…` in the launched intent |
+| "Open in" icons | ✅ PASS after two fixes — `IconButton`'s 48dp minimum touch size drew its circle over a 40dp slot, so they overlapped; now plain 44dp circles, 14dp apart |
+| Tablet portrait (medium) | ✅ PASS — one column, full prompt open, four plugin commands each in its own row with its own copy button |
+| Tablet landscape (expanded) | ✅ PASS — two panes, each scrolling on its own; the file pane stays put while the AI pane scrolls |
+| Rotate with an edited request | ✅ PASS — survives, because idea and request are hoisted above the layout branch |
+| `detektAll`, `checkStringPlurals`, `:shared:jvmTest` | ✅ PASS |
+| iOS | ⚠️ NOT RUN — written to mirror Android (same two-pane rule via `LoopkyWidthClass`), but this run was on Linux with no `xcodebuildmcp`; needs `simulator build-and-run` + `lintSwift` on a Mac |
+
+### Worth knowing
+
+**One copyable block per command, never per pair.** The site's plugin box once put both Claude
+Code commands in one block, and Add Marketplace read the pasted pair as one bad `owner/repo`
+(loopky.github.io#19). `AgentPrompt.pluginInstalls` keeps each command a separate string, and
+`AgentPromptTest` asserts none contains a newline.
+
 ## Main-screen loading time — 2026-09-07, `Pixel_Tablet` landscape (staging)
 
 Driven end to end for `journeys/03-study-loop.xml`'s Home entry, plus the Decks, Discover and
