@@ -61,6 +61,12 @@ struct StudySessionScreen: View {
                 onDismiss: { viewModel?.onSpeakDismiss() }
             )
         }
+        .sharePrompt(
+            prompt: (uiState as? StudySessionUiStateComplete)?.sharePrompt,
+            onConfirm: { viewModel?.onShareConfirm() },
+            onDismiss: { viewModel?.onShareDismiss() },
+            onNeverAsk: { viewModel?.onShareNeverAsk() }
+        )
         .onAppear {
             attach()
             Haptics.prepare()
