@@ -6,11 +6,15 @@ import com.github.jvsena42.loopky.testing.FakeDeckRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
 import com.github.jvsena42.loopky.testing.FakeSettingsRepository
 import com.github.jvsena42.loopky.testing.FakeSrsRepository
+import com.github.jvsena42.loopky.testing.fakeSession
 import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testDeck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -59,7 +63,7 @@ class StudySessionPreviewTest {
     )
 
     private fun seed(cardCount: Int) {
-        deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish")
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", authorPubky = "author", title = "Spanish")
         repeat(cardCount) { i ->
             cardRepo.seed(
                 testCard("c$i", front = "front$i", back = "back$i", deckId = "deck1", ord = i.toLong()),
@@ -138,6 +142,82 @@ class StudySessionPreviewTest {
         assertEquals(2, done.reviewed)
         // Nothing was buffered, so nothing may be flushed — a flush with no session fails.
         assertEquals(0, srsRepo.flushes)
+    }
+
+    private fun TestScope.finish(vm: StudySessionViewModel, cards: Int) {
+        repeat(cards) {
+            vm.onNextCard()
+            advanceUntilIdle()
+        }
+    }
+
+    @Test
+    fun `a guest leaving for sign-in has the deck remembered for a follow`() = runTest(mainDispatcher) {
+        seed(cardCount = 1)
+        val vm = viewModel()
+        advanceUntilIdle()
+        finish(vm, cards = 1)
+        val effect = backgroundScope.async { vm.effects.first { it is StudySessionEffect.NavigateSignIn } }
+        advanceUntilIdle()
+
+        vm.onSignIn()
+        advanceUntilIdle()
+
+        assertEquals("author" to "deck1", deckRepo.pendingFollow)
+        assertIs<StudySessionEffect.NavigateSignIn>(effect.await())
+    }
+
+    @Test
+    fun `a signed-in reader is offered Follow and returns to the deck once it lands`() = runTest(mainDispatcher) {
+        identityRepo.session = fakeSession()
+        seed(cardCount = 1)
+        val vm = viewModel()
+        advanceUntilIdle()
+        finish(vm, cards = 1)
+        val done = assertIs<StudySessionUiState.Complete>(vm.state.value)
+        assertTrue(done.isSignedIn)
+        assertTrue(done.canFollow)
+        val effect = backgroundScope.async { vm.effects.first { it is StudySessionEffect.Close } }
+        advanceUntilIdle()
+
+        vm.onFollowDeck()
+        advanceUntilIdle()
+
+        assertTrue(deckRepo.isFollowingDeck("deck1"))
+        assertFalse(assertIs<StudySessionUiState.Complete>(vm.state.value).canFollow)
+        assertIs<StudySessionEffect.Close>(effect.await())
+        // A guest's remember-for-later is not what a signed-in follow goes through.
+        assertEquals(null, deckRepo.pendingFollow)
+    }
+
+    @Test
+    fun `a deck already followed is not offered again`() = runTest(mainDispatcher) {
+        identityRepo.session = fakeSession()
+        seed(cardCount = 1)
+        deckRepo.followDeck(deckRepo.decks.getValue("deck1"))
+        val vm = viewModel()
+        advanceUntilIdle()
+        finish(vm, cards = 1)
+
+        assertFalse(assertIs<StudySessionUiState.Complete>(vm.state.value).canFollow)
+    }
+
+    @Test
+    fun `a failed follow stays on the offer and says why`() = runTest(mainDispatcher) {
+        identityRepo.session = fakeSession()
+        seed(cardCount = 1)
+        deckRepo.followError = IllegalStateException("boom")
+        val vm = viewModel()
+        advanceUntilIdle()
+        finish(vm, cards = 1)
+
+        vm.onFollowDeck()
+        advanceUntilIdle()
+
+        val done = assertIs<StudySessionUiState.Complete>(vm.state.value)
+        assertTrue(done.canFollow)
+        assertFalse(done.isFollowPending)
+        assertTrue(done.followError != null)
     }
 
     /** Closing must not try to persist reviews that were never taken. */

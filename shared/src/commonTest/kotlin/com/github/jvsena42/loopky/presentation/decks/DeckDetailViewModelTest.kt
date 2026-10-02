@@ -91,6 +91,24 @@ class DeckDetailViewModelTest {
         assertEquals(listOf("c1", "c2"), state.cardPreviews.map { it.id })
     }
 
+    /** The follow at the end of a preview is written while this screen sits behind it. */
+    @Test
+    fun `picks up a follow made from the preview above it`() = runTest(mainDispatcher) {
+        val deck = testDeck(authorPubky = "friendpk", cardCount = 1)
+        deckRepo.decks["deck1"] = deck
+        cardRepo.seedRemote(testCard("c1"))
+        val vm = viewModel(authorPubky = "friendpk")
+        advanceUntilIdle()
+        assertTrue(assertIs<DeckDetailUiState.Content>(vm.state.value).canPreview)
+
+        deckRepo.followDeck(deck)
+        advanceUntilIdle()
+
+        val state = assertIs<DeckDetailUiState.Content>(vm.state.value)
+        assertTrue(state.isFollowing)
+        assertEquals(false, state.canPreview)
+    }
+
     @Test
     fun `shows the cards of a deck you do not own`() = runTest(mainDispatcher) {
         deckRepo.decks["deck1"] = testDeck(
