@@ -6,11 +6,16 @@ import kotlinx.coroutines.coroutineScope
 
 /**
  * Hosts no command needs but an agent building a deck will: where card pictures are found and
- * served. The same on every environment, and never able to fail `doctor`.
+ * served: the lookup hosts for the sources `plugins/loopky/skills/loopky/SKILL.md` names. The same
+ * on every environment, and never able to fail `doctor`.
  */
 internal val RECOMMENDED_HOSTS = listOf(
     "upload.wikimedia.org" to "card pictures (Wikimedia images; --check-images)",
     "commons.wikimedia.org" to "finding card pictures and their URLs",
+    "api.openverse.org" to "finding openly licensed card pictures",
+    "images-api.nasa.gov" to "finding space pictures",
+    "api.artic.edu" to "finding public-domain art",
+    "collectionapi.metmuseum.org" to "finding public-domain art",
 )
 
 internal suspend fun probeRecommended(probe: suspend (String) -> ProbeOutcome): List<HostCheck> = coroutineScope {

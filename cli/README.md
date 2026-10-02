@@ -546,6 +546,9 @@ Recommended, though no command needs them — an agent building a deck with pict
 | --- | --- |
 | `upload.wikimedia.org` | where Wikimedia card pictures are served, and what `--check-images` asks |
 | `commons.wikimedia.org` | finding a picture and its URL |
+| `api.openverse.org` | finding an openly licensed picture |
+| `images-api.nasa.gov` | finding a space picture |
+| `api.artic.edu`, `collectionapi.metmuseum.org` | finding public-domain art |
 
 Copy-paste, production:
 
@@ -557,6 +560,10 @@ homeserver.pubky.app
 nexus.pubky.app
 upload.wikimedia.org
 commons.wikimedia.org
+api.openverse.org
+images-api.nasa.gov
+api.artic.edu
+collectionapi.metmuseum.org
 ```
 
 **Where the list goes is the human's to change, not the agent's.** Claude Code on the web: the
@@ -569,7 +576,7 @@ homeserver `method_blocked` and exits 14.
 
 **`loopky doctor` prints this list for the machine it runs on**, asking each host through the
 configured proxy, and ends with a `next_step` addressed to the agent: which hosts to ask the user
-for, and where. The two Wikimedia hosts are probed and reported under `recommended`, never on the
+for, and where. The picture hosts are probed and reported under `recommended`, never on the
 `allowlist` and never in the exit code. It needs no session. Exit 14 names what was refused; any other command's 14 or 15
 points at it. The homeserver row is read from your homeserver's own pkarr record, so an account on
 another homeserver has another host (`loopky doctor --homeserver <pubky>`); staging has

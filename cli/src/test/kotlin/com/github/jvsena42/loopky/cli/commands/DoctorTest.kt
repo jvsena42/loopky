@@ -304,14 +304,17 @@ class DoctorTest {
     }
 
     @Test
-    fun `the Wikimedia hosts are recommended, never required`() = runTest {
+    fun `the picture hosts are recommended, never required`() = runTest {
         val result =
             doctor(Args.parse(arrayOf("doctor")), client(), environment, probes(reachable()), proxy = null)
 
         val report = result.data.toString()
-        assert(""""recommended":[""" in report && "commons.wikimedia.org" in report) { report }
+        assert(""""recommended":[""" in report) { report }
         val allowlist = report.substringAfter(""""allowlist":[""").substringBefore("]")
-        assert("wikimedia" !in allowlist) { allowlist }
+        RECOMMENDED_HOSTS.forEach { (host, _) ->
+            assert(host in report.substringAfter(""""recommended":[""")) { report }
+            assert(host !in allowlist) { allowlist }
+        }
     }
 
     @Test

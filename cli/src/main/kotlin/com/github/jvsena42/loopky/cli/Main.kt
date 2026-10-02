@@ -531,6 +531,10 @@ internal val USAGE = """
 
         upload.wikimedia.org    where Wikimedia images are served; --check-images HEADs them
         commons.wikimedia.org   finding a picture and its URL
+        api.openverse.org       finding an openly licensed picture
+        images-api.nasa.gov     finding a space picture
+        api.artic.edu           finding public-domain art
+        collectionapi.metmuseum.org  the same, at the Met
 
       `loopky doctor` checks each one and prints the list for your homeserver and environment.
       Exit 14 means a proxy refused a host: allowlisting it is the fix, retrying is not.
