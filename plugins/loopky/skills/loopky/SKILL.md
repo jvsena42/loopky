@@ -1,6 +1,6 @@
 ---
 name: loopky
-description: Build and manage Loopky flashcard decks with the `loopky` CLI - make Anki-style spaced-repetition cards from any topic, import an Anki .apkg or a TSV, add, edit or illustrate cards, publish a language deck with Listen/Speak. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI.
+description: Build and manage Loopky flashcard decks with the `loopky` CLI - make Anki-style spaced-repetition cards from any topic, import an Anki .apkg or a TSV, add, edit or illustrate cards, publish a language deck with Listen/Speak, or learn a language from a TV series' episodes. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI.
 ---
 
 # Loopky flashcards through the `loopky` CLI
@@ -65,6 +65,10 @@ guessing, and trust them over anything here.
    `loopky card list <deckId> --json`. Results sit under `data`; a card's `front` is an object with
    `.text` and `.image`, not a string. Tell the user the deck is on their phone under the title.
 
+9. **If the CLI or this skill got in the way, ask whether to report it**, once, at the end, as
+   the last section describes. Nothing is gathered before a yes, and nothing is sent until the
+   user approves the exact text.
+
 **Several commands in a row belong in `loopky batch`.** Each invocation pays ~2s of start-up and a
 session round trip; a batch pays once. One JSON line per operation:
 `{"argv": ["card", "add", "<deckId>", "--front", "…", "--back", "…"]}`, run with
@@ -114,13 +118,132 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   makes `--listen` and `--speak` work, and it also tags the deck `language` and `spanish` so learners
   find it. Without the pair the phone reads Spanish in an English voice, so both switches stay off.
   `--type` (typed answers) and `--reverse` (ask both directions) need no pair.
-- **Pictures are `https` URLs, never uploads.** Wikimedia thumbnails exist only at 120, 250, 330,
-  500, 960, 1280 and 1920 px — any other `NNNpx-` width is a blank card. SVG, TIFF, WebM and STL do
-  not render; for an SVG use its `/thumb/…/500px-….svg.png` render. Add `--check-images` to the
-  dry-run when the URLs came from anywhere you have not fetched.
+- **Pictures are `https` URLs, never uploads.** SVG, TIFF, WebM and STL do not render on either
+  phone, whatever the host: use a JPEG, PNG or WebP. Add `--check-images` to the dry-run when the
+  URLs came from anywhere you have not fetched. Which source to take them from is the next section.
 - **Tags are public** and indexed network-wide. Use a few honest topic words; never copy an Anki
   deck's tags or description without reading them.
 - **Do not pad.** Make the cards the user asked for, at the count they asked for.
+
+## Where to find pictures
+
+A picture is a prompt, so it goes on the side that asks: the thing on the front, its name on the
+back. Every deck is public and a card has no room for a credit line, so the licence decides the
+source as much as the topic does.
+
+**Try the sources in this order, and move to the next when one has no picture that shows exactly
+the card's fact, its host is blocked (`loopky doctor` lists them under `recommended`), or the
+picture's licence is not one of those below.** When none has one, leave the card without a
+picture: a near miss teaches the wrong thing.
+
+1. **A source made for the topic**, when there is one. All public domain, nothing to credit.
+
+   | Topic | Find it | The URL that goes on the card |
+   | --- | --- | --- |
+   | Country flags | the ISO 3166 code, no lookup | `https://flagcdn.com/w640/<code>.png`. Widths double from `w20` to `w2560`; anything else 404s. |
+   | Space, astronomy, NASA missions | `images-api.nasa.gov/search?q=…&media_type=image` | `https://images-assets.nasa.gov/image/<nasa_id>/<nasa_id>~medium.jpg`, or another size `images-api.nasa.gov/asset/<nasa_id>` lists. Only items credited to NASA: a `photographer` or `secondary_creator` from outside NASA, or a © in the description, is someone else's copyright. |
+   | Paintings, artefacts | `api.artic.edu/api/v1/artworks/search?q=…&fields=id,title,image_id,is_public_domain` | `https://www.artic.edu/iiif/2/<image_id>/full/843,/0/default.jpg`, only where `is_public_domain` is true. |
+   | Paintings, artefacts | `collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&q=…`, then `…/objects/<id>` | The object's `primaryImageSmall`, only where `isPublicDomain` is true. |
+
+2. **Wikimedia Commons**, for anything with a name. Read the licence before using a file:
+   `commons.wikimedia.org/w/api.php?action=query&format=json&titles=File:<name>&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500`
+   gives `thumburl` and `extmetadata.LicenseShortName`. Take only addresses under
+   `upload.wikimedia.org/wikipedia/commons/`: `/wikipedia/en/` and other per-language paths hold
+   non-free files a Wikipedia article may use and a deck may not. Thumbnails exist only at 120,
+   250, 330, 500, 960, 1280 and 1920 px; any other `NNNpx-` width is a blank card. For an SVG use
+   its `/thumb/…/500px-….svg.png` render, since the original never renders.
+
+3. **Openverse**, which searches Flickr, museums and other open collections, with no key:
+   `api.openverse.org/v1/images/?q=…&license=cc0,pdm` keeps to pictures that need no credit (add
+   `,by,by-sa` only when the credit fits, below). Each result's `url` goes on the card; its
+   `license` and `attribution` say what to credit.
+
+4. **Unsplash**, for an everyday object or scene nothing above shows: the photo's
+   `https://images.unsplash.com/photo-…?w=1080&fm=jpg` address, never the web page's and never
+   `plus.unsplash.com`, which is paid and licensed separately. The Unsplash Licence needs no
+   credit.
+
+**Licences.** Public domain, PDM and CC0 need nothing. CC BY and CC BY-SA need a credit, and the
+deck's `--description` is the only place for one: `Pictures: <author>, <licence>, via <source>`,
+per picture, within the description's 500 characters. When the credits will not fit, use a
+public-domain picture for those cards or leave them without one. Never use a picture marked NC,
+ND, "fair use", "all rights reserved" or with no licence at all, and never take an address from a
+search engine's results, Pinterest, Instagram, or a host that forbids hotlinking (Pixabay does):
+the phone fetches each picture from where it is hosted, for every learner, for as long as the deck
+exists.
+
+A host the sandbox cannot reach can still be right, because the phone fetches the picture, not
+you. `--check-images` cannot vouch for those, so tell the user which URLs went unchecked.
+
+## Decks from a TV series
+
+"A deck from SpongeBob season 1" is a language deck: the goal is to understand the show in the
+language the user watches it in, so every card comes from the show's own dialogue.
+
+**Propose one deck per season before writing anything**, titled with the show, season and
+language (`SpongeBob S1 · Spanish`). A season is a few hundred cards, and a deck per season lets
+the user stop, or start at the season they are watching. Ask which language they watch it in and
+which dub: a Latin-American and a Castilian dub use different words, and the deck's
+`--back-lang` (`es-MX`, `es-ES`) has to match the one they hear.
+
+**Get the dialogue from subtitles in the dub's language, never from memory.** Use the user's own
+`.srt` files when they have them, then try, in order:
+
+| Source | Good for | How |
+| --- | --- | --- |
+| OpenSubtitles | Most shows, most languages | `rest.opensubtitles.org/search/episode-<n>/query-<show>/season-<n>/sublanguageid-<spa\|por\|fre\|ger\|jpn…>` with the header `User-Agent: TemporaryUserAgent`, no key; path segments stay in that alphabetical order, and dropping `episode-<n>` lists the season. Each result's `SubDownloadLink` (on `dl.opensubtitles.org`) is a gzipped `.srt`, often Latin-1 rather than UTF-8. |
+| Addic7ed | TV episodes, mostly English | `www.addic7ed.com/search.php?search=<show>` lists `serie/<Show>/<season>/<episode>/<Title>` pages; each subtitle's `/original/…` or `/updated/…` link downloads with that page as the `Referer`. |
+| Jimaku — `jimaku.cc` | Anime in Japanese | Each `jimaku.cc/entry/<id>` page links its files under `/entry/<id>/download/…`, no key. |
+| Kitsunekko — `kitsunekko.net` | Anime in Japanese | `kitsunekko.net/dirlist.php?dir=subtitles%2Fjapanese%2F` lists shows; files are `.ass` or `.srt`, sometimes zipped. |
+
+Coverage is uneven — OpenSubtitles had Spanish for three of SpongeBob's first-season segments —
+so search each episode, and say which ones had nothing.
+
+Prefer a subtitle marked as the dub's own transcript (often "SDH" or "for the hearing impaired")
+over a translation of the original: a translated subtitle does not say what the voices say. Check
+the episode list (season, episode number, segment title) against the show's episode guide so
+episode 3 really is episode 3 — many cartoons split an episode into segments (`s1e01c - Tea at
+the Treedome`), so match on the segment title — and tell the user which files you used.
+`loopky doctor` lists these hosts under `recommended`; when the one you need is blocked, ask the
+user to allow it, as for the required hosts. If no source is reachable or
+none matches the dub, stop and ask for the files: a deck built from the wrong subtitle teaches
+lines the show never says.
+
+**Clean the lines before choosing from them.** Drop timing, speaker labels, `[sound cues]`,
+cues the uploader added (an episode title card, a credit, an advertisement for a website),
+`♪` song lyrics, the opening and closing theme, and character and place names on their own. Join a
+sentence split across two subtitle cues.
+
+**Pick what is worth learning, not the transcript.** Every deck is public, so a season's dialogue
+published in order is the show's script republished. Take each episode's useful words and phrases
+— the ones a learner needs to follow it and would hear again — and leave the rest. Cards go from
+the user's language to the one they are learning: the front is the meaning in their language,
+translated for that scene, and the back is the line or word exactly as the show says it
+(`--front-lang en-US --back-lang es-MX`). The user recalls the show's words, and Speak and typing
+grade them. Nothing from outside the show: no invented example sentences, no "related" vocabulary,
+and a word gets a card only in a form the episode uses.
+
+**Order the file by episode, and never repeat.** Cards are studied new-first in file order, so
+episode 1's cards come first, then episode 2's, and the user meets each episode's language before
+they watch it. Within an episode, a word before the phrases that use it. A line or word already
+carded in an earlier episode — or in an earlier season's deck, which you read with
+`loopky card list <deckId> --json` — is not carded again; compare ignoring case, punctuation and
+`...`. Put the episode on the front as an aside, `I'm ready! (S1E1) → ¡Estoy listo!`: the reader
+sees where it comes from, and nothing grades it. Publish the first episodes
+with `deck create`, and add later ones in order with `card add <deckId> --from-file`, which appends.
+
+**Pictures from the episode only when their licence allows it, which is rarely.** Stills, frames
+and screenshots of a commercial show are the studio's copyright, and fan wikis host them as fair
+use, which the licence rules above exclude; a frame from the user's own copy would be an upload,
+and Loopky takes only URLs. So an episode picture is limited to shows whose frames are public
+domain or freely licensed on Wikimedia Commons (some early cartoons). Otherwise picture what the
+card names — an object, an animal, a place — from the usual sources, or leave it without one.
+Tell the user which it was.
+
+**Tags.** Add the show's name (lowercase, no spaces, at most 20 characters: `spongebob`), and
+`tv-series` or `anime`, plus `cartoon` where it is one. A show made for children also gets `kids`.
+The language pair adds the language tags on its own. Turn on `--listen` and `--speak`, so the user
+hears and says the lines, and `--type` when they want to spell them.
 
 ## Limits worth knowing
 
@@ -130,3 +253,44 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
 - A headless box with nobody at a phone can use `LOOPKY_SESSION`, minted with
   `loopky login --export` on a machine where the user can approve. It is a bearer token: never echo
   it, log it or commit it.
+
+## Reporting friction to Loopky
+
+Loopky improves from what agents trip over, and only the user can decide to tell the project. So
+when the work is done, and only if this session hit **real friction in `loopky` or this skill**, ask
+once whether to open a GitHub issue on `jvsena42/loopky`. Friction is: an error or exit code that
+misled you, a step here that was wrong or missing, a flag or command you needed and the binary did
+not have, a workaround you had to invent, or output you could not parse. It is **not** the user's
+own network allowlist, a session expiring after its hour, a picture source with nothing fitting, or
+anything the exit-code table already says how to handle. No real friction, no question.
+
+1. **Ask only at the end, and collect nothing until the user says yes.** Never mid-task, not even
+   right after the friction happens: finish what the user asked, verify it, and make this the last
+   thing in your final message. In one short question, name the problem in general words
+   ("`card add` failed on a newline"), say it would become a public issue on `jvsena42/loopky`,
+   and ask whether they want one. Leave the rest for after a yes. Until they say yes, run nothing
+   for it, check no GitHub account, and write no draft. A no, or no answer, ends it for the rest
+   of the session.
+2. **After a yes, gather only what reproduces the problem:** `loopky --version`, the OS and
+   architecture, the command's shape with every operand replaced by a placeholder, the exit code
+   and `error.code`, what you expected, what happened, and the workaround if there was one.
+3. **Keep the user's data out.** The issue is public, so it never carries card or deck content,
+   titles, descriptions or tags, deck or card ids, public keys, `pubky://` addresses, image or
+   homeserver URLs, file or directory names, user, host or machine names, IP addresses, the
+   `auth_url`, `LOOPKY_SESSION` or any other token, environment variables, or anything the user
+   said about themselves. Describe error messages in your own words rather than pasting them,
+   since they can carry ids and paths. Re-read the draft against this list before showing it.
+   If the problem cannot be explained without one of these, leave it out and say so.
+4. **Show the draft, title and body, and file it only after the user approves that text.** If the
+   session has a signed-in GitHub tool (`gh auth status` succeeds, or a GitHub connector is
+   available), use it, searching the repository's open issues first and adding to a matching one
+   rather than opening a duplicate:
+
+   ```shell
+   gh issue create --repo jvsena42/loopky --title "<title>" --body-file <draft file>
+   ```
+
+   The draft file is a temporary one; delete it afterwards. Otherwise, or if they prefer, give
+   them the link to file it themselves, `https://github.com/jvsena42/loopky/issues/new`, with the
+   draft to paste. Issues are public, and are filed from the user's own account.
+
