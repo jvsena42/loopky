@@ -8,16 +8,51 @@ struct BulkImportView: View {
     var onChooseFields: () -> Void = {}
     var onConfirm: () -> Void = {}
     var onCancel: () -> Void = {}
-    var onCopyCliPrompt: () -> Void = {}
 
-    @State private var didCopyPrompt = false
+    @Environment(\.loopkyWidthClass) private var widthClass
+    // Held here rather than in the card, which moves between layouts as an iPad rotates.
+    @State private var promptIdea: PromptIdea = .anime
+    @State private var promptRequest = PromptIdea.anime.request
 
     var body: some View {
+        Group {
+            if state.phase == .idle && widthClass.isExpanded {
+                twoPaneIdle
+            } else {
+                singleColumn
+            }
+        }
+        .loopkyScreenBackground()
+        .navigationBarHidden(true)
+    }
+
+    /// The file import and the AI prompt side by side, each scrolling on its own: one shared
+    /// scroll would carry the short file pane off the top and leave half the screen blank.
+    private var twoPaneIdle: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            header
+            HStack(alignment: .top, spacing: 28) {
+                ScrollView { formats.padding(.bottom, 40) }
+                ScrollView {
+                    agentPromptCard(detailed: true)
+                        .padding(.top, 20)
+                        .padding(.bottom, 40)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .contentPane(PaneWidth.wide)
+    }
+
+    private var singleColumn: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 switch state.phase {
-                case .idle: formats
+                case .idle:
+                    formats
+                    agentPromptCard(detailed: widthClass.isAtLeastMedium)
                 case .reading, .parsing: progress
                 case .failed: failure
                 case .ready: ready
@@ -30,8 +65,11 @@ struct BulkImportView: View {
             // still reaches both edges of an iPad and only the content inside is bounded.
             .contentPane()
         }
-        .loopkyScreenBackground()
-        .navigationBarHidden(true)
+    }
+
+    private func agentPromptCard(detailed: Bool) -> some View {
+        AgentPromptCard(idea: $promptIdea, request: $promptRequest, detailed: detailed)
+            .padding(.top, 10)
     }
 
     private var importLabel: String {
@@ -93,40 +131,7 @@ struct BulkImportView: View {
             .font(.system(size: 12))
             .foregroundStyle(LoopkyColor.foregroundMuted)
             .frame(maxWidth: .infinity)
-
-            cliPromptCard
         }
-    }
-
-    /// A pitch for `loopky`, the headless client, on the screen whose whole premise is that the
-    /// deck already exists somewhere else. The prompt is copied rather than shown, because the
-    /// reader's agent lives on another machine and nobody retypes an install line from a phone.
-    private var cliPromptCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("bulk_cli_title")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(LoopkyColor.foregroundPrimary)
-            Text("bulk_cli_body")
-                .font(.system(size: 13))
-                .foregroundStyle(LoopkyColor.foregroundSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Button(didCopyPrompt ? "bulk_cli_copied" : "bulk_cli_copy") {
-                onCopyCliPrompt()
-                withAnimation { didCopyPrompt = true }
-                Task {
-                    try? await Task.sleep(for: .seconds(2))
-                    withAnimation { didCopyPrompt = false }
-                }
-            }
-            .buttonStyle(.loopkySoft)
-            .accessibilityIdentifier("bulk_cli_copy")
-            .padding(.top, 2)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14).fill(LoopkyColor.surfaceCard))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(LoopkyColor.borderSubtle, lineWidth: 1))
-        .padding(.top, 10)
     }
 
     /// The same idiom as the paste screen's fox and Home's book stack: an emoji on the brand

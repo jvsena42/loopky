@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Claude Code's mark, from the landing page's assets/img/ai/claude-code.svg. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#D97757"
+        android:fillType="evenOdd"
+        android:pathData="M20.998 10.949 H24 v3.102 h-3 v3.028 h-1.487 V20 H18 v-2.921 h-1.487 V20 H15 v-2.921 H9 V20 H7.488 v-2.921 H6 V20 H4.487 v-2.921 H3 V14.05 H0 V10.95 h3 V5 h17.998 v5.949zM6 10.949 h1.488 V8.102 H6 v2.847zm10.51 0 H18 V8.102 h-1.49 v2.847z" />
+</vector>

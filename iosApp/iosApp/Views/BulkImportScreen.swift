@@ -29,10 +29,7 @@ struct BulkImportScreen: View {
             onPickAnother: { viewModel?.onPickAnother() },
             onChooseFields: { isChoosingFields = true },
             onConfirm: { viewModel?.onConfirm() },
-            onCancel: { viewModel?.onCancel() },
-            onCopyCliPrompt: {
-                UIPasteboard.general.string = NSLocalizedString("bulk_cli_prompt", comment: "")
-            }
+            onCancel: { viewModel?.onCancel() }
         )
         .fileImporter(
             isPresented: $isPicking,

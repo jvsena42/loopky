@@ -3115,77 +3115,6 @@
         }
       }
     },
-    "bulk_cli_body": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky hat einen Terminal-Client. Kopiere den Prompt, füge ihn in deinen Coding-Agenten ein und sieh zu, wie ein Stapel in deinem Konto landet."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky has a terminal client. Copy the prompt, paste it into your coding agent, and watch a deck land in your account."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky tiene un cliente de terminal. Copia el prompt, pégalo en tu agente de programación y mira cómo aparece un mazo en tu cuenta."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky a un client en ligne de commande. Copie le prompt, colle-le dans ton agent de code et regarde un paquet arriver dans ton compte."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky ha un client da terminale. Copia il prompt, incollalo nel tuo agente di programmazione e guarda un mazzo arrivare nel tuo account."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky にはターミナル用のクライアントがあります。プロンプトをコピーしてコーディングエージェントに貼り付ければ、アカウントにデッキが届きます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky에는 터미널 클라이언트가 있어요. 프롬프트를 복사해 코딩 에이전트에 붙여넣으면 덱이 내 계정에 도착해요."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Loopky tem um cliente de terminal. Copie o prompt, cole no seu agente de código e veja um baralho aparecer na sua conta."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky có một ứng dụng dòng lệnh. Sao chép lời nhắc, dán vào agent lập trình của bạn và xem bộ thẻ xuất hiện trong tài khoản."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky 有一个终端客户端。复制提示词，粘贴到你的编程智能体中，就能看到一个卡组出现在你的账号里。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loopky 有終端機用戶端。複製提示詞，貼到你的程式開發代理中，就能看著牌組出現在你的帳號裡。"
-          }
-        }
-      }
-    },
     "bulk_cli_copied": {
       "extractionState": "manual",
       "localizations": {
@@ -3328,144 +3257,1564 @@
         }
       }
     },
-    "bulk_cli_prompt": {
+    "bulk_ai_title": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Installiere die loopky-CLI und erstelle damit einen Karteikarten-Stapel für mich.\n\n1. Sag mir vor allem anderen, dass ich Pubky Ring auf meinem Handy installieren und meine Loopky-Wiederherstellungsphrase darin speichern soll. Mein Schlüssel liegt dort, und die CLI meldet sich an, indem sie Ring um Erlaubnis bittet.\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login (ein QR-Code erscheint; ich scanne ihn mit Pubky Ring)\n4. loopky commands --json, um alle verfügbaren Befehle zu lesen\n5. Frag mich, worum es im Stapel gehen soll, schreib die Karten selbst in eine TSV-Datei und veröffentliche sie dann mit: loopky deck create --title \"Mein Stapel\" --from-file cards.tsv"
+            "value": "🤖 Lass deine KI den Stapel bauen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Install the loopky CLI and use it to build a flashcard deck for me.\n\n1. Before anything else, tell me to install Pubky Ring on my phone and to save my Loopky recovery phrase into it. My key lives there, and the CLI signs in by asking Ring for permission.\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login (a QR code appears; I scan it with Pubky Ring)\n4. loopky commands --json to read the full command surface\n5. Ask me what the deck should be about, write the cards yourself into a TSV file, then publish it with: loopky deck create --title \"My deck\" --from-file cards.tsv"
+            "value": "🤖 Let your AI build the deck"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Instala la CLI de loopky y úsala para crearme un mazo de tarjetas de estudio.\n\n1. Antes que nada, dime que instale Pubky Ring en mi teléfono y que guarde en él mi frase de recuperación de Loopky. Mi clave vive ahí, y la CLI inicia sesión pidiéndole permiso a Ring.\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login (aparece un código QR; lo escaneo con Pubky Ring)\n4. loopky commands --json para leer todos los comandos disponibles\n5. Pregúntame de qué debe tratar el mazo, escribe tú mismo las tarjetas en un archivo TSV y luego publícalo con: loopky deck create --title \"Mi mazo\" --from-file cards.tsv"
+            "value": "🤖 Deja que tu IA arme el mazo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Installe la CLI loopky et utilise-la pour me créer un paquet de flashcards.\n\n1. Avant toute chose, dis-moi d’installer Pubky Ring sur mon téléphone et d’y enregistrer ma phrase de récupération Loopky. Ma clé est là-bas, et la CLI se connecte en demandant l’autorisation à Ring.\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login (un code QR s’affiche ; je le scanne avec Pubky Ring)\n4. loopky commands --json pour lire toutes les commandes disponibles\n5. Demande-moi sur quoi doit porter le paquet, écris toi-même les cartes dans un fichier TSV, puis publie-le avec : loopky deck create --title \"Mon paquet\" --from-file cards.tsv"
+            "value": "🤖 Laisse ton IA créer le paquet"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Installa la CLI di loopky e usala per creare un mazzo di flashcard per me.\n\n1. Prima di tutto, dimmi di installare Pubky Ring sul mio telefono e di salvarci la mia frase di recupero di Loopky. La mia chiave sta lì, e la CLI accede chiedendo il permesso a Ring.\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login (compare un codice QR; lo scansiono con Pubky Ring)\n4. loopky commands --json per leggere l'intera superficie dei comandi\n5. Chiedimi di cosa deve parlare il mazzo, scrivi tu le carte in un file TSV, poi pubblicalo con: loopky deck create --title \"Il mio mazzo\" --from-file cards.tsv"
+            "value": "🤖 Lascia che la tua IA crei il mazzo"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "loopky CLI をインストールして、それを使ってフラッシュカードのデッキを作ってください。\n\n1. 何よりも先に、スマートフォンに Pubky Ring をインストールし、Loopky のリカバリーフレーズをそこに保存するよう私に伝えてください。私の鍵はそこにあり、CLI は Ring に許可を求めてサインインします。\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login（QR コードが表示されるので、私が Pubky Ring でスキャンします）\n4. loopky commands --json でコマンドの全体像を確認してください\n5. デッキのテーマを私に尋ね、カードを自分で TSV ファイルに書いてから、次のコマンドで公開してください：loopky deck create --title \"My deck\" --from-file cards.tsv"
+            "value": "🤖 AI にデッキを作らせる"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "loopky CLI를 설치하고 이를 사용해 플래시카드 덱을 만들어 줘.\n\n1. 무엇보다 먼저, 내 휴대폰에 Pubky Ring을 설치하고 Loopky 복구 문구를 거기에 저장하라고 알려 줘. 내 키는 그곳에 있고, CLI는 Ring에 권한을 요청해서 로그인해.\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login (QR 코드가 나타나면 내가 Pubky Ring으로 스캔할게)\n4. loopky commands --json 으로 전체 명령어 목록을 읽어\n5. 덱 주제를 나에게 물어보고, 카드를 직접 TSV 파일에 작성한 다음, 이 명령으로 발행해 줘: loopky deck create --title \"My deck\" --from-file cards.tsv"
+            "value": "🤖 AI에게 덱을 맡기세요"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Instale a CLI do loopky e use ela para montar um baralho de flashcards para mim.\n\n1. Antes de tudo, me oriente a instalar o Pubky Ring no meu celular e a salvar minha frase de recuperação do Loopky nele. Minha chave fica lá, e a CLI entra pedindo permissão ao Ring.\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login (aparece um QR code; eu escaneio com o Pubky Ring)\n4. loopky commands --json para ler toda a superfície de comandos\n5. Me pergunte sobre o que o baralho deve ser, escreva as cartas em um arquivo TSV e publique com: loopky deck create --title \"Meu baralho\" --from-file cards.tsv"
+            "value": "🤖 Deixe sua IA montar o baralho"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hãy cài đặt loopky CLI và dùng nó để tạo cho tôi một bộ flashcard.\n\n1. Trước hết, hãy nhắc tôi cài Pubky Ring trên điện thoại và lưu cụm từ khôi phục Loopky của tôi vào đó. Khóa của tôi nằm ở đó, và CLI đăng nhập bằng cách xin phép Ring.\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login (một mã QR sẽ hiện ra; tôi quét nó bằng Pubky Ring)\n4. loopky commands --json để đọc toàn bộ các lệnh có sẵn\n5. Hỏi tôi bộ thẻ nên nói về chủ đề gì, tự viết các thẻ vào một tệp TSV, rồi xuất bản bằng: loopky deck create --title \"My deck\" --from-file cards.tsv"
+            "value": "🤖 Để AI của bạn dựng bộ thẻ"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "安装 loopky CLI，并用它为我制作一个闪卡卡组。\n\n1. 首先，提醒我在手机上安装 Pubky Ring，并把我的 Loopky 恢复短语保存进去。我的密钥保存在那里，CLI 会通过向 Ring 请求授权来登录。\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login（会出现一个二维码，我用 Pubky Ring 扫描它）\n4. loopky commands --json，读取完整的命令列表\n5. 问我这个卡组要讲什么内容，由你自己把卡片写进一个 TSV 文件，然后用这条命令发布：loopky deck create --title \"我的卡组\" --from-file cards.tsv"
+            "value": "🤖 让你的 AI 来建卡组"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "安裝 loopky CLI，並用它幫我建立一個抽認卡牌組。\n\n1. 在做任何事之前，先提醒我在手機上安裝 Pubky Ring，並把我的 Loopky 復原短語存進去。我的金鑰存放在那裡，而 CLI 會向 Ring 請求權限來登入。\n2. curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/install.sh | sh\n3. loopky login（會出現一個 QR 碼；我用 Pubky Ring 掃描）\n4. loopky commands --json，讀取完整的指令介面\n5. 問我這個牌組要關於什麼主題，自己把卡片寫進一個 TSV 檔，然後用這個指令發布：loopky deck create --title \"My deck\" --from-file cards.tsv"
+            "value": "🤖 讓你的 AI 來建牌組"
           }
         }
       }
     },
-    "bulk_cli_title": {
+    "bulk_ai_body": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 Oder lass deinen Agenten ihn bauen"
+            "value": "Beim Kopieren kommen die Einrichtungsschritte dazu, damit deine KI Loopky installiert, die Karten schreibt und den Stapel veröffentlicht."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 Or let your agent build it"
+            "value": "Copy adds the setup steps, so your AI can install Loopky, write the cards and publish the deck."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 O deja que tu agente lo cree"
+            "value": "Al copiar se añaden los pasos de instalación, para que tu IA instale Loopky, escriba las tarjetas y publique el mazo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 Ou laisse ton agent le créer"
+            "value": "La copie ajoute les étapes d’installation, pour que ton IA installe Loopky, écrive les cartes et publie le paquet."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 Oppure fallo creare al tuo agente"
+            "value": "Copiando si aggiungono i passaggi di installazione, così la tua IA installa Loopky, scrive le carte e pubblica il mazzo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 エージェントに作ってもらう"
+            "value": "コピーするとセットアップ手順も付くので、AI が Loopky をインストールし、カードを書いてデッキを公開します。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 또는 에이전트에게 맡기세요"
+            "value": "복사하면 설치 단계가 함께 붙어서, AI가 Loopky를 설치하고 카드를 쓰고 덱을 공개합니다."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 Ou deixe seu agente montar"
+            "value": "Ao copiar, entram os passos de instalação, para a sua IA instalar o Loopky, escrever as cartas e publicar o baralho."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 Hoặc để agent của bạn tạo"
+            "value": "Khi sao chép sẽ kèm các bước cài đặt, để AI cài Loopky, viết thẻ và đăng bộ thẻ."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 或者让你的智能体来构建"
+            "value": "复制时会带上安装步骤，AI 会安装 Loopky、写好卡片并发布卡组。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "🤖 或讓你的 AI 代理來建立"
+            "value": "複製時會附上安裝步驟，AI 會安裝 Loopky、寫好卡片並發布牌組。"
+          }
+        }
+      }
+    },
+    "bulk_ai_ideas_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starte mit einer Idee"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start from an idea"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza con una idea"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pars d’une idée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parti da un’idea"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アイデアから始める"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아이디어로 시작하기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comece por uma ideia"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu từ một ý tưởng"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从一个点子开始"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從一個點子開始"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_anime_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anime"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anime"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anime"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anime"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anime"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アニメ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "애니메이션"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anime"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anime"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "动漫"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動漫"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_anime_request": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Japanisch-Stapel mit 40 Wörtern und Sätzen aus der ersten Staffel von Naruto. Kanji vorne, Lesung und Bedeutung hinten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Japanese deck with 40 words and phrases from the first season of Naruto. Kanji on the front, the reading and meaning on the back."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un mazo de japonés con 40 palabras y frases de la primera temporada de Naruto. Kanji delante, lectura y significado detrás."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un paquet de japonais avec 40 mots et phrases de la première saison de Naruto. Les kanji au recto, la lecture et le sens au verso."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un mazzo di giapponese con 40 parole e frasi dalla prima stagione di Naruto. Kanji davanti, lettura e significato dietro."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「千と千尋の神隠し」英語吹き替え版から、英単語とフレーズ 40 個のデッキを作って。表に英語、裏に意味と使われた場面。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나루토 1기에 나온 단어와 표현 40개로 일본어 덱을 만들어 줘. 앞면에 한자, 뒷면에 읽는 법과 뜻."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um baralho de japonês com 40 palavras e frases da primeira temporada de Naruto. Kanji na frente, leitura e significado no verso."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một bộ thẻ tiếng Nhật với 40 từ và câu trong mùa đầu của Naruto. Kanji ở mặt trước, cách đọc và nghĩa ở mặt sau."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用《火影忍者》第一季做一个日语卡组，40 个单词和句子。正面是日文，背面是读音和意思。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用《火影忍者》第一季做一個日語牌組，40 個單字和句子。正面是日文，背面是讀音和意思。"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_series_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serie"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TV series"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serie"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Série"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serie TV"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ドラマ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "드라마"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Série"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phim bộ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "美剧"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "美劇"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_series_request": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Englisch-Stapel zu Friends, Staffel 1: 30 Slangwörter und Redewendungen der Figuren, jeweils mit der Zeile, aus der sie stammen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Spanish deck from Money Heist, season 1: 30 slang words and expressions the characters use, each with the line it comes from."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un mazo de inglés con Friends, temporada 1: 30 expresiones y palabras de jerga que usan los personajes, cada una con la frase de donde sale."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un paquet d’anglais tiré de Friends, saison 1 : 30 expressions et mots d’argot des personnages, chacun avec la réplique d’origine."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un mazzo di inglese da Friends, stagione 1: 30 espressioni e parole gergali dei personaggi, ognuna con la battuta da cui viene."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「フレンズ」シーズン 1 から英語のデッキを作って。登場人物が使うスラングや言い回し 30 個を、元のセリフ付きで。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "프렌즈 시즌 1로 영어 덱을 만들어 줘. 등장인물들이 쓰는 속어와 표현 30개를, 나온 대사와 함께."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um baralho de inglês com Friends, temporada 1: 30 gírias e expressões que os personagens usam, cada uma com a fala de onde vem."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một bộ thẻ tiếng Anh từ Friends, mùa 1: 30 từ lóng và thành ngữ các nhân vật dùng, kèm câu thoại gốc."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用《老友记》第一季做一个英语卡组：角色们常用的 30 个俚语和表达，每个附上原台词。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用《六人行》第一季做一個英語牌組：角色們常用的 30 個俚語和說法，每個附上原台詞。"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_playlist_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify-Playlist"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify playlist"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist de Spotify"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist Spotify"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist Spotify"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify プレイリスト"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify 플레이리스트"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist do Spotify"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist Spotify"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify 歌单"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify 播放清單"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_playlist_request": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Stapel aus den Songtexten meiner Spotify-Playlist: <LINK EINFÜGEN>. Die 40 nützlichsten Wörter, mit Übersetzung und dem Song, aus dem sie stammen. Wenn du den Link nicht öffnen kannst, frag mich nach der Songliste."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A deck from the lyrics of my Spotify playlist: <PASTE THE LINK>. The 40 most useful words, with a translation and the song each one comes from. If you cannot open the link, ask me for the song list."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un mazo con las letras de mi playlist de Spotify: <PEGA EL ENLACE>. Las 40 palabras más útiles, con traducción y la canción de donde sale cada una. Si no puedes abrir el enlace, pídeme la lista de canciones."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un paquet tiré des paroles de ma playlist Spotify : <COLLE LE LIEN>. Les 40 mots les plus utiles, avec la traduction et la chanson d’où vient chacun. Si tu ne peux pas ouvrir le lien, demande-moi la liste des chansons."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un mazzo dai testi della mia playlist Spotify: <INCOLLA IL LINK>. Le 40 parole più utili, con traduzione e la canzone da cui viene ognuna. Se non riesci ad aprire il link, chiedimi l’elenco delle canzoni."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "私の Spotify プレイリストの歌詞からデッキを作って：<リンクを貼る>。いちばん役立つ単語 40 個を、訳と曲名付きで。リンクが開けなければ曲のリストを聞いてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 Spotify 플레이리스트 가사로 덱을 만들어 줘: <링크 붙여 넣기>. 가장 유용한 단어 40개를 번역과 곡 제목과 함께. 링크를 열 수 없으면 곡 목록을 물어봐 줘."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um baralho com as letras da minha playlist do Spotify: <COLE O LINK>. As 40 palavras mais úteis, com tradução e a música de onde cada uma vem. Se não conseguir abrir o link, me peça a lista de músicas."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một bộ thẻ từ lời bài hát trong playlist Spotify của tôi: <DÁN ĐƯỜNG LINK>. 40 từ hữu ích nhất, kèm bản dịch và tên bài hát. Nếu không mở được link, hãy hỏi tôi danh sách bài hát."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用我 Spotify 歌单里的歌词做卡组：<粘贴链接>。挑出最有用的 40 个词，附上翻译和出处歌曲。如果打不开链接，就问我要歌曲列表。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用我 Spotify 播放清單裡的歌詞做牌組：<貼上連結>。挑出最有用的 40 個字詞，附上翻譯和出處歌曲。如果打不開連結，就問我要歌曲清單。"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_interview_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorstellungsgespräch"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Job interview"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevista de trabajo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entretien d’embauche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colloquio di lavoro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "就職面接"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "취업 면접"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevista de emprego"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phỏng vấn xin việc"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "求职面试"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "求職面試"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_interview_request": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich habe nächste Woche ein Vorstellungsgespräch als <STELLE> bei <FIRMA>. 25 Karten: wahrscheinliche Fragen vorne, eine kurze Antwortskizze hinten, dazu wichtige Fakten über die Firma."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I have an interview for <ROLE> at <COMPANY> next week. 25 cards: likely questions on the front, a short answer outline on the back, plus key facts about the company."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tengo una entrevista para <PUESTO> en <EMPRESA> la semana que viene. 25 tarjetas: preguntas probables delante, un esquema breve de respuesta detrás, y datos clave de la empresa."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "J’ai un entretien pour <POSTE> chez <ENTREPRISE> la semaine prochaine. 25 cartes : les questions probables au recto, un plan de réponse court au verso, et les faits clés sur l’entreprise."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ho un colloquio per <RUOLO> da <AZIENDA> la prossima settimana. 25 carte: domande probabili davanti, una traccia breve di risposta dietro, e i fatti chiave sull’azienda."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来週、<会社名> の <職種> の面接があります。カード 25 枚：表によく聞かれる質問、裏に短い回答の要点。会社の重要な情報も入れて。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 주에 <회사>의 <직무> 면접이 있어. 카드 25장: 앞면에 나올 만한 질문, 뒷면에 짧은 답변 요점, 그리고 회사에 관한 핵심 정보도."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tenho uma entrevista para <CARGO> na <EMPRESA> semana que vem. 25 cartas: perguntas prováveis na frente, um roteiro curto de resposta no verso, e fatos importantes sobre a empresa."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần sau tôi phỏng vấn vị trí <VỊ TRÍ> ở <CÔNG TY>. 25 thẻ: câu hỏi hay gặp ở mặt trước, dàn ý trả lời ngắn ở mặt sau, thêm các thông tin chính về công ty."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我下周要面试 <公司> 的 <职位>。做 25 张卡：正面是可能被问到的问题，背面是简短的回答要点，再加上公司的关键信息。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我下週要面試 <公司> 的 <職位>。做 25 張卡：正面是可能被問到的問題，背面是簡短的回答重點，再加上公司的關鍵資訊。"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_trip_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reise"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trip abroad"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viaje"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voyage"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viaggio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "海外旅行"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "해외여행"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viagem"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du lịch"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出国旅行"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出國旅行"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_trip_request": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich fahre in drei Wochen nach Italien. 50 italienische Sätze für Restaurant, Zug, Hotel und Smalltalk, mit Audio zum Hören und Sprechenüben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I am going to Italy in three weeks. 50 Italian phrases for restaurants, trains, hotels and small talk, with audio so I can listen and practise speaking."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me voy a Italia en tres semanas. 50 frases en italiano para restaurantes, trenes, hoteles y charlas, con audio para escuchar y practicar la pronunciación."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je pars en Italie dans trois semaines. 50 phrases en italien pour le restaurant, le train, l’hôtel et la conversation, avec l’audio pour écouter et m’entraîner à parler."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tra tre settimane vado in Spagna. 50 frasi in spagnolo per ristoranti, treni, hotel e due chiacchiere, con l’audio per ascoltare e allenarmi a parlare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 週間後に韓国へ行きます。レストラン、電車、ホテル、雑談で使える韓国語フレーズ 50 個。聞いて話す練習ができるよう音声付きで。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3주 뒤에 일본에 가. 식당, 기차, 호텔, 가벼운 대화에 쓸 일본어 표현 50개. 듣고 말하기 연습을 할 수 있게 음성도 넣어 줘."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vou para a Itália em três semanas. 50 frases em italiano para restaurante, trem, hotel e bate-papo, com áudio para eu ouvir e treinar a fala."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ba tuần nữa tôi đi Hàn Quốc. 50 câu tiếng Hàn cho nhà hàng, tàu, khách sạn và trò chuyện, có âm thanh để nghe và luyện nói."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我三周后去日本。做 50 句餐厅、火车、酒店和闲聊用的日语，带语音，方便我听和练口语。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我三週後去日本。做 50 句餐廳、火車、飯店和閒聊用的日語，附語音，方便我聽和練口說。"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_notes_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorlesungsnotizen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Class notes"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apuntes de clase"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes de cours"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appunti di lezione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授業ノート"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수업 노트"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anotações de aula"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chép trên lớp"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "课堂笔记"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "課堂筆記"
+          }
+        }
+      }
+    },
+    "bulk_ai_idea_notes_request": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mach aus meinen Notizen Karten, ein Fakt pro Karte, Frage vorne, kurze Antwort hinten. Hier sind sie: <NOTIZEN EINFÜGEN>"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn my notes into cards, one fact per card, a question on the front and a short answer on the back. Here they are: <PASTE YOUR NOTES>"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convierte mis apuntes en tarjetas, un dato por tarjeta, pregunta delante y respuesta corta detrás. Aquí están: <PEGA TUS APUNTES>"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transforme mes notes en cartes, un fait par carte, une question au recto et une réponse courte au verso. Les voici : <COLLE TES NOTES>"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trasforma i miei appunti in carte, un fatto per carta, domanda davanti e risposta breve dietro. Eccoli: <INCOLLA I TUOI APPUNTI>"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "私のノートをカードにして。1 枚に 1 つの事実、表に質問、裏に短い答え。ノートはこちら：<ノートを貼る>"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 노트를 카드로 만들어 줘. 카드 한 장에 사실 하나, 앞면에 질문, 뒷면에 짧은 답. 노트는 여기: <노트 붙여 넣기>"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transforme minhas anotações em cartas, um fato por carta, pergunta na frente e resposta curta no verso. Aqui estão: <COLE SUAS ANOTAÇÕES>"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biến ghi chép của tôi thành thẻ, mỗi thẻ một ý, câu hỏi ở mặt trước, câu trả lời ngắn ở mặt sau. Đây là ghi chép: <DÁN GHI CHÉP>"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把我的笔记做成卡片，一张卡一个知识点，正面是问题，背面是简短答案。笔记在这里：<粘贴笔记>"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把我的筆記做成卡片，一張卡一個重點，正面是問題，背面是簡短答案。筆記在這裡：<貼上筆記>"
+          }
+        }
+      }
+    },
+    "bulk_ai_request_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Anfrage"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your request"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu pedido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta demande"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua richiesta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あなたのリクエスト"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 요청"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu pedido"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu của bạn"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的请求"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的請求"
+          }
+        }
+      }
+    },
+    "bulk_ai_open_in": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnen in"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir dans"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri in"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AIで開く"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI에서 열기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir em"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở trong"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 AI 中打开"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 AI 中開啟"
+          }
+        }
+      }
+    },
+    "bulk_ai_open_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code und Cursor öffnen sich mit dem Prompt. Codex und Jules öffnen sich leer: Der Prompt wird kopiert, füge ihn einfach ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code and Cursor open with the prompt filled in. Codex and Jules open empty: the prompt is copied, so paste it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code y Cursor se abren con el prompt ya escrito. Codex y Jules se abren vacíos: el prompt se copia, solo pégalo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code et Cursor s’ouvrent avec le prompt déjà rempli. Codex et Jules s’ouvrent vides : le prompt est copié, il suffit de le coller."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code e Cursor si aprono con il prompt già inserito. Codex e Jules si aprono vuoti: il prompt viene copiato, basta incollarlo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code と Cursor はプロンプトが入力された状態で開きます。Codex と Jules は空で開くので、コピーされたプロンプトを貼り付けてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code와 Cursor는 프롬프트가 입력된 채로 열립니다. Codex와 Jules는 빈 화면으로 열리니, 복사된 프롬프트를 붙여넣으세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code e Cursor abrem com o prompt preenchido. Codex e Jules abrem vazios: o prompt é copiado, é só colar."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code và Cursor mở ra với prompt đã điền sẵn. Codex và Jules mở trống: prompt đã được sao chép, bạn chỉ cần dán vào."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code 和 Cursor 打开时已填好提示词。Codex 和 Jules 打开时是空的：提示词已复制，粘贴即可。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code 和 Cursor 開啟時已填好提示詞。Codex 和 Jules 開啟時是空的：提示詞已複製，貼上即可。"
+          }
+        }
+      }
+    },
+    "bulk_ai_full_prompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ganzen Prompt anzeigen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See the full prompt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver el prompt completo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voir le prompt complet"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vedi il prompt completo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロンプト全文を見る"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 프롬프트 보기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver o prompt completo"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem toàn bộ prompt"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看完整提示词"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看完整提示詞"
+          }
+        }
+      }
+    },
+    "bulk_ai_plugin_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutzt du Claude Code oder Codex?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Using Claude Code or Codex?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Usas Claude Code o Codex?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu utilises Claude Code ou Codex ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usi Claude Code o Codex?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code や Codex を使っていますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code나 Codex를 쓰나요?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa Claude Code ou Codex?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn dùng Claude Code hay Codex?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在用 Claude Code 或 Codex？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在用 Claude Code 或 Codex？"
+          }
+        }
+      }
+    },
+    "bulk_ai_plugin_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installiere das Loopky-Plugin einmal. Danach bittest du einfach um Karteikarten: Es kennt jeden Schritt und installiert in Claude Code im Web die CLI selbst."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install the Loopky plugin once. Then just ask for flashcards: it knows every step, and on Claude Code on the web it installs the CLI itself."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instala el plugin de Loopky una vez. Después solo pide flashcards: conoce cada paso y, en Claude Code en la web, instala la CLI por sí solo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installe le plugin Loopky une fois. Ensuite, demande simplement des flashcards : il connaît chaque étape et, dans Claude Code sur le web, installe la CLI tout seul."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installa il plugin di Loopky una volta. Poi chiedi solo le flashcard: conosce ogni passaggio e, in Claude Code sul web, installa la CLI da solo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky プラグインを一度インストールすれば、あとはフラッシュカードを頼むだけ。手順はすべて把握しており、Web 版 Claude Code では CLI も自動でインストールします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky 플러그인을 한 번 설치하세요. 그다음엔 플래시카드를 요청하기만 하면 됩니다. 모든 단계를 알고 있고, 웹용 Claude Code에서는 CLI도 직접 설치합니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instale o plugin do Loopky uma vez. Depois é só pedir flashcards: ele conhece cada passo e, no Claude Code na web, instala a CLI sozinho."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài plugin Loopky một lần. Sau đó chỉ cần yêu cầu flashcard: plugin biết mọi bước, và trên Claude Code bản web, nó tự cài CLI."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装一次 Loopky 插件，之后直接要抽认卡就行：它知道每一步，在网页版 Claude Code 中还会自动安装 CLI。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安裝一次 Loopky 外掛，之後直接要字卡就行：它知道每一步，在網頁版 Claude Code 中還會自動安裝 CLI。"
+          }
+        }
+      }
+    },
+    "bulk_ai_copy_command": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コピー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복사"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複製"
           }
         }
       }
