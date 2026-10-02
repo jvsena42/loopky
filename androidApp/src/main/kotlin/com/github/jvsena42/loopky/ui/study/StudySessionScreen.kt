@@ -141,6 +141,7 @@ fun StudySessionRoute(
     val haptics: HapticFeedback = LocalHapticFeedback.current
 
     val currentClose by rememberUpdatedState(onClose)
+    val currentSignIn by rememberUpdatedState(onSignIn)
     val context = LocalContext.current
     val hapticPlayer = remember(context, haptics) { StudyHapticPlayer(context, haptics) }
     val scope = rememberCoroutineScope()
@@ -187,6 +188,7 @@ fun StudySessionRoute(
                 is StudySessionEffect.Haptic -> hapticPlayer.play(effect.pattern)
 
                 StudySessionEffect.Close -> currentClose()
+                StudySessionEffect.NavigateSignIn -> currentSignIn()
             }
         }
     }
@@ -204,7 +206,8 @@ fun StudySessionRoute(
         onReveal = viewModel::onReveal,
         onGrade = viewModel::onGrade,
         onNextCard = viewModel::onNextCard,
-        onSignIn = onSignIn,
+        onSignIn = viewModel::onSignIn,
+        onFollow = viewModel::onFollowDeck,
         onSpeak = viewModel::onSpeak,
         onSpeakTest = requestSpeak,
         onSpeakContinue = viewModel::onSpeakDismiss,
@@ -232,6 +235,8 @@ fun StudySessionScreen(
     onNextCard: () -> Unit = {},
     /** The offer at the end of a guest's preview. */
     onSignIn: () -> Unit = {},
+    /** The offer at the end of a signed-in reader's preview. */
+    onFollow: () -> Unit = {},
     onSpeakTest: () -> Unit = {},
     onSpeakContinue: () -> Unit = {},
     onSpeakRetry: () -> Unit = {},
@@ -280,6 +285,7 @@ fun StudySessionScreen(
                 state = state,
                 onDone = onDone,
                 onSignIn = onSignIn,
+                onFollow = onFollow,
             )
 
             is StudySessionUiState.Reviewing -> ReviewingContent(
