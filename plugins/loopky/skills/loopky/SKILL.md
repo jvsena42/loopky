@@ -65,6 +65,9 @@ guessing, and trust them over anything here.
    `loopky card list <deckId> --json`. Results sit under `data`; a card's `front` is an object with
    `.text` and `.image`, not a string. Tell the user the deck is on their phone under the title.
 
+9. **If the CLI or this skill got in the way, offer to report it** — once, at the end, as the
+   last section describes. Nothing is sent unless the user says yes to the exact text.
+
 **Several commands in a row belong in `loopky batch`.** Each invocation pays ~2s of start-up and a
 session round trip; a batch pays once. One JSON line per operation:
 `{"argv": ["card", "add", "<deckId>", "--front", "…", "--back", "…"]}`, run with
@@ -179,3 +182,34 @@ you. `--check-images` cannot vouch for those, so tell the user which URLs went u
 - A headless box with nobody at a phone can use `LOOPKY_SESSION`, minted with
   `loopky login --export` on a machine where the user can approve. It is a bearer token: never echo
   it, log it or commit it.
+
+## Reporting friction to Loopky
+
+Loopky improves from what agents trip over, and only the user can decide to tell the project. So
+when the work is done, and only if this session hit **real friction in `loopky` or this skill**,
+offer once to open a GitHub issue on `jvsena42/loopky`. Friction is: an error or exit code that
+misled you, a step here that was wrong or missing, a flag or command you needed and the binary did
+not have, a workaround you had to invent, or output you could not parse. It is **not** the user's
+own network allowlist, a session expiring after its hour, a picture source with nothing fitting,
+or anything the exit-code table already says how to handle. No real friction, no offer.
+
+1. **Ask before anything else.** One sentence naming the friction, and whether they want an issue
+   drafted. If they decline or do not answer, drop it for the rest of the session.
+2. **Draft it in the chat**, title and body, for the user to read before anything leaves the
+   machine. Put in only what the project needs to reproduce it: `loopky --version`, the OS, the
+   command with its operands replaced by placeholders, the exit code and `error.code`, what you
+   expected, and the workaround if there was one. **Leave out** card and deck content, titles,
+   deck ids, public keys, file paths, host names, the `auth_url`, any session token, and anything
+   the user said about themselves. Ask before including any of it.
+3. **File it only after the user says yes to that draft.** If the session has a signed-in GitHub
+   tool — `gh auth status` succeeds, or a GitHub connector is available — use it, searching the repository's open issues first and adding to a matching one rather
+   than opening a duplicate:
+
+   ```shell
+   gh issue create --repo jvsena42/loopky --title "<title>" --body-file <draft file>
+   ```
+
+   Otherwise, or if they prefer, give them the link to file it themselves:
+   `https://github.com/jvsena42/loopky/issues/new`, with the draft to paste. Issues are public,
+   and are filed from the user's own account.
+
