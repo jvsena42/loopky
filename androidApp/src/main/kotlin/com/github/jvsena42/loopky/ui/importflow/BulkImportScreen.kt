@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,16 +36,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -64,9 +65,10 @@ import com.github.jvsena42.loopky.ui.components.LoopkySecondaryButton
 import com.github.jvsena42.loopky.ui.components.bulkImportErrorMessage
 import com.github.jvsena42.loopky.ui.components.bulkImportErrorTitle
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.WindowWidthClass
 import com.github.jvsena42.loopky.ui.layout.contentPane
+import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -152,13 +154,9 @@ internal fun BulkImportRoute(
     // out legitimate Anki decks. acceptPickedFile sniffs the bytes and does the type check.
     val pickFile = { picker.launch(arrayOf("*/*")) }
 
-    val clipboard = LocalClipboardManager.current
-    val cliPrompt = stringResource(R.string.bulk_cli_prompt)
-
     BulkImportScreen(
         state = state,
         onPickFile = { pickFile() },
-        onCopyCliPrompt = { clipboard.setText(AnnotatedString(cliPrompt)) },
         onSeparatorOverride = viewModel::onSeparatorOverride,
         onFieldMappingChange = viewModel::onFieldMappingChanged,
         onConfirm = viewModel::onConfirm,
@@ -171,7 +169,6 @@ internal fun BulkImportRoute(
 private fun BulkImportScreen(
     state: BulkImportUiState,
     onPickFile: () -> Unit,
-    onCopyCliPrompt: () -> Unit,
     onSeparatorOverride: (Separator) -> Unit,
     onFieldMappingChange: (ApkgFieldMapping) -> Unit,
     onConfirm: () -> Unit,
@@ -181,6 +178,21 @@ private fun BulkImportScreen(
     val colors = LoopkyTheme.colors
     var showSeparatorSheet by remember { mutableStateOf(false) }
     var showFieldSheet by remember { mutableStateOf(false) }
+    var promptIdea by rememberSaveable { mutableStateOf(PromptIdea.Anime) }
+    var promptRequest by rememberSaveable { mutableStateOf<String?>(null) }
+    val agentPromptCard = @Composable { detailed: Boolean ->
+        AgentPromptCard(
+            idea = promptIdea,
+            request = promptRequest,
+            onIdeaChange = {
+                // Picking an idea replaces whatever was typed, as on the landing page.
+                promptIdea = it
+                promptRequest = null
+            },
+            onRequestChange = { promptRequest = it },
+            detailed = detailed,
+        )
+    }
 
     Scaffold(
         modifier = modifier,
@@ -202,16 +214,47 @@ private fun BulkImportScreen(
             )
         },
     ) { padding ->
+        val paneModifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            // Scaffold's padding already holds the navigation bar, which imePadding would count a
+            // second time as a band of empty cream above the keyboard.
+            .consumeWindowInsets(padding)
+        // At expanded width the empty state stands the file import and the AI prompt side by
+        // side, each scrolling on its own: one shared scroll carried the short file pane off
+        // the top and left half the screen blank while the prompt was read.
+        if (state == BulkImportUiState.Idle && windowWidthClass() == WindowWidthClass.Expanded) {
+            Row(
+                modifier = paneModifier.contentPane(PaneWidth.Wide).padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(28.dp),
+            ) {
+                Column(Modifier.weight(1f).imePadding().verticalScroll(rememberScrollState())) {
+                    PickFilePrompt(onPickFile)
+                }
+                Column(Modifier.weight(1f).imePadding().verticalScroll(rememberScrollState())) {
+                    Spacer(Modifier.height(28.dp))
+                    agentPromptCard(true)
+                    Spacer(Modifier.height(24.dp))
+                }
+            }
+            return@Scaffold
+        }
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier = paneModifier
                 .contentPane(PaneWidth.Reading)
                 .padding(horizontal = 20.dp)
+                // The AI request field sits near the bottom: without this the scroll container
+                // keeps its full height behind the keyboard and the field cannot be scrolled clear.
+                .imePadding()
                 .verticalScroll(rememberScrollState()),
         ) {
             when (state) {
-                BulkImportUiState.Idle -> PickFilePrompt(onPickFile, onCopyCliPrompt)
+                BulkImportUiState.Idle -> {
+                    PickFilePrompt(onPickFile)
+                    Spacer(Modifier.height(28.dp))
+                    agentPromptCard(windowWidthClass() != WindowWidthClass.Compact)
+                    Spacer(Modifier.height(24.dp))
+                }
                 BulkImportUiState.Reading -> BusyIndicator(stringResource(R.string.bulk_reading))
                 is BulkImportUiState.Parsing ->
                     BusyIndicator(stringResource(R.string.bulk_parsing, state.fileName))
@@ -261,7 +304,7 @@ private fun BulkImportScreen(
  * refugees (§1) — spell out the export that produces them.
  */
 @Composable
-private fun PickFilePrompt(onPickFile: () -> Unit, onCopyCliPrompt: () -> Unit) {
+private fun PickFilePrompt(onPickFile: () -> Unit) {
     val colors = LoopkyTheme.colors
     Spacer(Modifier.height(28.dp))
     Text(text = "📦", fontSize = 44.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
@@ -319,65 +362,7 @@ private fun PickFilePrompt(onPickFile: () -> Unit, onCopyCliPrompt: () -> Unit) 
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth(),
     )
-
-    Spacer(Modifier.height(28.dp))
-    CliPromptCard(onCopyCliPrompt)
-    Spacer(Modifier.height(24.dp))
 }
-
-/**
- * A pitch for `loopky`, the headless client, on the screen whose whole premise is that the deck
- * already exists somewhere else. The prompt is copied rather than shown, because the reader's
- * agent lives on another machine and nobody retypes an install line from a phone.
- */
-@Composable
-private fun CliPromptCard(onCopyPrompt: () -> Unit) {
-    val colors = LoopkyTheme.colors
-    // Copying is silent below API 33, where the system shows no confirmation of its own.
-    var copied by remember { mutableStateOf(false) }
-    LaunchedEffect(copied) {
-        if (copied) {
-            delay(COPIED_LABEL_MILLIS)
-            copied = false
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, colors.borderSubtle, RoundedCornerShape(14.dp))
-            .background(colors.surfaceCard)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.bulk_cli_title),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = colors.foregroundPrimary,
-        )
-        Text(
-            text = stringResource(R.string.bulk_cli_body),
-            fontSize = 13.sp,
-            color = colors.foregroundSecondary,
-        )
-        Spacer(Modifier.height(2.dp))
-        LoopkySecondaryButton(
-            text = stringResource(
-                if (copied) R.string.bulk_cli_copied else R.string.bulk_cli_copy,
-            ),
-            onClick = {
-                onCopyPrompt()
-                copied = true
-            },
-            modifier = Modifier.testTag("bulk_cli_copy"),
-        )
-    }
-}
-
-/** How long the copy button stands in for the confirmation Android 12 and below never show. */
-private const val COPIED_LABEL_MILLIS = 2_000L
 
 /** One accepted file format: what it is, and what it does and doesn't bring over. */
 @Composable
@@ -561,7 +546,6 @@ private fun BulkImportIdlePreview() {
         BulkImportScreen(
             state = BulkImportUiState.Idle,
             onPickFile = {},
-            onCopyCliPrompt = {},
             onSeparatorOverride = {},
             onFieldMappingChange = {},
             onConfirm = {},
@@ -578,7 +562,6 @@ private fun BulkImportParsingPreview() {
         BulkImportScreen(
             state = BulkImportUiState.Parsing("japanese_core.apkg"),
             onPickFile = {},
-            onCopyCliPrompt = {},
             onSeparatorOverride = {},
             onFieldMappingChange = {},
             onConfirm = {},
@@ -607,7 +590,6 @@ private fun BulkImportReadyPreview() {
                 ),
             ),
             onPickFile = {},
-            onCopyCliPrompt = {},
             onSeparatorOverride = {},
             onFieldMappingChange = {},
             onConfirm = {},
@@ -624,7 +606,6 @@ private fun BulkImportErrorPreview() {
         BulkImportScreen(
             state = BulkImportUiState.Error(BulkImportError.NotText),
             onPickFile = {},
-            onCopyCliPrompt = {},
             onSeparatorOverride = {},
             onFieldMappingChange = {},
             onConfirm = {},
