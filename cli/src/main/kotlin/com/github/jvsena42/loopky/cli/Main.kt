@@ -527,7 +527,7 @@ internal val USAGE = """
         homeserver.pubky.app    every deck read and write
         nexus.pubky.app         tag trending and indexer reads
 
-      Recommended, for card pictures:
+      Recommended, for card pictures and decks built from a TV series' subtitles:
 
         upload.wikimedia.org    where Wikimedia images are served; --check-images HEADs them
         commons.wikimedia.org   finding a picture and its URL
@@ -535,6 +535,11 @@ internal val USAGE = """
         images-api.nasa.gov     finding a space picture
         api.artic.edu           finding public-domain art
         collectionapi.metmuseum.org  the same, at the Met
+        rest.opensubtitles.org  finding a series' subtitles
+        dl.opensubtitles.org    downloading them
+        www.addic7ed.com        TV episode subtitles
+        jimaku.cc               Japanese anime subtitles
+        kitsunekko.net          the same
 
       `loopky doctor` checks each one and prints the list for your homeserver and environment.
       Exit 14 means a proxy refused a host: allowlisting it is the fix, retrying is not.

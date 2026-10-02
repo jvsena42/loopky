@@ -540,7 +540,8 @@ once these hosts are added (production):
 | `nexus.pubky.app` | `tag trending` and every indexer read |
 | `github.com`, `release-assets.githubusercontent.com` | install and `loopky update` |
 
-Recommended, though no command needs them — an agent building a deck with pictures does:
+Recommended, though no command needs them — an agent building a deck with pictures, or from a TV
+series' subtitles, does:
 
 | Host | Needed for |
 | --- | --- |
@@ -549,6 +550,9 @@ Recommended, though no command needs them — an agent building a deck with pict
 | `api.openverse.org` | finding an openly licensed picture |
 | `images-api.nasa.gov` | finding a space picture |
 | `api.artic.edu`, `collectionapi.metmuseum.org` | finding public-domain art |
+| `rest.opensubtitles.org`, `dl.opensubtitles.org` | finding and downloading a series' subtitles |
+| `www.addic7ed.com` | TV episode subtitles |
+| `jimaku.cc`, `kitsunekko.net` | Japanese anime subtitles |
 
 Copy-paste, production:
 
@@ -564,6 +568,11 @@ api.openverse.org
 images-api.nasa.gov
 api.artic.edu
 collectionapi.metmuseum.org
+rest.opensubtitles.org
+dl.opensubtitles.org
+www.addic7ed.com
+jimaku.cc
+kitsunekko.net
 ```
 
 **Where the list goes is the human's to change, not the agent's.** Claude Code on the web: the
