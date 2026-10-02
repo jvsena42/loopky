@@ -81,4 +81,14 @@ class IosAppPreferences : AppPreferences {
         defaults.setBool(dismissed, KEY_AVATAR_NUDGE_DISMISSED)
         _avatarNudgeDismissed.update { dismissed }
     }
+
+    private val _pendingDeckFollow = MutableStateFlow(
+        defaults.stringForKey(KEY_PENDING_DECK_FOLLOW) ?: DEFAULT_PENDING_DECK_FOLLOW,
+    )
+    override val pendingDeckFollow: Flow<String> = _pendingDeckFollow.asStateFlow()
+
+    override suspend fun setPendingDeckFollow(value: String) {
+        defaults.setObject(value, KEY_PENDING_DECK_FOLLOW)
+        _pendingDeckFollow.update { value }
+    }
 }

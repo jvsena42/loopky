@@ -210,6 +210,7 @@ fun deckRepository(
     mediaRepo: MediaRepository = FakeMediaRepository(),
     backgroundTasks: BackgroundTasks = FakeBackgroundTasks(),
     deckCache: DeckCacheStore = FakeDeckCacheStore(),
+    preferences: AppPreferences = FakeAppPreferences(),
     scope: CoroutineScope = CoroutineScope(SupervisorJob()),
 ): DeckRepositoryImpl = DeckRepositoryImpl(
     pubky = pubky,
@@ -220,6 +221,7 @@ fun deckRepository(
     mediaRepo = mediaRepo,
     backgroundTasks = backgroundTasks,
     deckCache = deckCache,
+    preferences = preferences,
     scope = scope,
 )
 
@@ -252,6 +254,7 @@ internal fun identityRepository(
     sessionProvider = sessionProvider,
     tagRepository = tagRepository,
     localKeyStore = localKeyStore,
+    decks = deckRepository,
     scope = scope,
     eraser = AccountEraser(
         pubky = pubky,

@@ -9,6 +9,7 @@ import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.testing.CountingRevalidator
+import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
 import com.github.jvsena42.loopky.testing.TEST_PUBKY
@@ -25,6 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -42,7 +44,8 @@ class DeckRepositoryFollowTest {
     private val revalidator = CountingRevalidator()
     private val tagRepo = RecordingTagRepository()
     private val cardRepo = CardRepositoryImpl(pubky, session, revalidator, Dispatchers.Unconfined)
-    private val repo = deckRepository(pubky, session, cardRepo, revalidator, tagRepo)
+    private val prefs = FakeAppPreferences()
+    private val repo = deckRepository(pubky, session, cardRepo, revalidator, tagRepo, preferences = prefs)
 
     @Test
     fun followDeckWritesTheSubscriptionRecordAndTheReservedTag() = runTest {
@@ -245,6 +248,56 @@ class DeckRepositoryFollowTest {
         putRemoteDeck("friendpk", "foreign", listOf(testCard("c1", deckId = "foreign")))
 
         assertTrue(repo.deleteCard("foreign", "c1").isFailure)
+    }
+
+    @Test
+    fun followPendingAfterSignInFollowsTheRememberedDeckAndForgetsIt() = runTest {
+        putRemoteDeck("friendpk", "foreign", listOf(testCard("c1", deckId = "foreign")))
+        repo.rememberFollowForSignIn("friendpk", "foreign")
+
+        val followed = repo.followPendingAfterSignIn().getOrThrow()
+
+        assertEquals("foreign", followed?.id)
+        assertTrue(repo.isFollowingDeck("foreign"))
+        assertEquals("", prefs.pendingDeckFollowValue)
+    }
+
+    @Test
+    fun followPendingAfterSignInWaitsForASession() = runTest {
+        putRemoteDeck("friendpk", "foreign", listOf(testCard("c1", deckId = "foreign")))
+        repo.rememberFollowForSignIn("friendpk", "foreign")
+        session.set(null)
+
+        assertNull(repo.followPendingAfterSignIn().getOrThrow())
+        // Kept for the session that is coming.
+        assertEquals("friendpk/foreign", prefs.pendingDeckFollowValue)
+    }
+
+    @Test
+    fun followPendingAfterSignInNeverFollowsYourOwnDeck() = runTest {
+        repo.rememberFollowForSignIn(TEST_PUBKY, "mine")
+
+        assertNull(repo.followPendingAfterSignIn().getOrThrow())
+        assertFalse(repo.isFollowingDeck("mine"))
+        assertEquals("", prefs.pendingDeckFollowValue)
+    }
+
+    @Test
+    fun followPendingAfterSignInForgetsADeckThatNoLongerExists() = runTest {
+        repo.rememberFollowForSignIn("friendpk", "gone")
+
+        assertTrue(repo.followPendingAfterSignIn().isFailure)
+        assertEquals("", prefs.pendingDeckFollowValue)
+    }
+
+    @Test
+    fun followPendingAfterSignInKeepsTheDeckWhenTheFollowFails() = runTest {
+        putRemoteDeck("friendpk", "foreign", listOf(testCard("c1", deckId = "foreign")))
+        repo.rememberFollowForSignIn("friendpk", "foreign")
+        pubky.failAllSessionCallsWith = PubkyError("HTTP 500")
+
+        assertTrue(repo.followPendingAfterSignIn().isFailure)
+        assertEquals("friendpk/foreign", prefs.pendingDeckFollowValue)
     }
 
     private fun subscriptionUrl(author: String, deckId: String) =

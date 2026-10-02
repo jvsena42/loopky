@@ -105,6 +105,18 @@ interface AppPreferences {
     val avatarNudgeDismissed: Flow<Boolean>
 
     suspend fun setAvatarNudgeDismissed(dismissed: Boolean)
+
+    /**
+     * The deck a visitor was previewing when they left for sign-in, as `"{authorPubky}/{deckId}"`,
+     * or blank. Followed on their behalf once a session exists — see
+     * [com.github.jvsena42.loopky.data.repository.DeckRepository.followPendingAfterSignIn] — and
+     * cleared on sign-out, so it can never follow a deck into somebody else's account.
+     *
+     * Emits the current value immediately and again on every change.
+     */
+    val pendingDeckFollow: Flow<String>
+
+    suspend fun setPendingDeckFollow(value: String)
 }
 
 internal const val PREFERENCES_NAME = "loopky.preferences"
@@ -120,3 +132,5 @@ internal const val KEY_NAME_NUDGE_DISMISSED = "name_nudge_dismissed"
 internal const val DEFAULT_NAME_NUDGE_DISMISSED = false
 internal const val KEY_AVATAR_NUDGE_DISMISSED = "avatar_nudge_dismissed"
 internal const val DEFAULT_AVATAR_NUDGE_DISMISSED = false
+internal const val KEY_PENDING_DECK_FOLLOW = "pending_deck_follow"
+internal const val DEFAULT_PENDING_DECK_FOLLOW = ""

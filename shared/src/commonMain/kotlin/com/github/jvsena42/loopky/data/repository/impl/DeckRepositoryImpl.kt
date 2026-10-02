@@ -25,6 +25,7 @@ import com.github.jvsena42.loopky.data.repository.MediaRepository
 import com.github.jvsena42.loopky.data.repository.PublishProgress
 import com.github.jvsena42.loopky.data.repository.RehostOutcome
 import com.github.jvsena42.loopky.data.repository.TagRepository
+import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.CardSide
@@ -46,6 +47,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -67,6 +69,7 @@ class DeckRepositoryImpl(
     private val mediaRepo: MediaRepository,
     private val backgroundTasks: BackgroundTasks,
     private val deckCache: DeckCacheStore,
+    private val preferences: AppPreferences,
     /**
      * App-scoped: re-hosting outlives whatever screen triggered it, so it cannot run on a
      * `viewModelScope` that dies in `onCleared()`. Injectable so tests can pass `backgroundScope`.
@@ -95,6 +98,7 @@ class DeckRepositoryImpl(
      */
     private var subscriptions: MutableMap<String, SubscriptionDto>? = null
     private val subscriptionLock = Mutex()
+    private val pendingFollowLock = Mutex()
 
     /** Guarded by [subscriptionLock]. Who you follow is per-account; the cache must not outlive it. */
     private val subscriptionAccount = AccountStamp(session)
@@ -938,6 +942,42 @@ class DeckRepositoryImpl(
     override suspend fun isFollowingDeck(deckId: String): Boolean =
         loadSubscriptions().containsKey(deckId)
 
+    override suspend fun rememberFollowForSignIn(authorPubky: String, deckId: String) {
+        preferences.setPendingDeckFollow("$authorPubky$PENDING_FOLLOW_SEPARATOR$deckId")
+    }
+
+    // Locked so the session load and the sign-in that both trigger this cannot follow twice.
+    override suspend fun followPendingAfterSignIn(): Result<Deck?> = pendingFollowLock.withLock {
+        runSuspendCatching {
+            val pending = preferences.pendingDeckFollow.first()
+            val authorPubky = pending.substringBefore(PENDING_FOLLOW_SEPARATOR, "")
+            val deckId = pending.substringAfter(PENDING_FOLLOW_SEPARATOR, "")
+            if (authorPubky.isBlank() || deckId.isBlank()) {
+                if (pending.isNotEmpty()) forgetPendingFollow()
+                return@runSuspendCatching null
+            }
+            val owner = session.current()?.identity?.pubky ?: return@runSuspendCatching null
+            if (owner == authorPubky) {
+                forgetPendingFollow()
+                return@runSuspendCatching null
+            }
+            val deck = fetchRemote(authorPubky, deckId).getOrElse { err ->
+                // A deck deleted since the preview will never be followable; anything else is
+                // worth another try on the next session load.
+                if (err.isNotFound()) forgetPendingFollow()
+                throw err
+            }
+            followDeck(deck).getOrThrow()
+            forgetPendingFollow()
+            Log.d(TAG, "followPendingAfterSignIn: followed $deckId")
+            deck
+        }
+    }
+
+    override suspend fun forgetPendingFollow() {
+        preferences.setPendingDeckFollow("")
+    }
+
     override suspend fun listFollowed(): List<Deck> {
         val subs = loadSubscriptionsListing()
         val resolved = resolveSubscriptionsListing(subs.items)
@@ -1164,6 +1204,7 @@ class DeckRepositoryImpl(
 
     private companion object {
         const val TAG = "Loopky/DeckRepo"
+        const val PENDING_FOLLOW_SEPARATOR = '/'
 
         /** Room for a burst of mutations while a collector is mid-reload; oldest is dropped. */
         const val CHANGE_BUFFER = 8

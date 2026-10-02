@@ -478,6 +478,22 @@ interface DeckRepository {
     suspend fun isFollowingDeck(deckId: String): Boolean
 
     /**
+     * A visitor previewing a deck left for sign-in: remember it, so the account they come back
+     * with already follows it. Device-local and one deck deep — the latest preview wins.
+     */
+    suspend fun rememberFollowForSignIn(authorPubky: String, deckId: String)
+
+    /**
+     * Follow the deck [rememberFollowForSignIn] stored, now that a session exists, and forget it.
+     * Null when nothing was pending, or when the deck is the signed-in user's own. A deck that has
+     * since disappeared is forgotten too; any other failure keeps it for the next session load.
+     */
+    suspend fun followPendingAfterSignIn(): Result<Deck?>
+
+    /** Drop a remembered follow unapplied. Sign-out calls it, so it can never reach another account. */
+    suspend fun forgetPendingFollow()
+
+    /**
      * Decks you follow, from their authors' homeservers. An unreadable deck is dropped rather than
      * failing the call — an author deleting a deck must not empty your library — but a listing that
      * resolved nothing at all still throws.

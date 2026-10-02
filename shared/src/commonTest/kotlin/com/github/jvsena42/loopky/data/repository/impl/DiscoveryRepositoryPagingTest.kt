@@ -48,6 +48,7 @@ class DiscoveryRepositoryPagingTest {
         mediaRepo = FakeMediaRepository(),
         backgroundTasks = FakeBackgroundTasks(),
         deckCache = FakeDeckCacheStore(),
+        preferences = FakeAppPreferences(),
     )
     private val tagRepo = RecordingTagRepository()
     private val identityRepo = identityRepository(

@@ -501,6 +501,25 @@ class FakeDeckRepository : DeckRepository {
 
     override suspend fun isFollowingDeck(deckId: String): Boolean = deckId in followedDecks
 
+    /** `author to deckId`, as [rememberFollowForSignIn] left it; null once followed or forgotten. */
+    var pendingFollow: Pair<String, String>? = null
+
+    var followPendingCount = 0
+        private set
+
+    override suspend fun rememberFollowForSignIn(authorPubky: String, deckId: String) {
+        pendingFollow = authorPubky to deckId
+    }
+
+    override suspend fun followPendingAfterSignIn(): Result<Deck?> {
+        followPendingCount++
+        return Result.success(null)
+    }
+
+    override suspend fun forgetPendingFollow() {
+        pendingFollow = null
+    }
+
     /** How often the followed list was read — asserted where it must run beside [listOwned]. */
     var listFollowedCount = 0
         private set
@@ -1390,6 +1409,7 @@ class FakeAppPreferences(
     themeMode: AppTheme = AppTheme.System,
     nameNudgeDismissed: Boolean = false,
     avatarNudgeDismissed: Boolean = false,
+    pendingDeckFollow: String = "",
 ) : AppPreferences {
     private val _shareOnPubky = MutableStateFlow(shareOnPubky)
     override val shareOnPubky: Flow<Boolean> = _shareOnPubky.asStateFlow()
@@ -1446,6 +1466,16 @@ class FakeAppPreferences(
 
     override suspend fun setAvatarNudgeDismissed(dismissed: Boolean) {
         _avatarNudgeDismissed.update { dismissed }
+    }
+
+    private val _pendingDeckFollow = MutableStateFlow(pendingDeckFollow)
+    override val pendingDeckFollow: Flow<String> = _pendingDeckFollow.asStateFlow()
+
+    /** The current value, for a test that asserts on it without collecting. */
+    val pendingDeckFollowValue: String get() = _pendingDeckFollow.value
+
+    override suspend fun setPendingDeckFollow(value: String) {
+        _pendingDeckFollow.update { value }
     }
 }
 
