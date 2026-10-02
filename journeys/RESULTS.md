@@ -4158,6 +4158,8 @@ test-vector phrase (journey 20).
 | Restore with the recovery phrase | ✅ lands on Today with Dinosaurs among Today's decks; logcat `followPendingAfterSignIn: followed dinosaurs0001`; the pending entry is blank again |
 | Signed in → a deck not followed → Try these cards → end | ✅ **Follow deck** is the primary button, **Back to deck** the quiet one |
 | Follow deck | ✅ returns to deck detail already showing the followed state (Study this deck, Edit) |
+| Follow deck, with Share on Pubky on (Pixel_Tablet, landscape) | ✅ "Post about this follow?" with the exact post; **Not now** returns to deck detail as followed. Post was not tapped, to keep the shared test account from publishing; it is covered by `StudySessionPreviewTest` |
+| Guest → Inglês para viajar de avião → Create account → restore (Pixel_Tablet) | ✅ `followPendingAfterSignIn: followed viageming2026a`, entry cleared |
 
 ### Not verified here
 
@@ -4165,4 +4167,7 @@ test-vector phrase (journey 20).
   in. Covered by `IdentityRepositoryImplTest.signOutForgetsTheDeckRememberedForAFollow`.
 - **iOS**: no Mac in this session. The Swift changes mirror Android (`StudySessionView`'s preview
   ending, `NavigateSignIn` effect) but have not been compiled or driven.
-- The test-vector account now follows Dinosaurs and the Spanish deck on staging.
+- **iOS has no posted/failed confirmation** after the prompt: the study screen closes as the result
+  arrives, and its flash lives on the screen it is leaving. Android shows a toast.
+- The test-vector account now follows Dinosaurs, the Spanish deck and both "Inglês para…" decks on
+  staging.
