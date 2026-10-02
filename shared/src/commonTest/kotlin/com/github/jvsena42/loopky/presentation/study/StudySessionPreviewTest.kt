@@ -250,7 +250,7 @@ class StudySessionPreviewTest {
     }
 
     @Test
-    fun `a failed announcement still leaves, with the follow intact`() = runTest(mainDispatcher) {
+    fun `a failed announcement still leaves with the follow intact`() = runTest(mainDispatcher) {
         discoveryRepo.announceError = IllegalStateException("offline")
         val vm = followedWithPrompt()
         val effects = mutableListOf<StudySessionEffect>()
