@@ -9,3 +9,7 @@ release-assets.githubusercontent.com
 # Recommended, not required: card pictures. `doctor` reports these under `recommended`.
 upload.wikimedia.org
 commons.wikimedia.org
+api.openverse.org
+images-api.nasa.gov
+api.artic.edu
+collectionapi.metmuseum.org
