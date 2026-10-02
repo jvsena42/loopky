@@ -28,10 +28,17 @@ Then ask for what you want to learn: *"Make me 30 Spanish flashcards for orderin
 - **`skills/loopky`** — when to reach for Loopky and the workflow. It deliberately does not copy
   the command reference: `loopky commands --json` is the source of truth for flags, result shapes
   and exit codes, and the skill points there.
+
+When a session runs into a real problem with `loopky` or the skill (a misleading error, a missing
+flag, a step that was wrong), the skill offers once, at the end, to report it as an issue on this
+repository. It shows you the draft first, leaves out your cards, deck ids, keys and paths, and files
+nothing unless you approve that text: through your own signed-in `gh` or GitHub connector, or as a
+link you open yourself.
+
 The plugin ships **no hooks and no installer**: it downloads nothing and runs only the `loopky`
-you installed. The binary is ~70 MB per platform, too large to ship inside a plugin, so it is a
-prerequisite — install it first, following [Install](https://github.com/jvsena42/loopky/tree/main/cli#install)
-in the CLI README (Homebrew, a `.deb`, or the release installer). When it is missing, the skill
+you installed, plus your own `gh` if you approve a friction report. The binary is ~70 MB per
+platform, too large to ship inside a plugin, so it is a prerequisite — install it first,
+following [Install](https://github.com/jvsena42/loopky/tree/main/cli#install) in the CLI README (Homebrew, a `.deb`, or the release installer). When it is missing, the skill
 stops and asks you to.
 
 In a cloud environment (Claude Code on the web, Codex), install `loopky` in the environment's
@@ -41,7 +48,7 @@ setup script, and add the hosts `loopky doctor` lists to the environment's allow
 
 The plugin declares no connectors. What leaves your machine goes through the `loopky` CLI the skill
 runs, and only to the services below. The Loopky project runs no server of its own and receives
-none of it. The full policy is [PRIVACY.md](https://github.com/jvsena42/loopky/blob/main/PRIVACY.md).
+none of it, apart from an issue you choose to file. The full policy is [PRIVACY.md](https://github.com/jvsena42/loopky/blob/main/PRIVACY.md).
 
 | Service | When | What reaches it |
 | --- | --- | --- |
@@ -50,6 +57,7 @@ none of it. The full policy is [PRIVACY.md](https://github.com/jvsena42/loopky/b
 | **pkarr relays** (`pkarr.pubky.app`, `pkarr.pubky.org`) | Finding your homeserver | The public key being looked up, your IP address |
 | **Pubky Nexus** (`nexus.pubky.app`) | `tag trending` and other indexer reads | What is looked up, your IP address |
 | **GitHub** (`github.com`, `release-assets.githubusercontent.com`) | Installing, `loopky update`, and a once-a-day version check | A download request, your IP address |
+| **GitHub issues** (`github.com/jvsena42/loopky`) | Only if you approve a friction report | The issue text you approved, posted publicly from your GitHub account |
 | **Image hosts** named in your cards | Only with `--check-images` | One `HEAD` request per picture URL, your IP address |
 
 **Retention.** Nothing is retained by the Loopky project. Your decks stay on your homeserver until
