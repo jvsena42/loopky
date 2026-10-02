@@ -6,8 +6,8 @@ import kotlinx.coroutines.coroutineScope
 
 /**
  * Hosts no command needs but an agent building a deck will: where card pictures are found and
- * served, in the skill's fallback order (`plugins/loopky/skills/loopky/SKILL.md`). The same on
- * every environment, and never able to fail `doctor`.
+ * served: the lookup hosts for the sources `plugins/loopky/skills/loopky/SKILL.md` names. The same
+ * on every environment, and never able to fail `doctor`.
  */
 internal val RECOMMENDED_HOSTS = listOf(
     "upload.wikimedia.org" to "card pictures (Wikimedia images; --check-images)",
