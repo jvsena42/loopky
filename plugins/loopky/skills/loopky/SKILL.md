@@ -114,13 +114,62 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   makes `--listen` and `--speak` work, and it also tags the deck `language` and `spanish` so learners
   find it. Without the pair the phone reads Spanish in an English voice, so both switches stay off.
   `--type` (typed answers) and `--reverse` (ask both directions) need no pair.
-- **Pictures are `https` URLs, never uploads.** Wikimedia thumbnails exist only at 120, 250, 330,
-  500, 960, 1280 and 1920 px — any other `NNNpx-` width is a blank card. SVG, TIFF, WebM and STL do
-  not render; for an SVG use its `/thumb/…/500px-….svg.png` render. Add `--check-images` to the
-  dry-run when the URLs came from anywhere you have not fetched.
+- **Pictures are `https` URLs, never uploads.** SVG, TIFF, WebM and STL do not render on either
+  phone, whatever the host: use a JPEG, PNG or WebP. Add `--check-images` to the dry-run when the
+  URLs came from anywhere you have not fetched. Which source to take them from is the next section.
 - **Tags are public** and indexed network-wide. Use a few honest topic words; never copy an Anki
   deck's tags or description without reading them.
 - **Do not pad.** Make the cards the user asked for, at the count they asked for.
+
+## Where to find pictures
+
+A picture is a prompt, so it goes on the side that asks: the thing on the front, its name on the
+back. Every deck is public and a card has no room for a credit line, so the licence decides the
+source as much as the topic does.
+
+**Try the sources in this order, and move to the next when one has no picture that shows exactly
+the card's fact, its host is blocked (`loopky doctor` lists them under `recommended`), or the
+picture's licence is not one of those below.** When none has one, leave the card without a
+picture: a near miss teaches the wrong thing.
+
+1. **A source made for the topic**, when there is one. All public domain, nothing to credit.
+
+   | Topic | Find it | The URL that goes on the card |
+   | --- | --- | --- |
+   | Country flags | the ISO 3166 code, no lookup | `https://flagcdn.com/w640/<code>.png`. Widths double from `w20` to `w2560`; anything else 404s. |
+   | Space, astronomy, NASA missions | `images-api.nasa.gov/search?q=…&media_type=image` | `https://images-assets.nasa.gov/image/<nasa_id>/<nasa_id>~medium.jpg`, or another size `images-api.nasa.gov/asset/<nasa_id>` lists. Only items credited to NASA: a `photographer` or `secondary_creator` from outside NASA, or a © in the description, is someone else's copyright. |
+   | Paintings, artefacts | `api.artic.edu/api/v1/artworks/search?q=…&fields=id,title,image_id,is_public_domain` | `https://www.artic.edu/iiif/2/<image_id>/full/843,/0/default.jpg`, only where `is_public_domain` is true. |
+   | Paintings, artefacts | `collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&q=…`, then `…/objects/<id>` | The object's `primaryImageSmall`, only where `isPublicDomain` is true. |
+
+2. **Wikimedia Commons**, for anything with a name. Read the licence before using a file:
+   `commons.wikimedia.org/w/api.php?action=query&format=json&titles=File:<name>&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500`
+   gives `thumburl` and `extmetadata.LicenseShortName`. Take only addresses under
+   `upload.wikimedia.org/wikipedia/commons/`: `/wikipedia/en/` and other per-language paths hold
+   non-free files a Wikipedia article may use and a deck may not. Thumbnails exist only at 120,
+   250, 330, 500, 960, 1280 and 1920 px; any other `NNNpx-` width is a blank card. For an SVG use
+   its `/thumb/…/500px-….svg.png` render, since the original never renders.
+
+3. **Openverse**, which searches Flickr, museums and other open collections, with no key:
+   `api.openverse.org/v1/images/?q=…&license=cc0,pdm` keeps to pictures that need no credit (add
+   `,by,by-sa` only when the credit fits, below). Each result's `url` goes on the card; its
+   `license` and `attribution` say what to credit.
+
+4. **Unsplash**, for an everyday object or scene nothing above shows: the photo's
+   `https://images.unsplash.com/photo-…?w=1080&fm=jpg` address, never the web page's and never
+   `plus.unsplash.com`, which is paid and licensed separately. The Unsplash Licence needs no
+   credit.
+
+**Licences.** Public domain, PDM and CC0 need nothing. CC BY and CC BY-SA need a credit, and the
+deck's `--description` is the only place for one: `Pictures: <author>, <licence>, via <source>`,
+per picture, within the description's 500 characters. When the credits will not fit, use a
+public-domain picture for those cards or leave them without one. Never use a picture marked NC,
+ND, "fair use", "all rights reserved" or with no licence at all, and never take an address from a
+search engine's results, Pinterest, Instagram, or a host that forbids hotlinking (Pixabay does):
+the phone fetches each picture from where it is hosted, for every learner, for as long as the deck
+exists.
+
+A host the sandbox cannot reach can still be right, because the phone fetches the picture, not
+you. `--check-images` cannot vouch for those, so tell the user which URLs went unchecked.
 
 ## Limits worth knowing
 
