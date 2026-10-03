@@ -679,6 +679,8 @@
     <string name="backup_nag_title">Fai il backup del tuo account</string>
     <string name="backup_nag_body">La tua chiave esiste solo su questo dispositivo. Se la perdi, perdi anche i tuoi mazzi.</string>
     <string name="backup_nag_action">Fai il backup ora</string>
+    <string name="backup_reminder_title">Il tuo account non ha un backup</string>
+    <string name="backup_reminder_body">Se elimini Loopky senza un backup, perdi il tuo account per sempre.</string>
     <string name="settings_signout_unbacked_title">Uscendo cancellerai la tua chiave</string>
     <string name="settings_signout_unbacked_body">Loopky ha l\'unica copia della chiave di %1$s e non ne hai fatto il backup. Uscendo la elimini per sempre.</string>
     <string name="settings_signout_unbacked_confirm">Esci e cancella</string>

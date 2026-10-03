@@ -48,6 +48,7 @@ import com.github.jvsena42.loopky.platform.Speaker
 import com.github.jvsena42.loopky.presentation.backup.BackupFileViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupPhraseViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupQuizViewModel
+import com.github.jvsena42.loopky.presentation.backup.BackupReminderViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupRingViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupStartViewModel
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailViewModel
@@ -309,6 +310,8 @@ object IosDependencies {
     fun backupFileViewModel(): BackupFileViewModel = koin.get()
 
     fun backupRingViewModel(): BackupRingViewModel = koin.get()
+
+    fun backupReminderViewModel(): BackupReminderViewModel = koin.get()
 
     fun restorePhraseViewModel(): RestorePhraseViewModel = koin.get()
 

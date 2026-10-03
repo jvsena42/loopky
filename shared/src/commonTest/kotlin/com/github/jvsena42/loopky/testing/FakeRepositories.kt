@@ -30,6 +30,7 @@ import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.DeckCacheStore
+import com.github.jvsena42.loopky.data.storage.NO_BACKUP_REMINDER_DAY
 import com.github.jvsena42.loopky.data.storage.PendingReview
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.PendingSignup
@@ -1410,6 +1411,7 @@ class FakeAppPreferences(
     nameNudgeDismissed: Boolean = false,
     avatarNudgeDismissed: Boolean = false,
     pendingDeckFollow: String = "",
+    backupReminderDay: Int = NO_BACKUP_REMINDER_DAY,
 ) : AppPreferences {
     private val _shareOnPubky = MutableStateFlow(shareOnPubky)
     override val shareOnPubky: Flow<Boolean> = _shareOnPubky.asStateFlow()
@@ -1476,6 +1478,16 @@ class FakeAppPreferences(
 
     override suspend fun setPendingDeckFollow(value: String) {
         _pendingDeckFollow.update { value }
+    }
+
+    private val _backupReminderDay = MutableStateFlow(backupReminderDay)
+    override val backupReminderDay: Flow<Int> = _backupReminderDay.asStateFlow()
+
+    /** The current value, for a test that asserts on it without collecting. */
+    val backupReminderDayValue: Int get() = _backupReminderDay.value
+
+    override suspend fun setBackupReminderDay(day: Int) {
+        _backupReminderDay.update { day }
     }
 }
 

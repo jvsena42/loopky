@@ -105,6 +105,18 @@ class AndroidAppPreferences(context: Context) : AppPreferences {
         }
         _pendingDeckFollow.update { value }
     }
+
+    private val _backupReminderDay = MutableStateFlow(
+        prefs.getInt(KEY_BACKUP_REMINDER_DAY, NO_BACKUP_REMINDER_DAY),
+    )
+    override val backupReminderDay: Flow<Int> = _backupReminderDay.asStateFlow()
+
+    override suspend fun setBackupReminderDay(day: Int) {
+        withContext(Dispatchers.IO) {
+            prefs.edit().putInt(KEY_BACKUP_REMINDER_DAY, day).apply()
+        }
+        _backupReminderDay.update { day }
+    }
 }
 
 /**

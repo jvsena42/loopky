@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.github.jvsena42.loopky.presentation.profile.FollowSource
+import com.github.jvsena42.loopky.ui.backup.BackupReminderRoute
 import com.github.jvsena42.loopky.ui.decks.DecksRoute
 import com.github.jvsena42.loopky.ui.discover.DiscoverRoute
 import com.github.jvsena42.loopky.ui.home.HomeRoute
@@ -41,7 +42,7 @@ fun MainScreen(
     onNavigateProfile: (String) -> Unit = {},
     onNavigateSettings: () -> Unit = {},
     onNavigateFollows: (pubky: String, source: FollowSource) -> Unit = { _, _ -> },
-    /** Opens the backup menu from the card Profile raises above sign-out. */
+    /** Opens the backup menu, from Profile's card or the daily reminder sheet. */
     onBackUpNow: () -> Unit = {},
     onSignOut: () -> Unit = {},
 ) {
@@ -68,6 +69,8 @@ fun MainScreen(
     // The rail and the bar are otherwise interchangeable — same tabs, same tags, same callback —
     // so the pager below is written once and neither branch owns it.
     val useRail = windowWidthClass().isExpanded
+
+    BackupReminderRoute(onBackUpNow = onBackUpNow)
 
     Row(modifier = Modifier.fillMaxSize()) {
         if (useRail) {
