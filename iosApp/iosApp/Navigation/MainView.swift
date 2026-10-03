@@ -110,6 +110,9 @@ struct MainView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tint(LoopkyColor.accentPrimary)
+        // On the tabs rather than the shell: a guest has no key, and this view's own `.sheet` is
+        // Search's.
+        .backupReminder(onBackUpNow: onBackUpNow)
         // Tab screens render their own in-content titles, so hide the NavigationStack's empty
         // navigation bar — otherwise it reserves space above each page title.
         .navigationBarHidden(true)

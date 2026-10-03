@@ -33,6 +33,7 @@ import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.presentation.backup.BackupFileViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupPhraseViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupQuizViewModel
+import com.github.jvsena42.loopky.presentation.backup.BackupReminderViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupRingViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupStartViewModel
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailViewModel
@@ -171,6 +172,7 @@ val sharedModule = module {
     viewModel { BackupQuizViewModel(keyBackup = get()) }
     viewModel { BackupFileViewModel(keyBackup = get()) }
     viewModel { BackupRingViewModel(keyBackup = get(), ringPresence = get()) }
+    viewModel { BackupReminderViewModel(identityRepository = get(), appPreferences = get()) }
     viewModel { SignupStartViewModel(signupRepository = get(), priceSource = get()) }
     viewModel { InviteCodeViewModel(signupRepository = get()) }
     viewModel { PhoneVerificationViewModel(signupRepository = get()) }

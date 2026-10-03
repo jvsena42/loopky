@@ -734,6 +734,8 @@
     <string name="backup_nag_title">Sao lưu tài khoản</string>
     <string name="backup_nag_body">Khóa của bạn chỉ nằm trên thiết bị này. Nếu mất nó, bạn cũng mất luôn các bộ thẻ.</string>
     <string name="backup_nag_action">Sao lưu ngay</string>
+    <string name="backup_reminder_title">Tài khoản của bạn chưa được sao lưu</string>
+    <string name="backup_reminder_body">Nếu xóa Loopky khi chưa sao lưu, bạn sẽ mất tài khoản vĩnh viễn.</string>
     <string name="settings_signout_unbacked_title">Đăng xuất sẽ xóa khóa của bạn</string>
     <string name="settings_signout_unbacked_body">Loopky đang giữ bản sao duy nhất của khóa cho %1$s, và bạn chưa sao lưu nó. Đăng xuất sẽ xóa khóa vĩnh viễn.</string>
     <string name="settings_signout_unbacked_confirm">Đăng xuất và xóa</string>

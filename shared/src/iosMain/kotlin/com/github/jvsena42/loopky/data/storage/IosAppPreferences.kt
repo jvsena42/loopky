@@ -91,4 +91,19 @@ class IosAppPreferences : AppPreferences {
         defaults.setObject(value, KEY_PENDING_DECK_FOLLOW)
         _pendingDeckFollow.update { value }
     }
+
+    // `integerForKey` answers 0 for a key never written, and day 0 is a real day — so probe.
+    private val _backupReminderDay = MutableStateFlow(
+        if (defaults.objectForKey(KEY_BACKUP_REMINDER_DAY) == null) {
+            NO_BACKUP_REMINDER_DAY
+        } else {
+            defaults.integerForKey(KEY_BACKUP_REMINDER_DAY).toInt()
+        },
+    )
+    override val backupReminderDay: Flow<Int> = _backupReminderDay.asStateFlow()
+
+    override suspend fun setBackupReminderDay(day: Int) {
+        defaults.setInteger(day.toLong(), KEY_BACKUP_REMINDER_DAY)
+        _backupReminderDay.update { day }
+    }
 }

@@ -113,6 +113,16 @@ internal class FileAppPreferences(private val store: JsonFileStore) : AppPrefere
         withContext(Dispatchers.IO) { store.set(KEY_PENDING_DECK_FOLLOW, value) }
         _pendingDeckFollow.update { value }
     }
+
+    private val _backupReminderDay = MutableStateFlow(
+        store.string(KEY_BACKUP_REMINDER_DAY)?.toIntOrNull() ?: NO_BACKUP_REMINDER_DAY,
+    )
+    override val backupReminderDay: Flow<Int> = _backupReminderDay.asStateFlow()
+
+    override suspend fun setBackupReminderDay(day: Int) {
+        withContext(Dispatchers.IO) { store.set(KEY_BACKUP_REMINDER_DAY, day.toString()) }
+        _backupReminderDay.update { day }
+    }
 }
 
 internal class FilePendingReviewStore(private val store: JsonFileStore) : PendingReviewStore {
