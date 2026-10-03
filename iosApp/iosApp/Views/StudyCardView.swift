@@ -204,6 +204,7 @@ struct StudyCardView: View {
         }
         // The card's tap-to-flip must not swallow the button's own tap.
         .buttonStyle(.plain)
-        .disabled(state.isListening)
+        // Not `.disabled`: a disabled button lets its tap through to the card, which flips it.
+        // The ViewModel ignores a Listen tap while one is being read.
     }
 }
