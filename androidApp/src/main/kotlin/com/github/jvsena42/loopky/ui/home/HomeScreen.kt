@@ -247,8 +247,8 @@ private fun HomeEmptyScreen(
         GreetingHeader(name = greetingName)
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+                .weight(1f)
+                .contentPane(PaneWidth.Focused),
             verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically),
         ) {
             HomeEmptyContent(
