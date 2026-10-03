@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.platform
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import java.util.Locale
 
 /**
@@ -24,19 +25,53 @@ class AndroidSpeaker(context: Context) : Speaker {
      */
     private var pending: Utterance? = null
 
+    /**
+     * The utterance whose end is still owed to its caller. Each call gets a fresh id, so the stop
+     * a `QUEUE_FLUSH` sends the one it interrupts is not mistaken for the new one finishing.
+     */
+    private var current: Pair<String, () -> Unit>? = null
+    private var nextId = 0
+
     private val tts: TextToSpeech = TextToSpeech(context.applicationContext) { status ->
         ready = status == TextToSpeech.SUCCESS
         val queued = pending
         pending = null
-        if (ready && queued != null) speak(queued.text, queued.languageTag, queued.rate)
+        if (queued == null) return@TextToSpeech
+        val outcome = if (ready) {
+            speak(queued.text, queued.languageTag, queued.rate, queued.onDone)
+        } else {
+            SpeakOutcome.EngineUnavailable
+        }
+        if (outcome != SpeakOutcome.Spoken) queued.onDone()
+    }.apply {
+        setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) = Unit
+            override fun onDone(utteranceId: String?) = finish(utteranceId)
+
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) = finish(utteranceId)
+            override fun onError(utteranceId: String?, errorCode: Int) = finish(utteranceId)
+            override fun onStop(utteranceId: String?, interrupted: Boolean) = finish(utteranceId)
+        })
     }
 
-    override fun speak(text: String, languageTag: String, rate: Float): SpeakOutcome {
-        if (text.isBlank()) return SpeakOutcome.Spoken
+    @Synchronized
+    private fun finish(utteranceId: String?) {
+        val (id, onDone) = current ?: return
+        if (id != utteranceId) return
+        current = null
+        onDone()
+    }
+
+    override fun speak(text: String, languageTag: String, rate: Float, onDone: () -> Unit): SpeakOutcome {
+        if (text.isBlank()) {
+            onDone()
+            return SpeakOutcome.Spoken
+        }
         if (!ready) {
             // Queued, not failed: reporting a problem here would toast at the user over a race
             // that resolves itself a moment later.
-            pending = Utterance(text, languageTag, rate)
+            pending = Utterance(text, languageTag, rate, onDone)
             return SpeakOutcome.Spoken
         }
 
@@ -48,9 +83,15 @@ class AndroidSpeaker(context: Context) : Speaker {
             TextToSpeech.ERROR -> SpeakOutcome.EngineUnavailable
 
             else -> {
+                val id = "$UTTERANCE_ID-${nextId++}"
+                synchronized(this) { current = id to onDone }
                 tts.setSpeechRate(rate)
-                tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, UTTERANCE_ID)
-                SpeakOutcome.Spoken
+                if (tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, id) == TextToSpeech.ERROR) {
+                    synchronized(this) { current = null }
+                    SpeakOutcome.EngineUnavailable
+                } else {
+                    SpeakOutcome.Spoken
+                }
             }
         }
     }
@@ -64,7 +105,12 @@ class AndroidSpeaker(context: Context) : Speaker {
             .sorted()
     }
 
-    private data class Utterance(val text: String, val languageTag: String, val rate: Float)
+    private data class Utterance(
+        val text: String,
+        val languageTag: String,
+        val rate: Float,
+        val onDone: () -> Unit,
+    )
 
     private companion object {
         const val UTTERANCE_ID = "loopky-speak"

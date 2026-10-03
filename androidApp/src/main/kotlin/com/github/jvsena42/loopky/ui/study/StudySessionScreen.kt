@@ -162,7 +162,11 @@ fun StudySessionRoute(
                 is StudySessionEffect.Speak -> {
                     // A missing voice leaves the engine on whatever it loaded last, so silence
                     // beats reading a Spanish card in an English accent — say why.
-                    if (speaker.speak(effect.text, effect.languageTag, effect.rate) != SpeakOutcome.Spoken) {
+                    val outcome = speaker.speak(effect.text, effect.languageTag, effect.rate) {
+                        scope.launch { viewModel.onListenFinished() }
+                    }
+                    if (outcome != SpeakOutcome.Spoken) {
+                        viewModel.onListenFinished()
                         Toast.makeText(context, R.string.listen_voice_unavailable, Toast.LENGTH_LONG)
                             .show()
                     }
@@ -528,6 +532,7 @@ private fun ReviewingContent(
                             card = card,
                             reduceMotion = reduceMotion,
                             listenEnabled = state.listenEnabled,
+                            isListening = state.isListening,
                             speakEnabled = state.speakEnabled,
                             deckId = state.deckId,
                             authorPubky = state.authorPubky,
@@ -658,6 +663,7 @@ private fun AnimatedContentScope.FlippableCard(
     card: CardSnapshot,
     reduceMotion: Boolean,
     listenEnabled: Boolean,
+    isListening: Boolean,
     speakEnabled: Boolean,
     deckId: String,
     authorPubky: String,
@@ -706,6 +712,7 @@ private fun AnimatedContentScope.FlippableCard(
                 textSize = 48.sp,
                 onSpeak = onSpeak,
                 showListen = interactive && listenEnabled,
+                listenAvailable = !isListening,
                 onSpeakTest = if (interactive && speakEnabled) onSpeakTest else null,
                 featureImageRef = card.frontImageRef,
                 deckId = deckId,
@@ -723,6 +730,7 @@ private fun AnimatedContentScope.FlippableCard(
                 answerNote = answerNote,
                 onSpeak = onSpeak,
                 showListen = interactive && listenEnabled && !card.answerHidden,
+                listenAvailable = !isListening,
                 onSpeakTest = if (interactive && speakEnabled && !card.answerHidden) onSpeakTest else null,
                 recallImageRef = card.frontImageRef,
                 featureImageRef = card.backImageRef,

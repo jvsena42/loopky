@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.flowOf
 
 /** No TTS. `Deck.speechReady` is about the deck; this is about the host, and a server has no voice. */
 class NoSpeaker : Speaker {
-    override fun speak(text: String, languageTag: String, rate: Float): SpeakOutcome = SpeakOutcome.EngineUnavailable
+    override fun speak(text: String, languageTag: String, rate: Float, onDone: () -> Unit): SpeakOutcome =
+        SpeakOutcome.EngineUnavailable
     override fun availableLanguages(): List<String> = emptyList()
 }
 

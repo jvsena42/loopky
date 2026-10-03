@@ -200,8 +200,10 @@ struct StudyCardView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(Capsule().fill(LoopkyColor.accentPrimarySoft))
+            .opacity(state.isListening ? 0.5 : 1)
         }
         // The card's tap-to-flip must not swallow the button's own tap.
         .buttonStyle(.plain)
+        .disabled(state.isListening)
     }
 }

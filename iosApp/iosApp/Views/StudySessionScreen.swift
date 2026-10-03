@@ -115,6 +115,7 @@ struct StudySessionScreen: View {
             gradesAvailable: card.gradesAvailable,
             intervals: Self.intervals(card.intervals),
             listenEnabled: card.listenEnabled,
+            isListening: card.isListening,
             speakEnabled: card.speakEnabled,
             speakPhase: card.speakPhase,
             typePhase: Self.typePhase(card.typePhase),
@@ -176,7 +177,10 @@ struct StudySessionScreen: View {
         effectSink = FlowEffectSink(vm.effects) { effect in
             switch effect {
             case let speak as StudySessionEffectSpeak:
-                SpeechSpeaker.shared.speak(speak.text, languageTag: speak.languageTag, rate: speak.rate)
+                let spoken = SpeechSpeaker.shared.speak(
+                    speak.text, languageTag: speak.languageTag, rate: speak.rate
+                ) { vm.onListenFinished() }
+                if !spoken { vm.onListenFinished() }
             case let listen as StudySessionEffectStartSpeechRecognition:
                 startListening(languageTag: listen.languageTag, vm: vm)
             case let haptic as StudySessionEffectHaptic:
@@ -301,6 +305,8 @@ struct StudyViewState {
     var gradesAvailable: Bool = false
     var intervals: [StudyGrade: String] = [:]
     var listenEnabled: Bool = false
+    /// Listen is reading aloud; its button is disabled until the speech ends.
+    var isListening: Bool = false
     var speakEnabled: Bool = false
     /// Erased: `SpeakPhase` is a sealed interface, so it crosses as a protocol and a typed cast
     /// silently yields nil. The sheet matches the concrete classes.

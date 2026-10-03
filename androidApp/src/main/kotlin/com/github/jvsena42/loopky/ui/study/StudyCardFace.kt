@@ -52,6 +52,8 @@ internal fun CardFace(
     showListen: Boolean,
     onSpeakTest: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** False while Listen is reading aloud, so a second tap cannot restart it. */
+    listenAvailable: Boolean = true,
     /**
      * Drawn where [text] would be, and instead of it: the typed-answer input, so the answer is
      * written into the space the answer itself will occupy. Non-null only while answering.
@@ -158,10 +160,14 @@ internal fun CardFace(
                 FilledTonalButton(
                     onClick = onSpeak,
                     modifier = Modifier.testTag("study_listen"),
+                    enabled = listenAvailable,
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = colors.accentPrimarySoft,
                         contentColor = colors.accentPrimary,
+                        // Dimmed in the brand colour rather than greyed: it is busy, not unavailable.
+                        disabledContainerColor = colors.accentPrimarySoft,
+                        disabledContentColor = colors.accentPrimary.copy(alpha = 0.5f),
                     ),
                 ) {
                     Icon(

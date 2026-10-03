@@ -19,12 +19,20 @@ import platform.AVFAudio.AVSpeechUtteranceDefaultSpeechRate
  * *reader's* device language, which reads a Spanish card in an English accent — the same failure
  * the whole language-pair gate exists to prevent. A tag with no installed voice is reported as
  * [SpeakOutcome.LanguageUnavailable] rather than being read in the wrong one.
+ *
+ * It never calls `onDone`: nothing that speaks through it waits for the end. The study screen's
+ * Listen button does, and `SpeechSpeaker` reports it from the synthesizer's delegate.
  */
 class IosSpeaker : Speaker {
 
     private val synthesizer = AVSpeechSynthesizer()
 
-    override fun speak(text: String, languageTag: String, rate: Float): SpeakOutcome {
+    override fun speak(
+        text: String,
+        languageTag: String,
+        rate: Float,
+        onDone: () -> Unit,
+    ): SpeakOutcome {
         val voice = AVSpeechSynthesisVoice.voiceWithLanguage(languageTag)
             ?: return SpeakOutcome.LanguageUnavailable
         synthesizer.stopSpeakingAtBoundary(AVSpeechBoundary.AVSpeechBoundaryImmediate)
