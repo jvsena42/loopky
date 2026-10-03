@@ -692,15 +692,26 @@ scroll.
 `emu rotate` is what actually rotates the tablet — `settings put system user_rotation` did not take
 on it, and `wm size` overrides did not reach the app either.
 
-### 22 — Daily backup reminder sheet — 2026-10-03 — ⏳ NOT RUN
+### 22 — Daily backup reminder sheet — ✅ PASS (2026-10-03, Pixel_9 AVD + iPhone 17e + iPad Pro 11-inch sims)
 
-Journey 22 gained the reminder steps (sheet on landing, once per local day, "Back up now" reaches
-the backup menu, gone once any backup exists). Written from a session with no Android SDK, emulator
-or simulator, so it has **not** been driven on a device on either platform: the shown-once-a-day,
-own-key-only and retired-by-any-backup rules are covered by `BackupReminderViewModelTest` only.
-Next run should check the sheet over Home on a phone and on `Pixel_Tablet` in landscape (it is
-capped to `PaneWidth.Focused`), and on iOS that "Back up now" waits for the reminder to dismiss
-before raising the backup flow sheet.
+Driven on staging with four fresh invite-code accounts. On **Android** (Pixel_9, also resized to
+2560x1600 and 1600x2560 with `wm size` for the expanded and medium classes): the sheet is raised
+over Home on landing; a swipe down, a scrim tap and a force-stop over it all count as today's, and
+neither a relaunch nor a background/foreground brings it back; rolling the local day under a
+**live** process (`cmd alarm set-timezone`, the emulator has no root for `date`) brings it back on
+foreground; "Back up now" lands on the backup menu; after the phrase quiz it stays away with
+`backup_reminder_day` cleared. A guest never sees it. On **iOS**: the same on landing, same-day
+relaunch, cleared day and after a phrase backup, and "Back up now" raises the backup flow only once
+the reminder has gone. On the iPad it is a centred form sheet.
+
+Two changes came out of the run. On iOS both buttons answered to `backup_reminder_sheet`: the
+container's identifier replaced theirs until it became `.accessibilityElement(children: .contain)`.
+And the "Not now" button was removed on both platforms — the sheet is dismissed by a swipe or a tap
+outside, so iOS gained a drag indicator to say so.
+
+Not checked: `Pixel_Tablet` itself (its only session is a Ring one, which is never reminded, and
+cannot be re-created), and `backup_reminder_sheet` does not surface as a `resource-id` in
+`android layout` — assert on `backup_reminder_action`.
 
 ## 25 — A session Loopky cannot reach (#165) — ✅ PASS (2026-09-01, emulator-5554 + Pixel_Tablet)
 
