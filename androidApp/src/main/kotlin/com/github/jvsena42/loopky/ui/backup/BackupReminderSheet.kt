@@ -25,7 +25,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.jvsena42.loopky.R
 import com.github.jvsena42.loopky.presentation.backup.BackupReminderViewModel
 import com.github.jvsena42.loopky.ui.components.LoopkyPrimaryButton
-import com.github.jvsena42.loopky.ui.components.LoopkySecondaryButton
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
@@ -94,13 +93,6 @@ private fun BackupReminderSheet(
                     .padding(top = 8.dp)
                     .fillMaxWidth()
                     .testTag("backup_reminder_action"),
-            )
-            LoopkySecondaryButton(
-                text = stringResource(R.string.backup_reminder_dismiss),
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("backup_reminder_dismiss"),
             )
         }
     }

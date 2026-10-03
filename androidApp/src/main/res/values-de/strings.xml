@@ -681,7 +681,6 @@
     <string name="backup_nag_action">Jetzt sichern</string>
     <string name="backup_reminder_title">Dein Konto ist nicht gesichert</string>
     <string name="backup_reminder_body">Löschst du Loopky ohne Sicherung, ist dein Konto für immer weg.</string>
-    <string name="backup_reminder_dismiss">Nicht jetzt</string>
     <string name="settings_signout_unbacked_title">Beim Abmelden wird dein Schlüssel gelöscht</string>
     <string name="settings_signout_unbacked_body">Loopky hat die einzige Kopie des Schlüssels für %1$s, und du hast ihn nicht gesichert. Beim Abmelden wird er endgültig gelöscht.</string>
     <string name="settings_signout_unbacked_confirm">Abmelden und löschen</string>

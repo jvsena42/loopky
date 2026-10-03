@@ -26,13 +26,10 @@ struct BackupReminderModifier: ViewModifier {
                     onBackUpNow()
                 },
                 content: {
-                    BackupReminderSheet(
-                        onBackUpNow: {
-                            backUpAfterDismiss = true
-                            viewModel?.onDismiss()
-                        },
-                        onDismiss: { viewModel?.onDismiss() }
-                    )
+                    BackupReminderSheet(onBackUpNow: {
+                        backUpAfterDismiss = true
+                        viewModel?.onDismiss()
+                    })
                 }
             )
             .onAppear { attach() }
@@ -66,7 +63,6 @@ extension View {
 
 private struct BackupReminderSheet: View {
     var onBackUpNow: () -> Void
-    var onDismiss: () -> Void
 
     /// Measured, because iOS has no "fit the content" detent. The initial value is the first frame's.
     @State private var sheetHeight: CGFloat = 300
@@ -86,9 +82,6 @@ private struct BackupReminderSheet: View {
                 .buttonStyle(LoopkyFilledButtonStyle(fill: LoopkyColor.accentPrimary, fontSize: 16))
                 .padding(.top, 8)
                 .accessibilityIdentifier("backup_reminder_action")
-            Button("backup_reminder_dismiss", action: onDismiss)
-                .buttonStyle(.loopkyOutline)
-                .accessibilityIdentifier("backup_reminder_dismiss")
         }
         .frame(maxWidth: 420)
         .padding(.horizontal, 24)
@@ -100,6 +93,9 @@ private struct BackupReminderSheet: View {
             }
         )
         .presentationDetents([.height(sheetHeight)])
+        .presentationDragIndicator(.visible)
+        // Without this the container's identifier replaces both buttons' own.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("backup_reminder_sheet")
     }
 }
