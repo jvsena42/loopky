@@ -10,7 +10,7 @@ struct HomeView: View {
     var greetingName: String = "there"
     var state: HomeViewState = .empty
     var onCreateDeck: () -> Void = {}
-    var onBrowseExamples: () -> Void = {}
+    var onDiscover: () -> Void = {}
     var onStartStudy: () -> Void = {}
     var onOpenDeck: (String) -> Void = { _ in }
     /// "See all" over today's decks — the full library, i.e. the Decks tab.
@@ -31,7 +31,7 @@ struct HomeView: View {
                         EmptyStateCard()
                         HomeCtaButtons(
                             onCreateDeck: onCreateDeck,
-                            onBrowseExamples: onBrowseExamples
+                            onDiscover: onDiscover
                         )
                     case .content(let content):
                         if widthClass.isExpanded {

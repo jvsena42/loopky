@@ -253,8 +253,8 @@ class HomeViewModel(
         viewModelScope.launch { _effects.emit(HomeEffect.NavigateCreateDeck) }
     }
 
-    fun onBrowseExamplesClick() {
-        viewModelScope.launch { _effects.emit(HomeEffect.NavigateBrowseExamples) }
+    fun onDiscoverClick() {
+        viewModelScope.launch { _effects.emit(HomeEffect.NavigateDiscover) }
     }
 
     fun onSeeAllDecksClick() {
@@ -365,7 +365,7 @@ data class DeckSummary(
 
 sealed interface HomeEffect {
     data object NavigateCreateDeck : HomeEffect
-    data object NavigateBrowseExamples : HomeEffect
+    data object NavigateDiscover : HomeEffect
 
     /** "See all" over today's decks — the full library, i.e. the Decks tab. */
     data object NavigateAllDecks : HomeEffect

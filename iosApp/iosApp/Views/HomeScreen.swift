@@ -9,7 +9,7 @@ import Shared
 struct HomeScreen: View {
     var onOpenDeck: (String) -> Void = { _ in }
     var onCreateDeck: () -> Void = {}
-    var onBrowseExamples: () -> Void = {}
+    var onDiscover: () -> Void = {}
     var onStartStudy: () -> Void = {}
     var onSignedOut: () -> Void = {}
     var onSeeAllDecks: () -> Void = {}
@@ -24,7 +24,7 @@ struct HomeScreen: View {
             greetingName: greetingName,
             state: viewState,
             onCreateDeck: { viewModel?.onCreateDeckClick() },
-            onBrowseExamples: { viewModel?.onBrowseExamplesClick() },
+            onDiscover: { viewModel?.onDiscoverClick() },
             onStartStudy: { viewModel?.onStartStudyClick() },
             onOpenDeck: { viewModel?.onDeckClick(deckId: $0) },
             onSeeAllDecks: { viewModel?.onSeeAllDecksClick() }
@@ -93,8 +93,8 @@ struct HomeScreen: View {
             switch effect {
             case is HomeEffectNavigateCreateDeck:
                 onCreateDeck()
-            case is HomeEffectNavigateBrowseExamples:
-                onBrowseExamples()
+            case is HomeEffectNavigateDiscover:
+                onDiscover()
             case is HomeEffectNavigateStartStudy:
                 onStartStudy()
             case let navigate as HomeEffectNavigateDeck:

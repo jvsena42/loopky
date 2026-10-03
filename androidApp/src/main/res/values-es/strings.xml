@@ -26,9 +26,9 @@
     <string name="home_deck_caught_up">Al día</string>
     <string name="home_checking_due">Comprobando qué hay pendiente…</string>
     <string name="home_empty_title">Aún no hay mazos</string>
-    <string name="home_empty_subtitle">Pega una lista, importa un archivo o empieza desde cero.</string>
+    <string name="home_empty_subtitle">Encuentra un mazo para estudiar o crea el tuyo.</string>
     <string name="home_create_first_deck">Crea tu primer mazo</string>
-    <string name="home_browse_examples">Ver ejemplos</string>
+    <string name="home_discover_decks">Descubrir mazos</string>
 
     <!-- Decks library -->
     <string name="decks_title">Tus mazos</string>

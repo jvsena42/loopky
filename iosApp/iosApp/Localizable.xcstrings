@@ -20995,77 +20995,6 @@
         }
       }
     },
-    "home_browse_examples": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Beispiele ansehen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Browse examples"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ver ejemplos"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voir des exemples"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sfoglia gli esempi"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "例を見る"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "예시 둘러보기"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ver exemplos"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Xem ví dụ"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "浏览示例"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "瀏覽範例"
-          }
-        }
-      }
-    },
     "home_cards": {
       "extractionState": "manual",
       "localizations": {
@@ -22114,6 +22043,77 @@
         }
       }
     },
+    "home_discover_decks": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stapel entdecken"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discover decks"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descubrir mazos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Découvrir des paquets"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scopri i mazzi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デッキを見つける"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "덱 탐색하기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descobrir baralhos"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khám phá bộ thẻ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现卡组"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "探索牌組"
+          }
+        }
+      }
+    },
     "home_due_today": {
       "extractionState": "manual",
       "localizations": {
@@ -22191,67 +22191,67 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Füge eine Liste ein, importiere eine Datei oder fang bei null an."
+            "value": "Finde einen Stapel zum Lernen oder erstelle deinen eigenen."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paste a list, import a file, or start from scratch."
+            "value": "Find a deck to study, or make your own."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pega una lista, importa un archivo o empieza desde cero."
+            "value": "Encuentra un mazo para estudiar o crea el tuyo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Colle une liste, importe un fichier ou pars de zéro."
+            "value": "Trouve un paquet à étudier ou crée le tien."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Incolla una lista, importa un file o parti da zero."
+            "value": "Trova un mazzo da studiare o creane uno tuo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リストを貼り付けるか、ファイルをインポートするか、ゼロから作りましょう。"
+            "value": "学ぶデッキを見つけるか、自分で作りましょう。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "목록을 붙여넣거나, 파일을 가져오거나, 처음부터 만들어 보세요."
+            "value": "공부할 덱을 찾거나 직접 만들어 보세요."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cole uma lista, importe um arquivo ou comece do zero."
+            "value": "Encontre um baralho para estudar ou crie o seu."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dán một danh sách, nhập từ tệp hoặc bắt đầu từ đầu."
+            "value": "Tìm một bộ thẻ để học, hoặc tự tạo bộ của bạn."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "粘贴一份列表、导入文件，或者从零开始。"
+            "value": "找一个卡组来学习，或者自己创建一个。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "貼上清單、匯入檔案，或從零開始。"
+            "value": "找一個牌組來學習，或自己建立一個。"
           }
         }
       }

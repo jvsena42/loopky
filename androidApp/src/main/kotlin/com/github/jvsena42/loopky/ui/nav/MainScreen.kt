@@ -106,7 +106,7 @@ fun MainScreen(
                         // The author travels with the id so a followed deck resolves on a cold cache.
                         onOpenDeck = onNavigateDeckDetail,
                         onCreateDeck = onNavigateCreateDeck,
-                        onBrowseExamples = {
+                        onDiscover = {
                             scope.launch { pagerState.animateScrollToPage(LoopkyTab.DISCOVER.ordinal) }
                         },
                         onSeeAllDecks = {
