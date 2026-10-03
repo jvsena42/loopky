@@ -31,11 +31,20 @@ final class SpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer.stopSpeaking(at: .immediate)
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = voice
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * rate
+        utterance.rate = Self.utteranceRate(multiplier: rate)
         current = utterance
         self.onDone = onDone
         synthesizer.speak(utterance)
         return true
+    }
+
+    /// `AVSpeechUtterance.rate` is a 0...1 scale, not a multiplier: the default is normal speed and
+    /// the minimum is about half of it, so scaling the default by 0.5 slows speech by a quarter.
+    private static func utteranceRate(multiplier: Float) -> Float {
+        let slowest = AVSpeechUtteranceMinimumSpeechRate
+        let normal = AVSpeechUtteranceDefaultSpeechRate
+        let position = (min(max(multiplier, 0.5), 1) - 0.5) / 0.5
+        return slowest + (normal - slowest) * position
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {

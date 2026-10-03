@@ -5,6 +5,7 @@ import platform.AVFAudio.AVSpeechSynthesisVoice
 import platform.AVFAudio.AVSpeechSynthesizer
 import platform.AVFAudio.AVSpeechUtterance
 import platform.AVFAudio.AVSpeechUtteranceDefaultSpeechRate
+import platform.AVFAudio.AVSpeechUtteranceMinimumSpeechRate
 
 /**
  * iOS [Speaker], over `AVSpeechSynthesizer`.
@@ -38,9 +39,20 @@ class IosSpeaker : Speaker {
         synthesizer.stopSpeakingAtBoundary(AVSpeechBoundary.AVSpeechBoundaryImmediate)
         val utterance = AVSpeechUtterance.speechUtteranceWithString(text)
         utterance.voice = voice
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * rate
+        utterance.rate = utteranceRate(rate)
         synthesizer.speakUtterance(utterance)
         return SpeakOutcome.Spoken
+    }
+
+    /**
+     * `AVSpeechUtterance.rate` is a 0..1 scale, not a multiplier: the default is normal speed and
+     * the minimum about half of it.
+     */
+    private fun utteranceRate(multiplier: Float): Float {
+        val clamped = multiplier.coerceIn(SLOWEST_MULTIPLIER, 1f)
+        val position = (clamped - SLOWEST_MULTIPLIER) / (1f - SLOWEST_MULTIPLIER)
+        return AVSpeechUtteranceMinimumSpeechRate +
+            (AVSpeechUtteranceDefaultSpeechRate - AVSpeechUtteranceMinimumSpeechRate) * position
     }
 
     override fun availableLanguages(): List<String> =
@@ -48,4 +60,8 @@ class IosSpeaker : Speaker {
             .mapNotNull { (it as? AVSpeechSynthesisVoice)?.language() }
             .distinct()
             .sorted()
+
+    private companion object {
+        const val SLOWEST_MULTIPLIER = 0.5f
+    }
 }
