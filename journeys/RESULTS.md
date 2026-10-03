@@ -692,6 +692,14 @@ scroll.
 `emu rotate` is what actually rotates the tablet — `settings put system user_rotation` did not take
 on it, and `wm size` overrides did not reach the app either.
 
+### 22 — iOS phrase quiz options no longer break mid-word — ✅ PASS (2026-10-03, iPhone 17e + iPad Pro 11-inch sims)
+
+The four options for each position sat in one row, so on a phone an eight-letter word ("crumble")
+wrapped inside its chip. They are a two-column grid now. Driven to the quiz from Profile's backup
+card (iPad) and from Settings → "Back up your account" (iPhone 17e): every word is on one line and
+all twelve `backup_quiz_{n}_{word}` identifiers are still there. Android stacks its options one per
+row and was never affected.
+
 ## 25 — A session Loopky cannot reach (#165) — ✅ PASS (2026-09-01, emulator-5554 + Pixel_Tablet)
 
 Driven with the fault injection journey 25 describes, on the phone emulator and then on
