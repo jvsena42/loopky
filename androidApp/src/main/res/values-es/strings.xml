@@ -679,6 +679,9 @@
     <string name="backup_nag_title">Haz una copia de seguridad de tu cuenta</string>
     <string name="backup_nag_body">Tu clave solo existe en este dispositivo. Si la pierdes, tus mazos se van con ella.</string>
     <string name="backup_nag_action">Hacer copia ahora</string>
+    <string name="backup_reminder_title">Tu cuenta no tiene copia de seguridad</string>
+    <string name="backup_reminder_body">Si borras Loopky sin una copia de seguridad, pierdes tu cuenta para siempre.</string>
+    <string name="backup_reminder_dismiss">Ahora no</string>
     <string name="settings_signout_unbacked_title">Cerrar sesión borrará tu clave</string>
     <string name="settings_signout_unbacked_body">Loopky tiene la única copia de la clave de %1$s, y no hiciste una copia de seguridad. Cerrar sesión la borra para siempre.</string>
     <string name="settings_signout_unbacked_confirm">Cerrar sesión y borrar</string>

@@ -688,6 +688,9 @@
     <string name="backup_nag_title">备份你的账号</string>
     <string name="backup_nag_body">你的密钥只保存在这台设备上。如果丢失了它，你的卡组也会随之丢失。</string>
     <string name="backup_nag_action">立即备份</string>
+    <string name="backup_reminder_title">你的账号还没有备份</string>
+    <string name="backup_reminder_body">如果没有备份就删除 Loopky，你将永久失去你的账号。</string>
+    <string name="backup_reminder_dismiss">以后再说</string>
     <string name="settings_signout_unbacked_title">退出登录将清除你的密钥</string>
     <string name="settings_signout_unbacked_body">Loopky 保存着 %1$s 密钥的唯一副本，而你还没有备份。退出登录会将其永久删除。</string>
     <string name="settings_signout_unbacked_confirm">退出并清除</string>

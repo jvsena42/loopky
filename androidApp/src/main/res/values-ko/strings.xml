@@ -690,6 +690,9 @@
     <string name="backup_nag_title">계정 백업</string>
     <string name="backup_nag_body">키는 이 기기에만 있어요. 기기를 잃어버리면 덱도 함께 사라져요.</string>
     <string name="backup_nag_action">지금 백업</string>
+    <string name="backup_reminder_title">계정이 백업되지 않았어요</string>
+    <string name="backup_reminder_body">백업 없이 Loopky를 삭제하면 계정을 영영 잃게 돼요.</string>
+    <string name="backup_reminder_dismiss">나중에</string>
     <string name="settings_signout_unbacked_title">로그아웃하면 키가 지워져요</string>
     <string name="settings_signout_unbacked_body">%1$s의 키는 Loopky에만 있고, 아직 백업하지 않았어요. 로그아웃하면 영구적으로 삭제돼요.</string>
     <string name="settings_signout_unbacked_confirm">로그아웃하고 지우기</string>

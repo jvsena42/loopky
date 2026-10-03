@@ -679,6 +679,9 @@
     <string name="backup_nag_title">Sauvegarde ton compte</string>
     <string name="backup_nag_body">Ta clé n’existe que sur cet appareil. Si tu la perds, tes paquets disparaissent avec.</string>
     <string name="backup_nag_action">Sauvegarder maintenant</string>
+    <string name="backup_reminder_title">Ton compte n’est pas sauvegardé</string>
+    <string name="backup_reminder_body">Si tu supprimes Loopky sans sauvegarde, tu perds ton compte pour de bon.</string>
+    <string name="backup_reminder_dismiss">Pas maintenant</string>
     <string name="settings_signout_unbacked_title">Te déconnecter effacera ta clé</string>
     <string name="settings_signout_unbacked_body">Loopky détient la seule copie de la clé de %1$s, et tu ne l’as pas sauvegardée. Te déconnecter la supprime définitivement.</string>
     <string name="settings_signout_unbacked_confirm">Se déconnecter et effacer</string>

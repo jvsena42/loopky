@@ -679,6 +679,9 @@
     <string name="backup_nag_title">Faça backup da sua conta</string>
     <string name="backup_nag_body">Sua chave existe só neste aparelho. Se você perdê-la, seus baralhos vão junto.</string>
     <string name="backup_nag_action">Fazer backup agora</string>
+    <string name="backup_reminder_title">Sua conta não tem backup</string>
+    <string name="backup_reminder_body">Se você apagar o Loopky sem um backup, perde sua conta para sempre.</string>
+    <string name="backup_reminder_dismiss">Agora não</string>
     <string name="settings_signout_unbacked_title">Sair vai apagar sua chave</string>
     <string name="settings_signout_unbacked_body">O Loopky tem a única cópia da chave de %1$s, e você não fez backup. Sair a exclui para sempre.</string>
     <string name="settings_signout_unbacked_confirm">Sair e apagar</string>
