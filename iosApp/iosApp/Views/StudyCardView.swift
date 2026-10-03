@@ -83,6 +83,7 @@ struct StudyCardView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(LoopkyColor.accentPrimary)
             }
+            recallPicture
 
             if state.answerHidden {
                 answerInput
@@ -140,6 +141,25 @@ struct StudyCardView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(LoopkyColor.foregroundMuted)
                 .accessibilityIdentifier("study_type_give_up")
+        }
+    }
+
+    /// The prompt's picture recalled on the back as a small cue, so the answer is read against the
+    /// question it belongs to. Never the content of the side it is drawn on, so a typing card
+    /// shows it while answering.
+    @ViewBuilder
+    private var recallPicture: some View {
+        if state.frontImageRef != nil {
+            CardMediaImage(
+                ref: state.frontImageRef,
+                authorPubky: state.authorPubky,
+                deckId: state.deckId,
+                contentMode: .fill
+            )
+            .frame(width: 96, height: 96)
+            .background(LoopkyColor.accentPrimarySoft)
+            .clipShape(Circle())
+            .accessibilityHidden(true)
         }
     }
 
