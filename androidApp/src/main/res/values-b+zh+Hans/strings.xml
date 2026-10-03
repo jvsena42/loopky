@@ -27,9 +27,9 @@
     <!-- The hero while the cached library is on screen and the review state has not answered. -->
     <string name="home_checking_due">正在查看待复习的卡片…</string>
     <string name="home_empty_title">还没有卡组</string>
-    <string name="home_empty_subtitle">粘贴一份列表、导入文件，或者从零开始。</string>
+    <string name="home_empty_subtitle">找一个卡组来学习，或者自己创建一个。</string>
     <string name="home_create_first_deck">创建你的第一个卡组</string>
-    <string name="home_browse_examples">浏览示例</string>
+    <string name="home_discover_decks">发现卡组</string>
 
     <!-- Decks library -->
     <string name="decks_title">你的卡组</string>

@@ -27,9 +27,9 @@
     <!-- The hero while the cached library is on screen and the review state has not answered. -->
     <string name="home_checking_due">Checking what\'s due…</string>
     <string name="home_empty_title">No decks yet</string>
-    <string name="home_empty_subtitle">Paste a list, import a file, or start from scratch.</string>
+    <string name="home_empty_subtitle">Find a deck to study, or make your own.</string>
     <string name="home_create_first_deck">Create your first deck</string>
-    <string name="home_browse_examples">Browse examples</string>
+    <string name="home_discover_decks">Discover decks</string>
 
     <!-- Decks library -->
     <string name="decks_title">Your decks</string>

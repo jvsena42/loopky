@@ -27,9 +27,9 @@
     <!-- The hero while the cached library is on screen and the review state has not answered. -->
     <string name="home_checking_due">Đang kiểm tra thẻ cần ôn…</string>
     <string name="home_empty_title">Chưa có bộ thẻ nào</string>
-    <string name="home_empty_subtitle">Dán một danh sách, nhập từ tệp hoặc bắt đầu từ đầu.</string>
+    <string name="home_empty_subtitle">Tìm một bộ thẻ để học, hoặc tự tạo bộ của bạn.</string>
     <string name="home_create_first_deck">Tạo bộ thẻ đầu tiên</string>
-    <string name="home_browse_examples">Xem ví dụ</string>
+    <string name="home_discover_decks">Khám phá bộ thẻ</string>
 
     <!-- Decks library -->
     <string name="decks_title">Bộ thẻ của bạn</string>

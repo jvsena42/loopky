@@ -26,9 +26,9 @@
     <string name="home_deck_caught_up">Alles erledigt</string>
     <string name="home_checking_due">Prüfe, was fällig ist…</string>
     <string name="home_empty_title">Noch keine Stapel</string>
-    <string name="home_empty_subtitle">Füge eine Liste ein, importiere eine Datei oder fang bei null an.</string>
+    <string name="home_empty_subtitle">Finde einen Stapel zum Lernen oder erstelle deinen eigenen.</string>
     <string name="home_create_first_deck">Erstelle deinen ersten Stapel</string>
-    <string name="home_browse_examples">Beispiele ansehen</string>
+    <string name="home_discover_decks">Stapel entdecken</string>
 
     <!-- Decks library -->
     <string name="decks_title">Deine Stapel</string>

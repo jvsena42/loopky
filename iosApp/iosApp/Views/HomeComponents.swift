@@ -47,14 +47,14 @@ struct EmptyStateCard: View {
 
 struct HomeCtaButtons: View {
     let onCreateDeck: () -> Void
-    let onBrowseExamples: () -> Void
+    let onDiscover: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
-            Button("home_create_first_deck", action: onCreateDeck)
+            Button("home_discover_decks", action: onDiscover)
                 .buttonStyle(.loopkyFilled)
                 .shadow(color: LoopkyColor.shadowAccent, radius: 24, x: 0, y: 8)
-            Button("home_browse_examples", action: onBrowseExamples)
+            Button("home_create_first_deck", action: onCreateDeck)
                 .buttonStyle(.loopkySoft)
         }
     }
@@ -302,7 +302,7 @@ private let sampleHomeDecks = [
         VStack(spacing: 16) {
             GreetingHeader(name: "Maria")
             EmptyStateCard()
-            HomeCtaButtons(onCreateDeck: {}, onBrowseExamples: {})
+            HomeCtaButtons(onCreateDeck: {}, onDiscover: {})
         }
         .padding()
     }

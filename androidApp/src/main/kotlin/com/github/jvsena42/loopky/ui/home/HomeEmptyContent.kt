@@ -31,13 +31,13 @@ import com.github.jvsena42.loopky.ui.components.LoopkySecondaryButton
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 
 /**
- * "Nothing to study yet" empty state: a white card with a circular
- * book-open badge, title + subtitle, followed by the "Create a deck" / "Browse examples" actions.
+ * "No decks yet" empty state. Discover is the primary action: a new reader is far likelier to
+ * want an existing deck than to author one before they have studied anything.
  */
 @Composable
 fun HomeEmptyContent(
     onCreateDeckClick: () -> Unit,
-    onBrowseExamplesClick: () -> Unit,
+    onDiscoverClick: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
     Column(
@@ -91,15 +91,15 @@ fun HomeEmptyContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         LoopkyPrimaryButton(
-            label = stringResource(R.string.home_create_first_deck),
-            onClick = onCreateDeckClick,
-            modifier = Modifier.testTag("home_create_deck"),
+            label = stringResource(R.string.home_discover_decks),
+            onClick = onDiscoverClick,
+            modifier = Modifier.testTag("home_discover"),
         )
         LoopkySecondaryButton(
-            text = stringResource(R.string.home_browse_examples),
-            onClick = onBrowseExamplesClick,
+            text = stringResource(R.string.home_create_first_deck),
+            onClick = onCreateDeckClick,
             modifier = Modifier
-                .testTag("home_browse_examples")
+                .testTag("home_create_deck")
                 .fillMaxWidth(),
         )
     }
@@ -118,7 +118,7 @@ private fun HomeEmptyContentPreview() {
         ) {
             HomeEmptyContent(
                 onCreateDeckClick = {},
-                onBrowseExamplesClick = {},
+                onDiscoverClick = {},
             )
         }
     }
