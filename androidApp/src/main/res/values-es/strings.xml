@@ -12,10 +12,9 @@
     <string name="home_error_title">Algo salió mal</string>
     <string name="home_retry">Reintentar</string>
     <string name="home_loading">Calentando motores…</string>
-    <string name="home_due_today">PARA HOY</string>
-    <string name="home_cards">tarjetas</string>
-    <string name="home_to_review">por repasar</string>
-    <string name="home_progress_done">%1$d de %2$d hechas · ¡sigue así!</string>
+    <string name="home_daily_goal">META DIARIA</string>
+    <string name="home_goal_of">de %1$d</string>
+    <string name="home_goal_new_cards">tarjetas nuevas</string>
     <string name="home_new_cards_goal">%1$d de %2$d tarjetas nuevas hoy</string>
     <string name="home_new_cards_goal_reached">Meta diaria alcanzada · %1$d tarjetas nuevas 🎉</string>
     <string name="home_start_studying">Empezar a estudiar</string>

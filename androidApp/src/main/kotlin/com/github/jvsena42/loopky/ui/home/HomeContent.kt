@@ -81,11 +81,11 @@ fun HomeHero(
         if (state.isCaughtUp) {
             CaughtUpHeroCard(nextDueAtMillis = state.nextDueAtMillis)
         } else {
-            DueTodayHeroCard(
+            DailyGoalHeroCard(
                 studyTarget = state.studyTarget,
-                doneToday = state.doneToday,
                 newCardsToday = state.newCardsToday,
                 newCardsGoal = state.newCardsGoal,
+                goalReached = state.goalReached,
                 countsKnown = state.countsKnown,
                 onStartStudyClick = onStartStudyClick,
             )
@@ -212,24 +212,21 @@ private fun CaughtUpHeroCard(nextDueAtMillis: Long?) {
 }
 
 /**
- * [studyTarget] is today's intent — everything overdue plus whatever room the new-cards goal has
- * left — not the size of the backlog. A 1669-card import headlines 20, and studying past it still
- * works, because nothing caps the queue behind this number (#101 §7).
+ * The day's new-card goal is the headline; [studyTarget] — everything overdue plus whatever room
+ * the goal has left — is the line under the bar. The goal reports and never caps: reaching it
+ * changes the emoji, not what Start studying serves (#101 §7).
  */
 @Composable
-private fun DueTodayHeroCard(
+private fun DailyGoalHeroCard(
     studyTarget: Int,
-    doneToday: Int,
     newCardsToday: Int,
     newCardsGoal: Int,
+    goalReached: Boolean,
     countsKnown: Boolean,
     onStartStudyClick: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
-    // Against work done *plus* work left, not against what remains: dividing by the remaining
-    // count alone climbed past 1 as the session went on and rendered "9 of 3 done".
-    val plannedTotal = doneToday + studyTarget
-    val progress = if (plannedTotal == 0) 0f else (doneToday.toFloat() / plannedTotal).coerceIn(0f, 1f)
+    val progress = if (newCardsGoal <= 0) 1f else (newCardsToday.toFloat() / newCardsGoal).coerceIn(0f, 1f)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -245,7 +242,7 @@ private fun DueTodayHeroCard(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = stringResource(R.string.home_due_today),
+            text = stringResource(R.string.home_daily_goal),
             color = colors.foregroundOnAccentMuted,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -256,27 +253,39 @@ private fun DueTodayHeroCard(
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(
-                // A dash, not a zero, until the counts land: this is the same card either way, so
-                // nothing moves when the real number arrives — but "0" would read as a claim.
-                text = if (countsKnown) studyTarget.toString() else "—",
-                color = colors.foregroundOnAccent,
-                fontSize = 72.sp,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = 72.sp,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    // A dash, not a zero, until the tally lands: this is the same card either way,
+                    // so nothing moves when the real number arrives — but "0" would read as a claim.
+                    text = if (countsKnown) newCardsToday.toString() else "—",
+                    modifier = Modifier.testTag("home_goal_count"),
+                    color = colors.foregroundOnAccent,
+                    fontSize = 72.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 72.sp,
+                )
+                if (countsKnown && goalReached) {
+                    Text(
+                        text = "🎉",
+                        modifier = Modifier
+                            .testTag("home_goal_reached")
+                            .padding(start = 8.dp),
+                        fontSize = 40.sp,
+                    )
+                }
+            }
             Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(bottom = 12.dp),
             ) {
                 Text(
-                    text = stringResource(R.string.home_cards),
+                    text = stringResource(R.string.home_goal_of, newCardsGoal),
                     color = colors.foregroundOnAccent,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = stringResource(R.string.home_to_review),
+                    text = stringResource(R.string.home_goal_new_cards),
                     color = colors.foregroundOnAccentMuted,
                     fontSize = 13.sp,
                 )
@@ -286,20 +295,11 @@ private fun DueTodayHeroCard(
             ProgressBar(progress = if (countsKnown) progress else null)
             Text(
                 text = if (countsKnown) {
-                    stringResource(R.string.home_progress_done, doneToday, plannedTotal)
+                    pluralStringResource(R.plurals.home_cards_to_review, studyTarget, studyTarget)
                 } else {
                     stringResource(R.string.home_checking_due)
                 },
-                color = colors.foregroundOnAccentMuted,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-            )
-            Text(
-                text = if (newCardsToday >= newCardsGoal) {
-                    stringResource(R.string.home_new_cards_goal_reached, newCardsGoal)
-                } else {
-                    stringResource(R.string.home_new_cards_goal, newCardsToday, newCardsGoal)
-                },
+                modifier = Modifier.testTag("home_cards_to_review"),
                 color = colors.foregroundOnAccentMuted,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -513,6 +513,7 @@ private fun HomeContentPreview() {
                     identity = PubkyIdentity("alex1xqz9", "Alex", avatarUrl = null, bio = null),
                     dueToday = 24,
                     doneToday = 9,
+                    newCardsToday = 9,
                     decks = listOf(
                         DeckSummary(
                             id = "1",

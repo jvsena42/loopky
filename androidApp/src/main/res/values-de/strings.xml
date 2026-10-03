@@ -12,10 +12,9 @@
     <string name="home_error_title">Etwas ist schiefgelaufen</string>
     <string name="home_retry">Nochmal versuchen</string>
     <string name="home_loading">Wärmt sich auf…</string>
-    <string name="home_due_today">HEUTE FÄLLIG</string>
-    <string name="home_cards">Karten</string>
-    <string name="home_to_review">zu wiederholen</string>
-    <string name="home_progress_done">%1$d von %2$d erledigt · weiter so!</string>
+    <string name="home_daily_goal">TAGESZIEL</string>
+    <string name="home_goal_of">von %1$d</string>
+    <string name="home_goal_new_cards">neue Karten</string>
     <string name="home_new_cards_goal">%1$d von %2$d neuen Karten heute</string>
     <string name="home_new_cards_goal_reached">Tagesziel erreicht · %1$d neue Karten 🎉</string>
     <string name="home_start_studying">Jetzt lernen</string>

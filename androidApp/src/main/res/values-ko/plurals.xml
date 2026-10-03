@@ -59,6 +59,9 @@
     <plurals name="deck_detail_clones">
         <item quantity="other">사본 %1$d개</item>
     </plurals>
+    <plurals name="home_cards_to_review">
+        <item quantity="other">복습 대기 카드 %1$d장</item>
+    </plurals>
     <plurals name="home_deck_due_cards">
         <item quantity="other">복습 %1$d장 · 카드 %2$d장</item>
     </plurals>

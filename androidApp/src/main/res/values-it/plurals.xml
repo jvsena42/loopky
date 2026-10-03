@@ -98,6 +98,11 @@
         <item quantity="other">%1$d copie</item>
     </plurals>
     <!-- The plural agrees with the *card* count, so the quantity argument is %2$d. -->
+    <plurals name="home_cards_to_review">
+        <item quantity="one">%1$d carta da ripassare</item>
+        <item quantity="many">%1$d di carte da ripassare</item>
+        <item quantity="other">%1$d carte da ripassare</item>
+    </plurals>
     <plurals name="home_deck_due_cards">
         <item quantity="one">%1$d da ripassare · %2$d carta</item>
         <item quantity="many">%1$d da ripassare · %2$d di carte</item>

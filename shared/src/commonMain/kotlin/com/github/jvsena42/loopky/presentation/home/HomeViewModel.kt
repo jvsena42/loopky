@@ -325,6 +325,9 @@ sealed interface HomeUiState {
          */
         val isCaughtUp: Boolean get() = countsKnown && dueToday == 0 && newToday == 0
 
+        /** Announced, never enforced: the queue serves every card whether or not this is true. */
+        val goalReached: Boolean get() = newCardsToday >= newCardsGoal
+
         /**
          * The headline number: everything overdue, plus as many new cards as today's goal still
          * has room for.

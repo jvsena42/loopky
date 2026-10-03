@@ -83,6 +83,10 @@
         <item quantity="other">%1$d clones</item>
     </plurals>
     <!-- The plural agrees with the *card* count, so the quantity argument is %2$d. -->
+    <plurals name="home_cards_to_review">
+        <item quantity="one">%1$d card to review</item>
+        <item quantity="other">%1$d cards to review</item>
+    </plurals>
     <plurals name="home_deck_due_cards">
         <item quantity="one">%1$d due · %2$d card</item>
         <item quantity="other">%1$d due · %2$d cards</item>

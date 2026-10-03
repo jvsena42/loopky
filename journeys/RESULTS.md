@@ -4277,3 +4277,23 @@ Guest/preview sessions of the Bob Esponja decks opened from Discover.
 **A signed-in session on either tablet**, so the grade row and the grade column beside the card
 were not driven. **The 11-inch iPad**, and **the miniature on a typing card**. No Android tablet wide enough to be expanded in portrait was
 run, which is the case the removed ceiling was wrong for.
+
+## Today's hero card leads with the daily goal — 2026-10-03
+
+The hero's headline is the day's new-card tally against the goal, the bar tracks the goal, and a
+🎉 sits beside the number once it is reached. What is left to study moved to the line under the bar.
+
+**iOS — iPhone 17 simulator** (staging, dark theme), one deck with 285 unseen cards.
+
+| Step | Result |
+| --- | --- |
+| Today, nothing studied | ✅ "DAILY GOAL", `0`, "of 20 / new cards", empty bar, "20 cards to review" |
+| Settings: goal 20 → 1, grade one new card Good, Back to home | ✅ `1 🎉`, "of 1", full bar, "284 cards to review" |
+| Settings: goal back to 20 | ✅ `1`, no emoji, "of 20", bar at 1/20, "19 cards to review" |
+
+### Not verified here
+
+**Android on a device.** `Pixel_Tablet` is the only signed-in Android emulator, its account owns no
+decks (so Today shows the empty state, not the hero), and following one failed on "Session
+expired". The Android card compiles and passes detekt; neither width class was looked at.
+**An iPad**, and **any language but English**.

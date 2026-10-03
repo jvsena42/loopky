@@ -293,6 +293,7 @@ private fun HomeScreenPreview() {
                 identity = PubkyIdentity("alex1xqz9", "Alex", avatarUrl = null, bio = null),
                 dueToday = 24,
                 doneToday = 9,
+                newCardsToday = 20,
                 decks = listOf(
                     DeckSummary(
                         id = "1",

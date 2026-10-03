@@ -12,10 +12,9 @@
     <string name="home_error_title">出了点问题</string>
     <string name="home_retry">重试</string>
     <string name="home_loading">准备中…</string>
-    <string name="home_due_today">今日待复习</string>
-    <string name="home_cards">张卡片</string>
-    <string name="home_to_review">待复习</string>
-    <string name="home_progress_done">已完成 %1$d / %2$d · 继续加油！</string>
+    <string name="home_daily_goal">今日目标</string>
+    <string name="home_goal_of">/ %1$d 张</string>
+    <string name="home_goal_new_cards">新卡片</string>
     <string name="home_new_cards_goal">今天新卡片 %1$d / %2$d 张</string>
     <string name="home_new_cards_goal_reached">每日目标已达成 · %1$d 张新卡片 🎉</string>
     <string name="home_start_studying">开始学习</string>

@@ -12,10 +12,9 @@
     <string name="home_error_title">Un problème est survenu</string>
     <string name="home_retry">Réessayer</string>
     <string name="home_loading">Échauffement…</string>
-    <string name="home_due_today">POUR AUJOURD’HUI</string>
-    <string name="home_cards">cartes</string>
-    <string name="home_to_review">à réviser</string>
-    <string name="home_progress_done">%1$d sur %2$d faites · continue comme ça !</string>
+    <string name="home_daily_goal">OBJECTIF DU JOUR</string>
+    <string name="home_goal_of">sur %1$d</string>
+    <string name="home_goal_new_cards">nouvelles cartes</string>
     <string name="home_new_cards_goal">%1$d sur %2$d nouvelles cartes aujourd’hui</string>
     <string name="home_new_cards_goal_reached">Objectif du jour atteint · %1$d nouvelles cartes 🎉</string>
     <string name="home_start_studying">Commencer à étudier</string>
