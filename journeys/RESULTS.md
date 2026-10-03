@@ -4256,6 +4256,13 @@ Guest/preview sessions of the Bob Esponja decks opened from Discover.
 | Landscape: tap to reveal | ✅ the front's picture is a 96pt round miniature under the prompt label, as on Android |
 | Landscape: card text | ✅ 48pt on the front and 42pt on the back, Android's sizes (was 26pt) |
 
+**iOS — iPhone 17 simulator**, T10, preview from Discover (dark theme).
+
+| Step | Result |
+| --- | --- |
+| Picture front | ✅ unchanged: 26pt text, picture at the phone cap |
+| Tap to reveal | ✅ the front's picture is a 96pt round miniature between the prompt label and the answer |
+
 **Android — Pixel_Tablet emulator**, T15 and T10.
 
 | Step | Result |
@@ -4268,6 +4275,5 @@ Guest/preview sessions of the Bob Esponja decks opened from Discover.
 ### Not verified here
 
 **A signed-in session on either tablet**, so the grade row and the grade column beside the card
-were not driven. **The 11-inch iPad**, and **the miniature on a phone and on a typing card** — the
-iPhone 17 simulator was left alone. No Android tablet wide enough to be expanded in portrait was
+were not driven. **The 11-inch iPad**, and **the miniature on a typing card**. No Android tablet wide enough to be expanded in portrait was
 run, which is the case the removed ceiling was wrong for.
