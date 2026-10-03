@@ -28,10 +28,9 @@ struct StudyCardView: View {
         .rotation3DEffect(.degrees(state.revealed ? 180 : 0), axis: (x: 0, y: 1, z: 0))
         .animation(.easeInOut(duration: 0.35), value: state.revealed)
         .frame(maxWidth: .infinity)
-        // Capped rather than free to grow — a flashcard stretched to a full screen is a wall of
-        // white around one word, and it pushes the grade row off the thumb's reach. Keyed on the
-        // width class because a phone's ceiling on an iPad leaves a third of the screen as empty
-        // cream above and below the card, which is the same mistake in the other direction.
+        // Capped on a phone, where a card stretched to the full screen pushes the grade row off
+        // the thumb's reach. A tablet has no such reach to protect, and any ceiling there is
+        // empty cream between the card and the controls under it.
         .frame(minHeight: 320, maxHeight: maxCardHeight)
         // The whole card is the flip target, and it stays live while answering: what a typing card
         // withholds is the answer, never the gesture.
@@ -46,15 +45,10 @@ struct StudyCardView: View {
         .accessibilityIdentifier("study_card")
     }
 
-    /// Unchanged from before iPads existed: on a phone this ceiling is never the binding one.
-    /// A portrait iPad has the height to spend; a landscape one has ~620pt between the progress bar
-    /// and the flip hint, so its ceiling only binds on a desktop-tall window.
+    /// Not keyed per width class: a 13" iPad is `.expanded` in portrait as well as landscape, so
+    /// a ceiling sized for the landscape height left 400pt of empty screen under it in portrait.
     private var maxCardHeight: CGFloat {
-        switch widthClass {
-        case .compact: return 560
-        case .medium: return 860
-        case .expanded: return 720
-        }
+        widthClass == .compact ? 560 : .infinity
     }
 
     /// Fills the card so the practice row can sit on its bottom edge, with the side's content
@@ -75,13 +69,12 @@ struct StudyCardView: View {
     private var frontFace: some View {
         VStack(spacing: 14) {
             picture(state.frontImageRef)
-            Text(state.frontText)
-                .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(LoopkyColor.foregroundPrimary)
-                .multilineTextAlignment(.center)
+            cardText(state.frontText, tabletSize: 48)
         }
     }
 
+    /// The prompt label and its picture sit at the top of the back, as on Android, and the answer
+    /// is centred in what is left under them.
     private var backFace: some View {
         VStack(spacing: 12) {
             if let label = state.backLabel, !label.isEmpty {
@@ -89,17 +82,21 @@ struct StudyCardView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(LoopkyColor.accentPrimary)
             }
+            recallPicture
+            backAnswer.frame(maxHeight: .infinity)
+        }
+    }
 
-            if state.answerHidden {
-                answerInput
-            } else {
+    @ViewBuilder
+    private var backAnswer: some View {
+        if state.answerHidden {
+            answerInput
+        } else {
+            VStack(spacing: 12) {
                 // The back's picture is withheld with its text while a typing card is answering —
                 // an image answer handed over early is the same giveaway as the words.
                 picture(state.backImageRef)
-                Text(state.backText)
-                    .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(LoopkyColor.foregroundPrimary)
-                    .multilineTextAlignment(.center)
+                cardText(state.backText, tabletSize: 42)
                 if state.typePhase == .correct {
                     Text("study_type_correct")
                         .font(.system(size: 13, weight: .semibold))
@@ -107,6 +104,17 @@ struct StudyCardView: View {
                 }
             }
         }
+    }
+
+    /// A tablet's card is several times a phone's, so its text takes Android's sizes — which
+    /// shrink to fit there, hence the scale floor at Android's 16pt minimum. A phone is unchanged.
+    private func cardText(_ text: String, tabletSize: CGFloat) -> some View {
+        let size = widthClass == .compact ? phoneCardTextSize : tabletSize
+        return Text(text)
+            .font(.system(size: size, weight: .bold))
+            .foregroundStyle(LoopkyColor.foregroundPrimary)
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(widthClass == .compact ? 1 : minCardTextSize / size)
     }
 
     /// The input sits *on the card back*, under the prompt label, in the space the answer will
@@ -149,6 +157,25 @@ struct StudyCardView: View {
         }
     }
 
+    /// The prompt's picture recalled on the back as a small cue, so the answer is read against the
+    /// question it belongs to. Never the content of the side it is drawn on, so a typing card
+    /// shows it while answering.
+    @ViewBuilder
+    private var recallPicture: some View {
+        if state.frontImageRef != nil {
+            CardMediaImage(
+                ref: state.frontImageRef,
+                authorPubky: state.authorPubky,
+                deckId: state.deckId,
+                contentMode: .fill
+            )
+            .frame(width: 96, height: 96)
+            .background(LoopkyColor.accentPrimarySoft)
+            .clipShape(Circle())
+            .accessibilityHidden(true)
+        }
+    }
+
     @ViewBuilder
     private func picture(_ ref: MediaRef.Image?) -> some View {
         if ref != nil {
@@ -157,7 +184,7 @@ struct StudyCardView: View {
                 authorPubky: state.authorPubky,
                 deckId: state.deckId
             )
-            .frame(maxHeight: 240)
+            .frame(maxHeight: widthClass == .compact ? 240 : 420)
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
     }
@@ -210,3 +237,6 @@ struct StudyCardView: View {
         // The ViewModel ignores a Listen tap while one is being read.
     }
 }
+
+private let phoneCardTextSize: CGFloat = 26
+private let minCardTextSize: CGFloat = 16

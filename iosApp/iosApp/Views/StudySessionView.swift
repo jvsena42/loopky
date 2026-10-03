@@ -98,7 +98,9 @@ struct StudySessionView: View {
         VStack(spacing: 14) {
             card.padding(.horizontal, 20)
             Spacer(minLength: 0)
-            gradeArea
+            // A tablet's card fills the height, so the row under it has to hold one size or the
+            // card resizes mid-flip when the hint gives way to the grades.
+            gradeArea.frame(minHeight: widthClass == .compact ? nil : gradeAreaHeight)
         }
     }
 
@@ -116,7 +118,11 @@ struct StudySessionView: View {
                 Spacer(minLength: 0)
                 // Everything the grade area still owes at this width — the flip hint, and a typing
                 // card's suppressed hint. The four grades themselves are in the column to the right.
-                if !state.gradesAvailable { gradeArea }
+                if state.gradesAvailable {
+                    Color.clear.frame(height: flipHintHeight)
+                } else {
+                    gradeArea
+                }
             }
             .frame(maxWidth: studyCardWidth)
             if state.gradesAvailable {
@@ -206,7 +212,7 @@ struct StudySessionView: View {
             Button("study_flip_hint", action: onReveal)
                 .font(.system(size: 13))
                 .foregroundStyle(LoopkyColor.foregroundMuted)
-                .frame(height: 20)
+                .frame(height: flipHintHeight)
                 .accessibilityIdentifier("study_reveal")
         }
     }
@@ -396,3 +402,8 @@ private let gradeColumnWidth: CGFloat = 200
 
 /// Between the card and the grades.
 private let gradeColumnGap: CGFloat = 24
+
+/// The grade row and the preview's "Next" are both this tall.
+private let gradeAreaHeight: CGFloat = 57
+
+private let flipHintHeight: CGFloat = 20

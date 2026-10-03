@@ -394,7 +394,6 @@ private fun ReviewingContent(
     // "Next", which is the wrong shape for a 120dp column beside the card and belongs in the row
     // under it at every width. So the wide branch is about the *grades*, not about the window.
     val wide = widthClass.isExpanded && !state.isPreview
-    // See studyCardMaxHeight: the ceiling is keyed on the width class, not fixed.
     val cardMaxHeight = studyCardMaxHeight(widthClass)
     Column(
         // Studying is a single-focus task, so it gets a narrow ceiling rather than the reading
@@ -612,20 +611,15 @@ private fun ReviewingContent(
 }
 
 /**
- * How tall the study card may grow, given how much room the window has.
+ * How tall the study card may grow.
  *
- * The cap stops a one-word prompt stretching into a near-full-screen rectangle. Keyed on the width
- * class because that separates the cases: a portrait tablet is Medium with ~980dp of column to give,
- * a landscape one is Expanded with ~620, and a phone is Compact where the original ceiling was never
- * the binding constraint. The two tablet ceilings sit *above* what those layouts actually offer, so
- * there the card simply fills its share — this is a guard against a stretched card, not a second
- * layout.
+ * Capped on a phone, where a card stretched to the full screen pushes the grade row off the thumb's
+ * reach. A tablet has no ceiling, and deliberately not one per width class: a large tablet is
+ * Expanded in portrait as well as landscape, so a ceiling sized for the landscape height leaves
+ * empty screen under the card — and under its picture, which takes whatever height the card has.
  */
-private fun studyCardMaxHeight(widthClass: WindowWidthClass): Dp = when (widthClass) {
-    WindowWidthClass.Compact -> COMPACT_CARD_MAX_HEIGHT
-    WindowWidthClass.Medium -> MEDIUM_CARD_MAX_HEIGHT
-    WindowWidthClass.Expanded -> EXPANDED_CARD_MAX_HEIGHT
-}
+private fun studyCardMaxHeight(widthClass: WindowWidthClass): Dp =
+    if (widthClass == WindowWidthClass.Compact) COMPACT_CARD_MAX_HEIGHT else Dp.Unspecified
 
 /**
  * Everything the card face renders, plus the identity the advance transition keys on. `position` is
@@ -1106,15 +1100,7 @@ private val STUDY_WIDE_PANE_WIDTH = 880.dp
 /** The card keeps the width it has on a phone; only its position changes. */
 private val STUDY_CARD_WIDTH = 640.dp
 
-/** Unchanged from before tablets existed: on a phone this ceiling is never the binding one. */
 private val COMPACT_CARD_MAX_HEIGHT = 560.dp
-
-/** A portrait tablet has the height to spend; short of the full column so the card still floats. */
-private val MEDIUM_CARD_MAX_HEIGHT = 860.dp
-
-/** Above the ~620dp a landscape tablet leaves between the progress bar and the flip hint, so the
- *  card fills that column rather than floating in it. Binds only on a desktop-tall window. */
-private val EXPANDED_CARD_MAX_HEIGHT = 720.dp
 
 /** Wide enough for "Again" and its interval on one line each. */
 private val GRADE_COLUMN_WIDTH = 200.dp

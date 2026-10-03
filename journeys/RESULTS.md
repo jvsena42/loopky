@@ -4240,3 +4240,40 @@ slower at "0.5×" rather than half. It is now interpolated between the minimum a
 - **By ear**: neither device was listened to, so voice quality at the slow rates is unchecked.
 - The 15s fallback that re-enables the button when a platform never reports the end is covered by
   `listenReEnablesItselfWhenNoEndIsReported` only.
+
+## Study card fills the height on a tablet, both platforms — ✅ PASS (2026-10-03)
+
+Guest/preview sessions of the Bob Esponja decks opened from Discover.
+
+**iOS — iPad Air 13-inch (M4) simulator**, T10 · Bob Esponja · Inglês.
+
+| Step | Result |
+| --- | --- |
+| Before, portrait: front face | ❌ card stopped at 720pt, ~430pt of empty screen between it and **Next card** |
+| After, portrait: front face | ✅ card runs from the progress bar to the flip hint |
+| Portrait: tap to reveal | ✅ back face, **Next card** under it, card the same height as the front |
+| Landscape: picture front | ✅ card fills; the picture takes the card's width (555×313pt, was 427×240) |
+| Landscape: tap to reveal | ✅ the prompt label and the front's picture as a 96pt round miniature sit at the top of the back, the answer centred under them, as on Android |
+| Landscape: card text | ✅ 48pt on the front and 42pt on the back, Android's sizes (was 26pt) |
+
+**iOS — iPhone 17 simulator**, T10, preview from Discover (dark theme).
+
+| Step | Result |
+| --- | --- |
+| Picture front | ✅ unchanged: 26pt text, picture at the phone cap |
+| Tap to reveal | ✅ prompt label and 96pt round miniature at the top of the back, the answer centred under them |
+
+**Android — Pixel_Tablet emulator**, T15 and T10.
+
+| Step | Result |
+| --- | --- |
+| Portrait (medium): text front | ✅ card is ~924dp tall, past the old 860dp ceiling |
+| Portrait: picture front (T10) | ✅ picture spans the card's width |
+| Portrait: tap to reveal | ✅ miniature on the back; card the same height as the front |
+| Landscape (expanded): text front | ✅ unchanged — the old ceiling was not the binding constraint there |
+
+### Not verified here
+
+**A signed-in session on either tablet**, so the grade row and the grade column beside the card
+were not driven. **The 11-inch iPad**, and **the miniature on a typing card**. No Android tablet wide enough to be expanded in portrait was
+run, which is the case the removed ceiling was wrong for.
