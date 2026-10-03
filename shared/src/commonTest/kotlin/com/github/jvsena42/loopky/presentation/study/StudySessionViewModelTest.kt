@@ -18,6 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -370,6 +371,81 @@ class StudySessionViewModelTest {
         assertEquals(StudySessionEffect.Speak("hello", "en-US"), effects.excludingHaptics().last())
 
         job.cancel()
+    }
+
+    @Test
+    fun repeatedListenSlowsDownTwiceThenHoldsAndResetsOnTheNextCard() = runTest {
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+
+        repeat(4) {
+            vm.onSpeak()
+            vm.onListenFinished()
+        }
+        advanceUntilIdle()
+        assertEquals(
+            listOf(1f, 0.75f, 0.5f, 0.5f),
+            effects.excludingHaptics().map { assertIs<StudySessionEffect.Speak>(it).rate },
+        )
+
+        // The other side is a different word, so it starts again at normal speed.
+        vm.onReveal()
+        vm.onSpeak()
+        advanceUntilIdle()
+        assertEquals(StudySessionEffect.Speak("hello", "en-US", 1f), effects.excludingHaptics().last())
+
+        vm.onListenFinished()
+        vm.onSpeak()
+        vm.onGrade(SrsGrade.Good)
+        advanceUntilIdle()
+        vm.onSpeak()
+        advanceUntilIdle()
+        assertEquals(StudySessionEffect.Speak("gracias", "es-ES", 1f), effects.excludingHaptics().last())
+
+        job.cancel()
+    }
+
+    @Test
+    fun listenIgnoresTapsUntilTheSpeechEnds() = runTest {
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+
+        vm.onSpeak()
+        vm.onSpeak()
+        runCurrent()
+        assertEquals(1, effects.excludingHaptics().size)
+        assertTrue(assertIs<StudySessionUiState.Reviewing>(vm.state.value).isListening)
+
+        vm.onListenFinished()
+        assertFalse(assertIs<StudySessionUiState.Reviewing>(vm.state.value).isListening)
+        vm.onSpeak()
+        runCurrent()
+        assertEquals(2, effects.excludingHaptics().size)
+
+        job.cancel()
+    }
+
+    @Test
+    fun listenReEnablesItselfWhenNoEndIsReported() = runTest {
+        // A platform that never calls back must not leave the button dead for the rest of the card.
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onSpeak()
+        runCurrent()
+        assertTrue(assertIs<StudySessionUiState.Reviewing>(vm.state.value).isListening)
+
+        advanceTimeBy(StudySessionViewModel.LISTEN_TIMEOUT_MILLIS + 1)
+        assertFalse(assertIs<StudySessionUiState.Reviewing>(vm.state.value).isListening)
     }
 
     @Test

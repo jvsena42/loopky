@@ -30,6 +30,8 @@
     <action>Manual check: set the deck to a language with no installed speech model and verify the sheet says "Language not installed" with a Close (resource-id: speak_failed_close) rather than a Try again that would repeat the same failure</action>
     <action>Dismiss the Listening sheet and verify the study card is shown again</action>
     <action>Tap the Listen button (resource-id: study_listen) on the card back and verify — by ear — that the answer is spoken by a voice for the deck's back language, and the front (before reveal) by the front language's voice. This is the acceptance test; a green build says nothing about which voice was used.</action>
+    <action>Tap Listen three more times on the same side, letting each finish, and verify each read is slower than the last until the third, which matches the second slow one (normal, 0.75×, 0.5×, 0.5×). Flip the card or move to the next one and verify the first read there is back at normal speed.</action>
+    <action>Tap Listen and tap it again while it is still reading: verify the button is dimmed, the word is read once, and the card does NOT flip — on iOS a disabled button passes its tap to the card underneath</action>
     <action>Manual check: set the deck to a language with no installed voice and verify a toast says so rather than the card being read in the wrong accent</action>
   </actions>
 </journey>
