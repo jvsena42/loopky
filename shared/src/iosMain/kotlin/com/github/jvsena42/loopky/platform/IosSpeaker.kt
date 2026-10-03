@@ -4,6 +4,7 @@ import platform.AVFAudio.AVSpeechBoundary
 import platform.AVFAudio.AVSpeechSynthesisVoice
 import platform.AVFAudio.AVSpeechSynthesizer
 import platform.AVFAudio.AVSpeechUtterance
+import platform.AVFAudio.AVSpeechUtteranceDefaultSpeechRate
 
 /**
  * iOS [Speaker], over `AVSpeechSynthesizer`.
@@ -23,12 +24,13 @@ class IosSpeaker : Speaker {
 
     private val synthesizer = AVSpeechSynthesizer()
 
-    override fun speak(text: String, languageTag: String): SpeakOutcome {
+    override fun speak(text: String, languageTag: String, rate: Float): SpeakOutcome {
         val voice = AVSpeechSynthesisVoice.voiceWithLanguage(languageTag)
             ?: return SpeakOutcome.LanguageUnavailable
         synthesizer.stopSpeakingAtBoundary(AVSpeechBoundary.AVSpeechBoundaryImmediate)
         val utterance = AVSpeechUtterance.speechUtteranceWithString(text)
         utterance.voice = voice
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * rate
         synthesizer.speakUtterance(utterance)
         return SpeakOutcome.Spoken
     }

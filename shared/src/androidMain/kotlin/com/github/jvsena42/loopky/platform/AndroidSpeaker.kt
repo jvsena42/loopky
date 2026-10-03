@@ -28,15 +28,15 @@ class AndroidSpeaker(context: Context) : Speaker {
         ready = status == TextToSpeech.SUCCESS
         val queued = pending
         pending = null
-        if (ready && queued != null) speak(queued.text, queued.languageTag)
+        if (ready && queued != null) speak(queued.text, queued.languageTag, queued.rate)
     }
 
-    override fun speak(text: String, languageTag: String): SpeakOutcome {
+    override fun speak(text: String, languageTag: String, rate: Float): SpeakOutcome {
         if (text.isBlank()) return SpeakOutcome.Spoken
         if (!ready) {
             // Queued, not failed: reporting a problem here would toast at the user over a race
             // that resolves itself a moment later.
-            pending = Utterance(text, languageTag)
+            pending = Utterance(text, languageTag, rate)
             return SpeakOutcome.Spoken
         }
 
@@ -48,6 +48,7 @@ class AndroidSpeaker(context: Context) : Speaker {
             TextToSpeech.ERROR -> SpeakOutcome.EngineUnavailable
 
             else -> {
+                tts.setSpeechRate(rate)
                 tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, UTTERANCE_ID)
                 SpeakOutcome.Spoken
             }
@@ -63,7 +64,7 @@ class AndroidSpeaker(context: Context) : Speaker {
             .sorted()
     }
 
-    private data class Utterance(val text: String, val languageTag: String)
+    private data class Utterance(val text: String, val languageTag: String, val rate: Float)
 
     private companion object {
         const val UTTERANCE_ID = "loopky-speak"

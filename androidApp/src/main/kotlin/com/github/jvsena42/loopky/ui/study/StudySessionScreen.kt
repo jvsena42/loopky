@@ -162,7 +162,7 @@ fun StudySessionRoute(
                 is StudySessionEffect.Speak -> {
                     // A missing voice leaves the engine on whatever it loaded last, so silence
                     // beats reading a Spanish card in an English accent — say why.
-                    if (speaker.speak(effect.text, effect.languageTag) != SpeakOutcome.Spoken) {
+                    if (speaker.speak(effect.text, effect.languageTag, effect.rate) != SpeakOutcome.Spoken) {
                         Toast.makeText(context, R.string.listen_voice_unavailable, Toast.LENGTH_LONG)
                             .show()
                     }

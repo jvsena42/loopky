@@ -129,6 +129,10 @@ class StudySessionViewModel(
     /** What the in-flight pronunciation attempt grades against. See [targetFor]. */
     private var speakTarget: SpeakTarget? = null
 
+    /** The text last read aloud on this card and how many times in a row, for [listenRate]. */
+    private var lastListened: Pair<String, String>? = null
+    private var listenRepeats = 0
+
     /**
      * Why buffered reviews are not reaching the homeserver. Held on the VM rather than only in the
      * state because [emitCurrent] rebuilds the state on every card, and a warning the user has not
@@ -201,6 +205,7 @@ class StudySessionViewModel(
                     queue = presentations
                     index = 0
                     revealed = false
+                    resetListen()
                     gradedCardIds.clear()
                     pairs.clear()
                     resetTyping()
@@ -338,7 +343,13 @@ class StudySessionViewModel(
         index++
         revealed = false
         speakPhase = SpeakPhase.Idle
+        resetListen()
         resetTyping()
+    }
+
+    private fun resetListen() {
+        lastListened = null
+        listenRepeats = 0
     }
 
     /**
@@ -541,7 +552,15 @@ class StudySessionViewModel(
             ?.takeIf { it.isNotBlank() }
             ?: return
         val languageTag = (if (answerVisible) s.backLang else s.frontLang) ?: return
-        viewModelScope.launch { _effects.emit(StudySessionEffect.Speak(text, languageTag)) }
+        val target = text to languageTag
+        listenRepeats = if (target == lastListened) {
+            (listenRepeats + 1).coerceAtMost(LISTEN_RATES.lastIndex)
+        } else {
+            0
+        }
+        lastListened = target
+        val rate = LISTEN_RATES[listenRepeats]
+        viewModelScope.launch { _effects.emit(StudySessionEffect.Speak(text, languageTag, rate)) }
     }
 
     /**
@@ -822,6 +841,9 @@ class StudySessionViewModel(
          * at the end of it, so it has to be reachable in a couple of minutes.
          */
         internal const val PREVIEW_CARDS = 10
+
+        /** Normal speed, then two slower steps for repeat Listen taps; it stays at the last one. */
+        internal val LISTEN_RATES = listOf(1f, 0.75f, 0.5f)
     }
 }
 
@@ -1008,8 +1030,11 @@ sealed interface TypePhase {
 data class TypeMiss(val typed: String, val outcome: TypedAnswerOutcome)
 
 sealed interface StudySessionEffect {
-    /** [languageTag] is BCP-47; without it the engine reads the card in the reader's own locale. */
-    data class Speak(val text: String, val languageTag: String) : StudySessionEffect
+    /**
+     * [languageTag] is BCP-47; without it the engine reads the card in the reader's own locale.
+     * [rate] is a multiplier on the engine's normal speed: repeat taps on the same text slow down.
+     */
+    data class Speak(val text: String, val languageTag: String, val rate: Float = 1f) : StudySessionEffect
     data class StartSpeechRecognition(
         val expected: String,
         val languageTag: String,

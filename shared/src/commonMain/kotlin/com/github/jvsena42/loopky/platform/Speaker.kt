@@ -24,14 +24,14 @@ interface Speaker {
 
     /**
      * Read [text] aloud in [languageTag] (BCP-47, e.g. `"es-ES"`), interrupting anything already
-     * being spoken.
+     * being spoken. [rate] multiplies the engine's normal speed (`1f`), so `0.5f` is half as fast.
      *
      * The language is required, not optional: an engine given none falls back to the *reader's*
      * device locale, so a Spanish card on an English phone gets English phonetics. A deck that
      * has not declared its pair does not offer Listen at all — see `Deck.speechReady` — so by the
      * time a call gets here there is always a tag to pass.
      */
-    fun speak(text: String, languageTag: String): SpeakOutcome
+    fun speak(text: String, languageTag: String, rate: Float = 1f): SpeakOutcome
 
     /**
      * BCP-47 tags the installed engine can actually voice, for the deck language picker. Empty

@@ -373,6 +373,38 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun repeatedListenSlowsDownTwiceThenHoldsAndResetsOnTheNextCard() = runTest {
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+
+        repeat(4) { vm.onSpeak() }
+        advanceUntilIdle()
+        assertEquals(
+            listOf(1f, 0.75f, 0.5f, 0.5f),
+            effects.excludingHaptics().map { assertIs<StudySessionEffect.Speak>(it).rate },
+        )
+
+        // The other side is a different word, so it starts again at normal speed.
+        vm.onReveal()
+        vm.onSpeak()
+        advanceUntilIdle()
+        assertEquals(StudySessionEffect.Speak("hello", "en-US", 1f), effects.excludingHaptics().last())
+
+        vm.onSpeak()
+        vm.onGrade(SrsGrade.Good)
+        advanceUntilIdle()
+        vm.onSpeak()
+        advanceUntilIdle()
+        assertEquals(StudySessionEffect.Speak("gracias", "es-ES", 1f), effects.excludingHaptics().last())
+
+        job.cancel()
+    }
+
+    @Test
     fun listenReadsThePhraseAndNotTheCardsAside() = runTest {
         // Handed "hola (formal)", the engine reads the editorial note out as a word.
         seedSpeechDeck()

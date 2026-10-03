@@ -176,7 +176,7 @@ struct StudySessionScreen: View {
         effectSink = FlowEffectSink(vm.effects) { effect in
             switch effect {
             case let speak as StudySessionEffectSpeak:
-                SpeechSpeaker.shared.speak(speak.text, languageTag: speak.languageTag)
+                SpeechSpeaker.shared.speak(speak.text, languageTag: speak.languageTag, rate: speak.rate)
             case let listen as StudySessionEffectStartSpeechRecognition:
                 startListening(languageTag: listen.languageTag, vm: vm)
             case let haptic as StudySessionEffectHaptic:
