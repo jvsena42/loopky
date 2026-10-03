@@ -4240,3 +4240,20 @@ slower at "0.5×" rather than half. It is now interpolated between the minimum a
 - **By ear**: neither device was listened to, so voice quality at the slow rates is unchecked.
 - The 15s fallback that re-enables the button when a platform never reports the end is covered by
   `listenReEnablesItselfWhenNoEndIsReported` only.
+
+## iOS study card fills the height on a tablet — ✅ PASS in portrait (2026-10-03)
+
+Debug build on the **iPad Air 13-inch (M4) simulator**, portrait, guest preview of
+T10 · Bob Esponja · Inglês opened from Discover.
+
+| Step | Result |
+| --- | --- |
+| Before: front face | ❌ card stopped at 720pt, ~430pt of empty screen between it and **Next card** |
+| After: front face | ✅ card runs from the progress bar to the flip hint |
+| Tap to reveal | ✅ back face, **Next card** under it, card the same height as the front |
+
+### Not verified here
+
+**Landscape, and a signed-in session.** Nothing in `xcodebuildmcp` rotates the simulator, and the
+iPad is a guest, so the grade column beside the card was not driven. The 11-inch iPad in portrait
+(the medium width class) was not run either.
