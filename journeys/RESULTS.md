@@ -4253,7 +4253,7 @@ Guest/preview sessions of the Bob Esponja decks opened from Discover.
 | After, portrait: front face | ✅ card runs from the progress bar to the flip hint |
 | Portrait: tap to reveal | ✅ back face, **Next card** under it, card the same height as the front |
 | Landscape: picture front | ✅ card fills; the picture takes the card's width (555×313pt, was 427×240) |
-| Landscape: tap to reveal | ✅ the front's picture is a 96pt round miniature under the prompt label, as on Android |
+| Landscape: tap to reveal | ✅ the prompt label and the front's picture as a 96pt round miniature sit at the top of the back, the answer centred under them, as on Android |
 | Landscape: card text | ✅ 48pt on the front and 42pt on the back, Android's sizes (was 26pt) |
 
 **iOS — iPhone 17 simulator**, T10, preview from Discover (dark theme).
@@ -4261,7 +4261,7 @@ Guest/preview sessions of the Bob Esponja decks opened from Discover.
 | Step | Result |
 | --- | --- |
 | Picture front | ✅ unchanged: 26pt text, picture at the phone cap |
-| Tap to reveal | ✅ the front's picture is a 96pt round miniature between the prompt label and the answer |
+| Tap to reveal | ✅ prompt label and 96pt round miniature at the top of the back, the answer centred under them |
 
 **Android — Pixel_Tablet emulator**, T15 and T10.
 

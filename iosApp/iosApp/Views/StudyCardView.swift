@@ -73,6 +73,8 @@ struct StudyCardView: View {
         }
     }
 
+    /// The prompt label and its picture sit at the top of the back, as on Android, and the answer
+    /// is centred in what is left under them.
     private var backFace: some View {
         VStack(spacing: 12) {
             if let label = state.backLabel, !label.isEmpty {
@@ -81,10 +83,16 @@ struct StudyCardView: View {
                     .foregroundStyle(LoopkyColor.accentPrimary)
             }
             recallPicture
+            backAnswer.frame(maxHeight: .infinity)
+        }
+    }
 
-            if state.answerHidden {
-                answerInput
-            } else {
+    @ViewBuilder
+    private var backAnswer: some View {
+        if state.answerHidden {
+            answerInput
+        } else {
+            VStack(spacing: 12) {
                 // The back's picture is withheld with its text while a typing card is answering —
                 // an image answer handed over early is the same giveaway as the words.
                 picture(state.backImageRef)
