@@ -69,10 +69,7 @@ struct StudyCardView: View {
     private var frontFace: some View {
         VStack(spacing: 14) {
             picture(state.frontImageRef)
-            Text(state.frontText)
-                .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(LoopkyColor.foregroundPrimary)
-                .multilineTextAlignment(.center)
+            cardText(state.frontText, tabletSize: 48)
         }
     }
 
@@ -91,10 +88,7 @@ struct StudyCardView: View {
                 // The back's picture is withheld with its text while a typing card is answering —
                 // an image answer handed over early is the same giveaway as the words.
                 picture(state.backImageRef)
-                Text(state.backText)
-                    .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(LoopkyColor.foregroundPrimary)
-                    .multilineTextAlignment(.center)
+                cardText(state.backText, tabletSize: 42)
                 if state.typePhase == .correct {
                     Text("study_type_correct")
                         .font(.system(size: 13, weight: .semibold))
@@ -102,6 +96,17 @@ struct StudyCardView: View {
                 }
             }
         }
+    }
+
+    /// A tablet's card is several times a phone's, so its text takes Android's sizes — which
+    /// shrink to fit there, hence the scale floor at Android's 16pt minimum. A phone is unchanged.
+    private func cardText(_ text: String, tabletSize: CGFloat) -> some View {
+        let size = widthClass == .compact ? phoneCardTextSize : tabletSize
+        return Text(text)
+            .font(.system(size: size, weight: .bold))
+            .foregroundStyle(LoopkyColor.foregroundPrimary)
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(widthClass == .compact ? 1 : minCardTextSize / size)
     }
 
     /// The input sits *on the card back*, under the prompt label, in the space the answer will
@@ -224,3 +229,6 @@ struct StudyCardView: View {
         // The ViewModel ignores a Listen tap while one is being read.
     }
 }
+
+private let phoneCardTextSize: CGFloat = 26
+private let minCardTextSize: CGFloat = 16
