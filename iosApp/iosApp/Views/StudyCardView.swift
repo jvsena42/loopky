@@ -57,10 +57,18 @@ struct StudyCardView: View {
         }
     }
 
-    @ViewBuilder
+    /// Fills the card so the practice row can sit on its bottom edge, with the side's content
+    /// centred in what is left above it — the row must not ride up and down with the text length.
     private var face: some View {
         VStack(spacing: 14) {
-            if state.revealed { backFace } else { frontFace }
+            Group {
+                if state.revealed { backFace } else { frontFace }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Listen practises the side that is showing, so it belongs on both faces — but never
+            // on a masked answer: reading it aloud, or asking it to be pronounced, would hand over
+            // the thing the card is withholding.
+            if !(state.revealed && state.answerHidden) { practiceRow }
         }
     }
 
@@ -71,9 +79,6 @@ struct StudyCardView: View {
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(LoopkyColor.foregroundPrimary)
                 .multilineTextAlignment(.center)
-            // Listen practises the side that is showing, so it belongs on both faces — but see
-            // `backFace`, where it comes off a masked answer.
-            practiceRow
         }
     }
 
@@ -100,9 +105,6 @@ struct StudyCardView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(LoopkyColor.srsGood)
                 }
-                // Only once the answer is actually on the card — reading a masked back aloud, or
-                // asking it to be pronounced, would hand over the thing the card is withholding.
-                practiceRow
             }
         }
     }
