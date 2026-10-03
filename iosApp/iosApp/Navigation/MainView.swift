@@ -73,7 +73,7 @@ struct MainView: View {
                 HomeScreen(
                     onOpenDeck: { onDeckTap($0, nil) },
                     onCreateDeck: onCreateDeckTap,
-                    onBrowseExamples: onImportTap,
+                    onDiscover: { selectedTab = .discover },
                     onStartStudy: onStartStudy,
                     onSignedOut: onSignedOut,
                     // The library is a tab, not a push: "See all" over today's decks selects it,

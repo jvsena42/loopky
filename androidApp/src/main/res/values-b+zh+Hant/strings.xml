@@ -27,9 +27,9 @@
     <!-- The hero while the cached library is on screen and the review state has not answered. -->
     <string name="home_checking_due">正在確認待複習的卡片…</string>
     <string name="home_empty_title">還沒有牌組</string>
-    <string name="home_empty_subtitle">貼上清單、匯入檔案，或從零開始。</string>
+    <string name="home_empty_subtitle">找一個牌組來學習，或自己建立一個。</string>
     <string name="home_create_first_deck">建立你的第一個牌組</string>
-    <string name="home_browse_examples">瀏覽範例</string>
+    <string name="home_discover_decks">探索牌組</string>
 
     <!-- Decks library -->
     <string name="decks_title">你的牌組</string>

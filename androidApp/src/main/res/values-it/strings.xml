@@ -26,9 +26,9 @@
     <string name="home_deck_caught_up">In pari</string>
     <string name="home_checking_due">Controllo cosa c\'è da ripassare…</string>
     <string name="home_empty_title">Ancora nessun mazzo</string>
-    <string name="home_empty_subtitle">Incolla una lista, importa un file o parti da zero.</string>
+    <string name="home_empty_subtitle">Trova un mazzo da studiare o creane uno tuo.</string>
     <string name="home_create_first_deck">Crea il tuo primo mazzo</string>
-    <string name="home_browse_examples">Sfoglia gli esempi</string>
+    <string name="home_discover_decks">Scopri i mazzi</string>
 
     <!-- Decks library -->
     <string name="decks_title">I tuoi mazzi</string>

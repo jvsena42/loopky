@@ -27,9 +27,9 @@
     <!-- The hero while the cached library is on screen and the review state has not answered. -->
     <string name="home_checking_due">復習するカードを確認中…</string>
     <string name="home_empty_title">まだデッキがありません</string>
-    <string name="home_empty_subtitle">リストを貼り付けるか、ファイルをインポートするか、ゼロから作りましょう。</string>
+    <string name="home_empty_subtitle">学ぶデッキを見つけるか、自分で作りましょう。</string>
     <string name="home_create_first_deck">最初のデッキを作成</string>
-    <string name="home_browse_examples">例を見る</string>
+    <string name="home_discover_decks">デッキを見つける</string>
 
     <!-- Decks library -->
     <string name="decks_title">マイデッキ</string>

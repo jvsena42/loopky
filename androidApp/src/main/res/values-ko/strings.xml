@@ -27,9 +27,9 @@
     <!-- The hero while the cached library is on screen and the review state has not answered. -->
     <string name="home_checking_due">복습할 카드를 확인하는 중…</string>
     <string name="home_empty_title">아직 덱이 없어요</string>
-    <string name="home_empty_subtitle">목록을 붙여넣거나, 파일을 가져오거나, 처음부터 만들어 보세요.</string>
+    <string name="home_empty_subtitle">공부할 덱을 찾거나 직접 만들어 보세요.</string>
     <string name="home_create_first_deck">첫 덱 만들기</string>
-    <string name="home_browse_examples">예시 둘러보기</string>
+    <string name="home_discover_decks">덱 탐색하기</string>
 
     <!-- Decks library -->
     <string name="decks_title">내 덱</string>

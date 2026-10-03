@@ -26,9 +26,9 @@
     <string name="home_deck_caught_up">À jour</string>
     <string name="home_checking_due">On regarde ce qu’il y a à réviser…</string>
     <string name="home_empty_title">Aucun paquet pour l’instant</string>
-    <string name="home_empty_subtitle">Colle une liste, importe un fichier ou pars de zéro.</string>
+    <string name="home_empty_subtitle">Trouve un paquet à étudier ou crée le tien.</string>
     <string name="home_create_first_deck">Crée ton premier paquet</string>
-    <string name="home_browse_examples">Voir des exemples</string>
+    <string name="home_discover_decks">Découvrir des paquets</string>
 
     <!-- Decks library -->
     <string name="decks_title">Tes paquets</string>
