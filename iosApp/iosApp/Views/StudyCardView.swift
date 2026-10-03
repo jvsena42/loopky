@@ -151,7 +151,7 @@ struct StudyCardView: View {
                 authorPubky: state.authorPubky,
                 deckId: state.deckId
             )
-            .frame(maxHeight: 240)
+            .frame(maxHeight: widthClass == .compact ? 240 : 420)
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
     }
