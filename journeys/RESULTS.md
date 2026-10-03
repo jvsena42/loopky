@@ -4172,3 +4172,27 @@ test-vector phrase (journey 20).
   arrives, and its flash lives on the screen it is leaving. Android shows a toast.
 - The test-vector account now follows Dinosaurs, the Spanish deck and both "Inglês para…" decks on
   staging.
+
+## Empty home leads with Discover (#436) — ✅ PASS (2026-10-03, `Pixel_Tablet` + `iPhone 17` sim, staging)
+
+Debug builds. `Pixel_Tablet` is signed in as `ckm34u`, the `iPhone 17` simulator as `ma8tms`; neither
+account owns or follows a deck, so both open on the empty home.
+
+| Step | Result |
+| --- | --- |
+| Android, expanded (2560×1600): empty home | ✅ "No decks yet" / "Find a deck to study, or make your own."; **Discover decks** (`home_discover`) filled, **Create your first deck** (`home_create_deck`) soft, in that order |
+| Tap Discover decks | ✅ `tab_discover` selected on the nav rail, browse grid loaded |
+| Tap Create your first deck | ✅ paste-import screen opens; Back returns to the empty home |
+| Android, medium (`wm size 1600x2560`): empty home, Discover decks | ✅ same order; `tab_discover` selected on the bottom bar |
+| iOS, `iPhone 17`: empty home | ✅ same copy and order; Discover decks filled |
+| iOS: tap Discover decks | ✅ Discover tab selected — it opened Import before this change |
+
+**Found and fixed in this run:** at expanded width the card and both buttons ran the full 1280dp of
+the window. `HomeEmptyScreen` now caps them at `PaneWidth.Focused`, centred; re-checked at both
+widths.
+
+### Not verified here
+
+- **iPad**: every iPad simulator is signed out and a guest opens on Discover, so the empty home
+  cannot be reached there without a QR sign-in from a phone.
+- The ten translations were read in the diff, not rendered on a device set to each language.
