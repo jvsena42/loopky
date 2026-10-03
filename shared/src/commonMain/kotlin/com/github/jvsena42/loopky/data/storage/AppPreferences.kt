@@ -117,6 +117,15 @@ interface AppPreferences {
     val pendingDeckFollow: Flow<String>
 
     suspend fun setPendingDeckFollow(value: String)
+
+    /**
+     * The local day ([com.github.jvsena42.loopky.util.localDayIndex]) the "back up your key"
+     * reminder last appeared on, or [NO_BACKUP_REMINDER_DAY]. Recorded when it is *shown*, not
+     * when it is dismissed, so killing the app over it does not bring it back the same day.
+     */
+    val backupReminderDay: Flow<Int>
+
+    suspend fun setBackupReminderDay(day: Int)
 }
 
 internal const val PREFERENCES_NAME = "loopky.preferences"
@@ -134,3 +143,5 @@ internal const val KEY_AVATAR_NUDGE_DISMISSED = "avatar_nudge_dismissed"
 internal const val DEFAULT_AVATAR_NUDGE_DISMISSED = false
 internal const val KEY_PENDING_DECK_FOLLOW = "pending_deck_follow"
 internal const val DEFAULT_PENDING_DECK_FOLLOW = ""
+internal const val KEY_BACKUP_REMINDER_DAY = "backup_reminder_day"
+const val NO_BACKUP_REMINDER_DAY = Int.MIN_VALUE
