@@ -4254,6 +4254,7 @@ Guest/preview sessions of the Bob Esponja decks opened from Discover.
 | Portrait: tap to reveal | ✅ back face, **Next card** under it, card the same height as the front |
 | Landscape: picture front | ✅ card fills; the picture takes the card's width (555×313pt, was 427×240) |
 | Landscape: tap to reveal | ✅ the front's picture is a 96pt round miniature under the prompt label, as on Android |
+| Landscape: card text | ✅ 48pt on the front and 42pt on the back, Android's sizes (was 26pt) |
 
 **Android — Pixel_Tablet emulator**, T15 and T10.
 
