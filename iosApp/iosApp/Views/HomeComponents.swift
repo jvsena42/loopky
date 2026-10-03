@@ -60,13 +60,14 @@ struct HomeCtaButtons: View {
     }
 }
 
-struct DueTodayHeroCard: View {
-    let dueToday: Int
-    let doneToday: Int
+struct DailyGoalHeroCard: View {
+    /// Everything overdue plus whatever room the goal has left — the line under the bar.
+    let cardsToReview: Int
     /// The day's tally against the goal. **Announced, never enforced** — the queue behind this
     /// serves every due card and every unseen one regardless, so this reports, it does not cap.
     var newCardsToday: Int = 0
     var newCardsGoal: Int = 0
+    var goalReached: Bool = false
     /// See `HomeContentData.countsKnown`. False draws the same card with a dash where the number
     /// goes and an indeterminate bar, so nothing moves when the real count lands.
     var countsKnown: Bool = true
@@ -74,26 +75,36 @@ struct DueTodayHeroCard: View {
 
     private var progress: CGFloat? {
         guard countsKnown else { return nil }
-        guard dueToday > 0 else { return 0 }
-        return min(1, max(0, CGFloat(doneToday) / CGFloat(dueToday)))
+        guard newCardsGoal > 0 else { return 1 }
+        return min(1, max(0, CGFloat(newCardsToday) / CGFloat(newCardsGoal)))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("home_due_today")
+            Text("home_daily_goal")
                 .font(.system(size: 11, weight: .bold))
                 .kerning(1)
                 .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
             HStack(alignment: .bottom) {
-                Text(countsKnown ? "\(dueToday)" : "—")
-                    .font(.system(size: 72, weight: .heavy))
-                    .foregroundColor(.white)
+                HStack(alignment: .center, spacing: 8) {
+                    Text(verbatim: countsKnown ? "\(newCardsToday)" : "—")
+                        .font(.system(size: 72, weight: .heavy))
+                        .foregroundColor(.white)
+                    if countsKnown && goalReached {
+                        Text(verbatim: "🎉")
+                            .font(.system(size: 40))
+                            .accessibilityIdentifier("home_goal_reached")
+                    }
+                }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("home_cards")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                    Text("home_to_review")
+                    Text(verbatim: String(
+                        format: NSLocalizedString("home_goal_of", comment: ""),
+                        newCardsGoal
+                    ))
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+                    Text("home_goal_new_cards")
                         .font(.system(size: 13))
                         .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
                 }
@@ -116,25 +127,14 @@ struct DueTodayHeroCard: View {
                         .frame(height: 8)
                         .accessibilityLabel(Text("home_checking_due"))
                 }
-                Text(countsKnown
-                     ? String(
-                        format: NSLocalizedString("home_progress_done", comment: ""),
-                        doneToday, dueToday
+                Text(verbatim: countsKnown
+                     ? String.localizedStringWithFormat(
+                        NSLocalizedString("home_cards_to_review", comment: ""),
+                        cardsToReview
                      )
                      : NSLocalizedString("home_checking_due", comment: ""))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
-                Text(verbatim: newCardsToday >= newCardsGoal
-                     ? String(
-                        format: NSLocalizedString("home_new_cards_goal_reached", comment: ""),
-                        newCardsGoal
-                     )
-                     : String(
-                        format: NSLocalizedString("home_new_cards_goal", comment: ""),
-                        newCardsToday, newCardsGoal
-                     ))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(LoopkyColor.foregroundOnAccentMuted)
             }
             Button(action: onStartStudy) {
                 HStack(spacing: 8) {
@@ -289,7 +289,7 @@ private let sampleHomeDecks = [
     ScrollView {
         VStack(spacing: 16) {
             GreetingHeader(name: "Maria")
-            DueTodayHeroCard(dueToday: 24, doneToday: 8, onStartStudy: {})
+            DailyGoalHeroCard(cardsToReview: 24, newCardsToday: 8, newCardsGoal: 20, onStartStudy: {})
             TodaysDecksSection(decks: sampleHomeDecks, onOpenDeck: { _ in })
         }
         .padding()

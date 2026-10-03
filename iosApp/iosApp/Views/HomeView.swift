@@ -94,11 +94,11 @@ struct HomeView: View {
         if content.countsKnown && content.dueToday == 0 && content.newToday == 0 {
             CaughtUpCard(nextDueAtMillis: content.nextDueAtMillis)
         } else {
-            DueTodayHeroCard(
-                dueToday: content.dueToday,
-                doneToday: content.doneToday,
+            DailyGoalHeroCard(
+                cardsToReview: content.dueToday,
                 newCardsToday: content.newCardsToday,
                 newCardsGoal: content.newCardsGoal,
+                goalReached: content.goalReached,
                 countsKnown: content.countsKnown,
                 onStartStudy: onStartStudy
             )
@@ -127,11 +127,11 @@ enum HomeViewState: Equatable {
 /// screen grew a caught-up state, and a five-tuple stops being readable at the call site.
 struct HomeContentData: Equatable {
     var dueToday: Int = 0
-    var doneToday: Int = 0
     /// Cards never studied. Separate from due, because nothing about an unseen card is late.
     var newToday: Int = 0
     var newCardsToday: Int = 0
     var newCardsGoal: Int = 0
+    var goalReached: Bool = false
     var nextDueAtMillis: Int64?
     var decks: [HomeDeckSummary] = []
     /// Whether the counts above are real numbers rather than placeholders. False only on the
@@ -175,7 +175,8 @@ struct HomeView_Previews: PreviewProvider {
                 greetingName: "Maria",
                 state: .content(HomeContentData(
                     dueToday: 24,
-                    doneToday: 8,
+                    newCardsToday: 8,
+                    newCardsGoal: 20,
                     decks: [
                         HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverEmoji: "🇪🇸"),
                         HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverEmoji: "B"),

@@ -12,10 +12,9 @@
     <string name="home_error_title">Something went wrong</string>
     <string name="home_retry">Retry</string>
     <string name="home_loading">Warming up…</string>
-    <string name="home_due_today">DUE TODAY</string>
-    <string name="home_cards">cards</string>
-    <string name="home_to_review">to review</string>
-    <string name="home_progress_done">%1$d of %2$d done · keep going!</string>
+    <string name="home_daily_goal">DAILY GOAL</string>
+    <string name="home_goal_of">of %1$d</string>
+    <string name="home_goal_new_cards">new cards</string>
     <string name="home_new_cards_goal">%1$d of %2$d new cards today</string>
     <string name="home_new_cards_goal_reached">Daily goal reached · %1$d new cards 🎉</string>
     <string name="home_start_studying">Start studying</string>

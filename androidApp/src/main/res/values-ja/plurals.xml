@@ -59,6 +59,9 @@
     <plurals name="deck_detail_clones">
         <item quantity="other">コピー %1$d 件</item>
     </plurals>
+    <plurals name="home_cards_to_review">
+        <item quantity="other">復習待ち %1$d 枚</item>
+    </plurals>
     <plurals name="home_deck_due_cards">
         <item quantity="other">復習 %1$d · %2$d 枚</item>
     </plurals>

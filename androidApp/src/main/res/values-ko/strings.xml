@@ -12,10 +12,9 @@
     <string name="home_error_title">문제가 발생했어요</string>
     <string name="home_retry">다시 시도</string>
     <string name="home_loading">준비하는 중…</string>
-    <string name="home_due_today">오늘 복습</string>
-    <string name="home_cards">카드</string>
-    <string name="home_to_review">복습 대기</string>
-    <string name="home_progress_done">%2$d장 중 %1$d장 완료 · 계속해 봐요!</string>
+    <string name="home_daily_goal">오늘의 목표</string>
+    <string name="home_goal_of">/ %1$d장</string>
+    <string name="home_goal_new_cards">새 카드</string>
     <string name="home_new_cards_goal">오늘 새 카드 %2$d장 중 %1$d장</string>
     <string name="home_new_cards_goal_reached">일일 목표 달성 · 새 카드 %1$d장 🎉</string>
     <string name="home_start_studying">학습 시작</string>

@@ -60,6 +60,9 @@
         <item quantity="other">%1$d 个副本</item>
     </plurals>
     <!-- The plural agrees with the *card* count, so the quantity argument is %2$d. -->
+    <plurals name="home_cards_to_review">
+        <item quantity="other">%1$d 张卡片待复习</item>
+    </plurals>
     <plurals name="home_deck_due_cards">
         <item quantity="other">%1$d 张待复习 · 共 %2$d 张</item>
     </plurals>

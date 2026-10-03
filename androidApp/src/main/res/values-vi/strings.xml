@@ -12,10 +12,9 @@
     <string name="home_error_title">Đã xảy ra lỗi</string>
     <string name="home_retry">Thử lại</string>
     <string name="home_loading">Đang khởi động…</string>
-    <string name="home_due_today">CẦN ÔN HÔM NAY</string>
-    <string name="home_cards">thẻ</string>
-    <string name="home_to_review">cần ôn tập</string>
-    <string name="home_progress_done">Đã xong %1$d/%2$d · cố lên nhé!</string>
+    <string name="home_daily_goal">MỤC TIÊU HÔM NAY</string>
+    <string name="home_goal_of">/ %1$d</string>
+    <string name="home_goal_new_cards">thẻ mới</string>
     <string name="home_new_cards_goal">%1$d/%2$d thẻ mới hôm nay</string>
     <string name="home_new_cards_goal_reached">Đã đạt mục tiêu hằng ngày · %1$d thẻ mới 🎉</string>
     <string name="home_start_studying">Bắt đầu học</string>

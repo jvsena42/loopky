@@ -56,10 +56,10 @@ struct HomeScreen: View {
                 // whatever room the new-cards goal has left. Showing the bare due count put
                 // "0 cards to review" above Start studying while an unseen card was waiting.
                 dueToday: Int(content.studyTarget),
-                doneToday: Int(content.doneToday),
                 newToday: Int(content.newToday),
                 newCardsToday: Int(content.newCardsToday),
                 newCardsGoal: Int(content.newCardsGoal),
+                goalReached: content.goalReached,
                 nextDueAtMillis: content.nextDueAtMillis?.int64Value,
                 decks: content.decks.map { deck in
                     HomeDeckSummary(

@@ -59,6 +59,9 @@
     <plurals name="deck_detail_clones">
         <item quantity="other">%1$d bản sao</item>
     </plurals>
+    <plurals name="home_cards_to_review">
+        <item quantity="other">%1$d thẻ cần ôn tập</item>
+    </plurals>
     <plurals name="home_deck_due_cards">
         <item quantity="other">%1$d cần ôn · %2$d thẻ</item>
     </plurals>
