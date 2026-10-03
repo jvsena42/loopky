@@ -385,6 +385,20 @@ Pronunciation practice on the front targets the front text (unit-tested: grading
 back would mark every front attempt wrong), but as with journeys 09/11 the recognizer itself is
 unexercised on this emulator image.
 
+### 2026-10-03 — iOS: the row sits on the card's bottom edge — ✅ PASS (iPhone 17, iPad Air 13-inch (M4) portrait)
+
+On iOS the Listen/Speak row was stacked directly under the text and centred with it, so it moved
+with the length of the side. It is now pinned to the bottom of the card, as on Android. Driven on
+"T10 · Bob Esponja · Inglês" through **Try these cards**.
+
+| Step | Result |
+| --- | --- |
+| Front, picture + text (iPhone 17) | PASSED — picture and text centred in the card, **Listen**/**Speak** on its bottom edge |
+| Reveal the back, label + short text | PASSED — the row is at the same position as on the front |
+| Front on the iPad | PASSED — same placement inside the taller card |
+
+Not run: a typing card, whose masked back carries no row at all, and an iPad in landscape.
+
 ---
 
 ## UI/UX gap pass — 2026-08-13, `emulator-5554`, signed in as `pk:rc3omr…b4re3o`
