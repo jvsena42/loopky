@@ -4241,19 +4241,32 @@ slower at "0.5×" rather than half. It is now interpolated between the minimum a
 - The 15s fallback that re-enables the button when a platform never reports the end is covered by
   `listenReEnablesItselfWhenNoEndIsReported` only.
 
-## iOS study card fills the height on a tablet — ✅ PASS in portrait (2026-10-03)
+## Study card fills the height on a tablet, both platforms — ✅ PASS (2026-10-03)
 
-Debug build on the **iPad Air 13-inch (M4) simulator**, portrait, guest preview of
-T10 · Bob Esponja · Inglês opened from Discover.
+Guest/preview sessions of the Bob Esponja decks opened from Discover.
+
+**iOS — iPad Air 13-inch (M4) simulator**, T10 · Bob Esponja · Inglês.
 
 | Step | Result |
 | --- | --- |
-| Before: front face | ❌ card stopped at 720pt, ~430pt of empty screen between it and **Next card** |
-| After: front face | ✅ card runs from the progress bar to the flip hint |
-| Tap to reveal | ✅ back face, **Next card** under it, card the same height as the front |
+| Before, portrait: front face | ❌ card stopped at 720pt, ~430pt of empty screen between it and **Next card** |
+| After, portrait: front face | ✅ card runs from the progress bar to the flip hint |
+| Portrait: tap to reveal | ✅ back face, **Next card** under it, card the same height as the front |
+| Landscape: picture front | ✅ card fills; the picture takes the card's width (555×313pt, was 427×240) |
+| Landscape: tap to reveal | ✅ the front's picture is a 96pt round miniature under the prompt label, as on Android |
+
+**Android — Pixel_Tablet emulator**, T15 and T10.
+
+| Step | Result |
+| --- | --- |
+| Portrait (medium): text front | ✅ card is ~924dp tall, past the old 860dp ceiling |
+| Portrait: picture front (T10) | ✅ picture spans the card's width |
+| Portrait: tap to reveal | ✅ miniature on the back; card the same height as the front |
+| Landscape (expanded): text front | ✅ unchanged — the old ceiling was not the binding constraint there |
 
 ### Not verified here
 
-**Landscape, and a signed-in session.** Nothing in `xcodebuildmcp` rotates the simulator, and the
-iPad is a guest, so the grade column beside the card was not driven. The 11-inch iPad in portrait
-(the medium width class) was not run either.
+**A signed-in session on either tablet**, so the grade row and the grade column beside the card
+were not driven. **The 11-inch iPad**, and **the miniature on a phone and on a typing card** — the
+iPhone 17 simulator was left alone. No Android tablet wide enough to be expanded in portrait was
+run, which is the case the removed ceiling was wrong for.
