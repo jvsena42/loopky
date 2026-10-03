@@ -4196,3 +4196,33 @@ widths.
 - **iPad**: every iPad simulator is signed out and a guest opens on Discover, so the empty home
   cannot be reached there without a QR sign-in from a phone.
 - The ten translations were read in the diff, not rendered on a device set to each language.
+
+## 09 — Listen slows down on repeat taps (#437) — ✅ PASS (2026-10-03, `Pixel_Tablet` + `iPhone 17` sim, staging)
+
+Debug builds, signed in, in the preview of "T09 · Bob Esponja · Inglês" (pt-BR → en-US, Listen on).
+Speed was measured rather than judged by ear: Android by the frames each `AudioTrack` delivered
+(`AudioTrack: stop(n): called with … frames`), iOS by the time from `speak` to the synthesizer's
+`didFinish`.
+
+| Step | Result |
+| --- | --- |
+| Android: Listen × 4 on "Esqueci minha câmera!" | ✅ 44,698 → 52,967 → 64,555 → 64,555 frames: two slower steps, then it holds |
+| Android: flip, Listen × 4 on "camera" | ✅ 17,875 → 20,074 → 23,516 → 23,516: the other side starts again at normal speed |
+| Android: three taps in a row while it reads | ✅ one synthesis request; the button's label dims and the card stays on its side |
+| iOS: Listen × 4 on "Esqueci minha câmera!" | ✅ 1.52s → 1.97s → 2.98s → 2.99s |
+| iOS: flip, Listen | ✅ rate back to 1.0 on the other side; next card starts at 1.0 too |
+| iOS: three taps in a row while it reads | ✅ one utterance, card stays on the front |
+
+**Two iOS problems found and fixed in this run.** A tap on the Listen button while it was disabled
+fell through to the card and flipped it — the button is now left enabled and dimmed, and the
+ViewModel's own guard drops the tap. And the rate was `AVSpeechUtteranceDefaultSpeechRate × rate`,
+which is not a multiplier on that scale: the same sentence took 1.57s, 1.67s and 1.97s, a quarter
+slower at "0.5×" rather than half. It is now interpolated between the minimum and default rates.
+
+### Not verified here
+
+- **Android's slowest step is 1.44× as long, not 2×.** `setSpeechRate(0.5f)` is passed as written;
+  what Google's engine does with it is its own curve. Left alone.
+- **By ear**: neither device was listened to, so voice quality at the slow rates is unchecked.
+- The 15s fallback that re-enables the button when a platform never reports the end is covered by
+  `listenReEnablesItselfWhenNoEndIsReported` only.

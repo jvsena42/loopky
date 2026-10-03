@@ -27,6 +27,7 @@ import com.github.jvsena42.loopky.presentation.share.DeckSharePrompt
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -129,6 +130,17 @@ class StudySessionViewModel(
     /** What the in-flight pronunciation attempt grades against. See [targetFor]. */
     private var speakTarget: SpeakTarget? = null
 
+    /** The text last read aloud on this card and how many times in a row, for [listenRate]. */
+    private var lastListened: Pair<String, String>? = null
+    private var listenRepeats = 0
+
+    /**
+     * True from a Listen tap until the platform reports the speech over ([onListenFinished]), so a
+     * second tap cannot restart it. [listenTimeout] clears it if that report never comes.
+     */
+    private var isListening = false
+    private var listenTimeout: Job? = null
+
     /**
      * Why buffered reviews are not reaching the homeserver. Held on the VM rather than only in the
      * state because [emitCurrent] rebuilds the state on every card, and a warning the user has not
@@ -201,6 +213,7 @@ class StudySessionViewModel(
                     queue = presentations
                     index = 0
                     revealed = false
+                    resetListen()
                     gradedCardIds.clear()
                     pairs.clear()
                     resetTyping()
@@ -338,7 +351,15 @@ class StudySessionViewModel(
         index++
         revealed = false
         speakPhase = SpeakPhase.Idle
+        resetListen()
         resetTyping()
+    }
+
+    private fun resetListen() {
+        lastListened = null
+        listenRepeats = 0
+        isListening = false
+        listenTimeout?.cancel()
     }
 
     /**
@@ -532,7 +553,7 @@ class StudySessionViewModel(
      */
     fun onSpeak() {
         val s = _state.value
-        if (s !is StudySessionUiState.Reviewing || !s.listenEnabled) return
+        if (s !is StudySessionUiState.Reviewing || !s.listenEnabled || isListening) return
         // answerVisible, not revealed: on a flipped-but-masked typing card the back is on screen but
         // hidden, and reading it aloud would hand over the answer the mask is withholding.
         // Parenthesized asides are dropped for the same reason the matchers drop them.
@@ -541,7 +562,32 @@ class StudySessionViewModel(
             ?.takeIf { it.isNotBlank() }
             ?: return
         val languageTag = (if (answerVisible) s.backLang else s.frontLang) ?: return
-        viewModelScope.launch { _effects.emit(StudySessionEffect.Speak(text, languageTag)) }
+        val target = text to languageTag
+        listenRepeats = if (target == lastListened) {
+            (listenRepeats + 1).coerceAtMost(LISTEN_RATES.lastIndex)
+        } else {
+            0
+        }
+        lastListened = target
+        val rate = LISTEN_RATES[listenRepeats]
+        setListening(true)
+        listenTimeout?.cancel()
+        listenTimeout = viewModelScope.launch {
+            delay(LISTEN_TIMEOUT_MILLIS)
+            setListening(false)
+        }
+        viewModelScope.launch { _effects.emit(StudySessionEffect.Speak(text, languageTag, rate)) }
+    }
+
+    /** The speech a [StudySessionEffect.Speak] started has ended — finished, interrupted or failed. */
+    fun onListenFinished() {
+        listenTimeout?.cancel()
+        setListening(false)
+    }
+
+    private fun setListening(listening: Boolean) {
+        isListening = listening
+        _state.update { if (it is StudySessionUiState.Reviewing) it.copy(isListening = listening) else it }
     }
 
     /**
@@ -698,6 +744,7 @@ class StudySessionViewModel(
                 revealed = revealed,
                 intervals = labels,
                 listenEnabled = deck?.listenEnabled == true && deck.speechReady,
+                isListening = isListening,
                 speakEnabled = deck?.speakEnabled == true && deck.speechReady,
                 speakPhase = speakPhase,
                 typePhase = typePhase,
@@ -822,6 +869,12 @@ class StudySessionViewModel(
          * at the end of it, so it has to be reachable in a couple of minutes.
          */
         internal const val PREVIEW_CARDS = 10
+
+        /** Normal speed, then two slower steps for repeat Listen taps; it stays at the last one. */
+        internal val LISTEN_RATES = listOf(1f, 0.75f, 0.5f)
+
+        /** Long enough for a sentence at the slowest rate; only reached if no end is reported. */
+        internal const val LISTEN_TIMEOUT_MILLIS = 15_000L
     }
 }
 
@@ -866,6 +919,8 @@ sealed interface StudySessionUiState {
          * back to the reader's locale, so the features are not offered at all.
          */
         val listenEnabled: Boolean = false,
+        /** Listen is reading aloud right now; the button is disabled until it ends. */
+        val isListening: Boolean = false,
         val speakEnabled: Boolean = false,
         val speakPhase: SpeakPhase = SpeakPhase.Idle,
         /**
@@ -1008,8 +1063,11 @@ sealed interface TypePhase {
 data class TypeMiss(val typed: String, val outcome: TypedAnswerOutcome)
 
 sealed interface StudySessionEffect {
-    /** [languageTag] is BCP-47; without it the engine reads the card in the reader's own locale. */
-    data class Speak(val text: String, val languageTag: String) : StudySessionEffect
+    /**
+     * [languageTag] is BCP-47; without it the engine reads the card in the reader's own locale.
+     * [rate] is a multiplier on the engine's normal speed: repeat taps on the same text slow down.
+     */
+    data class Speak(val text: String, val languageTag: String, val rate: Float = 1f) : StudySessionEffect
     data class StartSpeechRecognition(
         val expected: String,
         val languageTag: String,
