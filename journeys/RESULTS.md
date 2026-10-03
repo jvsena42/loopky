@@ -692,6 +692,16 @@ scroll.
 `emu rotate` is what actually rotates the tablet — `settings put system user_rotation` did not take
 on it, and `wm size` overrides did not reach the app either.
 
+### 22 — Daily backup reminder sheet — 2026-10-03 — ⏳ NOT RUN
+
+Journey 22 gained the reminder steps (sheet on landing, once per local day, "Back up now" reaches
+the backup menu, gone once any backup exists). Written from a session with no Android SDK, emulator
+or simulator, so it has **not** been driven on a device on either platform: the shown-once-a-day,
+own-key-only and retired-by-any-backup rules are covered by `BackupReminderViewModelTest` only.
+Next run should check the sheet over Home on a phone and on `Pixel_Tablet` in landscape (it is
+capped to `PaneWidth.Focused`), and on iOS that "Back up now" waits for the reminder to dismiss
+before raising the backup flow sheet.
+
 ## 25 — A session Loopky cannot reach (#165) — ✅ PASS (2026-09-01, emulator-5554 + Pixel_Tablet)
 
 Driven with the fault injection journey 25 describes, on the phone emulator and then on
