@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.cli
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.repository.DeckReorderPendingException
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.data.storage.ConfigHome
 import com.github.jvsena42.loopky.di.initKoinJvm
@@ -207,6 +208,9 @@ internal fun checkEnvironmentAgrees(session: Session, environment: CliEnvironmen
 fun asCliError(error: Throwable, injected: Boolean = false): CliError {
     val code = ExitCode.of(error)
     val hint = when {
+        error is DeckReorderPendingException ->
+            " Run `loopky card reorder ${error.deckId} --from-file <the same file>`. If the file is gone, " +
+                "`loopky card list ${error.deckId}` prints every card once, and that output works as the file."
         // The one host that failed is rarely the only one missing; doctor names them all, and says
         // what to ask the human for (#212).
         code == ExitCode.ProxyRefused -> " Run `loopky doctor` for every host to ask the user to allowlist."

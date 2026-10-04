@@ -5,7 +5,9 @@ import com.github.jvsena42.loopky.cli.CliError
 import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.FakeCardRepository
 import com.github.jvsena42.loopky.cli.FakeDeckRepository
+import com.github.jvsena42.loopky.cli.asCliError
 import com.github.jvsena42.loopky.cli.testDeck
+import com.github.jvsena42.loopky.data.repository.DeckReorderPendingException
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.CardSide
 import kotlinx.coroutines.runBlocking
@@ -96,6 +98,16 @@ class CardReorderTest {
         assertContains(unknown.message.orEmpty(), "1 not in the deck (zz)")
         assertContains(duplicate.message.orEmpty(), "1 named more than once (a)")
         assertTrue(decks.reorders.isEmpty())
+    }
+
+    /** A card write on a deck whose reorder died: exit 9 with the command that fixes it, never 1. */
+    @Test
+    fun `a write refused for an unfinished reorder says how to finish it`() {
+        val error = asCliError(DeckReorderPendingException("d1"))
+
+        assertEquals(ExitCode.BadInput, error.exitCode)
+        assertContains(error.message.orEmpty(), "loopky card reorder d1 --from-file")
+        assertContains(error.message.orEmpty(), "loopky card list d1")
     }
 
     @Test
