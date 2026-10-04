@@ -4350,12 +4350,15 @@ the original picture-less `card add --from-file` wrote the pictured card a **sec
 in the card file. And "Wikimedia's thumbnails answer 429 well below eight parallel requests"
 overstated #438, which measured it *at* eight.
 
-`AgentPluginTest` and `plugin_directory_lint.py --strict` pass. `claude plugin eval … --case
-'tv-series*'` scored 1.00 on both cases, three runs each.
+`AgentPluginTest` and `plugin_directory_lint.py --strict` pass. The whole eval suite
+(`claude plugin eval plugins/loopky --model sonnet --ablation none`, three runs a case): eight
+cases at 1.00, `tv-series-whole-show` among them, `anki-import` at 0.78 and `picture-sources` at
+0.67. Those two score the same on `main`, in sections this change leaves alone, and the responses
+they fail meet the rubric when read by hand — the graders are flaky, not the skill. `tv-series`
+lost one run of three when four cases ran at once and none of six run on its own.
 
 ### Not verified here
 
-**OpenSubtitles' daily download cap** (reaching it takes about 200 downloads) and the other eight
-eval cases, which this change does not touch. A plain `card list` line does not escape a **tab**
+**OpenSubtitles' daily download cap** (reaching it takes about 200 downloads). A plain `card list` line does not escape a **tab**
 inside a side, only a newline, so a JSONL-authored side holding one would break the three-column
 read; not met in a subtitle deck and left alone.
