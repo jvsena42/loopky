@@ -179,6 +179,8 @@ loopky card add <deckId> --from-file more.tsv          # appended in groups of 1
 loopky card add <deckId> --from-file more.tsv --dry-run
 loopky card edit <deckId> --from-file edits.jsonl
 loopky card rm <deckId> <cardId>
+loopky card mv <deckId> <cardId> --to 3        # reorder: position counts from 1, as card list prints
+loopky card mv <deckId> <cardId> --after <id>  # or name the card it should follow
 
 loopky import cards.tsv --title "Biomas e Sub-ecossistemas Brasileiros" --resume
 cat cards.tsv | loopky import - --title "…" --separator tab

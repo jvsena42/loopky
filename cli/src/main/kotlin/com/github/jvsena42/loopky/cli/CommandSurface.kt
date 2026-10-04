@@ -292,6 +292,16 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         writes = true,
     ),
     CliCommand("card rm", "remove one card", Operand.Opaque("deckId", "cardId"), writes = true),
+    CliCommand(
+        path = "card mv",
+        summary = "move one card to another place in the study order",
+        operand = Operand.Opaque("deckId", "cardId"),
+        options = listOf(
+            CliOption("to", "the position to move it to, counting from 1"),
+            CliOption("after", "the id of the card it should come after"),
+        ),
+        writes = true,
+    ),
 
     CliCommand(
         path = "import",

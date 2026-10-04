@@ -6,10 +6,12 @@ import com.github.jvsena42.loopky.cli.CommandResult
 import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.asCliError
 import com.github.jvsena42.loopky.cli.result
+import com.github.jvsena42.loopky.cli.toView
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.CardSide
+import com.github.jvsena42.loopky.domain.model.inStudyOrder
 
 /**
  * Add one card, or a fileful.
@@ -210,6 +212,64 @@ suspend fun cardRemove(args: Args, decks: DeckRepository): CommandResult {
         },
     )
 }
+
+/**
+ * Move one card to another place in the study order.
+ *
+ * The same write the app's deck editor makes ([DeckRepository.moveCard]), so it costs one chunk
+ * record and the manifest, two when the card crosses a chunk boundary. Review state is keyed by
+ * card id and never by position, so a reader who has studied the card keeps their history.
+ *
+ * **Idempotent.** A card already where it was asked to go is reported as `moved: false` and
+ * nothing is written, so a batch of moves can be re-run after a session expiry.
+ */
+suspend fun cardMove(args: Args, decks: DeckRepository, cards: CardRepository): CommandResult {
+    val deckId = args.requireWord(2, "deckId")
+    val cardId = args.requireWord(3, "cardId")
+    val to = args.positiveIntOrNull(MOVE_TO)
+    val after = args.option(MOVE_AFTER)
+    if ((to == null) == (after == null)) {
+        throw CliError(ExitCode.Usage, "Pass exactly one of --$MOVE_TO <position> or --$MOVE_AFTER <cardId>.")
+    }
+
+    val deck = decks.sync(deckId).getOrElse { throw asCliError(it) }
+    val ordered = cards.fetchByDeck(deck).getOrElse { throw asCliError(it) }.inStudyOrder()
+    val from = ordered.indexOfFirst { it.id == cardId }
+    if (from < 0) throw CliError(ExitCode.NotFound, "Deck $deckId has no card $cardId.")
+
+    // `moveCard` reads its index against the deck without the moved card, so the target is
+    // computed over the same list.
+    val others = ordered.filterNot { it.id == cardId }
+    val target = if (after != null) {
+        if (after == cardId) throw CliError(ExitCode.BadInput, "A card cannot be moved after itself.")
+        val anchor = others.indexOfFirst { it.id == after }
+        if (anchor < 0) throw CliError(ExitCode.NotFound, "Deck $deckId has no card $after to move after.")
+        anchor + 1
+    } else {
+        (requireNotNull(to) - 1).coerceAtMost(others.size)
+    }
+
+    val moved = target != from
+    val written = if (moved) decks.moveCard(deckId, cardId, target).getOrElse { throw asCliError(it) } else deck
+    val card = cards.get(deckId, cardId).takeIf { moved } ?: ordered[from]
+    return result(
+        CardMoveResult(
+            deckId = deckId,
+            card = card.toView(),
+            position = target + 1,
+            moved = moved,
+            cardCount = written.cardCount,
+        ),
+        if (moved) {
+            "Moved $cardId to position ${target + 1} of ${written.cardCount} in $deckId"
+        } else {
+            "$cardId is already at position ${target + 1} of ${written.cardCount} — nothing written."
+        },
+    )
+}
+
+private const val MOVE_TO = "to"
+private const val MOVE_AFTER = "after"
 
 /**
  * Refuse a card an edit has emptied one side of.

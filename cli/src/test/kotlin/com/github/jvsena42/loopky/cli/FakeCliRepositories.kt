@@ -154,7 +154,14 @@ class FakeDeckRepository(
         return onAppend(cards)
     }
     override suspend fun deleteCard(deckId: String, cardId: String): Result<Deck> = no("deleteCard")
-    override suspend fun moveCard(deckId: String, cardId: String, toIndex: Int): Result<Deck> = no("moveCard")
+
+    /** Every `moveCard` call, as (cardId, toIndex). */
+    val moves = mutableListOf<Pair<String, Int>>()
+    override suspend fun moveCard(deckId: String, cardId: String, toIndex: Int): Result<Deck> {
+        moves += cardId to toIndex
+        return Result.success(deck)
+    }
+
     override suspend fun rehostBlob(deckId: String, sha256: String): Result<Unit> = no("rehostBlob")
     override suspend fun rehostPendingMedia(deckId: String, maxChunks: Int): Result<RehostOutcome> =
         no("rehostPendingMedia")
