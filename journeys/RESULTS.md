@@ -4415,6 +4415,10 @@ deck of 120 cards, so two chunk records, deleted afterwards.
 Review state is keyed by card id and its SRS chunk is recorded when first written, so neither a
 move inside a chunk nor one across chunks touched it.
 
+**How big a record may get**, since a move across chunks only ever grows the landing one: a deck
+whose single card carried a 1 MB back, then a 4 MB one, published and read back whole
+(`card list` printed 4,194,323 characters). The homeserver's own limit is 100 MiB a write.
+
 ### Not verified here
 
 **iOS**, and the **owner** studying their own deck on a phone while the CLI moves a card (the same
