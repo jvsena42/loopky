@@ -42,7 +42,9 @@ guessing, and trust them over anything here.
 
 5. **Write the cards to a file** (TSV: `front<TAB>back`, optionally two more columns of `https`
    image URLs, one per side; JSONL when a side holds a tab or a newline). Show the user the list
-   before publishing anything.
+   before publishing anything. Keep working files (card files, downloaded sources, your scripts)
+   in the user's working directory or one they name, not the system's temporary directory, which
+   a long session can lose with everything in it.
 
 6. **Dry-run every write first:**
 
@@ -72,9 +74,26 @@ guessing, and trust them over anything here.
 **Several commands in a row belong in `loopky batch`.** Each invocation pays ~2s of start-up and a
 session round trip; a batch pays once. One JSON line per operation:
 `{"argv": ["card", "add", "<deckId>", "--front", "…", "--back", "…"]}`, run with
-`loopky batch ops.ndjson --json`. It is not transactional: on failure, fix the cause and re-run the
-same file — `card add`, `card edit --from-file` and `deck create --id --if-not-exists` skip what
-already landed.
+`loopky batch ops.ndjson --json`. Its output is one JSON line per operation, as each one runs,
+then a summary line last: read it line by line, since parsing it as one document fails. It is
+not transactional: on failure, fix the cause and re-run the same file — `card add`,
+`card edit --from-file` and `deck create --id --if-not-exists` skip what already landed.
+
+**A card in the wrong place moves with `loopky card mv <deckId> <cardId> --after <cardId>`**, or
+`--to <position>`, counting from 1 as `card list` prints them. Never delete and re-add a card to
+move it: the new card has a new id, and everyone studying the deck loses their progress on it. A
+move keeps it. Put several moves in one `loopky batch`: each `card mv` reads the whole deck before
+its one write, and only a batch pays for that read once. A card already in place writes nothing,
+so the file can be re-run. Keep `card mv` to a few cards.
+
+**Many cards out of place, reorder the whole deck from a file.** `loopky card list <deckId>`
+prints one card a line with its id first; put those lines in the order wanted and run
+`loopky card reorder <deckId> --from-file order.txt --dry-run`, then without `--dry-run`. Only the
+first column is read, and the file has to name every card exactly once, or nothing is written.
+Every card keeps its id, so nobody studying the deck loses progress. If it fails partway (exit 4,
+5 or 12), run the same command again with the same file: that finishes it, and until then the
+deck still has every card but refuses card writes with exit 9. If the file is lost, the output of
+`card list` works as the file.
 
 **Already have an Anki deck?** `loopky import deck.apkg --dry-run --json` first — check which
 fields became front and back (`--front-field`/`--back-field` override it) and `images.bytes`, since
@@ -156,12 +175,21 @@ picture: a near miss teaches the wrong thing.
 3. **Openverse**, which searches Flickr, museums and other open collections, with no key:
    `api.openverse.org/v1/images/?q=…&license=cc0,pdm` keeps to pictures that need no credit (add
    `,by,by-sa` only when the credit fits, below). Each result's `url` goes on the card; its
-   `license` and `attribution` say what to credit.
+   `license` and `attribution` say what to credit. For an everyday object, add
+   `&source=stocksnap,rawpixel`: unfiltered results run to old scans, product shots and unrelated
+   photos. Anonymous use allows 20 requests a minute and 200 a day.
 
 4. **Unsplash**, for an everyday object or scene nothing above shows: the photo's
    `https://images.unsplash.com/photo-…?w=1080&fm=jpg` address, never the web page's and never
    `plus.unsplash.com`, which is paid and licensed separately. The Unsplash Licence needs no
-   credit.
+   credit. Searching Unsplash needs an API key; without one the site answers with a bot check,
+   which is not something to work around, so use an address the user gives you or move on.
+
+**Choosing pictures for many cards, look at them on contact sheets.** Paste a few candidates per
+card, a handful of cards per sheet, into one image and pick from that: it costs far less than
+opening pictures one by one and still catches near misses. Reject a single thing for a plural
+word, a part standing for the whole, a brand or mascot, and alcohol on a children's deck. Fetch
+from one host a few at a time; Wikimedia's thumbnails answer 429 at eight parallel requests.
 
 **Licences.** Public domain, PDM and CC0 need nothing. CC BY and CC BY-SA need a credit, and the
 deck's `--description` is the only place for one: `Pictures: <author>, <licence>, via <source>`,
@@ -180,39 +208,64 @@ you. `--check-images` cannot vouch for those, so tell the user which URLs went u
 "A deck from SpongeBob season 1" is a language deck: the goal is to understand the show in the
 language the user watches it in, so every card comes from the show's own dialogue.
 
-**Propose one deck per season before writing anything**, titled with the show, season and
-language (`SpongeBob S1 · Spanish`). A season is a few hundred cards, and a deck per season lets
-the user stop, or start at the season they are watching. Ask which language they watch it in and
-which dub: a Latin-American and a Castilian dub use different words, and the deck's
-`--back-lang` (`es-MX`, `es-ES`) has to match the one they hear.
+**Propose one deck per season before writing anything**, titled with the zero-padded season
+first, then the show and language (`S01 · SpongeBob · Spanish`), so the deck list sorts in season
+order. A season is a few hundred cards, and a deck per season lets the user stop, or start at the
+season they are watching. Ask which language they watch it in and which dub: a Latin-American and
+a Castilian dub use different words, and the deck's `--back-lang` (`es-MX`, `es-ES`) has to match
+the one they hear. Create each deck with `--id <show>-s<n> --if-not-exists`, so re-running the
+creates is safe.
+
+**Say how many cards per episode before building, and that it is a selection**, in one sentence
+such as "about 20 cards per episode, chosen for reuse, not the whole transcript". Users expect
+every line otherwise. Settle the number then: `card add` appends, so a second round lands after
+the whole season, and the deck walks it twice instead of episode by episode. If a later round is
+added anyway, put it with its episodes with one `card reorder` (above): sort the `card list` lines
+by the episode aside, keeping each episode's own order. Around 30 per episode is still a selection
+for an 11-minute segment.
 
 **Get the dialogue from subtitles in the dub's language, never from memory.** Use the user's own
 `.srt` files when they have them, then try, in order:
 
 | Source | Good for | How |
 | --- | --- | --- |
-| OpenSubtitles | Most shows, most languages | `rest.opensubtitles.org/search/episode-<n>/query-<show>/season-<n>/sublanguageid-<spa\|por\|fre\|ger\|jpn…>` with the header `User-Agent: TemporaryUserAgent`, no key; path segments stay in that alphabetical order, and dropping `episode-<n>` lists the season. Each result's `SubDownloadLink` (on `dl.opensubtitles.org`) is a gzipped `.srt`, often Latin-1 rather than UTF-8. |
+| OpenSubtitles | Most shows, most languages | `rest.opensubtitles.org/search/episode-<n>/query-<show>/season-<n>/sublanguageid-<spa\|por\|fre\|ger\|jpn…>` with the header `User-Agent: TemporaryUserAgent`, no key; path segments stay in that alphabetical order, and dropping `episode-<n>` lists the season. Each result's `SubDownloadLink` (on `dl.opensubtitles.org`) is a gzipped `.srt`, often Latin-1 rather than UTF-8. Downloads stop at about 200 files a day and answer 404 past that; searches keep working, so the episode and segment list is still there. |
+| The show's fan wiki | Shows whose wiki is in the dub's language | Transcript pages (often `<Segment title>/transcript`) over the wiki's MediaWiki API: `<wiki>/api.php?action=query&format=json&prop=revisions&rvprop=content&rvslots=main&titles=<A>\|<B>`, several titles per request, no quota. What the voices say, not a translation. The host differs per show, so `loopky doctor` cannot list it; a wiki that answers with a bot check is not usable. |
 | Addic7ed | TV episodes, mostly English | `www.addic7ed.com/search.php?search=<show>` lists `serie/<Show>/<season>/<episode>/<Title>` pages; each subtitle's `/original/…` or `/updated/…` link downloads with that page as the `Referer`. |
 | Jimaku — `jimaku.cc` | Anime in Japanese | Each `jimaku.cc/entry/<id>` page links its files under `/entry/<id>/download/…`, no key. |
 | Kitsunekko — `kitsunekko.net` | Anime in Japanese | `kitsunekko.net/dirlist.php?dir=subtitles%2Fjapanese%2F` lists shows; files are `.ass` or `.srt`, sometimes zipped. |
 
 Coverage is uneven — OpenSubtitles had Spanish for three of SpongeBob's first-season segments —
-so search each episode, and say which ones had nothing.
+so search each episode, and say which ones had nothing. For a whole show, one source for every
+season beats a patchwork.
 
 Prefer a subtitle marked as the dub's own transcript (often "SDH" or "for the hearing impaired")
 over a translation of the original: a translated subtitle does not say what the voices say. Check
 the episode list (season, episode number, segment title) against the show's episode guide so
 episode 3 really is episode 3 — many cartoons split an episode into segments (`s1e01c - Tea at
-the Treedome`), so match on the segment title — and tell the user which files you used.
-`loopky doctor` lists these hosts under `recommended`; when the one you need is blocked, ask the
-user to allow it, as for the required hosts. If no source is reachable or
-none matches the dub, stop and ask for the files: a deck built from the wrong subtitle teaches
-lines the show never says.
+the Treedome`), so match on the segment title. Sources spell titles differently, so compare them
+normalised (lowercase, letters and digits only) and require equality: word overlap and a search's
+first hit both pick the wrong episode, and keep a short hand-made list for segments known under
+two titles. Say which guide the numbering follows, list its gaps, and tell the user which files
+you used. `loopky doctor` lists the fixed hosts above under `recommended`; when the one you need
+is blocked, ask the user to allow it, as for the required hosts. If no source is reachable or none
+matches the dub, stop and ask for the files: a deck built from the wrong subtitle teaches lines
+the show never says.
 
 **Clean the lines before choosing from them.** Drop timing, speaker labels, `[sound cues]`,
 cues the uploader added (an episode title card, a credit, an advertisement for a website),
 `♪` song lyrics, the opening and closing theme, and character and place names on their own. Join a
-sentence split across two subtitle cues.
+sentence split across two subtitle cues. Four traps:
+
+- **Many subtitle files are ALL CAPS** (close to half, on one show). Detect it per file and lower-case
+  it, restoring names and "I" when you write the card; anything that finds speaker labels by their
+  capitals, or keeps only lines with lowercase, silently drops those episodes.
+- **Abbreviations split sentences.** Protect `Mr.`, `Mrs.`, `Dr.` and their kind before splitting
+  on punctuation.
+- **The opening theme is not always marked with `♪`.** Cut by time: find the theme's first cue and
+  drop everything up to about 35 seconds after it.
+- **Count the cleaned lines per episode.** A season with a few dozen lines is a broken cleaner, not
+  a quiet season.
 
 **Pick what is worth learning, not the transcript.** Every deck is public, so a season's dialogue
 published in order is the show's script republished. Take each episode's useful words and phrases
@@ -220,30 +273,62 @@ published in order is the show's script republished. Take each episode's useful 
 the user's language to the one they are learning: the front is the meaning in their language,
 translated for that scene, and the back is the line or word exactly as the show says it
 (`--front-lang en-US --back-lang es-MX`). The user recalls the show's words, and Speak and typing
-grade them. Nothing from outside the show: no invented example sentences, no "related" vocabulary,
-and a word gets a card only in a form the episode uses.
+grade them. A back may drop a leading filler or name (`Oh,`, `<Name>,`), since what is left is
+still a piece of the spoken line. Nothing from outside the show: no invented example sentences,
+no "related" vocabulary, and a word gets a card only in a form the episode uses. **If the user asks
+for the theme song,** do not card its verses, which republishes the lyrics: card its ordinary
+single words as vocabulary, with an aside such as `(theme)`.
 
 **Order the file by episode, and never repeat.** Cards are studied new-first in file order, so
 episode 1's cards come first, then episode 2's, and the user meets each episode's language before
 they watch it. Within an episode, a word before the phrases that use it. A line or word already
-carded in an earlier episode — or in an earlier season's deck, which you read with
-`loopky card list <deckId> --json` — is not carded again; compare ignoring case, punctuation and
-`...`. Put the episode on the front as an aside, `I'm ready! (S1E1) → ¡Estoy listo!`: the reader
-sees where it comes from, and nothing grades it. Publish the first episodes
-with `deck create`, and add later ones in order with `card add <deckId> --from-file`, which appends.
+carded in an earlier episode or an earlier season's deck is not carded again; compare ignoring
+case, punctuation and `...`. The published decks are the record of what is carded, and
+`loopky card list <deckId>` prints one card a line, `id<TAB>front<TAB>back` (a picture adds
+` [img:…]` to its side), so it covers every season even after your working files are gone. Put
+the episode on the front as an aside, `I'm ready! (S1E1) → ¡Estoy listo!`: the reader sees where
+it comes from, and nothing grades it. Publish the first episodes with `deck create`, and add later
+ones in order with `card add <deckId> --from-file`, which appends.
+
+**A whole show is a pipeline: filter, brief, check, then de-duplicate.**
+
+1. **Filter before any model reads anything.** Keep complete sentences of one to seven words,
+   de-duplicated per episode, minus pure interjections and everything already published. That
+   leaves about 100–250 candidates an episode; the full dialogue stays available for context.
+2. **One agent per season, in parallel, with a written brief:** what to pick and skip, the exact
+   file format, the per-episode count, whether a back may drop a leading filler, and to report a
+   checker that looks wrong rather than bend a card to fit it.
+3. **Give them a checker script, and make "prints OK" the exit condition.** It confirms that every
+   back appears in that episode's dialogue ignoring case and punctuation, the episode aside is well
+   formed, no back holds brackets or slashes, nothing repeats in the season or is already
+   published, and the count is in range, with a lower bound that lets a thin episode come in short
+   rather than padded. This is what makes "nothing from outside the show" enforceable. Test it on
+   lines you know are genuine first: turn newlines and punctuation into a space, never into
+   nothing, or `was...just` glues into one word and a real line fails.
+4. **De-duplicate across seasons afterwards, in season order.** Parallel agents cannot see each
+   other's output, so later seasons shrink; with the published backs filtered out in step 1 the
+   repeats are few, without it about a third. Tell the user to expect smaller later seasons.
 
 **Pictures from the episode only when their licence allows it, which is rarely.** Stills, frames
 and screenshots of a commercial show are the studio's copyright, and fan wikis host them as fair
 use, which the licence rules above exclude; a frame from the user's own copy would be an upload,
 and Loopky takes only URLs. So an episode picture is limited to shows whose frames are public
-domain or freely licensed on Wikimedia Commons (some early cartoons). Otherwise picture what the
-card names — an object, an animal, a place — from the usual sources, or leave it without one.
-Tell the user which it was.
+domain or freely licensed on Wikimedia Commons (some early cartoons). Otherwise picture what a
+word card names — an object, an animal, a place — from the usual sources, or leave it without one;
+phrase cards stay bare. Real-life counterparts of the show's world (the animals and objects it is
+built on) make good covers. Tell the user which it was. To add pictures to cards already
+published, read `loopky card list <deckId> --json --missing-image` once, match each card on its
+back text, and send the pictures in one JSONL `card edit --from-file`, each line naming the card's
+`id` and its `front_image_url`. Add the same URLs to your card file: `card add` tells cards apart
+by text and picture, so re-running a file without them adds those cards a second time.
 
-**Tags.** Add the show's name (lowercase, no spaces, at most 20 characters: `spongebob`), and
-`tv-series` or `anime`, plus `cartoon` where it is one. A show made for children also gets `kids`.
-The language pair adds the language tags on its own. Turn on `--listen` and `--speak`, so the user
-hears and says the lines, and `--type` when they want to spell them.
+**Tags and settings.** Add the show's name (lowercase, no spaces, at most 20 characters:
+`spongebob`), and `tv-series` or `anime`, plus `cartoon` where it is one. A show made for children
+also gets `kids`. The language pair adds the language tags on its own. Turn on `--listen` and
+`--speak`, so the user hears and says the lines, and `--type` when they want to spell them; a
+listening deck for a child who cannot spell yet works best with `--reverse` on and `--type` off.
+A children's description reads well as a hook line, two lines about the season, then how to
+study, each on its own line with an emoji.
 
 ## Limits worth knowing
 
