@@ -513,9 +513,11 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   case (`--case <name>`) in a worktree of `main` and compare. The eval prints the judges' votes
   and never their reasons, so a flaky grader is diagnosed by replaying the judge by hand — its
   prompt is the rubric, the response, and "Respond with exactly one word: PASS or FAIL" — and
-  asking it why. Every prompt here says "don't run anything yet", so **a rubric has to say it is
+  asking it why. **A prompt that says "don't run anything yet" needs a rubric that says it is
   grading a plan**: "it runs the dry run" and "checked for `is_public_domain`" failed one honest
-  plan in three until `anki-import` and `picture-sources` said so. Keep it
+  plan in three until `anki-import` and `picture-sources` said so. That is the planning cases
+  only — the ones that describe something that already happened (`session-expired`,
+  `sandbox-blocked`, the three `friction` cases) grade what the response does next. Keep it
   thin: the binary's `commands --json` is the reference, the skill is the workflow and the
   judgment. The marketplace serves the plugin **from the release tag**, not `main`
   (`source.ref`, bumped with the version), because the user installs
