@@ -79,6 +79,12 @@ then a summary line last: read it line by line, since parsing it as one document
 not transactional: on failure, fix the cause and re-run the same file — `card add`,
 `card edit --from-file` and `deck create --id --if-not-exists` skip what already landed.
 
+**A card in the wrong place moves with `loopky card mv <deckId> <cardId> --after <cardId>`**, or
+`--to <position>`, counting from 1 as `card list` prints them. Never delete and re-add a card to
+move it: the new card has a new id, and everyone studying the deck loses their progress on it. A
+move keeps it. Each move is one write, and one already in place writes nothing, so a file of them
+in `loopky batch` can be re-run.
+
 **Already have an Anki deck?** `loopky import deck.apkg --dry-run --json` first — check which
 fields became front and back (`--front-field`/`--back-field` override it) and `images.bytes`, since
 an `.apkg` is the one import that uploads pictures against a 1 GB quota. Then
@@ -202,9 +208,10 @@ creates is safe.
 
 **Say how many cards per episode before building, and that it is a selection**, in one sentence
 such as "about 20 cards per episode, chosen for reuse, not the whole transcript". Users expect
-every line otherwise. Settle the number then: cards cannot be reordered and `card add` appends, so
-a second round lands after the whole season, and the deck walks it twice instead of episode by
-episode. Around 30 per episode is still a selection for an 11-minute segment.
+every line otherwise. Settle the number then: `card add` appends, so a second round lands after
+the whole season, and the deck walks it twice instead of episode by episode. Moving the new cards
+to their episodes afterwards is one `card mv` each (below), fine for a handful and slow for a
+season. Around 30 per episode is still a selection for an 11-minute segment.
 
 **Get the dialogue from subtitles in the dub's language, never from memory.** Use the user's own
 `.srt` files when they have them, then try, in order:
