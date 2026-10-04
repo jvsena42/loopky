@@ -731,6 +731,8 @@
     <string name="backup_nag_action">今すぐバックアップ</string>
     <string name="backup_reminder_title">アカウントがバックアップされていません</string>
     <string name="backup_reminder_body">バックアップせずに Loopky を削除すると、アカウントは完全に失われます。</string>
+    <string name="update_ready_message">アップデートをインストールできます。</string>
+    <string name="update_ready_restart">再起動</string>
     <string name="settings_signout_unbacked_title">サインアウトすると鍵が消去されます</string>
     <string name="settings_signout_unbacked_body">%1$s の鍵は Loopky にしかなく、まだバックアップされていません。サインアウトすると完全に削除されます。</string>
     <string name="settings_signout_unbacked_confirm">サインアウトして消去</string>

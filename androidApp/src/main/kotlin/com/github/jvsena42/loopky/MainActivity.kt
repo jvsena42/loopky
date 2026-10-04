@@ -34,6 +34,7 @@ import com.github.jvsena42.loopky.ui.nav.PendingOpen
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.theme.applyApplicationNightMode
 import com.github.jvsena42.loopky.ui.theme.isDark
+import com.github.jvsena42.loopky.ui.update.InAppUpdateRoute
 import com.github.jvsena42.loopky.ui.util.importFileUri
 import com.github.jvsena42.loopky.ui.util.pubkyLink
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -98,6 +99,7 @@ class MainActivity : ComponentActivity() {
                             pendingOpen = pending,
                             onPendingOpenHandled = { pendingOpen.value = null },
                         )
+                        InAppUpdateRoute()
                     }
                 }
             }
