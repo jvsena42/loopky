@@ -4476,6 +4476,21 @@ run costs, and the re-run is the fix.
 
 38 cards were graded across the run and none was served again or lost its state.
 
+**After review, on staging again.**
+
+| Step | Result |
+| --- | --- |
+| 250 cards, 40 removed from the middle of chunk 2, 190 added: chunk 2's `ord`s run to 339,000, past its slice end of 300,000 | ✅ reproduced |
+| Reorder swapping two cards in chunk 3 only | ✅ `card list` equals the file (it did not before the fix); the same file again writes nothing and still equals it |
+| A reorder killed 5.5 s in, then `card rm` · `card add` · `card mv` · `card edit` | ✅ each `bad_input` 9, naming `card reorder` and `card list` as the way out; a reader still finds all 250 |
+| `deck edit --title` on that deck | ✅ allowed |
+| `card list > f`, `card reorder --from-file f` | ✅ `written: true`, 100 / 100 / 50; `card rm` then removes the card |
+| A sparse deck (100 / 40 / 50), reordered, killed three times, re-run | ✅ table 100 / 90; the dropped record answers 404 on the homeserver |
+
+The three kills on the sparse deck all landed before the table was shortened, so the exact window
+the third review finding describes — dead after the shorter table, before the delete — was reached
+only in `DeckRepositoryReorderTest`, not on staging.
+
 **Not a regression, but seen:** in the app process that was open through the re-run, the deck
 page's card list kept the earlier order until the deck was opened again. The study queue in that
 same process was already in the new order.
