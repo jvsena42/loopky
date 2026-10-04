@@ -29,6 +29,7 @@ import com.github.jvsena42.loopky.data.repository.impl.SettingsRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SignupRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SrsRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.TagRepositoryImpl
+import com.github.jvsena42.loopky.data.storage.UpdatePromptGate
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.presentation.backup.BackupFileViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupPhraseViewModel
@@ -76,6 +77,7 @@ import org.koin.dsl.module
  */
 val sharedModule = module {
     single { MutableSessionProvider() }
+    single { UpdatePromptGate(appPreferences = get()) }
     single<SessionProvider> { get<MutableSessionProvider>() }
 
     single {

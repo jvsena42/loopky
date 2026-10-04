@@ -28,6 +28,7 @@ import com.github.jvsena42.loopky.data.storage.SecureSessionStore
 import com.github.jvsena42.loopky.data.storage.SignupTokenStore
 import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
+import com.github.jvsena42.loopky.data.storage.UpdatePromptGate
 import com.github.jvsena42.loopky.data.unsplash.UnsplashClient
 import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.KeyCustody
@@ -160,6 +161,8 @@ object IosDependencies {
      * [SettingsViewModel].
      */
     fun appPreferences(): AppPreferences = koin.get()
+
+    fun updatePromptGate(): UpdatePromptGate = koin.get()
 
     fun onboardingViewModel(): OnboardingViewModel = koin.get()
 

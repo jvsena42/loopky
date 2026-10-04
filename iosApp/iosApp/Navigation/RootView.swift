@@ -89,6 +89,7 @@ struct RootView: View {
         .sheet(isPresented: $isBackingUp) {
             BackupFlowView(onClose: { isBackingUp = false })
         }
+        .appStoreUpdatePrompt()
         .onOpenURL { url in
             // Three kinds of URL arrive here. A deck file opened from Files, Mail or a chat app —
             // Android's equivalent is ACTION_VIEW / ACTION_SEND — goes straight to the import

@@ -126,6 +126,14 @@ interface AppPreferences {
     val backupReminderDay: Flow<Int>
 
     suspend fun setBackupReminderDay(day: Int)
+
+    /**
+     * The local day the "update available" prompt last appeared on, or [NO_UPDATE_PROMPT_DAY].
+     * Read and written through [UpdatePromptGate].
+     */
+    val updatePromptDay: Flow<Int>
+
+    suspend fun setUpdatePromptDay(day: Int)
 }
 
 internal const val PREFERENCES_NAME = "loopky.preferences"
@@ -145,3 +153,5 @@ internal const val KEY_PENDING_DECK_FOLLOW = "pending_deck_follow"
 internal const val DEFAULT_PENDING_DECK_FOLLOW = ""
 internal const val KEY_BACKUP_REMINDER_DAY = "backup_reminder_day"
 const val NO_BACKUP_REMINDER_DAY = Int.MIN_VALUE
+internal const val KEY_UPDATE_PROMPT_DAY = "update_prompt_day"
+const val NO_UPDATE_PROMPT_DAY = Int.MIN_VALUE
