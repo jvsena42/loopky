@@ -94,6 +94,17 @@ data class CardWriteResult(
     @SerialName("dry_run") val dryRun: Boolean = false,
 )
 
+/** What `card mv` did. [position] is 1-based, the way `card list` numbers its lines. */
+@Serializable
+data class CardMoveResult(
+    @SerialName("deck_id") val deckId: String,
+    val card: CardView,
+    val position: Int,
+    /** False when the card was already there and nothing was written. */
+    val moved: Boolean,
+    @SerialName("card_count") val cardCount: Int,
+)
+
 /** One row the homeserver refused. [row] is 1-based, matching the file the caller handed in. */
 @Serializable
 data class CardWriteFailure(

@@ -4382,3 +4382,46 @@ lost one run of three when four cases ran at once and none of six run on its own
 **OpenSubtitles' daily download cap** (reaching it takes about 200 downloads). A plain `card list` line does not escape a **tab**
 inside a side, only a newline, so a JSONL-authored side holding one would break the three-column
 read; not met in a subtitle deck and left alone.
+
+## `loopky card mv` — reordering under someone who is studying the deck — ✅ PASS (2026-10-04, Linux x86_64 + `Medium_Phone`, staging)
+
+Whether a card can be moved from the CLI without costing a reader anything. The owner was the CLI
+(`cli/build/install/loopky/bin/loopky`, a staging test account); the reader was a **different**
+account on the `Medium_Phone` emulator (installed build 1.3.1, debug), following the deck. One
+deck of 120 cards, so two chunk records, deleted afterwards.
+
+**CLI.**
+
+| Step | Result |
+| --- | --- |
+| `card mv … --to 2`, inside one chunk | ✅ `moved: true`, position 2 |
+| `card mv … --to 1`, a card from chunk 1 into chunk 0 | ✅ chunk table still 100 + 20 |
+| `card mv … --after <id>`, a card from chunk 0 into chunk 1 | ✅ position 111, right behind its anchor |
+| The same moves again | ✅ `moved: false`, nothing written |
+| A card the deck does not have · no `--to`/`--after` | ✅ `not_found` 6 · `usage` 2 |
+| Four moves as one `batch` | ✅ 4 of 4 |
+| All 120 cards afterwards | ✅ same ids, fronts and backs as before the moves |
+
+**The reader, on the emulator.**
+
+| Step | Result |
+| --- | --- |
+| Follow, study three cards (Good, Easy, Easy) | ✅ |
+| With card 4 on screen, the CLI moves **that card** to the end (into the other chunk), moves an already-graded card across chunks, and puts two unseen cards first | ✅ the session carries on; the card on screen grades normally; next card is the one the session already had |
+| Leave the session | ✅ 0 due · 116 new, four studied |
+| Force-stop, reopen | ✅ still 116 new: the review state came back from the homeserver. The list shows the new order |
+| Study again | ✅ the two cards moved to the front are served first, then the next unseen one. None of the four studied cards is served again |
+
+Review state is keyed by card id and its SRS chunk is recorded when first written, so neither a
+move inside a chunk nor one across chunks touched it.
+
+**How big a record may get**, since a move across chunks only ever grows the landing one: a deck
+whose single card carried a 1 MB back, then a 4 MB one, published and read back whole
+(`card list` printed 4,194,323 characters). The homeserver's own limit is 100 MiB a write.
+
+### Not verified here
+
+**iOS**, and the **owner** studying their own deck on a phone while the CLI moves a card (the same
+repository path as the app's own editor, not driven here). The emulator ran the installed 1.3.1
+rather than this branch: it had no room for a new APK, and nothing in the app changed. A deck with
+thousands of moves was not timed; each move is one or two chunk writes plus the manifest.

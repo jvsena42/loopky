@@ -79,6 +79,15 @@ then a summary line last: read it line by line, since parsing it as one document
 not transactional: on failure, fix the cause and re-run the same file — `card add`,
 `card edit --from-file` and `deck create --id --if-not-exists` skip what already landed.
 
+**A card in the wrong place moves with `loopky card mv <deckId> <cardId> --after <cardId>`**, or
+`--to <position>`, counting from 1 as `card list` prints them. Never delete and re-add a card to
+move it: the new card has a new id, and everyone studying the deck loses their progress on it. A
+move keeps it. Put several moves in one `loopky batch`: each `card mv` reads the whole deck before
+its one write, and only a batch pays for that read once. A card already in place writes nothing,
+so the file can be re-run. Keep it to a few dozen moves a deck: cards are stored in records of
+about 100, a move into another record makes that one bigger, and nothing splits it again. Past
+that, tell the user the order is better fixed by rebuilding the deck.
+
 **Already have an Anki deck?** `loopky import deck.apkg --dry-run --json` first — check which
 fields became front and back (`--front-field`/`--back-field` override it) and `images.bytes`, since
 an `.apkg` is the one import that uploads pictures against a 1 GB quota. Then
@@ -202,9 +211,10 @@ creates is safe.
 
 **Say how many cards per episode before building, and that it is a selection**, in one sentence
 such as "about 20 cards per episode, chosen for reuse, not the whole transcript". Users expect
-every line otherwise. Settle the number then: cards cannot be reordered and `card add` appends, so
-a second round lands after the whole season, and the deck walks it twice instead of episode by
-episode. Around 30 per episode is still a selection for an 11-minute segment.
+every line otherwise. Settle the number then: `card add` appends, so a second round lands after
+the whole season, and the deck walks it twice instead of episode by episode. Moving the new cards
+to their episodes afterwards is one `card mv` each (above), fine for a few dozen and wrong for a
+season. Around 30 per episode is still a selection for an 11-minute segment.
 
 **Get the dialogue from subtitles in the dub's language, never from memory.** Use the user's own
 `.srt` files when they have them, then try, in order:

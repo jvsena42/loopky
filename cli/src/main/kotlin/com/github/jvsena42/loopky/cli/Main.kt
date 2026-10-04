@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.cli.commands.batch
 import com.github.jvsena42.loopky.cli.commands.cardAdd
 import com.github.jvsena42.loopky.cli.commands.cardEdit
 import com.github.jvsena42.loopky.cli.commands.cardList
+import com.github.jvsena42.loopky.cli.commands.cardMove
 import com.github.jvsena42.loopky.cli.commands.cardRemove
 import com.github.jvsena42.loopky.cli.commands.commandSurface
 import com.github.jvsena42.loopky.cli.commands.completion
@@ -222,6 +223,7 @@ private suspend fun dispatch(
         }
         "card edit" -> authed(sessions, identity, environment) { cardEdit(args, koin.decks(), koin.cards(), note) }
         "card rm" -> authed(sessions, identity, environment) { cardRemove(args, koin.decks()) }
+        "card mv" -> authed(sessions, identity, environment) { cardMove(args, koin.decks(), koin.cards()) }
 
         // `--dry-run` deliberately sits outside `authed`: it reads a local file and writes
         // nothing, so requiring a live session would put a sign-in between an agent and the check
@@ -445,6 +447,11 @@ internal val USAGE = """
                                 Idempotent: re-run the same file to resume. Reports written /
                                 skipped / failed per card.
       card rm <deckId> <cardId>
+      card mv <deckId> <cardId> --to POSITION | --after CARDID
+                                Reorder. --to counts from 1, as `card list` prints them; --after
+                                names the card it should follow. Review history is kept. Reads
+                                the whole deck first, so several moves belong in one `batch`.
+
                                 card add and card edit also take --check-images; see CARD IMAGES.
 
     IMPORT
