@@ -712,6 +712,13 @@ outside, so iOS gained a drag indicator to say so.
 Not checked: `Pixel_Tablet` itself (its only session is a Ring one, which is never reminded, and
 cannot be re-created), and `backup_reminder_sheet` does not surface as a `resource-id` in
 `android layout` — assert on `backup_reminder_action`.
+### 22 — iOS phrase quiz options no longer break mid-word — ✅ PASS (2026-10-03, iPhone 17e + iPad Pro 11-inch sims)
+
+The four options for each position sat in one row, so on a phone an eight-letter word ("crumble")
+wrapped inside its chip. They are a two-column grid now. Driven to the quiz from Profile's backup
+card (iPad) and from Settings → "Back up your account" (iPhone 17e): every word is on one line and
+all twelve `backup_quiz_{n}_{word}` identifiers are still there. Android stacks its options one per
+row and was never affected.
 
 ## 25 — A session Loopky cannot reach (#165) — ✅ PASS (2026-09-01, emulator-5554 + Pixel_Tablet)
 
