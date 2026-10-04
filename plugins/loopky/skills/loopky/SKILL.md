@@ -84,9 +84,15 @@ not transactional: on failure, fix the cause and re-run the same file — `card 
 move it: the new card has a new id, and everyone studying the deck loses their progress on it. A
 move keeps it. Put several moves in one `loopky batch`: each `card mv` reads the whole deck before
 its one write, and only a batch pays for that read once. A card already in place writes nothing,
-so the file can be re-run. Keep it to a few dozen moves a deck: cards are stored in records of
-about 100, a move into another record makes that one bigger, and nothing splits it again. Past
-that, tell the user the order is better fixed by rebuilding the deck.
+so the file can be re-run. Keep `card mv` to a few cards.
+
+**Many cards out of place, reorder the whole deck from a file.** `loopky card list <deckId>`
+prints one card a line with its id first; put those lines in the order wanted and run
+`loopky card reorder <deckId> --from-file order.txt --dry-run`, then without `--dry-run`. Only the
+first column is read, and the file has to name every card exactly once, or nothing is written.
+Every card keeps its id, so nobody studying the deck loses progress. If it fails partway (exit 4,
+5 or 12), run the same command again with the same file: that finishes it, and until then the
+deck still has every card.
 
 **Already have an Anki deck?** `loopky import deck.apkg --dry-run --json` first — check which
 fields became front and back (`--front-field`/`--back-field` override it) and `images.bytes`, since
@@ -212,9 +218,10 @@ creates is safe.
 **Say how many cards per episode before building, and that it is a selection**, in one sentence
 such as "about 20 cards per episode, chosen for reuse, not the whole transcript". Users expect
 every line otherwise. Settle the number then: `card add` appends, so a second round lands after
-the whole season, and the deck walks it twice instead of episode by episode. Moving the new cards
-to their episodes afterwards is one `card mv` each (above), fine for a few dozen and wrong for a
-season. Around 30 per episode is still a selection for an 11-minute segment.
+the whole season, and the deck walks it twice instead of episode by episode. If a later round is
+added anyway, put it with its episodes with one `card reorder` (above): sort the `card list` lines
+by the episode aside, keeping each episode's own order. Around 30 per episode is still a selection
+for an 11-minute segment.
 
 **Get the dialogue from subtitles in the dub's language, never from memory.** Use the user's own
 `.srt` files when they have them, then try, in order:
