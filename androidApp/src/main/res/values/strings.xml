@@ -737,6 +737,8 @@
     <string name="backup_nag_action">Back up now</string>
     <string name="backup_reminder_title">Your account isn\'t backed up</string>
     <string name="backup_reminder_body">If you delete Loopky without a backup, you lose your account for good.</string>
+    <string name="update_ready_message">An update is ready to install.</string>
+    <string name="update_ready_restart">Restart</string>
     <string name="settings_signout_unbacked_title">Signing out will erase your key</string>
     <string name="settings_signout_unbacked_body">Loopky holds the only copy of the key for %1$s, and you haven\'t backed it up. Signing out deletes it for good.</string>
     <string name="settings_signout_unbacked_confirm">Sign out and erase</string>

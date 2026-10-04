@@ -712,6 +712,26 @@ outside, so iOS gained a drag indicator to say so.
 Not checked: `Pixel_Tablet` itself (its only session is a Ring one, which is never reminded, and
 cannot be re-created), and `backup_reminder_sheet` does not surface as a `resource-id` in
 `android layout` — assert on `backup_reminder_action`.
+### In-app update prompt — ⚠️ PARTIAL (2026-10-04, Pixel_9 + Pixel_Tablet AVDs, iPhone 17 + iPad Air 11-inch sims)
+
+No journey script: neither store flow can be reached from a debug build. Play answers
+`requestAppUpdateInfo` with an error for an app it did not install, and the App Store lookup returns
+zero results while Loopky has no listing — both are the silent path, and both were confirmed to show
+nothing on a normal launch.
+
+What was driven, with the trigger forced in a throwaway build. **Android**: the "update ready" bar
+on the phone in light and dark, and on `Pixel_Tablet` in portrait (medium, above the tab bar) and
+landscape (expanded, beside the rail); `update_ready_restart` and `update_ready_dismiss` are both
+in `android layout`. Its first position sat on the tab bar and hid the tabs behind the same dark
+colour, which is why it now clears the bar below expanded width. **iOS**: the sheet on the iPhone
+and as a centred form sheet on the iPad, both buttons reachable by identifier; with a faked newer
+store version it appeared on the first launch and not on a relaunch the same day.
+
+Not checked: Play's own consent screen, the download, and the restart that installs — these need a
+build installed from a Play track (internal app sharing is the cheap way). Nor the iOS path against
+a real App Store listing.
+
+
 ### 22 — iOS phrase quiz options no longer break mid-word — ✅ PASS (2026-10-03, iPhone 17e + iPad Pro 11-inch sims)
 
 The four options for each position sat in one row, so on a phone an eight-letter word ("crumble")

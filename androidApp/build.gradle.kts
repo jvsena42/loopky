@@ -186,6 +186,7 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.koin.android)
     implementation(libs.play.services.code.scanner)
+    implementation(libs.play.app.update.ktx)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.zxing.core)

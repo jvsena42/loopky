@@ -31,6 +31,7 @@ import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.NO_BACKUP_REMINDER_DAY
+import com.github.jvsena42.loopky.data.storage.NO_UPDATE_PROMPT_DAY
 import com.github.jvsena42.loopky.data.storage.PendingReview
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.PendingSignup
@@ -1412,6 +1413,7 @@ class FakeAppPreferences(
     avatarNudgeDismissed: Boolean = false,
     pendingDeckFollow: String = "",
     backupReminderDay: Int = NO_BACKUP_REMINDER_DAY,
+    updatePromptDay: Int = NO_UPDATE_PROMPT_DAY,
 ) : AppPreferences {
     private val _shareOnPubky = MutableStateFlow(shareOnPubky)
     override val shareOnPubky: Flow<Boolean> = _shareOnPubky.asStateFlow()
@@ -1488,6 +1490,13 @@ class FakeAppPreferences(
 
     override suspend fun setBackupReminderDay(day: Int) {
         _backupReminderDay.update { day }
+    }
+
+    private val _updatePromptDay = MutableStateFlow(updatePromptDay)
+    override val updatePromptDay: Flow<Int> = _updatePromptDay.asStateFlow()
+
+    override suspend fun setUpdatePromptDay(day: Int) {
+        _updatePromptDay.update { day }
     }
 }
 

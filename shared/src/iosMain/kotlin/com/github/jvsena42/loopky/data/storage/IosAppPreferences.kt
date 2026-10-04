@@ -106,4 +106,18 @@ class IosAppPreferences : AppPreferences {
         defaults.setInteger(day.toLong(), KEY_BACKUP_REMINDER_DAY)
         _backupReminderDay.update { day }
     }
+
+    private val _updatePromptDay = MutableStateFlow(
+        if (defaults.objectForKey(KEY_UPDATE_PROMPT_DAY) == null) {
+            NO_UPDATE_PROMPT_DAY
+        } else {
+            defaults.integerForKey(KEY_UPDATE_PROMPT_DAY).toInt()
+        },
+    )
+    override val updatePromptDay: Flow<Int> = _updatePromptDay.asStateFlow()
+
+    override suspend fun setUpdatePromptDay(day: Int) {
+        defaults.setInteger(day.toLong(), KEY_UPDATE_PROMPT_DAY)
+        _updatePromptDay.update { day }
+    }
 }
