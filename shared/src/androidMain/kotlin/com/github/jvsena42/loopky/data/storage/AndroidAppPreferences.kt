@@ -117,6 +117,18 @@ class AndroidAppPreferences(context: Context) : AppPreferences {
         }
         _backupReminderDay.update { day }
     }
+
+    private val _updatePromptDay = MutableStateFlow(
+        prefs.getInt(KEY_UPDATE_PROMPT_DAY, NO_UPDATE_PROMPT_DAY),
+    )
+    override val updatePromptDay: Flow<Int> = _updatePromptDay.asStateFlow()
+
+    override suspend fun setUpdatePromptDay(day: Int) {
+        withContext(Dispatchers.IO) {
+            prefs.edit().putInt(KEY_UPDATE_PROMPT_DAY, day).apply()
+        }
+        _updatePromptDay.update { day }
+    }
 }
 
 /**
