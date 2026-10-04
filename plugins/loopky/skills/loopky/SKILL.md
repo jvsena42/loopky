@@ -173,8 +173,7 @@ picture: a near miss teaches the wrong thing.
 card, a handful of cards per sheet, into one image and pick from that: it costs far less than
 opening pictures one by one and still catches near misses. Reject a single thing for a plural
 word, a part standing for the whole, a brand or mascot, and alcohol on a children's deck. Fetch
-from one host a few at a time; Wikimedia's thumbnails answer 429 well below eight parallel
-requests.
+from one host a few at a time; Wikimedia's thumbnails answer 429 at eight parallel requests.
 
 **Licences.** Public domain, PDM and CC0 need nothing. CC BY and CC BY-SA need a credit, and the
 deck's `--description` is the only place for one: `Pictures: <author>, <licence>, via <source>`,
@@ -302,7 +301,8 @@ phrase cards stay bare. Real-life counterparts of the show's world (the animals 
 built on) make good covers. Tell the user which it was. To add pictures to cards already
 published, read `loopky card list <deckId> --json --missing-image` once, match each card on its
 back text, and send the pictures in one JSONL `card edit --from-file`, each line naming the card's
-`id` and its `front_image_url`.
+`id` and its `front_image_url`. Add the same URLs to your card file: `card add` tells cards apart
+by text and picture, so re-running a file without them adds those cards a second time.
 
 **Tags and settings.** Add the show's name (lowercase, no spaces, at most 20 characters:
 `spongebob`), and `tv-series` or `anime`, plus `cartoon` where it is one. A show made for children
