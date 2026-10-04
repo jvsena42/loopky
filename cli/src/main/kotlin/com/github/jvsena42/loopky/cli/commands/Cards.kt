@@ -220,6 +220,10 @@ suspend fun cardRemove(args: Args, decks: DeckRepository): CommandResult {
  * record and the manifest, two when the card crosses a chunk boundary. Review state is keyed by
  * card id and never by position, so a reader who has studied the card keeps their history.
  *
+ * **The write is one chunk; the read is the whole deck.** A position means nothing without every
+ * card before it, so a standalone move in a fresh process fetches every chunk record. Inside
+ * `batch` only the first move pays that, which is the reason several moves belong in one.
+ *
  * **Idempotent.** A card already where it was asked to go is reported as `moved: false` and
  * nothing is written, so a batch of moves can be re-run after a session expiry.
  */
@@ -231,6 +235,7 @@ suspend fun cardMove(args: Args, decks: DeckRepository, cards: CardRepository): 
     if ((to == null) == (after == null)) {
         throw CliError(ExitCode.Usage, "Pass exactly one of --$MOVE_TO <position> or --$MOVE_AFTER <cardId>.")
     }
+    if (after == cardId) throw CliError(ExitCode.BadInput, "A card cannot be moved after itself.")
 
     val deck = decks.sync(deckId).getOrElse { throw asCliError(it) }
     val ordered = cards.fetchByDeck(deck).getOrElse { throw asCliError(it) }.inStudyOrder()
@@ -241,7 +246,6 @@ suspend fun cardMove(args: Args, decks: DeckRepository, cards: CardRepository): 
     // computed over the same list.
     val others = ordered.filterNot { it.id == cardId }
     val target = if (after != null) {
-        if (after == cardId) throw CliError(ExitCode.BadInput, "A card cannot be moved after itself.")
         val anchor = others.indexOfFirst { it.id == after }
         if (anchor < 0) throw CliError(ExitCode.NotFound, "Deck $deckId has no card $after to move after.")
         anchor + 1
@@ -251,7 +255,17 @@ suspend fun cardMove(args: Args, decks: DeckRepository, cards: CardRepository): 
 
     val moved = target != from
     val written = if (moved) decks.moveCard(deckId, cardId, target).getOrElse { throw asCliError(it) } else deck
-    val card = cards.get(deckId, cardId).takeIf { moved } ?: ordered[from]
+    // Read back rather than echoed: `--json` reports the `ord` that was stored, and the card as it
+    // was before the move carries the old one.
+    val card = if (moved) {
+        cards.get(deckId, cardId) ?: throw CliError(
+            ExitCode.Internal,
+            "Moved $cardId to position ${target + 1}, but it could not be read back. " +
+                "Check it with `loopky card list $deckId`.",
+        )
+    } else {
+        ordered[from]
+    }
     return result(
         CardMoveResult(
             deckId = deckId,

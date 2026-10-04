@@ -115,10 +115,34 @@ class CardMoveTest {
         val both = assertFailsWith<CliError> {
             runBlocking { cardMove(move("a", "--to", "1", "--after", "b"), decks(), cards) }
         }
-        val itself = assertFailsWith<CliError> { runBlocking { cardMove(move("a", "--after", "a"), decks(), cards) } }
+        // A card the deck lacks, so the answer shows which check ran first.
+        val itself = assertFailsWith<CliError> {
+            runBlocking { cardMove(move("zz", "--after", "zz"), decks(), cards) }
+        }
 
         assertEquals(ExitCode.Usage, neither.exitCode)
         assertEquals(ExitCode.Usage, both.exitCode)
         assertEquals(ExitCode.BadInput, itself.exitCode)
+        assertEquals(0, cards.deckReads)
+    }
+
+    /** `--json` is how a move is verified, so it carries the stored `ord`, never the one it had. */
+    @Test
+    fun `the card comes back with the ord the move stored`() = runBlocking {
+        cards.stored = { id -> card(id, ord = 500) }
+
+        val result = cardMove(move("d", "--to", "1"), decks(), cards)
+
+        val ord = result.data.jsonObject.getValue("card").jsonObject.getValue("ord").jsonPrimitive.content
+        assertEquals("500", ord)
+    }
+
+    @Test
+    fun `a moved card that cannot be read back is an error, not a stale card`() {
+        cards.stored = { null }
+
+        val error = assertFailsWith<CliError> { runBlocking { cardMove(move("d", "--to", "1"), decks(), cards) } }
+
+        assertEquals(ExitCode.Internal, error.exitCode)
     }
 }

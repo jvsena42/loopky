@@ -448,8 +448,10 @@ internal val USAGE = """
                                 skipped / failed per card.
       card rm <deckId> <cardId>
       card mv <deckId> <cardId> --to POSITION | --after CARDID
-                            Reorder. --to counts from 1, as `card list` prints them; --after
-                            names the card it should follow. Review history is kept.
+                                Reorder. --to counts from 1, as `card list` prints them; --after
+                                names the card it should follow. Review history is kept. Reads
+                                the whole deck first, so several moves belong in one `batch`.
+
                                 card add and card edit also take --check-images; see CARD IMAGES.
 
     IMPORT

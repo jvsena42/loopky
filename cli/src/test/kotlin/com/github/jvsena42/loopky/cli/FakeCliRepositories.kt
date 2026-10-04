@@ -197,9 +197,20 @@ class FakeCardRepository(
     /** Which chunks a listing actually fetched, in order. The whole point of `--limit` is this list. */
     val chunksRead = mutableListOf<Int>()
 
+    /** How many times the whole deck was read. */
+    var deckReads = 0
+
+    /** What [get] answers when set, standing in for the cache a write has just refreshed. */
+    var stored: ((String) -> Card?)? = null
+
     override suspend fun listByDeck(deckId: String): List<Card> = existing
-    override suspend fun fetchByDeck(deck: Deck): Result<List<Card>> = Result.success(existing)
-    override suspend fun get(deckId: String, cardId: String): Card? = existing.firstOrNull { it.id == cardId }
+    override suspend fun fetchByDeck(deck: Deck): Result<List<Card>> {
+        deckReads++
+        return Result.success(existing)
+    }
+
+    override suspend fun get(deckId: String, cardId: String): Card? =
+        stored?.let { it(cardId) } ?: existing.firstOrNull { it.id == cardId }.takeIf { stored == null }
 
     private fun no(name: String): Nothing = error("FakeCardRepository.$name is not part of this test")
 
