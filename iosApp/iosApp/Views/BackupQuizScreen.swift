@@ -63,6 +63,8 @@ struct BackupQuizScreen: View {
         .onDisappear { detach() }
     }
 
+    private static let optionColumns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible())]
+
     private func question(index: Int, position: Int) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(verbatim: String(
@@ -72,7 +74,9 @@ struct BackupQuizScreen: View {
             .kerning(0.6)
             .foregroundStyle(LoopkyColor.foregroundMuted)
             let choices = index < options.count ? options[index] : []
-            HStack(spacing: 8) {
+            // Two columns, not a row of four: an eight-letter word broke mid-word at a quarter of
+            // a phone's width.
+            LazyVGrid(columns: Self.optionColumns, spacing: 8) {
                 ForEach(choices, id: \.self) { word in
                     optionChip(word: word, index: index)
                 }
@@ -88,6 +92,7 @@ struct BackupQuizScreen: View {
             Text(verbatim: word)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(isSelected ? LoopkyColor.foregroundOnAccent : LoopkyColor.foregroundPrimary)
+                .lineLimit(1)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity)
