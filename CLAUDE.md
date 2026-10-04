@@ -510,8 +510,12 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   none`, which bills a subscription — CI runs the paid evals only at release, so a skill edit
   nobody evaluated locally reaches the release unmeasured. Put the per-case scores in the PR
   description. A case below 1.00 is not a regression until `main` scores better on it: run that
-  case (`--case <name>`) in a worktree of `main` and compare, because `anki-import` and
-  `picture-sources` lose one run in three on `main` as well. Keep it
+  case (`--case <name>`) in a worktree of `main` and compare. The eval prints the judges' votes
+  and never their reasons, so a flaky grader is diagnosed by replaying the judge by hand — its
+  prompt is the rubric, the response, and "Respond with exactly one word: PASS or FAIL" — and
+  asking it why. Every prompt here says "don't run anything yet", so **a rubric has to say it is
+  grading a plan**: "it runs the dry run" and "checked for `is_public_domain`" failed one honest
+  plan in three until `anki-import` and `picture-sources` said so. Keep it
   thin: the binary's `commands --json` is the reference, the skill is the workflow and the
   judgment. The marketplace serves the plugin **from the release tag**, not `main`
   (`source.ref`, bumped with the version), because the user installs
