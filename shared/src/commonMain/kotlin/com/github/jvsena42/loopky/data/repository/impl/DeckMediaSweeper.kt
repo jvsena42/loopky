@@ -25,8 +25,11 @@ internal interface DeckWriteAccess {
     /** Run [block] holding the deck's write lock. */
     suspend fun <T> inWriteLock(deckId: String, block: suspend () -> T): T
 
-    /** Read-modify-write the manifest. Caller must hold the write lock. */
-    suspend fun patchLocked(deckId: String, patch: (Deck) -> Deck): Deck
+    /**
+     * Read-modify-write the manifest. Caller must hold the write lock. [emitChange] is for a patch
+     * with something user-visible in it.
+     */
+    suspend fun patchLocked(deckId: String, emitChange: Boolean = false, patch: (Deck) -> Deck): Deck
 
     /**
      * Fold chunk [from] into chunk [into], which is left holding [merged], and drop [from] from

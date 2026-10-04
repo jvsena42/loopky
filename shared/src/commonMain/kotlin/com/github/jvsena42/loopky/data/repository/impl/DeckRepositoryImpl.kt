@@ -424,6 +424,15 @@ class DeckRepositoryImpl(
             }
         }
 
+    override suspend fun reorderCards(deckId: String, cardIds: List<String>): Result<Deck> =
+        runSuspendCatching {
+            requireOwnedDeck(deckId)
+            withDeckWrite(deckId) {
+                val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }
+                reorderer.reorderLocked(deck, cardIds)
+            }
+        }
+
     override suspend fun rehostBlob(deckId: String, sha256: String): Result<Unit> =
         runSuspendCatching {
             val key = deckId to sha256
@@ -535,8 +544,8 @@ class DeckRepositoryImpl(
         override suspend fun <T> inWriteLock(deckId: String, block: suspend () -> T): T =
             withDeckWrite(deckId, block)
 
-        override suspend fun patchLocked(deckId: String, patch: (Deck) -> Deck): Deck =
-            patchDeckLocked(deckId, emitChange = false, patch = patch)
+        override suspend fun patchLocked(deckId: String, emitChange: Boolean, patch: (Deck) -> Deck): Deck =
+            patchDeckLocked(deckId, emitChange = emitChange, patch = patch)
 
         override suspend fun mergeChunksLocked(
             deck: Deck,
@@ -548,6 +557,7 @@ class DeckRepositoryImpl(
 
     private val sweeper = DeckMediaSweeper(cardRepo, mediaRepo, writeAccess)
     private val compactor = DeckCompactor(cardRepo, writeAccess)
+    private val reorderer = DeckReorderer(cardRepo, writeAccess)
 
     private suspend fun writeRehostedCards(
         deck: Deck,

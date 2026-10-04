@@ -386,6 +386,17 @@ interface DeckRepository {
     suspend fun moveCard(deckId: String, cardId: String, toIndex: Int): Result<Deck>
 
     /**
+     * Put the whole deck into the order of [cardIds], which has to name every card exactly once —
+     * anything else fails before the first write.
+     *
+     * Card ids are kept, so nobody's review state moves. The deck is re-chunked into full records,
+     * which also undoes the growth [moveCard] leaves in a landing chunk. Each changed record is
+     * written twice so that no card is ever in none of them; a run that dies partway is finished
+     * by calling this again with the same list, and a deck already in that order writes nothing.
+     */
+    suspend fun reorderCards(deckId: String, cardIds: List<String>): Result<Deck>
+
+    /**
      * Copy the blob [sha256] under [deckId]'s own media path and rewrite every ref carrying it, so
      * a clone stops depending on the original author's copy.
      *

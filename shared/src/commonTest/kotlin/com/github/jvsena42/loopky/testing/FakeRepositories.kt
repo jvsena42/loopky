@@ -467,6 +467,9 @@ class FakeDeckRepository : DeckRepository {
      */
     var cardRepository: FakeCardRepository? = null
 
+    override suspend fun reorderCards(deckId: String, cardIds: List<String>): Result<Deck> =
+        decks[deckId]?.let { Result.success(it) } ?: Result.failure(IllegalStateException("deck $deckId not found"))
+
     override suspend fun moveCard(deckId: String, cardId: String, toIndex: Int): Result<Deck> {
         moveCardError?.let { return Result.failure(it) }
         movedCards.add(CardMove(deckId, cardId, toIndex))
