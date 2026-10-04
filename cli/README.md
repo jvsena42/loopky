@@ -181,6 +181,8 @@ loopky card edit <deckId> --from-file edits.jsonl
 loopky card rm <deckId> <cardId>
 loopky card mv <deckId> <cardId> --to 3        # reorder: position counts from 1, as card list prints
 loopky card mv <deckId> <cardId> --after <id>  # or name the card it should follow
+loopky card list <deckId> > order.txt          # reorder the lines in an editor or a script, then
+loopky card reorder <deckId> --from-file order.txt   # the whole deck, every card id kept
 
 loopky import cards.tsv --title "Biomas e Sub-ecossistemas Brasileiros" --resume
 cat cards.tsv | loopky import - --title "…" --separator tab

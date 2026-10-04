@@ -162,6 +162,14 @@ class FakeDeckRepository(
         return Result.success(deck)
     }
 
+    /** Every `reorderCards` call's id list. */
+    val reorders = mutableListOf<List<String>>()
+
+    override suspend fun reorderCards(deckId: String, cardIds: List<String>): Result<Deck> {
+        reorders += cardIds
+        return Result.success(deck)
+    }
+
     override suspend fun rehostBlob(deckId: String, sha256: String): Result<Unit> = no("rehostBlob")
     override suspend fun rehostPendingMedia(deckId: String, maxChunks: Int): Result<RehostOutcome> =
         no("rehostPendingMedia")

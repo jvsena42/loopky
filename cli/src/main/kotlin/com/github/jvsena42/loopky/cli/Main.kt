@@ -9,6 +9,7 @@ import com.github.jvsena42.loopky.cli.commands.cardEdit
 import com.github.jvsena42.loopky.cli.commands.cardList
 import com.github.jvsena42.loopky.cli.commands.cardMove
 import com.github.jvsena42.loopky.cli.commands.cardRemove
+import com.github.jvsena42.loopky.cli.commands.cardReorder
 import com.github.jvsena42.loopky.cli.commands.commandSurface
 import com.github.jvsena42.loopky.cli.commands.completion
 import com.github.jvsena42.loopky.cli.commands.deckCompact
@@ -156,8 +157,10 @@ private fun run(argv: Array<String>): ExitCode {
  * Every arm is one call to one function taking plain values and returning its `--json` shape. That
  * is load-bearing: a remote MCP server serves an audience the CLI cannot reach — a chat-only agent
  * has no shell — and should be a binding over these functions rather than a second implementation.
+ * It is also why the length is suppressed rather than split: a routing table grows by one line a
+ * command, and two tables would be two places to forget one.
  */
-@Suppress("CyclomaticComplexMethod", "LongParameterList")
+@Suppress("CyclomaticComplexMethod", "LongParameterList", "LongMethod")
 private suspend fun dispatch(
     args: Args,
     identity: IdentityRepository,
@@ -224,6 +227,7 @@ private suspend fun dispatch(
         "card edit" -> authed(sessions, identity, environment) { cardEdit(args, koin.decks(), koin.cards(), note) }
         "card rm" -> authed(sessions, identity, environment) { cardRemove(args, koin.decks()) }
         "card mv" -> authed(sessions, identity, environment) { cardMove(args, koin.decks(), koin.cards()) }
+        "card reorder" -> authed(sessions, identity, environment) { cardReorder(args, koin.decks(), koin.cards()) }
 
         // `--dry-run` deliberately sits outside `authed`: it reads a local file and writes
         // nothing, so requiring a live session would put a sign-in between an agent and the check
@@ -451,6 +455,11 @@ internal val USAGE = """
                                 Reorder. --to counts from 1, as `card list` prints them; --after
                                 names the card it should follow. Review history is kept. Reads
                                 the whole deck first, so several moves belong in one `batch`.
+      card reorder <deckId> --from-file order.txt [--dry-run]
+                                Put the whole deck in the file's order: card ids, one a line, each
+                                card exactly once. `card list` output works as it is - only the
+                                first column is read. Review history is kept. Re-run the same file
+                                to finish an interrupted run.
 
                                 card add and card edit also take --check-images; see CARD IMAGES.
 
