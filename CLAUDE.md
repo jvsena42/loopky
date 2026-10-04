@@ -504,8 +504,14 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   image-host limit or a new recovery path all leave the skill *valid and stale*. So on **every PR
   that touches CLI, import, card or deck logic**, read `SKILL.md` against the change, update it when
   an agent would now do the wrong thing, add or adjust a case under `plugins/loopky/evals/` for new
-  behaviour and run it locally (`claude plugin eval plugins/loopky --model sonnet --ablation none`,
-  which bills a subscription — CI runs the paid evals only at release), and say in the PR description which you did (or why no change was needed). Keep it
+  behaviour, and say in the PR description which you did (or why no change was needed). **Any
+  change under `plugins/loopky/` is evaluated locally before the PR merges, the whole suite and
+  not only the case you touched:** `claude plugin eval plugins/loopky --model sonnet --ablation
+  none`, which bills a subscription — CI runs the paid evals only at release, so a skill edit
+  nobody evaluated locally reaches the release unmeasured. Put the per-case scores in the PR
+  description. A case below 1.00 is not a regression until `main` scores better on it: run that
+  case (`--case <name>`) in a worktree of `main` and compare, because `anki-import` and
+  `picture-sources` lose one run in three on `main` as well. Keep it
   thin: the binary's `commands --json` is the reference, the skill is the workflow and the
   judgment. The marketplace serves the plugin **from the release tag**, not `main`
   (`source.ref`, bumped with the version), because the user installs

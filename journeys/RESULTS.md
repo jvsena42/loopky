@@ -4345,3 +4345,40 @@ The hero's headline is the day's new-card tally against the goal, the bar tracks
 decks (so Today shows the empty state, not the hero), and following one failed on "Session
 expired". The Android card compiles and passes detekt; neither width class was looked at.
 **An iPad**, and **any language but English**.
+
+## Skill: the whole-show TV-series workflow (#438) — ✅ PASS (2026-10-04, Linux x86_64, staging)
+
+Every CLI claim the skill gained was run from `cli/build/install/loopky/bin/loopky` (1.4.0) against
+a real staging homeserver, on a fresh invite-code account and two throwaway decks deleted in the
+same run.
+
+| Claim in `SKILL.md` | Result |
+| --- | --- |
+| `deck create --title 'S01 · SpongeBob · Spanish' --id spongebob-s1 --if-not-exists`, with `--reverse` and no `--type` | ✅ `created: true`; the same command again answers `created: false` and writes nothing |
+| A description of several lines, each starting with an emoji | ✅ stored and read back with its newlines |
+| Plain `card list` is `id<TAB>front<TAB>back`, a picture adding ` [img:…]` to its side | ✅ |
+| `card add --from-file` appends after the cards already there | ✅ ords 4000 and 5000 after 0–3000 |
+| `card list --json --missing-image`, then one JSONL `card edit --from-file` of `id` + `front_image_url` | ✅ 2 written; re-run 0 written, 2 skipped |
+| `batch --json` prints a line per operation and a summary last | ✅ 4 lines for 3 operations; `json.load` on the whole output fails, as the skill says |
+| Openverse `&source=stocksnap,rawpixel`, 20 requests a minute and 200 a day | ✅ only those two sources returned; the limits are the API's own `x-ratelimit-limit-anon_*` headers |
+| StockSnap and Rawpixel URLs as card pictures | ✅ both pass `--check-images` |
+| A fan wiki's `api.php?action=query&prop=revisions&rvslots=main&titles=<A>\|<B>` | ✅ two pages' wikitext in one answer |
+
+**Two things the run changed in the skill.** Adding pictures with `card edit` and then re-running
+the original picture-less `card add --from-file` wrote the pictured card a **second time**:
+`identityOf` tells cards apart by text *and* picture, so the skill now says to put the same URLs
+in the card file. And "Wikimedia's thumbnails answer 429 well below eight parallel requests"
+overstated #438, which measured it *at* eight.
+
+`AgentPluginTest` and `plugin_directory_lint.py --strict` pass. The whole eval suite
+(`claude plugin eval plugins/loopky --model sonnet --ablation none`, three runs a case): eight
+cases at 1.00, `tv-series-whole-show` among them, `anki-import` at 0.78 and `picture-sources` at
+0.67. Those two score the same on `main`, in sections this change leaves alone, and the responses
+they fail meet the rubric when read by hand — the graders are flaky, not the skill. `tv-series`
+lost one run of three when four cases ran at once and none of six run on its own.
+
+### Not verified here
+
+**OpenSubtitles' daily download cap** (reaching it takes about 200 downloads). A plain `card list` line does not escape a **tab**
+inside a side, only a newline, so a JSONL-authored side holding one would break the three-column
+read; not met in a subtitle deck and left alone.
