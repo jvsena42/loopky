@@ -164,6 +164,36 @@ internal object CardChunking {
         if (meta.n == excluding) (meta.count - 1).coerceAtLeast(0) else meta.count
 
     /**
+     * Where each card of [ordered] lives once the deck is in that order: full records of
+     * [CHUNK_SIZE], renumbered inside their own slices.
+     *
+     * Reuses the chunk numbers the table already has, lowest first, and numbers on past the highest
+     * only when more records are needed. A number the manifest already lists is one a reader can
+     * reach while the reorder is half written; a fresh one is invisible until the manifest says so.
+     */
+    fun planReorder(chunks: List<ChunkMeta>, ordered: List<Card>): Map<Int, List<Card>> {
+        val existing = chunks.map { it.n }.sorted()
+        val next = (existing.lastOrNull() ?: -1) + 1
+        return ordered.chunked(CHUNK_SIZE).mapIndexed { index, batch ->
+            val n = existing.getOrNull(index) ?: (next + index - existing.size)
+            n to renumber(batch, n)
+        }.toMap()
+    }
+
+    /**
+     * Whether every one of [cards] sorts inside chunk [n]'s own slice of the ord line.
+     *
+     * Not a given: `planAppend` numbers on from the deck's highest `ord`, so a chunk refilled after
+     * deletes holds `ord`s past its slice. Such a record sorts correctly only against neighbours
+     * numbered the same way, and stops doing so the moment one of them is renumbered.
+     */
+    fun inSlice(cards: List<Card>, n: Int): Boolean {
+        val slice = CHUNK_SIZE.toLong() * ORD_STRIDE
+        val base = n * slice
+        return cards.all { it.ord >= base && it.ord < base + slice }
+    }
+
+    /**
      * Re-stamp [cards] with `ord`s spread across chunk [n]'s own slice of the ord line.
      *
      * [chunk] assigns `ordForIndex(globalIndex)`, so chunk `n` owns a private range no other chunk can

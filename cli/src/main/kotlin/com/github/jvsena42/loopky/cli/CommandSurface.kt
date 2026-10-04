@@ -302,6 +302,15 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         ),
         writes = true,
     ),
+    CliCommand(
+        path = "card reorder",
+        summary = "put the whole deck in the order a file of card ids gives",
+        operand = Operand.Opaque("deckId"),
+        options = listOf(
+            CliOption("from-file", "card ids, one a line, each card exactly once", OptionValue.Path),
+        ) + DRY_RUN_OPTION,
+        writes = true,
+    ),
 
     CliCommand(
         path = "import",

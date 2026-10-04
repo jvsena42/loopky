@@ -66,6 +66,12 @@ data class Deck(
     val mediaRehostCursor: Int = 0,
     /** True once a full sweep found nothing left pinned to another author. */
     val mediaRehosted: Boolean = false,
+    /**
+     * True from a whole-deck reorder's first write to its last (#449). A reorder that dies in
+     * between leaves it set, and the next one then re-stamps every chunk: without that, a reader
+     * whose cache was filled mid-rewrite would never be told to read the finished records.
+     */
+    val reorderPending: Boolean = false,
 ) {
     /**
      * Whether the deck has declared what language each side is in.

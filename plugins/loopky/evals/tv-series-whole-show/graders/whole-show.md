@@ -3,7 +3,7 @@ type: llm
 weight: 2
 ---
 
-Grade the response's plan for Brazilian Portuguese decks covering every season of SpongeBob. Check each point on its own; any one of the approaches listed under a point is enough for it.
+Grade the response's plan for Brazilian Portuguese decks covering every season of SpongeBob. The user asked for a plan with nothing run yet: grade what the plan says it will do, and never count it against the response that nothing has been run. Check each point on its own; any one of the approaches listed under a point is enough for it.
 
 1. **Count.** It gives a per-episode card count (a number or a range) and says the cards are a selection, not every line of the episode.
 2. **Dialogue.** The cards come from Portuguese subtitles or transcripts of the episodes (OpenSubtitles, the show's fan wiki, the user's own files, or similar), not from memory or invented sentences.

@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.cli
 
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
+import com.github.jvsena42.loopky.data.repository.DeckReorderPendingException
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import kotlinx.serialization.json.JsonElement
 import javax.net.ssl.SSLPeerUnverifiedException
@@ -171,6 +172,8 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
          * same thing.
          */
         fun of(error: Throwable): ExitCode = when {
+            // Not `internal`: retrying the write unchanged cannot work, and the fix is a command.
+            error is DeckReorderPendingException -> BadInput
             // First: a proxy refusing a `_pubky.<key>` tunnel is this, not an allowlist gap.
             error.toErrorReason() == ErrorReason.HomeserverLookupFailed -> HomeserverUnresolved
             error.isProxyRefusal() -> ProxyRefused

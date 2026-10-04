@@ -386,6 +386,17 @@ interface DeckRepository {
     suspend fun moveCard(deckId: String, cardId: String, toIndex: Int): Result<Deck>
 
     /**
+     * Put the whole deck into the order of [cardIds], which has to name every card exactly once —
+     * anything else fails before the first write.
+     *
+     * Card ids are kept, so nobody's review state moves. The deck is re-chunked into full records,
+     * which also undoes the growth [moveCard] leaves in a landing chunk. Each changed record is
+     * written twice so that no card is ever in none of them; a run that dies partway is finished
+     * by calling this again with the same list, and a deck already in that order writes nothing.
+     */
+    suspend fun reorderCards(deckId: String, cardIds: List<String>): Result<Deck>
+
+    /**
      * Copy the blob [sha256] under [deckId]'s own media path and rewrite every ref carrying it, so
      * a clone stops depending on the original author's copy.
      *
@@ -1217,6 +1228,17 @@ interface SrsRepository {
      */
     fun flushAsync()
 }
+
+/**
+ * A card write refused because a whole-deck reorder of [deckId] did not finish (#449).
+ *
+ * Until it does, moved cards sit in two chunk records, and a write that acts on one copy leaves
+ * the other: a delete that keeps the card in the deck, an edit a reader may not see. Running the
+ * reorder again is what clears it — with the same order, or with the deck as it now reads.
+ */
+class DeckReorderPendingException(val deckId: String) : IllegalStateException(
+    "A reorder of deck $deckId did not finish, so its cards cannot be changed until it is run again.",
+)
 
 /** How far one [DeckRepository.rehostPendingMedia] pass got. */
 data class RehostOutcome(

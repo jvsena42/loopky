@@ -4425,3 +4425,81 @@ whose single card carried a 1 MB back, then a 4 MB one, published and read back 
 repository path as the app's own editor, not driven here). The emulator ran the installed 1.3.1
 rather than this branch: it had no room for a new APK, and nothing in the app changed. A deck with
 thousands of moves was not timed; each move is one or two chunk writes plus the manifest.
+
+## `loopky card reorder` — a whole deck re-ordered under people studying it (#449) — ✅ PASS (2026-10-04, Linux x86_64 + `Medium_Phone`, staging)
+
+The owner was the CLI (`cli/build/install/loopky/bin/loopky`, a staging test account). The reader
+was a **different** account on the `Medium_Phone` emulator (installed build 1.3.1, debug),
+following the deck. Three decks, all deleted afterwards: 250 cards, **700** (a SpongeBob season is
+about 550) and **5,000** (50 chunk records).
+
+**The command.**
+
+| Step | Result |
+| --- | --- |
+| 250 cards, chunk 0 first grown to 106 by six `card mv` | ✅ `card reorder` left 100 / 100 / 50, in the file's order, same ids and text |
+| The same file again | ✅ `moved: 0`, `written: false` |
+| A file missing a card · naming one the deck lacks · no `--from-file` | ✅ `bad_input` 9 saying which · `bad_input` 9 · `usage` 2; the deck untouched |
+| 700 cards sorted by episode aside, each episode keeping its own order | ✅ 10 s, seven records of 100 |
+| 5,000 cards, every one moved | ✅ 25 s, fifty records of 100 |
+
+**Read while it is being rewritten.** Three other processes ran `card list` in a loop for the whole
+of each run, each with an empty cache.
+
+| Deck | Snapshots | Complete | Order seen |
+| --- | --- | --- | --- |
+| 700 | 12 | 12 | 5 old, 7 new, 0 mixed |
+| 5,000 | 12 | 12 | 6 old, 6 new, 0 mixed |
+
+**Killed partway** (`kill -9` on the process, then a read, then the same command again).
+
+| Deck | Kills | Cards a reader found after each | After re-running |
+| --- | --- | --- | --- |
+| 250 | 4, at 5.4 s to 6.6 s | all 250, every time | the file's order, 100 / 100 / 50 |
+| 5,000 | 6, at 7 s to 22 s | all 5,000, every time | the file's order, fifty records of 100 |
+
+Two of the 5,000-card kills landed in the first pass and left a reader with an empty cache a
+**part-old, part-new order** — every card present — until the re-run. That is the one thing a dead
+run costs, and the re-run is the fix.
+
+**The reader, on the emulator, 5,000-card deck.**
+
+| Step | Result |
+| --- | --- |
+| Follow, grade 24 cards (Hard / Good / Easy), a 25th on screen | ✅ |
+| The CLI starts a reorder and is killed 17 s in; the session is still open | ✅ the card on screen and two more grade normally |
+| Leave the session | ✅ 5,000 total · 0 due · 4,973 new |
+| Force-stop and reopen, the homeserver still half rewritten | ✅ 5,000 · 0 due · 4,973 new; three more cards grade |
+| The CLI re-runs the same file, session open; two more cards | ✅ 4,968 new |
+| Study again | ✅ the next six cards served are exactly the first six of the file that had not been graded |
+| Force-stop and reopen | ✅ 5,000 · 0 due · 4,962 new; the list is in the file's order; no crash in logcat |
+
+38 cards were graded across the run and none was served again or lost its state.
+
+**After review, on staging again.**
+
+| Step | Result |
+| --- | --- |
+| 250 cards, 40 removed from the middle of chunk 2, 190 added: chunk 2's `ord`s run to 339,000, past its slice end of 300,000 | ✅ reproduced |
+| Reorder swapping two cards in chunk 3 only | ✅ `card list` equals the file (it did not before the fix); the same file again writes nothing and still equals it |
+| A reorder killed 5.5 s in, then `card rm` · `card add` · `card mv` · `card edit` | ✅ each `bad_input` 9, naming `card reorder` and `card list` as the way out; a reader still finds all 250 |
+| `deck edit --title` on that deck | ✅ allowed |
+| `card list > f`, `card reorder --from-file f` | ✅ `written: true`, 100 / 100 / 50; `card rm` then removes the card |
+| A sparse deck (100 / 40 / 50), reordered, killed three times, re-run | ✅ table 100 / 90; the dropped record answers 404 on the homeserver |
+
+The three kills on the sparse deck all landed before the table was shortened, so the exact window
+the third review finding describes — dead after the shorter table, before the delete — was reached
+only in `DeckRepositoryReorderTest`, not on staging.
+
+**Not a regression, but seen:** in the app process that was open through the re-run, the deck
+page's card list kept the earlier order until the deck was opened again. The study queue in that
+same process was already in the new order.
+
+### Not verified here
+
+**iOS.** **The owner studying their own deck on a phone** during a reorder: the emulator's account
+is someone's, and signing it out to restore the test account was not worth losing it; the
+warm-cache reader in `DeckRepositoryReorderTest` reads as the owner. **The owner editing in the app
+straight after a CLI reorder without re-opening the deck** — the app patches the manifest from its
+own cached copy, which is true of every CLI write and not new here. The emulator ran the installed
+1.3.1, not this branch; it had no room for a new APK, and a reader's side of this is unchanged.

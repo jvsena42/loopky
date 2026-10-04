@@ -74,6 +74,8 @@ internal data class ManifestDto(
     val media_rehost_cursor: Int = 0,
     /** True once a full pass found nothing left pinned to another author. */
     val media_rehosted: Boolean = false,
+    /** Set while a whole-deck reorder is between its first and last write (#449). */
+    val reorder_pending: Boolean = false,
 )
 
 @Serializable
@@ -158,6 +160,7 @@ internal fun Deck.toDto() = ManifestDto(
     back_lang = backLang,
     media_rehost_cursor = mediaRehostCursor,
     media_rehosted = mediaRehosted,
+    reorder_pending = reorderPending,
 )
 
 internal fun ManifestDto.toDomain() = Deck(
@@ -182,6 +185,7 @@ internal fun ManifestDto.toDomain() = Deck(
     backLang = back_lang,
     mediaRehostCursor = media_rehost_cursor,
     mediaRehosted = media_rehosted,
+    reorderPending = reorder_pending,
 )
 
 internal fun DeckSource.toDto() = SourceDto(

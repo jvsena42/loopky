@@ -218,8 +218,18 @@ class FakePubkyClient : PubkyClient {
     override fun createTagId(uri: String, label: String): Result<String> =
         Result.success("TAGID-" + (uri + label).hashCode().toUInt().toString(16))
 
+    /**
+     * When set, this many session-authenticated writes/deletes succeed and every one after fails —
+     * a session that dies partway through a multi-write operation.
+     */
+    var sessionCallsBeforeFailure: Int? = null
+
     private fun consumeInjectedFailure(): Throwable? {
         failAllSessionCallsWith?.let { return it }
+        sessionCallsBeforeFailure?.let { left ->
+            if (left <= 0) return PubkyError("Request failed: Server responded with an error: 401 Unauthorized")
+            sessionCallsBeforeFailure = left - 1
+        }
         if (rateLimitNextCalls > 0) {
             rateLimitNextCalls--
             return PubkyError("Request failed: Server responded with an error: 429 Too Many Requests")
