@@ -3,7 +3,7 @@ type: llm
 weight: 2
 ---
 
-Grade the response's plan for a Spanish deck built from SpongeBob's first season. It PASSES when all of these hold:
+Grade the response's plan for a Spanish deck built from SpongeBob's first season. The user asked for a plan with nothing run yet, so nothing has been fetched or published: grade what the plan says it will do. That nothing has been run never counts against it. It PASSES when all of these hold:
 
 1. The dialogue comes from Spanish subtitles of the episodes (for example OpenSubtitles, Addic7ed, or the user's own `.srt` files), not from memory or invented sentences.
 2. The cards are ordered by episode — episode 1's cards first, then episode 2's — and it says a phrase or word already carded in an earlier episode is not repeated.

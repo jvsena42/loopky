@@ -92,7 +92,8 @@ prints one card a line with its id first; put those lines in the order wanted an
 first column is read, and the file has to name every card exactly once, or nothing is written.
 Every card keeps its id, so nobody studying the deck loses progress. If it fails partway (exit 4,
 5 or 12), run the same command again with the same file: that finishes it, and until then the
-deck still has every card.
+deck still has every card but refuses card writes with exit 9. If the file is lost, the output of
+`card list` works as the file.
 
 **Already have an Anki deck?** `loopky import deck.apkg --dry-run --json` first — check which
 fields became front and back (`--front-field`/`--back-field` override it) and `images.bytes`, since
