@@ -3,9 +3,9 @@ type: llm
 weight: 2
 ---
 
-Grade the response's plan for importing `japanese-core-2000.apkg` into Loopky. It PASSES when all four of these hold:
+Grade the response's plan for importing `japanese-core-2000.apkg` into Loopky. The user asked for a plan with nothing run yet, so the response lists commands it would run: grade those commands and the checks it says it will make. That nothing has been run never counts against it. It PASSES when all four of these hold:
 
-1. It runs `loopky import japanese-core-2000.apkg --dry-run` (with or without `--json`) **before** any import without `--dry-run`.
+1. The plan has `loopky import japanese-core-2000.apkg --dry-run` (with or without `--json`) **before** any import without `--dry-run`.
 2. It says it will check, in the dry-run result, which Anki fields became the front and back. Mentioning `--front-field` / `--back-field` as the fix is enough, and so is describing the check in words.
 3. It says it will check the image size or quota before publishing (for example `images.bytes`, the upload size, or the 1 GB limit).
 4. The publishing import comes after the dry run and passes `--title`.
