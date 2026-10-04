@@ -20,6 +20,7 @@ import com.github.jvsena42.loopky.data.pubky.toDto
 import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.CompactionOutcome
+import com.github.jvsena42.loopky.data.repository.DeckReorderPendingException
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.MediaRepository
 import com.github.jvsena42.loopky.data.repository.PublishProgress
@@ -183,7 +184,8 @@ class DeckRepositoryImpl(
         // count would miss exactly the high-numbered records a compacted deck has lying around.
         val staleChunks = previous?.chunks.orEmpty().map { it.n }.filter { it >= batches.size }
 
-        val manifestDeck = deck.copy(cardCount = cards.size, chunks = chunkMeta)
+        // Every record is rewritten, so whatever a dead reorder left behind is replaced with it.
+        val manifestDeck = deck.copy(cardCount = cards.size, chunks = chunkMeta, reorderPending = false)
 
         // Claim the deck *before* uploading its cards. With the manifest written last, a failure
         // partway left orphaned chunks under a deck root with no manifest — invisible to
@@ -291,7 +293,12 @@ class DeckRepositoryImpl(
             // so afterwards there is nothing left to diff the tag records against.
             val previous = getLocal(deck.id)
             val updated = patchDeckLocked(deck.id) { current ->
-                deck.copy(chunks = current.chunks, cardCount = current.cardCount)
+                deck.copy(
+                    chunks = current.chunks,
+                    cardCount = current.cardCount,
+                    // The caller's copy may predate a reorder; the marker is the homeserver's to say.
+                    reorderPending = current.reorderPending,
+                )
             }
             syncTags(previous, updated)
             updated
@@ -303,7 +310,7 @@ class DeckRepositoryImpl(
         requireOwnedDeck(deckId)
 
         withDeckWrite(deckId) {
-            val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }
+            val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }.requireSettled()
 
             // An existing card is rewritten in place; a new one appends to the last chunk with room.
             val existing = locateChunk(deck, card.id)
@@ -326,7 +333,7 @@ class DeckRepositoryImpl(
             requireOwnedDeck(deckId)
 
             withDeckWrite(deckId) {
-                val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }
+                val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }.requireSettled()
                 if (cards.isEmpty()) return@withDeckWrite deck
 
                 // The chunk with room, read once. Everything after it is a fresh trailing chunk, so
@@ -373,7 +380,7 @@ class DeckRepositoryImpl(
         requireOwnedDeck(deckId)
 
         withDeckWrite(deckId) {
-            val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }
+            val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }.requireSettled()
             val chunk = locateChunk(deck, cardId) ?: return@withDeckWrite deck
             val remaining = cardRepo.readChunk(deck, chunk).getOrDefault(emptyList())
                 .filterNot { it.id == cardId }
@@ -393,7 +400,7 @@ class DeckRepositoryImpl(
             requireOwnedDeck(deckId)
 
             withDeckWrite(deckId) {
-                val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }
+                val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }.requireSettled()
                 val from = locateChunk(deck, cardId) ?: return@withDeckWrite deck
                 val sourceCards = cardRepo.readChunk(deck, from).getOrThrow().inStudyOrder()
                 val card = sourceCards.firstOrNull { it.id == cardId } ?: return@withDeckWrite deck
@@ -450,6 +457,7 @@ class DeckRepositoryImpl(
             // on screen is the sweep's job, not this path's.
             val deck = getLocal(deckId) ?: return@runSuspendCatching
             if (deck.authorPubky != session.current()?.identity?.pubky) return@runSuspendCatching
+            if (deck.reorderPending) return@runSuspendCatching
 
             val cover = deck.coverImageRef?.takeIf { it.isRehostable() && it.sha256 == sha256 }
             val cards = cardRepo.listByDeck(deckId).filter { it.pinnedRef(sha256) != null }
@@ -491,11 +499,17 @@ class DeckRepositoryImpl(
     override suspend fun compactDeck(deckId: String, maxMerges: Int): Result<CompactionOutcome> =
         runSuspendCatching {
             val deck = requireOwnedDeck(deckId)
-            compactor.compact(deck.id, maxMerges)
+            // A merge reads a pair of records as the whole truth about their cards, which they are
+            // not while a reorder is unfinished. Finishing it repacks the deck anyway.
+            if (deck.reorderPending) {
+                CompactionOutcome(0, 0, deck.chunks.size, deck.chunks.size, complete = false)
+            } else {
+                compactor.compact(deck.id, maxMerges)
+            }
         }
 
     override suspend fun decksPendingCompaction(): List<Deck> =
-        listOwned().filter { CardChunking.isSparse(it.chunks) }
+        listOwned().filter { CardChunking.isSparse(it.chunks) && !it.reorderPending }
 
     /**
      * Fold chunk [from] into chunk [into], which ends up holding [merged] (#51).
@@ -553,6 +567,10 @@ class DeckRepositoryImpl(
             from: Int,
             merged: List<Card>,
         ): Deck = this@DeckRepositoryImpl.mergeChunksLocked(deck, into, from, merged)
+
+        override suspend fun storedChunkNumbers(deck: Deck): Set<Int> =
+            pubky.listAllEntriesOrEmpty(PubkyPaths.cardsRoot(deck.authorPubky, deck.id))
+                .mapNotNullTo(mutableSetOf()) { it.substringAfterLast('/').removeSuffix(".json").toIntOrNull() }
     }
 
     private val sweeper = DeckMediaSweeper(cardRepo, mediaRepo, writeAccess)
@@ -676,6 +694,14 @@ class DeckRepositoryImpl(
                 updatedAt = if (touchDeck) now else current.updatedAt,
             )
         }
+    }
+
+    /**
+     * Refuse a card write on a deck whose reorder did not finish (#449): its moved cards are in two
+     * records, and a write here would reach one copy.
+     */
+    private fun Deck.requireSettled(): Deck = also {
+        if (reorderPending) throw DeckReorderPendingException(id)
     }
 
     private suspend fun requireOwnedDeck(deckId: String): Deck {

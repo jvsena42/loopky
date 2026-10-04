@@ -181,6 +181,19 @@ internal object CardChunking {
     }
 
     /**
+     * Whether every one of [cards] sorts inside chunk [n]'s own slice of the ord line.
+     *
+     * Not a given: `planAppend` numbers on from the deck's highest `ord`, so a chunk refilled after
+     * deletes holds `ord`s past its slice. Such a record sorts correctly only against neighbours
+     * numbered the same way, and stops doing so the moment one of them is renumbered.
+     */
+    fun inSlice(cards: List<Card>, n: Int): Boolean {
+        val slice = CHUNK_SIZE.toLong() * ORD_STRIDE
+        val base = n * slice
+        return cards.all { it.ord >= base && it.ord < base + slice }
+    }
+
+    /**
      * Re-stamp [cards] with `ord`s spread across chunk [n]'s own slice of the ord line.
      *
      * [chunk] assigns `ordForIndex(globalIndex)`, so chunk `n` owns a private range no other chunk can

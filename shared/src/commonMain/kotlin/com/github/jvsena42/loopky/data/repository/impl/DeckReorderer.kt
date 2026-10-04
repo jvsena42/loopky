@@ -25,7 +25,8 @@ import com.github.jvsena42.loopky.util.epochMillis
  *    card is in its new record, and nothing has left its old one;
  * 3. manifest: the new chunk table, old stamps;
  * 4. each of those chunks as its new cards only;
- * 5. manifest: fresh stamps, the marker cleared.
+ * 5. manifest: fresh stamps, the marker cleared;
+ * 6. delete the records the new table no longer lists.
  *
  * A card in two records reads as one, because membership is keyed by id — and both copies carry
  * the card's **new** `ord`, so a reader arriving between the passes sorts the deck correctly
@@ -37,6 +38,10 @@ import com.github.jvsena42.loopky.util.epochMillis
  * *every* chunk. That is the part a reader depends on: the dead run may have finished chunks this
  * one no longer needs to write, and without a new stamp nobody holding the old contents of those
  * is ever told to read them again.
+ *
+ * **While the marker is set, [DeckRepositoryImpl] refuses card writes** with
+ * [com.github.jvsena42.loopky.data.repository.DeckReorderPendingException]: a card in two records
+ * is deleted from one and stays in the deck, or edited in one and read from the other.
  */
 internal class DeckReorderer(
     private val cardRepo: CardRepository,
@@ -57,11 +62,18 @@ internal class DeckReorderer(
         }
 
         val target = CardChunking.planReorder(deck.chunks, cardIds.map(byId::getValue))
+        // In order *and* inside its slice. A record left alone keeps its `ord`s while its
+        // neighbours are renumbered into theirs, so one whose `ord`s had strayed would sort among
+        // the next record's cards — the deck in the wrong order, reported as done.
         val changed = target.filter { (n, cards) ->
-            records[n].orEmpty().inStudyOrder().map { it.id } != cards.map { it.id }
+            val stored = records[n].orEmpty().inStudyOrder()
+            stored.map { it.id } != cards.map { it.id } || !CardChunking.inSlice(stored, n)
         }
-        val dropped = records.keys - target.keys
         val resuming = deck.reorderPending
+        // The run that died may already have shortened the table, and a record it meant to delete
+        // is then on no list this one can see; ask the homeserver what is actually there.
+        val stray = if (resuming) decks.storedChunkNumbers(deck) else emptySet()
+        val dropped = (records.keys + stray) - target.keys
         if (changed.isEmpty() && dropped.isEmpty() && !resuming) return deck
 
         val placed = target.values.flatten().associateBy { it.id }

@@ -1229,6 +1229,17 @@ interface SrsRepository {
     fun flushAsync()
 }
 
+/**
+ * A card write refused because a whole-deck reorder of [deckId] did not finish (#449).
+ *
+ * Until it does, moved cards sit in two chunk records, and a write that acts on one copy leaves
+ * the other: a delete that keeps the card in the deck, an edit a reader may not see. Running the
+ * reorder again is what clears it — with the same order, or with the deck as it now reads.
+ */
+class DeckReorderPendingException(val deckId: String) : IllegalStateException(
+    "A reorder of deck $deckId did not finish, so its cards cannot be changed until it is run again.",
+)
+
 /** How far one [DeckRepository.rehostPendingMedia] pass got. */
 data class RehostOutcome(
     val chunksScanned: Int,

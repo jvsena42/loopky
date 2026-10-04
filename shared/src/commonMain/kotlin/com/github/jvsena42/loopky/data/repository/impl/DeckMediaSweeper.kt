@@ -31,6 +31,9 @@ internal interface DeckWriteAccess {
      */
     suspend fun patchLocked(deckId: String, emitChange: Boolean = false, patch: (Deck) -> Deck): Deck
 
+    /** Every chunk number with a record on the homeserver, listed or not by the manifest. */
+    suspend fun storedChunkNumbers(deck: Deck): Set<Int>
+
     /**
      * Fold chunk [from] into chunk [into], which is left holding [merged], and drop [from] from
      * the manifest. Caller must hold the write lock.
@@ -55,6 +58,9 @@ internal class DeckMediaSweeper(
 ) {
 
     suspend fun sweep(deck: Deck, maxChunks: Int): RehostOutcome {
+        // Its cards sit in two records until the reorder is finished; rewriting one copy's refs
+        // would leave the other pinned. The deck stays pending and is swept once it is settled.
+        if (deck.reorderPending) return RehostOutcome(0, 0, 0, 0, complete = false)
         val state = SweepState(deck.mediaRehostCursor)
         sweepCover(deck, state)
 

@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.data.repository.impl
 import com.github.jvsena42.loopky.data.pubky.CHUNK_SIZE
 import com.github.jvsena42.loopky.data.pubky.CardChunkDto
 import com.github.jvsena42.loopky.data.pubky.ManifestDto
+import com.github.jvsena42.loopky.data.repository.DeckReorderPendingException
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
@@ -171,6 +172,79 @@ class DeckRepositoryReorderTest {
         }
     }
 
+    /**
+     * `appendCards` numbers on from the deck's highest `ord`, so a chunk refilled after deletes
+     * holds `ord`s past its own slice. A record left alone because its ids were already in order
+     * would then sort after the renumbered one that follows it.
+     */
+    @Test
+    fun aRecordWhoseOrdsLeftItsSliceIsRewrittenEvenWithItsIdsInOrder() = runTest {
+        publish()
+        (201..240).forEach { repo.deleteCard("deck1", "c$it").getOrThrow() }
+        repo.appendCards("deck1", (1..190).map { testCard("n$it") }).getOrThrow()
+        val order = freshRead()
+        assertEquals(expected = 400, actual = order.size)
+        // Only the last record's cards change places.
+        val wanted = order.toMutableList().apply { this[398] = order[399]; this[399] = order[398] }
+
+        repo.reorderCards("deck1", wanted).getOrThrow()
+
+        assertEquals(wanted, freshRead())
+        repo.reorderCards("deck1", wanted).getOrThrow()
+        assertEquals(wanted, freshRead(), "a second run undid or missed the order")
+    }
+
+    /**
+     * A dead run leaves cards in two records. A card write that does not know that acts on one
+     * copy — a delete that leaves the card in the deck — so they are refused until the reorder is
+     * run again.
+     */
+    @Test
+    fun cardWritesAreRefusedWhileAReorderIsUnfinished() = runTest {
+        val run = Fixture()
+        run.publish(ids)
+        run.pubky.sessionCallsBeforeFailure = 5
+        run.repo.reorderCards("deck1", ids.reversed())
+        run.pubky.sessionCallsBeforeFailure = null
+        val later = run.newProcess()
+
+        assertTrue(later.deleteCard("deck1", "c1").exceptionOrNull() is DeckReorderPendingException)
+        assertTrue(later.upsertCard("deck1", testCard("c1")).exceptionOrNull() is DeckReorderPendingException)
+        assertTrue(later.appendCards("deck1", listOf(testCard("x1"))).exceptionOrNull() is DeckReorderPendingException)
+        assertTrue(later.moveCard("deck1", "c1", toIndex = 5).exceptionOrNull() is DeckReorderPendingException)
+        assertEquals(0, later.compactDeck("deck1", maxMerges = 5).getOrThrow().merges)
+        assertEquals(ids.toSet(), run.freshRead().toSet())
+
+        // A metadata edit made from a copy of the deck read before the reorder must not clear it.
+        later.updateMetadata(testDeck(id = "deck1", title = "Renamed")).getOrThrow()
+        assertTrue(run.manifest().reorder_pending)
+
+        run.rerun(ids.reversed())
+        run.newProcess().deleteCard("deck1", "c1").getOrThrow()
+        assertEquals(ids.reversed() - "c1", run.freshRead())
+    }
+
+    /** The dead run already shortened the table, so the resumed one has to find the record itself. */
+    @Test
+    fun aResumedRunDeletesTheRecordTheDeadRunDropped() = runTest {
+        val run = Fixture()
+        run.publish(ids)
+        val owner = run.newProcess()
+        (101..160).forEach { owner.deleteCard("deck1", "c$it").getOrThrow() }
+        val wanted = run.freshRead().reversed()
+        // The marker, two union writes and the two-record table land; nothing after.
+        run.pubky.sessionCallsBeforeFailure = 4
+        assertTrue(run.newProcess().reorderCards("deck1", wanted).isFailure)
+        assertEquals(listOf(0, 1), run.manifest().chunks.map { it.n })
+        assertTrue("$ROOT/cards/2.json" in run.pubky.store, "the dropped record should still be there")
+
+        run.pubky.sessionCallsBeforeFailure = null
+        run.rerun(wanted)
+
+        assertTrue("$ROOT/cards/2.json" !in run.pubky.store, "the dropped record was left behind")
+        assertEquals(wanted, run.freshRead())
+    }
+
     /** Between the two passes a card sits in two records; both copies have to sort the same way. */
     @Test
     fun aReaderArrivingBetweenThePassesSeesTheNewOrder() = runTest {
@@ -218,10 +292,17 @@ class DeckRepositoryReorderTest {
         suspend fun freshRead(): List<String> = read(pubky)
 
         suspend fun rerunDelete(cardId: String) {
-            val cards = CardRepositoryImpl(pubky, session, revalidator, Dispatchers.Unconfined)
-            deckRepository(pubky, session, cards, revalidator, RecordingTagRepository())
-                .deleteCard("deck1", cardId).getOrThrow()
+            newProcess().deleteCard("deck1", cardId).getOrThrow()
         }
+
+        /** A deck repository with nothing cached, as the next command or app launch has. */
+        fun newProcess(): DeckRepositoryImpl {
+            val cards = CardRepositoryImpl(pubky, session, revalidator, Dispatchers.Unconfined)
+            return deckRepository(pubky, session, cards, revalidator, RecordingTagRepository())
+        }
+
+        fun manifest(): ManifestDto =
+            loopkyJson.decodeFromString(pubky.store.getValue("$ROOT/manifest.json"))
 
         /** A reader that keeps its card cache between reads, the way an open app does. */
         fun reader(): WarmReader = WarmReader(pubky)
@@ -262,6 +343,8 @@ class DeckRepositoryReorderTest {
     }
 
     private companion object {
+        const val ROOT = "pubky://$TEST_PUBKY/pub/loopky/decks/deck1"
+
         init {
             check(CHUNK_SIZE == 100) { "these counts assume 100-card records" }
         }
