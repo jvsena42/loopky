@@ -146,6 +146,24 @@ class DeckCreateIdempotenceTest {
 
     /** A supplied id goes into a homeserver path, so it gets the same check every other one does. */
     @Test
+    fun `a description past the cap is bad input, and nothing is read or published`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck())
+
+        val error = assertFailsWith<CliError> {
+            deckCreate(
+                create("--title", "T", "--id", "mine00000001", "--description", "a".repeat(501)),
+                decks,
+                session,
+                {},
+                {},
+            )
+        }
+
+        assertEquals(ExitCode.BadInput, error.exitCode)
+        assertEquals(emptyList(), decks.fetchRemoteCalls)
+    }
+
+    @Test
     fun `an unusable --id is bad input`() = runBlocking {
         val decks = FakeDeckRepository(testDeck())
 

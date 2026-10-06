@@ -106,6 +106,7 @@ suspend fun deckCreate(
 ): CommandResult {
     val title = args.requireOption("title").trim()
     if (title.isEmpty()) throw CliError(ExitCode.Usage, "--title cannot be empty.")
+    args.deckDescription()
 
     val deckId = args.deckIdToCreate()
     // Before the card file is read and before any picture is probed: when the deck is already
@@ -184,7 +185,7 @@ private fun Args.newDeck(
         id = deckId,
         authorPubky = session?.identity?.pubky.orEmpty(),
         title = title,
-        description = option("description")?.takeIf { it.isNotBlank() },
+        description = deckDescription(),
         coverEmoji = option("cover-emoji")?.takeIf { it.isNotBlank() },
         coverImageRef = option("cover-url")?.let { log.checked(it, "--cover-url") }?.let(::remoteImage),
         tags = deckTags(options("tag"), frontLang, backLang),
