@@ -107,8 +107,8 @@ session is limited by design: it **can write only Loopky's own data** (`/pub/loo
 post, follow or edit your profile elsewhere on Pubky.
 
 Within that limit, an agent you run acts for you. A deck an agent creates is published under your
-key and is public, and you are responsible for it as if you had made it by hand. The tool offers a
-dry run before anything is written; use it.
+key and is public, and you are responsible for it as if you had made it by hand. The commands that
+import or add cards offer a dry run that reports what would be written; use it.
 
 A sign-in link shown by the tool is a login secret until you approve it. Do not paste it anywhere
 other people can read.
