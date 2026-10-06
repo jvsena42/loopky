@@ -203,6 +203,11 @@ exists.
 A host the sandbox cannot reach can still be right, because the phone fetches the picture, not
 you. `--check-images` cannot vouch for those, so tell the user which URLs went unchecked.
 
+A check can also come back with URLs it "could not check", when their host rate-limited or timed
+out: that says nothing about the pictures. `loopky card check-images <deckId>` asks again over the
+deck as published and writes nothing, and it is how to find pictures that have died since; its
+`--json` lists `card_ids` for each bad URL, to fix with `card edit`.
+
 ## Decks from a TV series
 
 "A deck from SpongeBob season 1" is a language deck: the goal is to understand the show in the

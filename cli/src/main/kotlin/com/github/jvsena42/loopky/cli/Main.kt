@@ -1,10 +1,12 @@
 package com.github.jvsena42.loopky.cli
 
 import com.github.jvsena42.loopky.cli.commands.BatchSinks
+import com.github.jvsena42.loopky.cli.commands.CARD_CHECK_IMAGES
 import com.github.jvsena42.loopky.cli.commands.DRY_RUN_FLAG
 import com.github.jvsena42.loopky.cli.commands.LoginSinks
 import com.github.jvsena42.loopky.cli.commands.batch
 import com.github.jvsena42.loopky.cli.commands.cardAdd
+import com.github.jvsena42.loopky.cli.commands.cardCheckImages
 import com.github.jvsena42.loopky.cli.commands.cardEdit
 import com.github.jvsena42.loopky.cli.commands.cardList
 import com.github.jvsena42.loopky.cli.commands.cardMove
@@ -227,6 +229,9 @@ private suspend fun dispatch(
         "card edit" -> authed(sessions, identity, environment) { cardEdit(args, koin.decks(), koin.cards(), note) }
         "card rm" -> authed(sessions, identity, environment) { cardRemove(args, koin.decks()) }
         "card mv" -> authed(sessions, identity, environment) { cardMove(args, koin.decks(), koin.cards()) }
+        CARD_CHECK_IMAGES -> authed(sessions, identity, environment) {
+            cardCheckImages(args, koin.decks(), koin.cards(), note)
+        }
         "card reorder" -> authed(sessions, identity, environment) { cardReorder(args, koin.decks(), koin.cards()) }
 
         // `--dry-run` deliberately sits outside `authed`: it reads a local file and writes
@@ -462,6 +467,11 @@ internal val USAGE = """
                                 first column is read. Review history is kept. Re-run the same file
                                 to finish an interrupted run.
 
+      card check-images <deckId> [--check-images-concurrency N]
+                                Ask every picture URL the deck already has whether it still
+                                answers with an image. Writes nothing; --json names the cards
+                                behind each finding.
+
                                 card add and card edit also take --check-images; see CARD IMAGES.
 
     IMPORT
@@ -582,7 +592,9 @@ internal val USAGE = """
         - From the imageinfo API, strip the ?utm_… query and use upload.wikimedia.org as the host.
 
       --check-images sends one HEAD per distinct URL and warns (never refuses) about anything that
-      is not a 2xx image. Rate limits and timeouts are reported as unverified, not as wrong.
+      is not a 2xx image. A host that answers 429 is waited on and then asked one URL at a time;
+      what is still unanswered after that, and any timeout, is reported as unverified, not as
+      wrong. `card check-images <deckId>` runs the same check later, over what was stored.
       --check-images-concurrency N (default 3, up to 16). Findings are in --json as image_checks;
       rule-based warnings that need no request are always in image_advice.
 

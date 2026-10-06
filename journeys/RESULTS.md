@@ -4531,3 +4531,42 @@ It is the write `--back=` beside a picture has always made, but the read-back th
 that removes anything now says how many sides and pictures on stderr before it writes; a bad JSONL
 row is named by its line in the file, blank lines counted; and any single-card flag beside
 `--from-file` is exit 2 on `card edit` and `card add`, where it used to be accepted and ignored.
+
+## `--check-images` paces a rate-limiting host; `card check-images` (#454) — ✅ PASS against a local host, not run on staging (2026-10-06, Linux x86_64)
+
+A local HTTPS host (self-signed, trusted through `SSL_CERT_FILE`) allowing five requests in any
+one second and answering `429` with `Retry-After: 1` past that; 150 distinct URLs, one of them a
+404. `loopky import deck.tsv --title T --dry-run --check-images --check-images-concurrency 8`,
+the `installDist` build:
+
+| Build | ok | wrong | could not be checked | Time |
+| --- | --- | --- | --- | --- |
+| `main` (1ad9483f) | 6 | 0 | 144 | — |
+| this branch | 149 | 1 (the 404) | 0 | 32 s |
+
+On `main` the 404 was among the 144 nobody managed to ask. On the branch the host answered `429`
+33 times, stderr said once that it was being asked one URL at a time, and the run ended clean.
+
+`card check-images d1 --check-images-concurrency 99` exits 2 before reading anything, and
+`commands --json` lists the command with that one option.
+
+### Not verified here
+
+**`card check-images` against a real deck.** No session was available in the sandbox this was
+written in, so the deck read ran only against the fake repositories (`CardCheckImagesTest`); the
+probe underneath it is the one measured above. **Wikimedia itself** — provoking its rate limit on
+purpose to measure this was not worth doing to a third party.
+
+**After review** (same day, same local host). The budget counted every wait in the run, so a long
+list on a host that was answering would still have been cut off. With 650 URLs, one a 404, at
+`--check-images-concurrency 8`:
+
+| ok | wrong | could not be checked | `429`s absorbed | Time |
+| --- | --- | --- | --- | --- |
+| 649 | 1 (the 404) | 0 | 132 | 131 s |
+
+132 one-second waits is past the two minutes the first version allowed in total; the budget now
+resets on any real answer. The concurrency permit is taken per request and no longer held while a
+URL waits on a limited host's lane (`urls queued behind a limited host do not hold up another
+host`, which hangs on the first version). The burst test that failed on the Linux runner is
+replaced by one that limits the host before anything concurrent starts; it ran six times clean.
