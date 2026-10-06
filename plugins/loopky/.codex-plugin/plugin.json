@@ -19,7 +19,8 @@
     "category": "Productivity",
     "capabilities": [],
     "websiteURL": "https://loopky.app",
-    "privacyPolicyURL": "https://github.com/jvsena42/loopky/blob/main/PRIVACY.md",
+    "privacyPolicyURL": "https://loopky.app/privacy/",
+    "termsOfServiceURL": "https://loopky.app/terms/",
     "defaultPrompt": [
       "Make me 20 Spanish flashcards for ordering food, with Listen and Speak",
       "Import my Anki deck deck.apkg into Loopky",
