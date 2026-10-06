@@ -184,6 +184,7 @@ loopky card mv <deckId> <cardId> --to 3        # reorder: position counts from 1
 loopky card mv <deckId> <cardId> --after <id>  # or name the card it should follow
 loopky card list <deckId> > order.txt          # reorder the lines in an editor or a script, then
 loopky card reorder <deckId> --from-file order.txt   # the whole deck, every card id kept
+loopky card check-images <deckId>              # do the deck's picture URLs still answer?
 
 loopky import cards.tsv --title "Biomas e Sub-ecossistemas Brasileiros" --resume
 cat cards.tsv | loopky import - --title "…" --separator tab
@@ -485,15 +486,35 @@ Four properties, and each is a decision rather than an omission:
   `card add` stays one write and no round trips.
 - **A warning, never a refusal.** A host having a bad minute must not be able to fail an import; the
   picture may well be fine. The write goes ahead and the note says so.
-- **One request per distinct URL**, not per card, at **three** at a time, with a `429` retried and
-  `Retry-After` honoured. A picture on forty cards is one question, and against Wikimedia more in
-  flight is *slower* as well as noisier: 100 URLs took 32 s at three and 42 s at six, and 250 came
-  back 250/250 clean in 83 s. `--check-images-concurrency N` (up to 16) is for a host that is not
-  Wikimedia, not a speed dial.
+- **One request per distinct URL**, not per card, at **three** at a time. A picture on forty cards
+  is one question, and against Wikimedia more in flight is *slower* as well as noisier: 100 URLs
+  took 32 s at three and 42 s at six, and 250 came back 250/250 clean in 83 s.
+  `--check-images-concurrency N` (up to 16) is for a host that is not Wikimedia, not a speed dial.
+- **A `429` slows the host down rather than ending the check.** The first one puts every remaining
+  URL on that host in a single file: the check waits `Retry-After` (or a doubling back-off,
+  whichever is longer) and then asks one URL at a time. Other hosts keep their pace. Against a
+  host allowing five requests a second, 150 URLs at `--check-images-concurrency 8` used to end
+  with 144 unverified and now end with none, and 650 end 650 answered after 132 `429`s. A host
+  that gives nothing but `429`s through two minutes of waiting is given up on: what is left on it
+  is reported as unverified without being asked, and `card check-images` below asks again later.
+  Any real answer resets that clock, so a host that is slow but answering is never cut off.
 - **It sends a real user agent.** `403 Please set a user-agent` is Wikimedia's answer to a generic
   client, which is the very failure this exists to catch; a probe that produced it on every
   Wikimedia URL would be worse than no probe. A host that refuses `HEAD` outright is asked again
   with a one-byte ranged `GET`, so a working picture is not condemned by a quirk of the method.
+
+### `card check-images`, for the pictures a deck already has
+
+```shell
+loopky card check-images <deckId>          # asks, reports, writes nothing
+loopky card check-images <deckId> --json   # data.image_checks[].card_ids names the cards to fix
+```
+
+`--check-images` asks only about the rows a write is about to send. This runs the same check over
+what is stored, so a check a host cut short can be finished later, and a picture that was fine
+when the deck was published can be found once it is not. It exits 0 whatever it finds — the answer
+is `data.ok`, `data.wrong` and `data.unverified` — and each finding carries `card_ids`. A dead
+picture is then one `card edit <deckId> <cardId> --front-image <new URL>` away.
 
 ## Tab completion
 

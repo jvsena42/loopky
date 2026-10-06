@@ -52,7 +52,7 @@ class UnknownCommandTest {
     fun `an ambiguous near miss guesses nothing`() {
         val hint = parse("card", "ed").nearMissHint()
 
-        assertEquals("`card` takes one of: list, add, edit, rm, mv, reorder.", hint)
+        assertEquals("`card` takes one of: list, add, edit, rm, mv, reorder, check-images.", hint)
         assertFalse(parse("card", "ed").unknownCommandMessage().contains("Did you mean"))
     }
 
@@ -62,8 +62,8 @@ class UnknownCommandTest {
      */
     @Test
     fun `a synonym gets the group's verbs, never another group's command`() {
-        assertEquals("`card` takes one of: list, add, edit, rm, mv, reorder.", parse("card", "delete").nearMissHint())
-        assertEquals("`card` takes one of: list, add, edit, rm, mv, reorder.", parse("card", "remove").nearMissHint())
+        assertEquals("`card` takes one of: list, add, edit, rm, mv, reorder, check-images.", parse("card", "delete").nearMissHint())
+        assertEquals("`card` takes one of: list, add, edit, rm, mv, reorder, check-images.", parse("card", "remove").nearMissHint())
     }
 
     /** Why the reorder verb is `mv`: as `move` it sat two edits from `remove`, and was offered for it. */
