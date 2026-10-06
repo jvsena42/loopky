@@ -591,7 +591,9 @@ internal val USAGE = """
         - From the imageinfo API, strip the ?utm_… query and use upload.wikimedia.org as the host.
 
       --check-images sends one HEAD per distinct URL and warns (never refuses) about anything that
-      is not a 2xx image. Rate limits and timeouts are reported as unverified, not as wrong.
+      is not a 2xx image. A host that answers 429 is waited on and then asked one URL at a time;
+      what is still unanswered after that, and any timeout, is reported as unverified, not as
+      wrong. `card check-images <deckId>` runs the same check later, over what was stored.
       --check-images-concurrency N (default 3, up to 16). Findings are in --json as image_checks;
       rule-based warnings that need no request are always in image_advice.
 

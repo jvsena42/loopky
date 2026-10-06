@@ -1856,10 +1856,17 @@ check rate-limited itself, called every throttled answer a broken picture, and s
 one real finding off the screen (#257). Three fixes, and the first two are the load-bearing ones.
 "Wrong" and "could not be checked" are now separate answers — a `429`, a timeout or a `5xx` says
 nothing about the picture, so it is `unverified` in `--json` and counted apart in the summary. The
-default concurrency is **3** and a `429` is retried with backoff; measured against
+default concurrency is **3**; measured against
 `upload.wikimedia.org`, more in flight is *slower* as well as noisier (100 URLs: 32 s at three,
 42 s at six; 250 came back 250/250 clean in 83 s), so `--check-images-concurrency` exists for a
-host that is not Wikimedia rather than as a speed dial. And neither bucket prints more than 20
+host that is not Wikimedia rather than as a speed dial. A `429` that arrives anyway is the
+**host's** to pace, not the URL's (#454): retrying each URL on its own clock sends the whole burst
+back together, so 650 URLs at eight in flight ended half unverified. The first `429` moves every
+remaining URL on that host into one lane — wait `Retry-After` or a doubling back-off, whichever is
+longer, then one request at a time — while other hosts keep their pace, and the waiting is
+budgeted at two minutes a host because this runs in front of a write. `card check-images <deckId>`
+runs the same probe over the pictures a deck already has and writes nothing, which is what makes
+an unverified answer something to finish rather than to redo by hand. And neither bucket prints more than 20
 lines on stderr, with the static advice held back and printed **after** the network block, because
 what a string is knowably wrong about survives a noisy run only if it is last — capped there too,
 since each entry is several lines and a deck of 1210 bad widths would bury the block just capped to

@@ -9,13 +9,17 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * `--check-images`: ask each distinct picture URL whether it is a picture, once.
@@ -111,15 +115,15 @@ internal fun Args.requireImageCheckOptions() {
  * image content type produces no row and no note.
  *
  * Concurrency is capped rather than unbounded, and low: 475 Wikimedia URLs at eight in flight
- * produced 432 rate-limited answers and no information (#257). The same list read three at a
- * time, retrying a `429`, comes back clean.
+ * produced 432 rate-limited answers and no information (#257). A host that answers `429` anyway
+ * is slowed down by [PacedProbe] rather than reported.
  */
 internal suspend fun checkImageUrls(
     urls: Collection<String>,
     onNote: (String) -> Unit,
     concurrency: Int = PROBE_CONCURRENCY,
     writes: Boolean = true,
-    probe: suspend (String) -> ImageCheck = ::probeImage,
+    probe: suspend (String) -> ImageCheck = PacedProbe(onNote = onNote)::probe,
 ): List<ImageCheck> {
     val distinct = urls.filter { it.isNotBlank() }.distinct()
     if (distinct.isEmpty()) return emptyList()
@@ -180,36 +184,118 @@ private fun ImageCheck.describe(): String = buildString {
 }
 
 /**
- * One URL's answer, retried through a host that is rate-limiting.
+ * One URL's answer, asked at whatever pace its host will take.
  *
  * `HEAD` first, because the point is to spend nothing: a 4 MB picture answers this in a few
  * hundred bytes. A host that refuses the method — 403 or 405 to a `HEAD` it serves happily to a
  * `GET` is a real and common configuration — is asked again with a one-byte ranged `GET`, so a
  * working picture is not reported as broken by a quirk of the method.
  *
- * A `429` is retried rather than believed, honouring `Retry-After` when the host sends one. It is
- * the answer this check provokes in itself, and reporting it as a finding turns a working deck
- * into hundreds of false ones.
- *
  * The user agent is not decoration. Wikimedia answers `403 Please set a user-agent` to a generic
  * one, which is the very failure mode this exists to catch, and a probe that produced it on every
  * Wikimedia URL would be worse than no probe.
  */
-private suspend fun probeImage(url: String): ImageCheck = withContext(Dispatchers.IO) {
-    var answer = attempt(url)
-    var backoff = RATE_LIMIT_BACKOFF_MS
-    repeat(RATE_LIMIT_ATTEMPTS - 1) {
-        if (answer.status != TOO_MANY_REQUESTS) return@withContext answer.classified(url)
-        delay(answer.retryAfterMs ?: backoff)
-        backoff *= 2
-        answer = attempt(url)
-    }
-    answer.classified(url)
-}
-
 private fun attempt(url: String): ProbeAnswer {
     val head = request(url, "HEAD")
     return if (head.status in METHOD_REFUSED) request(url, "GET", ranged = true) else head
+}
+
+/**
+ * The probe for one run, slowing down per host when a host says to.
+ *
+ * A `429` is the answer this check provokes in itself, and retrying each URL on its own clock does
+ * not cure it: 650 URLs on one host at eight in flight all backed off together, all came back
+ * together, and half of them ended the run unverified (#454). The pace therefore belongs to the
+ * **host** — see [HostPace].
+ *
+ * [attempt] and [pause] are parameters so the pacing is testable without a host or a clock.
+ */
+internal class PacedProbe(
+    private val attempt: (String) -> ProbeAnswer = ::attempt,
+    private val pause: suspend (Long) -> Unit = ::delay,
+    private val onNote: (String) -> Unit = {},
+) {
+    private val hosts = ConcurrentHashMap<String, HostPace>()
+
+    suspend fun probe(url: String): ImageCheck {
+        val host = runCatching { URI(url).host }.getOrNull() ?: url
+        val pace = hosts.computeIfAbsent(host) { HostPace(it) }
+        val answer = pace.ask(url) ?: return ImageCheck(
+            url,
+            TOO_MANY_REQUESTS,
+            unverified = true,
+            reason = "$host was still rate-limiting after ${RATE_LIMIT_BUDGET_MS / MILLIS_PER_SECOND}s of " +
+                "waiting, so the check stopped asking it — $CHECK_LATER",
+        )
+        return answer.classified(url)
+    }
+
+    /**
+     * How one host is being asked. Fast and concurrent until its first `429`; after that one
+     * request at a time, behind whatever wait the host named.
+     *
+     * Three rules. A `429` moves the whole host into the slow lane, not just the URL that drew it,
+     * because the limit is the host's. The wait is `Retry-After` or a doubling back-off, whichever
+     * is longer — a host that names one second and keeps refusing is not being believed twice.
+     * And the waiting is **budgeted per host** ([RATE_LIMIT_BUDGET_MS]): this is a pre-flight
+     * check in front of a write, so a host that never relents costs two minutes and then every URL
+     * left on it is reported unverified without being asked.
+     */
+    private inner class HostPace(private val host: String) {
+        private val lane = Mutex()
+
+        @Volatile private var limited = false
+        private var strikes = 0
+        private var waitMs = 0L
+        private var waitedMs = 0L
+
+        /** The host's answer for [url], or null when the budget ran out before it could be asked. */
+        suspend fun ask(url: String): ProbeAnswer? {
+            if (!limited) {
+                val first = send(url)
+                if (first.status != TOO_MANY_REQUESTS) return first
+                lane.withLock { slowDown(first) }
+            }
+            var last = ProbeAnswer(TOO_MANY_REQUESTS, null)
+            repeat(RATE_LIMIT_ATTEMPTS) {
+                val answer = lane.withLock {
+                    if (waitedMs >= RATE_LIMIT_BUDGET_MS) return null
+                    if (waitMs > 0) {
+                        pause(waitMs)
+                        waitedMs += waitMs
+                        waitMs = 0
+                    }
+                    send(url).also { if (it.status == TOO_MANY_REQUESTS) strike(it) else strikes = 0 }
+                }
+                if (answer.status != TOO_MANY_REQUESTS) return answer
+                last = answer
+            }
+            return last
+        }
+
+        private suspend fun send(url: String): ProbeAnswer = withContext(Dispatchers.IO) { attempt(url) }
+
+        /**
+         * The first `429`s, which arrive as a burst — everything in flight when the limit hit.
+         * They count as one strike between them, or eight parallel refusals would open the slow
+         * lane already four doublings into its back-off.
+         */
+        private fun slowDown(answer: ProbeAnswer) {
+            if (!limited) {
+                limited = true
+                strikes = 1
+                onNote("loopky: $host is rate-limiting this check — asking it one URL at a time from here.")
+            }
+            waitMs = maxOf(waitMs, answer.retryAfterMs ?: 0L, RATE_LIMIT_BACKOFF_MS)
+        }
+
+        private fun strike(answer: ProbeAnswer) {
+            strikes++
+            val backoff = (RATE_LIMIT_BACKOFF_MS shl (strikes - 1).coerceAtMost(MAX_BACKOFF_DOUBLINGS))
+                .coerceAtMost(MAX_RATE_LIMIT_WAIT_MS)
+            waitMs = maxOf(answer.retryAfterMs ?: 0L, backoff)
+        }
+    }
 }
 
 /**
@@ -236,7 +322,7 @@ internal fun ProbeAnswer.classified(url: String): ImageCheck {
             status,
             type,
             unverified = true,
-            reason = "the host is rate-limiting this check — try again, or --$CHECK_IMAGES_CONCURRENCY_FLAG 1",
+            reason = "the host kept rate-limiting this check after $RATE_LIMIT_ATTEMPTS slowed-down tries — $CHECK_LATER",
         )
 
         status in SERVER_ERROR -> ImageCheck(
@@ -299,7 +385,7 @@ private fun request(url: String, method: String, ranged: Boolean = false): Probe
 private fun HttpURLConnection.retryAfterMs(): Long? =
     getHeaderField("Retry-After")?.trim()?.toLongOrNull()
         ?.takeIf { it > 0 }
-        ?.let { (it * MILLIS_PER_SECOND).coerceAtMost(MAX_RETRY_AFTER_MS) }
+        ?.let { (it * MILLIS_PER_SECOND).coerceAtMost(MAX_RATE_LIMIT_WAIT_MS) }
 
 /**
  * What Wikimedia asks for, and what every other host is entitled to see. `403 Please set a
@@ -338,9 +424,16 @@ internal const val MAX_PROBE_CONCURRENCY = 16
 /** Rows of one bucket printed on stderr before the rest are left to `--json`. */
 private const val MAX_REPORTED = 20
 
-private const val RATE_LIMIT_ATTEMPTS = 3
-private const val RATE_LIMIT_BACKOFF_MS = 500L
-private const val MAX_RETRY_AFTER_MS = 5_000L
+/** Tries one URL gets in the slow lane before it is reported unverified and the next one is asked. */
+private const val RATE_LIMIT_ATTEMPTS = 4
+private const val RATE_LIMIT_BACKOFF_MS = 1_000L
+private const val MAX_BACKOFF_DOUBLINGS = 5
+private const val MAX_RATE_LIMIT_WAIT_MS = 30_000L
+
+/** All the waiting one host is worth in one run. See [PacedProbe]. */
+internal const val RATE_LIMIT_BUDGET_MS = 120_000L
+
+private const val CHECK_LATER = "finish the check later with `loopky card check-images <deckId>`"
 private const val MILLIS_PER_SECOND = 1_000L
 
 private const val PROBE_CONNECT_TIMEOUT_MS = 5_000

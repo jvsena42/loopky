@@ -479,11 +479,17 @@ Four properties, and each is a decision rather than an omission:
   `card add` stays one write and no round trips.
 - **A warning, never a refusal.** A host having a bad minute must not be able to fail an import; the
   picture may well be fine. The write goes ahead and the note says so.
-- **One request per distinct URL**, not per card, at **three** at a time, with a `429` retried and
-  `Retry-After` honoured. A picture on forty cards is one question, and against Wikimedia more in
-  flight is *slower* as well as noisier: 100 URLs took 32 s at three and 42 s at six, and 250 came
-  back 250/250 clean in 83 s. `--check-images-concurrency N` (up to 16) is for a host that is not
-  Wikimedia, not a speed dial.
+- **One request per distinct URL**, not per card, at **three** at a time. A picture on forty cards
+  is one question, and against Wikimedia more in flight is *slower* as well as noisier: 100 URLs
+  took 32 s at three and 42 s at six, and 250 came back 250/250 clean in 83 s.
+  `--check-images-concurrency N` (up to 16) is for a host that is not Wikimedia, not a speed dial.
+- **A `429` slows the host down rather than ending the check.** The first one puts every remaining
+  URL on that host in a single file: the check waits `Retry-After` (or a doubling back-off,
+  whichever is longer) and then asks one URL at a time. Other hosts keep their pace. Against a
+  host allowing five requests a second, 150 URLs at `--check-images-concurrency 8` used to end
+  with 144 unverified and now end with none. The waiting is capped at two minutes per host; what
+  is left after that is reported as unverified without being asked, and
+  `card check-images` below is how to finish it.
 - **It sends a real user agent.** `403 Please set a user-agent` is Wikimedia's answer to a generic
   client, which is the very failure this exists to catch; a probe that produced it on every
   Wikimedia URL would be worse than no probe. A host that refuses `HEAD` outright is asked again
