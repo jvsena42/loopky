@@ -234,8 +234,8 @@ for an 11-minute segment.
 
 | Source | Good for | How |
 | --- | --- | --- |
-| OpenSubtitles | Most shows, most languages | `rest.opensubtitles.org/search/episode-<n>/query-<show>/season-<n>/sublanguageid-<spa\|por\|fre\|ger\|jpn…>` with the header `User-Agent: TemporaryUserAgent`, no key; path segments stay in that alphabetical order, and dropping `episode-<n>` lists the season. Each result's `SubDownloadLink` (on `dl.opensubtitles.org`) is a gzipped `.srt`, often Latin-1 rather than UTF-8. Downloads stop at about 200 files a day and answer 404 past that; searches keep working, so the episode and segment list is still there. |
-| The show's fan wiki | Shows whose wiki is in the dub's language | Transcript pages (often `<Segment title>/transcript`) over the wiki's MediaWiki API: `<wiki>/api.php?action=query&format=json&prop=revisions&rvprop=content&rvslots=main&titles=<A>\|<B>`, several titles per request, no quota. What the voices say, not a translation. The host differs per show, so `loopky doctor` cannot list it; a wiki that answers with a bot check is not usable. |
+| OpenSubtitles | Most shows, most languages | `rest.opensubtitles.org/search/episode-<n>/query-<show>/season-<n>/sublanguageid-<spa\|por\|fre\|ger\|jpn…>` with the header `User-Agent: TemporaryUserAgent`, no key; path segments stay in that alphabetical order, and dropping `episode-<n>` lists the season. Each result's `SubDownloadLink` (on `dl.opensubtitles.org`) is a gzipped `.srt`, often Latin-1 rather than UTF-8. Downloads stop at about 200 files a day per address: past that every `SubDownloadLink` answers 404 with an HTML page, which is the quota and not a missing file, so do not retry it that day. Searches keep working, so the episode and segment list is still there. |
+| The show's fan wiki | Shows whose wiki is in the dub's language | Transcript pages (often `<Segment title>/transcript`) over the wiki's MediaWiki API: `<wiki>/api.php?action=query&format=json&prop=revisions&rvprop=content&rvslots=main&redirects=1&titles=<A>\|<B>`, several titles per request, no quota. Lines are wikitext, `{{L\|Speaker\|text}}` or `'''Speaker:''' text`, with stage directions in `''[…]''`: keep the text, drop directions, links and templates. A title the wiki spells differently turns up with `list=search&srsearch=intitle:transcript <title>`. What the voices say, not a translation. The host differs per show, so `loopky doctor` cannot list it; a wiki that answers with a bot check is not usable. |
 | Addic7ed | TV episodes, mostly English | `www.addic7ed.com/search.php?search=<show>` lists `serie/<Show>/<season>/<episode>/<Title>` pages; each subtitle's `/original/…` or `/updated/…` link downloads with that page as the `Referer`. |
 | Jimaku — `jimaku.cc` | Anime in Japanese | Each `jimaku.cc/entry/<id>` page links its files under `/entry/<id>/download/…`, no key. |
 | Kitsunekko — `kitsunekko.net` | Anime in Japanese | `kitsunekko.net/dirlist.php?dir=subtitles%2Fjapanese%2F` lists shows; files are `.ass` or `.srt`, sometimes zipped. |
@@ -243,6 +243,14 @@ for an 11-minute segment.
 Coverage is uneven — OpenSubtitles had Spanish for three of SpongeBob's first-season segments —
 so search each episode, and say which ones had nothing. For a whole show, one source for every
 season beats a patchwork.
+
+**Count the episodes before promising decks.** Searching costs nothing against a download cap, so
+list every season first. When the show has more files than one day's downloads, say so in the
+plan rather than after the 404s: fetch season by season, build the decks for what arrived, and
+tell the user which seasons wait for tomorrow, for their own `.srt` files, or for another source
+in the table: the cap is the one good reason to mix sources. A 404 after roughly 200 downloads,
+or on several files in a row, is the cap, so do not send more to make sure. A single 404 early
+in the day is a subtitle that was removed: take that episode's next result.
 
 Prefer a subtitle marked as the dub's own transcript (often "SDH" or "for the hearing impaired")
 over a translation of the original: a translated subtitle does not say what the voices say. Check
