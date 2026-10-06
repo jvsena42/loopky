@@ -433,7 +433,8 @@ internal val USAGE = """
                                 is returned untouched (created: false). Without --if-not-exists an
                                 existing id is refused. A language pair also tags the deck
                                 ("spanish" plus "language"). --dry-run validates everything and
-                                publishes nothing.
+                                publishes nothing. --description holds at most 500 characters,
+                                here and on `deck edit` and `import`; a longer one is refused.
       deck edit <deckId> [--title T] [--description D] [--cover-url URL] [--cover-emoji E]
                   [--tag T]... [--clear-tags] [--clear-cover]
                   [--listen|--no-listen] [--speak|--no-speak] [--type|--no-type]

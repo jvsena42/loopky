@@ -1,8 +1,10 @@
 package com.github.jvsena42.loopky.cli.commands
 
 import com.github.jvsena42.loopky.cli.Args
+import com.github.jvsena42.loopky.cli.CliError
 import com.github.jvsena42.loopky.cli.CommandResult
 import com.github.jvsena42.loopky.cli.DeckView
+import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.asCliError
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.cli.toLine
@@ -10,6 +12,7 @@ import com.github.jvsena42.loopky.cli.toView
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.domain.model.Card
+import com.github.jvsena42.loopky.domain.model.DeckLimits
 import com.github.jvsena42.loopky.domain.model.LanguageTags
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.Tag
@@ -138,6 +141,23 @@ suspend fun deckCompact(args: Args, decks: DeckRepository): CommandResult {
  */
 internal fun remoteImage(url: String): MediaRef.Image = requireNotNull(remoteImageRef(url)) {
     "not a renderable image URL: $url"
+}
+
+/**
+ * `--description` as it will be stored, or null when absent or blank. Past
+ * [DeckLimits.DESCRIPTION_MAX_LENGTH] it is refused rather than cut: the apps' editors hold the same
+ * cap, and a truncated value would drop the end of a picture credit with exit 0.
+ */
+internal fun Args.deckDescription(): String? {
+    val description = option("description")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    if (description.length > DeckLimits.DESCRIPTION_MAX_LENGTH) {
+        throw CliError(
+            ExitCode.BadInput,
+            "--description is ${description.length} characters; a deck description holds at most " +
+                "${DeckLimits.DESCRIPTION_MAX_LENGTH}.",
+        )
+    }
+    return description
 }
 
 /**

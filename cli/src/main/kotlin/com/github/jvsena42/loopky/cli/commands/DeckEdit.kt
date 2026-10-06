@@ -99,7 +99,7 @@ private fun Deck.applying(args: Args): Deck {
 
     return copy(
         title = args.text("title", title) ?: throw CliError(ExitCode.Usage, "--title cannot be empty."),
-        description = args.text("description", description),
+        description = if (args.has("description")) args.deckDescription() else description,
         coverEmoji = if (clearCover) null else args.text("cover-emoji", coverEmoji),
         coverImageRef = args.editedCover(clearCover, coverImageRef),
         tags = args.editedTags(this, frontLang, backLang),
