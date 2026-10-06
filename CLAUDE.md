@@ -19,9 +19,9 @@ A fresh session has none of this in context, so establish it before the first ed
   installed; invoke the relevant one rather than reconstructing commands from memory.
 - **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 27 numbered
   `journeys/*.xml` scripts (onboarding, import, study, discovery, signup/restore …) driven by hand
-  on a device, with dated outcomes in `journeys/RESULTS.md`. Read `RESULTS.md` first for the current
-  known-good/known-broken state — it records blockers a green build says nothing about — then
-  re-run the journeys your change touches and update it with the result and the date.
+  on a device. Read `journeys/README.md` first — the driving traps, and what has never been run on
+  a device, neither of which a green build says anything about — then re-run the journeys your
+  change touches and put the result in the PR description.
 
 ## Build & run
 
@@ -61,7 +61,7 @@ xcodebuildmcp <workflow> --help                      # discover everything else;
 ```
 
 Xcode still works for hands-on debugging (open `iosApp/`), but prefer the CLI so a session can see the
-result. The `shared` module is consumed as a static framework (`baseName = "Shared"`, `isStatic = true`) — see `shared/build.gradle.kts`. **iOS runs against a real homeserver, and the core loop is verified** — see the iOS section of `journeys/RESULTS.md`. `iOSApp.swift` starts Koin via `doInitKoin(rawPubkyClient:)`, handing in the Swift `IosPubkyClient` — a dumb `[status, payload]` pass-through, since `kotlin.Result` and suspend functions cannot be implemented from Swift — which `IosPubkyClientAdapter` wraps into the shared `PubkyClient` contract on the Kotlin side. Sign in, paste import, publish, card editing, the study loop (including Type the answer and Listen), profiles, follows and settings all work.
+result. The `shared` module is consumed as a static framework (`baseName = "Shared"`, `isStatic = true`) — see `shared/build.gradle.kts`. **iOS runs against a real homeserver, and the core loop is verified** — `journeys/README.md` lists what has not been driven there. `iOSApp.swift` starts Koin via `doInitKoin(rawPubkyClient:)`, handing in the Swift `IosPubkyClient` — a dumb `[status, payload]` pass-through, since `kotlin.Result` and suspend functions cannot be implemented from Swift — which `IosPubkyClientAdapter` wraps into the shared `PubkyClient` contract on the Kotlin side. Sign in, paste import, publish, card editing, the study loop (including Type the answer and Listen), profiles, follows and settings all work.
 
 **Incremental klib compilation is on** (`kotlin.incremental.native=true`, #273), because the iOS
 edit-build-drive loop is where Kotlin/Native spends its time. It is **Beta and off by default
@@ -442,7 +442,7 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   `weight(1f)`, so padding the screen resized it every time the keyboard came or went — a 174 px jump
   landing exactly when a checked answer brought the grades in. The card's height clears the keyboard
   on its own and its lower edge simply passes behind it; the rows under the card stay reserved in
-  every state for the same reason. Read the flip section of `journeys/RESULTS.md` before touching any
+  every state for the same reason. Read the flip measurements in Architecture.md §5.1 before touching any
   of it — seven other explanations were measured and all seven were wrong.
 - **The study loop's haptics are decided in the ViewModel, never fired on tap by a screen.**
   `StudySessionEffect.Haptic(StudyHaptic)` rides the ordinary effect flow, and the platforms only
@@ -735,9 +735,11 @@ legitimately be different shapes.
   compiling Swift file proves nothing about the screen, and iOS has no equivalent of the tablet AVD
   pass — check a compact and a regular size class (an iPhone and an iPad simulator) when the change
   touches layout.
-- **Re-run the affected `journeys/*.xml` before opening the PR, and record the outcome.** Add the
-  run's date and result to `journeys/RESULTS.md` in the same PR; a journey whose steps your change
-  invalidated gets its XML updated too, not left describing a screen that no longer exists.
+- **Re-run the affected `journeys/*.xml` before opening the PR, and say what happened in the PR
+  description** — which journeys, which devices, and what you could not reach. There is no results
+  log to append to: `journeys/README.md` is edited in place, and only when a gap it lists closes, a
+  new one opens or a driving trap is found. A journey whose steps your change invalidated gets its
+  XML updated too, not left describing a screen that no longer exists.
 - Write focused, descriptive commit messages that explain the change and its rationale.
 - **Use commit history as context when investigating why a change was made.** Before changing or
   reverting code, check `git log`/`git blame` (e.g. `git log -p <file>`, `git blame -L`) — the commit
@@ -747,5 +749,5 @@ legitimately be different shapes.
 
 - `docs/Architecture.md` — always. §4 (shared layering), §7 (Pubky, Nexus tag indexing, Homegate signup), §8 (homeserver layout, chunking, quota, SRS), §12 (what is still open).
 - `docs/specs.md` §5–§10 — for any import/triage/commit work; §6 and §9 are the parser test matrix.
-- `journeys/RESULTS.md` — before any UI or flow work, for what currently passes on a device and what
-  is a known blocker; the matching `journeys/*.xml` is the script to re-run afterwards.
+- `journeys/README.md` — before any UI or flow work, for how to drive each platform and what has
+  not been run on a device; the matching `journeys/*.xml` is the script to re-run afterwards.

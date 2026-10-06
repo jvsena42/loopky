@@ -26,7 +26,7 @@ import kotlin.test.assertTrue
  * so the *native image* never reaches `CryptProtectData`. That `Function.getFunction("crypt32", …)`
  * resolves inside a closed-world image is therefore inferred from `RustLog.kt` doing the same thing
  * with `SetEnvironmentVariableW`, not observed. Observing it needs a session write in the image,
- * which today means a real sign-in — the `journeys/RESULTS.md` item on #301.
+ * which today means a real sign-in (#301).
  *
  * That split is deliberate rather than a limitation accepted quietly: a fake that round-trips
  * proves the *store* is right, and a fake can never say anything about whether the blob is actually

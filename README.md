@@ -165,8 +165,8 @@ key up three ways. Then the daily study queue, the SRS study loop with Listen / 
 reverse cards, the deck library and editor, paste import and bulk file import
 (`.txt` / `.csv` / `.apkg`), publishing, discovery and tag browse, profiles and follows, and
 settings including the synced study intervals. Driven against a real homeserver on the iPhone 17
-simulator; see the iOS sections of [`journeys/RESULTS.md`](./journeys/RESULTS.md), which also
-record what could not be reached there and why.
+simulator; [`journeys/README.md`](./journeys/README.md) records what could not be
+reached there and why.
 
 iPad and every width but a phone is [#173](https://github.com/jvsena42/loopky/issues/173).
 
@@ -221,7 +221,7 @@ loopky/
 ├── cli/                       # `loopky`, the headless client — a GraalVM binary on :shared's
 │                              # jvm() target, so an agent can drive Loopky without a screen
 │
-└── journeys/                  # scripted end-to-end journeys + results
+└── journeys/                  # scripted end-to-end journeys
 ```
 
 ### Stack
@@ -268,9 +268,9 @@ Open [`/iosApp`](./iosApp) in Xcode and run. `shared` is consumed as a static fr
 
 CI runs detekt, the unit tests, and an Android debug build on every PR.
 
-End-to-end coverage is manual and scripted: [`journeys/`](./journeys) holds 25 numbered journeys
-driven on a device with `android-cli`, with results and dates in
-[`journeys/RESULTS.md`](./journeys/RESULTS.md). A green build says nothing about what the screen
+End-to-end coverage is manual and scripted: [`journeys/`](./journeys) holds 27 numbered journeys
+driven on a device with `android-cli` and `xcodebuildmcp`; each run's result goes in its PR, and
+[`journeys/README.md`](./journeys/README.md) lists what has not been driven. A green build says nothing about what the screen
 renders.
 
 ---

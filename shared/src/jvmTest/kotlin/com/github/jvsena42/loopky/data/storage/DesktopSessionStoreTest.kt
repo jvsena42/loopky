@@ -282,7 +282,7 @@ class DesktopSessionStoreTest {
      * missing item — which is the half a fake cannot say anything about.
      *
      * It does **not** prove the native image can spawn a subprocess at all; that is checked by
-     * running the built binary (`journeys/RESULTS.md`, the macOS row).
+     * running the built binary on a Mac.
      */
     @Test
     fun `a real keychain round trip, on a Mac`() {

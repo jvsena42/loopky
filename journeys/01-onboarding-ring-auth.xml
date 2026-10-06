@@ -26,7 +26,7 @@
     NOTHING in between: no layout dump, no screenshot, no verification step. Driven at a normal
     scripted pace (4s+ per step, or a layout read between taps) the same flow fails with "the
     authorisation relay isn't responding" on an otherwise healthy network. That is very likely what the "manual sign-ins
-    succeed where scripted ones don't" note in RESULTS.md was really observing — a human taps
+    succeed where scripted ones don't" observation was really seeing — a human taps
     through in a couple of seconds. Verify AFTER the chain, and on failure retry the whole
     chain from the onboarding screen rather than waiting inside it: the FFI auth flow is
     single-use, so there is nothing to resume.
