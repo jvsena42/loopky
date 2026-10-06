@@ -4503,3 +4503,28 @@ warm-cache reader in `DeckRepositoryReorderTest` reads as the owner. **The owner
 straight after a CLI reorder without re-opening the deck** — the app patches the manifest from its
 own cached copy, which is true of every CLI write and not new here. The emulator ran the installed
 1.3.1, not this branch; it had no room for a new APK, and a reader's side of this is unchanged.
+
+## `--check-images` paces a rate-limiting host; `card check-images` (#454) — ✅ PASS against a local host, not run on staging (2026-10-06, Linux x86_64)
+
+A local HTTPS host (self-signed, trusted through `SSL_CERT_FILE`) allowing five requests in any
+one second and answering `429` with `Retry-After: 1` past that; 150 distinct URLs, one of them a
+404. `loopky import deck.tsv --title T --dry-run --check-images --check-images-concurrency 8`,
+the `installDist` build:
+
+| Build | ok | wrong | could not be checked | Time |
+| --- | --- | --- | --- | --- |
+| `main` (1ad9483f) | 6 | 0 | 144 | — |
+| this branch | 149 | 1 (the 404) | 0 | 32 s |
+
+On `main` the 404 was among the 144 nobody managed to ask. On the branch the host answered `429`
+33 times, stderr said once that it was being asked one URL at a time, and the run ended clean.
+
+`card check-images d1 --check-images-concurrency 99` exits 2 before reading anything, and
+`commands --json` lists the command with that one option.
+
+### Not verified here
+
+**`card check-images` against a real deck.** No session was available in the sandbox this was
+written in, so the deck read ran only against the fake repositories (`CardCheckImagesTest`); the
+probe underneath it is the one measured above. **Wikimedia itself** — provoking its rate limit on
+purpose to measure this was not worth doing to a third party.
