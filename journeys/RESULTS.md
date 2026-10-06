@@ -4503,3 +4503,26 @@ warm-cache reader in `DeckRepositoryReorderTest` reads as the owner. **The owner
 straight after a CLI reorder without re-opening the deck** — the app patches the manifest from its
 own cached copy, which is true of every CLI write and not new here. The emulator ran the installed
 1.3.1, not this branch; it had no room for a new APK, and a reader's side of this is unchanged.
+
+## `loopky card edit` clears a card's image (#453) — ⚠️ tests only, not run on staging (2026-10-06, Linux x86_64)
+
+The three attempts from the issue, as `CardEditBatchTest` cases over the fake repositories, plus
+the two new switches:
+
+| Step | Result |
+| --- | --- |
+| `{"id":"c1","back_image_url":null}` | ✅ written; the back keeps its text and loses the picture (was exit 9) |
+| The same row with the card's unchanged `front` and `back` | ✅ `written: 1` (was `skipped: 1`) |
+| `card edit d1 c1 --back-image ""` and `--back-image=` | ✅ picture removed (was exit 9) |
+| `card edit d1 c1 --clear-back-image` | ✅ picture removed |
+| `--clear-back-image --back-image https://…` | ✅ usage, exit 2 |
+| `--clear-back-image` beside `--from-file` | ✅ usage, exit 2, naming the JSONL `null` |
+| Clearing the only thing on a side | ✅ `bad_input` 9, nothing written |
+| `{"id":"c1"}` | ✅ still `bad_input` 9 |
+
+### Not verified here
+
+**A real homeserver.** No session was available in the sandbox this was written in, so the write
+itself — `upsertCard` with a side whose `imageRef` is null — ran only against `FakeDeckRepository`.
+It is the write `--back=` beside a picture has always made, but the read-back through
+`card list --json` on staging is worth one run before release.
