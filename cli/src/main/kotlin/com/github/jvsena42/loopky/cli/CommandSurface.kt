@@ -288,7 +288,10 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         summary = "change a card - a field you omit is left alone",
         // The card id is optional: `--from-file` names one per row instead.
         operand = Operand.Opaque(required = listOf("deckId"), optional = listOf("cardId")),
-        options = CARD_FIELDS,
+        options = CARD_FIELDS + listOf(
+            CliOption("clear-front-image", "remove the picture on the front", OptionValue.Switch),
+            CliOption("clear-back-image", "remove the picture on the back", OptionValue.Switch),
+        ),
         writes = true,
     ),
     CliCommand("card rm", "remove one card", Operand.Opaque("deckId", "cardId"), writes = true),

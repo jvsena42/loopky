@@ -55,6 +55,7 @@ suspend fun cardAdd(
     // Collected as the file is read and emptied out after `--check-images`, so the advice reaches
     // both stderr and `--json` — see `ImageAdviceLog`.
     val log = ImageAdviceLog()
+    args.refuseCardFlagsBesideFile()
     val rows = (
         args.option("from-file")?.let { readCardFile(it, log, onNote) } ?: listOf(
             CardFileRow(
@@ -110,8 +111,9 @@ suspend fun cardAdd(
 
 /**
  * Change cards that already exist, one or a fileful. A field that is not given is left alone rather
- * than cleared; clearing a side needs an explicit empty value (`--back=`), because a batch file that
- * omitted a column would otherwise silently wipe it on every row it touched.
+ * than cleared; clearing one needs an explicit empty value (`--back=`, `--clear-back-image`, a JSONL
+ * `null`), because a batch file that omitted a column would otherwise silently wipe it on every row
+ * it touched.
  *
  * **Idempotent, which is what a `--resume` would have been.** A row whose fields already hold what
  * it asks for is skipped rather than rewritten, so re-running the same file after a failure applies
@@ -133,13 +135,14 @@ suspend fun cardEdit(
     // than surfacing as whatever the homeserver says about the deck (#240, #370).
     val deckId = args.requireWord(2, "deckId")
     val log = ImageAdviceLog()
+    args.refuseCardFlagsBesideFile()
     val rows = args.option("from-file")?.let { readCardFile(it, log, onNote) } ?: listOf(
         CardFileRow(
             id = args.requireWord(3, "cardId"),
             front = args.option("front"),
             back = args.option("back"),
-            frontImageUrl = args.option("front-image")?.let { log.checked(it, "--front-image") },
-            backImageUrl = args.option("back-image")?.let { log.checked(it, "--back-image") },
+            frontImageUrl = args.editedImage("front", log),
+            backImageUrl = args.editedImage("back", log),
         ),
     )
     rows.forEach { row ->
@@ -157,6 +160,7 @@ suspend fun cardEdit(
     val now = System.currentTimeMillis()
     val planned = mutableListOf<PlannedWrite>()
     var skipped = 0
+    var cleared = 0
     for ((index, row) in rows.withIndex()) {
         val id = requireNotNull(row.id)
         val current = existing[id]
@@ -167,13 +171,59 @@ suspend fun cardEdit(
             skipped++
             continue
         }
+        cleared += current.fieldsLostIn(updated)
         planned += PlannedWrite(row = index + 1, card = updated)
     }
+    // An explicit null clears, and a serializer that writes every unset optional as null says
+    // "clear" without meaning it. Said before the write so the count is seen even if it is not.
+    if (cleared > 0) onNote("loopky: this edit removes $cleared text side(s) or picture(s) that the cards have now.")
 
     val checks = planned.checkedImages(args, onNote)
     log.advice.reportStaticImageAdvice(onNote)
     return applyBatch(deckId, deck, decks, cards, planned, skipped, BatchVerb.Edit, checks, log.advice)
 }
+
+/**
+ * One side's picture as a single-card edit asked for it: null leaves it alone, blank removes it.
+ *
+ * `--clear-<side>-image` and an empty `--<side>-image=` are the same request. Both exist because
+ * the empty value is what `--back=` already means for text, and the switch is what a caller
+ * reaches for after `deck edit --clear-cover` (#453).
+ */
+private fun Args.editedImage(side: String, log: ImageAdviceLog): String? {
+    val flag = "$side-image"
+    val url = option(flag)
+    if (has("clear-$flag")) {
+        if (!url.isNullOrBlank()) {
+            throw CliError(ExitCode.Usage, "--clear-$flag and --$flag say opposite things; pass one of them.")
+        }
+        return ""
+    }
+    return url?.let { if (it.isBlank()) "" else log.checked(it, "--$flag") }
+}
+
+/**
+ * Refuse a single-card flag beside `--from-file`: the file wins, so the flag was accepted and then
+ * ignored — a card the caller believes they set and did not.
+ */
+private fun Args.refuseCardFlagsBesideFile() {
+    if (!has("from-file")) return
+    val flag = SINGLE_CARD_FLAGS.firstOrNull(::has) ?: return
+    val inFile = if (flag.startsWith("clear-")) {
+        " In a card file, clear a picture with an explicit null: " +
+            "{\"id\":\"…\",\"${flag.removePrefix("clear-").replace('-', '_')}_url\":null}"
+    } else {
+        ""
+    }
+    throw CliError(
+        ExitCode.Usage,
+        "--$flag is for the one card named on the command line, and --from-file takes its cards " +
+            "from the file; pass one or the other.$inFile",
+    )
+}
+
+private val SINGLE_CARD_FLAGS =
+    listOf("front", "back", "front-image", "back-image", "clear-front-image", "clear-back-image")
 
 /**
  * `--check-images` over the pictures this batch is about to write, or nothing.
@@ -317,6 +367,13 @@ private fun Card.requireBothSides(id: String): Card = also {
  */
 private fun Card.sameContentAs(other: Card): Boolean =
     front == other.front && back == other.back
+
+private fun Card.fieldsLostIn(updated: Card): Int = listOf(
+    front.text to updated.front.text,
+    back.text to updated.back.text,
+    front.imageRef to updated.front.imageRef,
+    back.imageRef to updated.back.imageRef,
+).count { (before, after) -> before != null && after == null }
 
 private fun Card.applying(row: CardFileRow, now: Long): Card = copy(
     updatedAt = now,
