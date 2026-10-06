@@ -311,6 +311,12 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         ) + DRY_RUN_OPTION,
         writes = true,
     ),
+    CliCommand(
+        path = "card check-images",
+        summary = "ask each picture URL a deck already has whether it is still an image - writes nothing",
+        operand = Operand.Opaque("deckId"),
+        options = IMAGE_CHECK_OPTIONS.filter { it.name == "check-images-concurrency" },
+    ),
 
     CliCommand(
         path = "import",

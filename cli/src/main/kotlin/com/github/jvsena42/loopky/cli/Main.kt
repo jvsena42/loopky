@@ -1,10 +1,12 @@
 package com.github.jvsena42.loopky.cli
 
 import com.github.jvsena42.loopky.cli.commands.BatchSinks
+import com.github.jvsena42.loopky.cli.commands.CARD_CHECK_IMAGES
 import com.github.jvsena42.loopky.cli.commands.DRY_RUN_FLAG
 import com.github.jvsena42.loopky.cli.commands.LoginSinks
 import com.github.jvsena42.loopky.cli.commands.batch
 import com.github.jvsena42.loopky.cli.commands.cardAdd
+import com.github.jvsena42.loopky.cli.commands.cardCheckImages
 import com.github.jvsena42.loopky.cli.commands.cardEdit
 import com.github.jvsena42.loopky.cli.commands.cardList
 import com.github.jvsena42.loopky.cli.commands.cardMove
@@ -227,6 +229,9 @@ private suspend fun dispatch(
         "card edit" -> authed(sessions, identity, environment) { cardEdit(args, koin.decks(), koin.cards(), note) }
         "card rm" -> authed(sessions, identity, environment) { cardRemove(args, koin.decks()) }
         "card mv" -> authed(sessions, identity, environment) { cardMove(args, koin.decks(), koin.cards()) }
+        CARD_CHECK_IMAGES -> authed(sessions, identity, environment) {
+            cardCheckImages(args, koin.decks(), koin.cards(), note)
+        }
         "card reorder" -> authed(sessions, identity, environment) { cardReorder(args, koin.decks(), koin.cards()) }
 
         // `--dry-run` deliberately sits outside `authed`: it reads a local file and writes
@@ -460,6 +465,11 @@ internal val USAGE = """
                                 card exactly once. `card list` output works as it is - only the
                                 first column is read. Review history is kept. Re-run the same file
                                 to finish an interrupted run.
+
+      card check-images <deckId> [--check-images-concurrency N]
+                                Ask every picture URL the deck already has whether it still
+                                answers with an image. Writes nothing; --json names the cards
+                                behind each finding.
 
                                 card add and card edit also take --check-images; see CARD IMAGES.
 

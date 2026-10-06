@@ -183,6 +183,7 @@ loopky card mv <deckId> <cardId> --to 3        # reorder: position counts from 1
 loopky card mv <deckId> <cardId> --after <id>  # or name the card it should follow
 loopky card list <deckId> > order.txt          # reorder the lines in an editor or a script, then
 loopky card reorder <deckId> --from-file order.txt   # the whole deck, every card id kept
+loopky card check-images <deckId>              # do the deck's picture URLs still answer?
 
 loopky import cards.tsv --title "Biomas e Sub-ecossistemas Brasileiros" --resume
 cat cards.tsv | loopky import - --title "…" --separator tab
@@ -487,6 +488,19 @@ Four properties, and each is a decision rather than an omission:
   client, which is the very failure this exists to catch; a probe that produced it on every
   Wikimedia URL would be worse than no probe. A host that refuses `HEAD` outright is asked again
   with a one-byte ranged `GET`, so a working picture is not condemned by a quirk of the method.
+
+### `card check-images`, for the pictures a deck already has
+
+```shell
+loopky card check-images <deckId>          # asks, reports, writes nothing
+loopky card check-images <deckId> --json   # data.image_checks[].card_ids names the cards to fix
+```
+
+`--check-images` asks only about the rows a write is about to send. This runs the same check over
+what is stored, so a check a host cut short can be finished later, and a picture that was fine
+when the deck was published can be found once it is not. It exits 0 whatever it finds — the answer
+is `data.ok`, `data.wrong` and `data.unverified` — and each finding carries `card_ids`. A dead
+picture is then one `card edit <deckId> <cardId> --front-image <new URL>` away.
 
 ## Tab completion
 

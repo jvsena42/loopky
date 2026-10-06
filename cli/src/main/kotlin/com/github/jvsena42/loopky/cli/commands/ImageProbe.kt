@@ -96,7 +96,7 @@ internal fun Args.imageCheckConcurrency(): Int {
  */
 internal fun Args.requireImageCheckOptions() {
     if (!has(CHECK_IMAGES_CONCURRENCY_FLAG)) return
-    if (!checksImages()) {
+    if (!checksImages() && verb != CARD_CHECK_IMAGES) {
         throw CliError(
             ExitCode.Usage,
             "--$CHECK_IMAGES_CONCURRENCY_FLAG means nothing without --$CHECK_IMAGES_FLAG: there " +
@@ -118,6 +118,7 @@ internal suspend fun checkImageUrls(
     urls: Collection<String>,
     onNote: (String) -> Unit,
     concurrency: Int = PROBE_CONCURRENCY,
+    writes: Boolean = true,
     probe: suspend (String) -> ImageCheck = ::probeImage,
 ): List<ImageCheck> {
     val distinct = urls.filter { it.isNotBlank() }.distinct()
@@ -132,6 +133,8 @@ internal suspend fun checkImageUrls(
         distinct.map { url -> async { gate.withPermit { probe(url) } } }.awaitAll()
     }
     val problems = answers.filterNot { it.ok }
+    // `card check-images` prints its own rows, with the cards each URL is on.
+    if (!writes) return problems
     val (unverified, wrong) = problems.partition { it.unverified }
 
     // Unverified first, wrong second: a terminal keeps its last lines, and "this URL is broken" is
