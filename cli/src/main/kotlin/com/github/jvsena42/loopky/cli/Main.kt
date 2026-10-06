@@ -452,6 +452,7 @@ internal val USAGE = """
       card add <deckId> --from-file cards.tsv|cards.jsonl [--dry-run]
                                 Written 100 cards per request.
       card edit <deckId> <cardId> [--front F] [--back B] [--front-image URL] [--back-image URL]
+                                  [--clear-front-image] [--clear-back-image]
       card edit <deckId> --from-file edits.jsonl
                                 Idempotent: re-run the same file to resume. Reports written /
                                 skipped / failed per card.

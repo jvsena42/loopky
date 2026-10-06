@@ -132,6 +132,8 @@ class Args private constructor(
             // because "remove every tag" is a different gesture from "set the tags to this" and
             // `--tag ""` would have to be read as both.
             "clear-tags", "clear-cover",
+            // `card edit`'s two, for one card. A card file says the same with an explicit null.
+            "clear-front-image", "clear-back-image",
             // `deck create --if-not-exists`, which only means anything beside `--id`. A switch
             // rather than a mode, because "make sure this deck exists" is one gesture.
             "if-not-exists",

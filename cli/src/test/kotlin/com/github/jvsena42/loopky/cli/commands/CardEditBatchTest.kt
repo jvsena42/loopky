@@ -252,4 +252,144 @@ class CardEditBatchTest {
             "the message has to say how to pick the batch back up",
         )
     }
+
+    private val pictured = card("c1", "uno", "one").copy(
+        back = CardSide(text = "one", imageRef = remoteImage("https://x.test/dead.jpg")),
+    )
+
+    private fun clearing(vararg argv: String): Card {
+        val decks = FakeDeckRepository(testDeck(cardCount = 1))
+        val args = Args.parse(arrayOf("card", "edit", "d1", *argv))
+        runBlocking { cardEdit(args, decks, FakeCardRepository(listOf(pictured))) {} }
+        return decks.upserted.single()
+    }
+
+    /** #453: decoded as it stands, an explicit null is the same Kotlin `null` an absent key is. */
+    @Test
+    fun `a flat null image clears the picture and leaves the text alone`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck(cardCount = 1))
+
+        cardEdit(editFile("""{"id":"c1","back_image_url":null}"""), decks, FakeCardRepository(listOf(pictured))) {}
+
+        assertEquals(CardSide(text = "one"), decks.upserted.single().back)
+        assertEquals(pictured.front, decks.upserted.single().front)
+    }
+
+    /** The row the idempotency check used to call already applied, because only its text matched. */
+    @Test
+    fun `a null image beside unchanged text is a write, not a skip`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck(cardCount = 1))
+
+        val json = cardEdit(
+            editFile("""{"id":"c1","front":"uno","back":"one","back_image_url":null}"""),
+            decks,
+            FakeCardRepository(listOf(pictured)),
+        ) {}.data.jsonObject
+
+        assertEquals("1", json.getValue("written").jsonPrimitive.content)
+        assertEquals(null, decks.upserted.single().back.imageRef)
+    }
+
+    @Test
+    fun `a row naming only an id is still refused`() {
+        val error = assertFailsWith<CliError> {
+            runBlocking {
+                cardEdit(editFile("""{"id":"c1"}"""), FakeDeckRepository(testDeck()), FakeCardRepository(listOf(pictured))) {}
+            }
+        }
+
+        assertEquals(ExitCode.BadInput, error.exitCode)
+    }
+
+    @Test
+    fun `one card's picture is cleared by the switch or by an empty value`() {
+        assertEquals(null, clearing("c1", "--clear-back-image").back.imageRef)
+        assertEquals(null, clearing("c1", "--back-image", "").back.imageRef)
+        assertEquals(null, clearing("c1", "--back-image=").back.imageRef)
+    }
+
+    @Test
+    fun `clearing a picture and setting it are refused together`() {
+        val error = assertFailsWith<CliError> {
+            clearing("c1", "--clear-back-image", "--back-image", "https://x.test/new.jpg")
+        }
+
+        assertEquals(ExitCode.Usage, error.exitCode)
+    }
+
+    /** A switch on a file edit would otherwise be accepted and ignored. */
+    @Test
+    fun `the switch is refused beside a card file`() {
+        val file = File.createTempFile("loopky-edits", ".jsonl").apply { writeText(edit("c1", "x") + "\n") }
+
+        val error = assertFailsWith<CliError> { clearing("--from-file", file.absolutePath, "--clear-back-image") }
+
+        assertEquals(ExitCode.Usage, error.exitCode)
+    }
+
+    @Test
+    fun `clearing the only thing on a side is bad input, not a write`() {
+        val imageOnly = pictured.copy(back = CardSide(imageRef = pictured.back.imageRef))
+        val decks = FakeDeckRepository(testDeck(cardCount = 1))
+
+        val args = Args.parse(arrayOf("card", "edit", "d1", "c1", "--clear-back-image"))
+
+        val error = assertFailsWith<CliError> {
+            runBlocking { cardEdit(args, decks, FakeCardRepository(listOf(imageOnly))) {} }
+        }
+
+        assertEquals(ExitCode.BadInput, error.exitCode)
+        assertTrue(decks.upserted.isEmpty())
+    }
+
+    /**
+     * The documented meaning, and a change for a file whose serializer writes every unset optional
+     * as null — so it is counted on stderr rather than done quietly.
+     */
+    @Test
+    fun `a flat null clears text too, and the edit says how much it removes`() = runBlocking {
+        val both = pictured.copy(front = CardSide(text = "uno", imageRef = remoteImage("https://x.test/f.jpg")))
+        val decks = FakeDeckRepository(testDeck(cardCount = 1))
+        val notes = mutableListOf<String>()
+
+        cardEdit(
+            editFile("""{"id":"c1","front":null,"back":"one","front_image_url":"https://x.test/f.jpg","back_image_url":null}"""),
+            decks,
+            FakeCardRepository(listOf(both)),
+            notes::add,
+        )
+
+        assertEquals(CardSide(imageRef = both.front.imageRef), decks.upserted.single().front)
+        assertTrue(notes.any { "removes 2 " in it }, "notes were: $notes")
+    }
+
+    @Test
+    fun `a bad row is named by its line in the file, blank lines counted`() {
+        val args = editFile(edit("c1", "x"), "", "", """{"id":"c2"}""")
+
+        val error = assertFailsWith<CliError> {
+            runBlocking { cardEdit(args, FakeDeckRepository(testDeck()), FakeCardRepository(deckCards)) {} }
+        }
+
+        assertTrue("Line 4" in error.message.orEmpty(), error.message)
+    }
+
+    @Test
+    fun `a single-card flag beside a card file is refused, not ignored`() {
+        val file = File.createTempFile("loopky-edits", ".jsonl").apply { writeText(edit("c1", "x") + "\n") }
+        val decks = FakeDeckRepository(testDeck(cardCount = 3))
+
+        listOf("card edit d1", "card add d1").forEach { command ->
+            val argv = command.split(" ") + listOf("--from-file", file.absolutePath, "--front", "y")
+            val error = assertFailsWith<CliError> {
+                runBlocking {
+                    val args = Args.parse(argv.toTypedArray())
+                    val cards = FakeCardRepository(deckCards)
+                    if ("edit" in command) cardEdit(args, decks, cards) {} else cardAdd(args, decks, cards, {})
+                }
+            }
+            assertEquals(ExitCode.Usage, error.exitCode)
+        }
+        assertTrue(decks.upserted.isEmpty())
+    }
 }
