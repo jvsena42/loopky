@@ -52,6 +52,13 @@ data class CardFileRow(
             frontImageUrl.isNullOrBlank() && backImageUrl.isNullOrBlank()
 
     /**
+     * A row that names no field at all. Not [isEmpty]: `"back_image_url": null` is blank on every
+     * side and is still an edit — it clears that picture (#453).
+     */
+    val saysNothing: Boolean
+        get() = front == null && back == null && frontImageUrl == null && backImageUrl == null
+
+    /**
      * A row that could become a card: something on **both** sides, text or a picture. False is not
      * the same as [isEmpty] — an edit row may carry one side and mean "leave the other alone", so
      * this is asked only where a row becomes a *new* card.
@@ -126,7 +133,9 @@ private fun parseJsonl(text: String, log: ImageAdviceLog, onNote: (String) -> Un
             }
         }
         .onEachIndexed { index, row ->
-            if (row.isEmpty) throw CliError(ExitCode.BadInput, "A row has neither text nor an image.")
+            if (row.saysNothing) {
+                throw CliError(ExitCode.BadInput, "Line ${index + 1} names neither text nor an image.")
+            }
             // Checked here and not only in the TSV columns: a JSONL row names its image fields
             // outright, so there is no "is this a picture or prose" question to answer — but an
             // unrenderable URL still has to be refused before `toCard` turns it into a ref, or it
@@ -165,8 +174,13 @@ private fun parseJsonl(text: String, log: ImageAdviceLog, onNote: (String) -> Un
  */
 private fun JsonObject.flattened(onBlobImage: () -> Unit): JsonObject {
     val fields = mutableMapOf<String, JsonElement>()
-    // The flat keys first, so a nested side overrides them rather than racing them.
-    FLAT_KEYS.forEach { key -> this[key]?.takeIf { it !is JsonObject }?.let { fields[key] = it } }
+    // The flat keys first, so a nested side overrides them rather than racing them. An explicit
+    // null becomes the empty value here: decoded as it is, it lands on the same Kotlin `null` an
+    // absent key does and the row reads as "leave it alone" (#453).
+    FLAT_KEYS.forEach { key ->
+        val value = this[key]?.takeIf { it !is JsonObject } ?: return@forEach
+        fields[key] = if (value is JsonNull && key != ID_KEY) JsonPrimitive("") else value
+    }
     SIDES.forEach { (side, imageKey) ->
         val nested = this[side] as? JsonObject ?: return@forEach
         nested.textOverride()?.let { fields[side] = it }
@@ -200,7 +214,8 @@ private fun JsonObject.imageOverride(onBlobImage: () -> Unit): JsonElement? {
 }
 
 /** The flat card-file keys, copied through untouched. */
-private val FLAT_KEYS = listOf("id", "front", "back", "front_image_url", "back_image_url")
+private const val ID_KEY = "id"
+private val FLAT_KEYS = listOf(ID_KEY, "front", "back", "front_image_url", "back_image_url")
 
 /** Each side and the flat key its picture lands under. */
 private val SIDES = listOf("front" to "front_image_url", "back" to "back_image_url")

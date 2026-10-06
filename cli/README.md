@@ -365,7 +365,9 @@ column is content somebody wants imported. Blank lines and `# ` comments are ski
 The format is chosen by extension, then by content, never by a flag. JSONL is for the two things
 TSV cannot hold: a side containing a tab or a newline, and — for `card edit` — naming which card to
 change and which fields to leave alone. A field that is absent in an edit row is left unchanged;
-clearing a side takes an explicit empty value.
+clearing one takes an explicit `null` or empty value — `{"id":"…","back_image_url":null}` removes
+that card's back picture and touches nothing else. For a single card the same thing is
+`loopky card edit <deckId> <cardId> --clear-back-image` (or `--clear-front-image`).
 
 The image columns matter more than they look. Both bulk paths in the apps carry a picture only when
 a field is *nothing but* that image, so "this side has text **and** a picture" had no
