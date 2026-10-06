@@ -341,4 +341,55 @@ class CardEditBatchTest {
         assertEquals(ExitCode.BadInput, error.exitCode)
         assertTrue(decks.upserted.isEmpty())
     }
+
+    /**
+     * The documented meaning, and a change for a file whose serializer writes every unset optional
+     * as null — so it is counted on stderr rather than done quietly.
+     */
+    @Test
+    fun `a flat null clears text too, and the edit says how much it removes`() = runBlocking {
+        val both = pictured.copy(front = CardSide(text = "uno", imageRef = remoteImage("https://x.test/f.jpg")))
+        val decks = FakeDeckRepository(testDeck(cardCount = 1))
+        val notes = mutableListOf<String>()
+
+        cardEdit(
+            editFile("""{"id":"c1","front":null,"back":"one","front_image_url":"https://x.test/f.jpg","back_image_url":null}"""),
+            decks,
+            FakeCardRepository(listOf(both)),
+            notes::add,
+        )
+
+        assertEquals(CardSide(imageRef = both.front.imageRef), decks.upserted.single().front)
+        assertTrue(notes.any { "removes 2 " in it }, "notes were: $notes")
+    }
+
+    @Test
+    fun `a bad row is named by its line in the file, blank lines counted`() {
+        val args = editFile(edit("c1", "x"), "", "", """{"id":"c2"}""")
+
+        val error = assertFailsWith<CliError> {
+            runBlocking { cardEdit(args, FakeDeckRepository(testDeck()), FakeCardRepository(deckCards)) {} }
+        }
+
+        assertTrue("Line 4" in error.message.orEmpty(), error.message)
+    }
+
+    @Test
+    fun `a single-card flag beside a card file is refused, not ignored`() {
+        val file = File.createTempFile("loopky-edits", ".jsonl").apply { writeText(edit("c1", "x") + "\n") }
+        val decks = FakeDeckRepository(testDeck(cardCount = 3))
+
+        listOf("card edit d1", "card add d1").forEach { command ->
+            val argv = command.split(" ") + listOf("--from-file", file.absolutePath, "--front", "y")
+            val error = assertFailsWith<CliError> {
+                runBlocking {
+                    val args = Args.parse(argv.toTypedArray())
+                    val cards = FakeCardRepository(deckCards)
+                    if ("edit" in command) cardEdit(args, decks, cards) {} else cardAdd(args, decks, cards, {})
+                }
+            }
+            assertEquals(ExitCode.Usage, error.exitCode)
+        }
+        assertTrue(decks.upserted.isEmpty())
+    }
 }

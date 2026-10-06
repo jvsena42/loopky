@@ -367,7 +367,11 @@ TSV cannot hold: a side containing a tab or a newline, and — for `card edit` �
 change and which fields to leave alone. A field that is absent in an edit row is left unchanged;
 clearing one takes an explicit `null` or empty value — `{"id":"…","back_image_url":null}` removes
 that card's back picture and touches nothing else. For a single card the same thing is
-`loopky card edit <deckId> <cardId> --clear-back-image` (or `--clear-front-image`).
+`loopky card edit <deckId> <cardId> --clear-back-image` (or `--clear-front-image`). `null` clears
+text the same way, so a file written by a serializer that emits every unset field as `null` asks
+for more than it looks like: an edit that removes anything says how much on stderr before it
+writes. A single-card flag (`--front`, `--back-image`, …) beside `--from-file` is a usage error
+rather than ignored.
 
 The image columns matter more than they look. Both bulk paths in the apps carry a picture only when
 a field is *nothing but* that image, so "this side has text **and** a picture" had no

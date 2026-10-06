@@ -4526,3 +4526,8 @@ the two new switches:
 itself — `upsertCard` with a side whose `imageRef` is null — ran only against `FakeDeckRepository`.
 It is the write `--back=` beside a picture has always made, but the read-back through
 `card list --json` on staging is worth one run before release.
+
+**After review** (same day, tests only): a flat `null` on a text field clears it too, and an edit
+that removes anything now says how many sides and pictures on stderr before it writes; a bad JSONL
+row is named by its line in the file, blank lines counted; and any single-card flag beside
+`--from-file` is exit 2 on `card edit` and `card add`, where it used to be accepted and ignored.

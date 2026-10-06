@@ -124,28 +124,24 @@ private fun parseJsonl(text: String, log: ImageAdviceLog, onNote: (String) -> Un
         .withIndex()
         .filter { (_, line) -> line.isNotBlank() }
         .map { (index, line) ->
+            // The file's own line number, blank lines counted: every message below names it.
             val where = "Line ${index + 1}"
             val json = runCatching { cardFileJson.parseToJsonElement(line) as? JsonObject }.getOrNull()
                 ?: throw CliError(ExitCode.BadInput, "$where is not a card object.")
             val flat = json.flattened { blobImages++ }
-            runCatching { cardFileJson.decodeFromJsonElement(CardFileRow.serializer(), flat) }.getOrElse {
+            val row = runCatching { cardFileJson.decodeFromJsonElement(CardFileRow.serializer(), flat) }.getOrElse {
                 throw CliError(ExitCode.BadInput, "$where is not a card object: ${it.message}")
             }
-        }
-        .onEachIndexed { index, row ->
-            if (row.saysNothing) {
-                throw CliError(ExitCode.BadInput, "Line ${index + 1} names neither text nor an image.")
-            }
+            if (row.saysNothing) throw CliError(ExitCode.BadInput, "$where names neither text nor an image.")
             // Checked here and not only in the TSV columns: a JSONL row names its image fields
             // outright, so there is no "is this a picture or prose" question to answer — but an
             // unrenderable URL still has to be refused before `toCard` turns it into a ref, or it
             // surfaces as exit 1 "internal" plus a Kotlin assertion for a typo in someone's file.
             // Blank is the documented way to clear a picture, here as at `--back-image=`, so it
             // skips the check rather than being refused as an address that could never render.
-            row.frontImageUrl?.takeIf { it.isNotBlank() }
-                ?.let { log.checked(it, "Line ${index + 1}, front_image_url") }
-            row.backImageUrl?.takeIf { it.isNotBlank() }
-                ?.let { log.checked(it, "Line ${index + 1}, back_image_url") }
+            row.frontImageUrl?.takeIf { it.isNotBlank() }?.let { log.checked(it, "$where, front_image_url") }
+            row.backImageUrl?.takeIf { it.isNotBlank() }?.let { log.checked(it, "$where, back_image_url") }
+            row
         }
         .toList()
     if (blobImages > 0) {
