@@ -243,7 +243,9 @@ season beats a patchwork.
 list every season first. When the show has more files than one day's downloads, say so in the
 plan rather than after the 404s: fetch season by season, build the decks for what arrived, and
 tell the user which seasons wait for tomorrow, for their own `.srt` files, or for another source
-in the table. Once the downloads answer 404, that is the cap: do not send another to make sure.
+in the table: the cap is the one good reason to mix sources. A 404 after roughly 200 downloads,
+or on several files in a row, is the cap, so do not send more to make sure. A single 404 early
+in the day is a subtitle that was removed: take that episode's next result.
 
 Prefer a subtitle marked as the dub's own transcript (often "SDH" or "for the hearing impaired")
 over a translation of the original: a translated subtitle does not say what the voices say. Check
