@@ -1117,7 +1117,7 @@ jobs:
     # SwiftUI app is linted, not compiled. Compiling it needs `linkDebugFrameworkIosSimulatorArm64`
     # plus an `xcodebuild`, which is most of an iOS build's wall clock at a 10× multiplier. The
     # Kotlin half is where a shared change lands, and that is what is checked here; the Swift half
-    # is checked by driving the app (`journeys/RESULTS.md`).
+    # is checked by driving the app (`journeys/README.md`).
     name: iOS compiles, and its Swift lints
     needs: changes
     if: needs.changes.outputs.ios == 'true'

@@ -9,7 +9,7 @@
 
 Loopky is a **Kotlin Multiplatform** flashcards app targeting iOS and Android. Business logic — domain models, repositories, and ViewModels — lives in a single `shared` module (`commonMain`). Repositories own the business logic; there is no separate use-case layer. Each platform renders its own native UI: **Jetpack Compose** on Android (`androidApp/src/main`) and **SwiftUI** on iOS (`iosApp/`). Identity, social graph, tags, and published decks are backed by **Pubky**, accessed through the UniFFI bindings that `pubky-core-ffi-fork` generates (§7).
 
-**Both apps are feature-built end to end.** Every surface described here runs on Android and on iOS. iOS runs against a real homeserver and is in public beta on TestFlight. `journeys/RESULTS.md` records what has been driven on each.
+**Both apps are feature-built end to end.** Every surface described here runs on Android and on iOS. iOS runs against a real homeserver and is in public beta on TestFlight. `journeys/README.md` lists what has not been driven on a device.
 
 Deck import — the flow the rest of the product hangs off — is specified in [`docs/specs.md`](./specs.md).
 
@@ -182,6 +182,17 @@ Both platforms consume the same VMs. Only rendering, navigation, and platform gl
 - **DI:** Koin Android, started in `LoopkyApp.onCreate` (the `Application`, not the activity — WorkManager can start the process without one). Screens resolve their VM via `koinViewModel()`, which scopes it to the nav backstack entry.
 - **Platform glue:** `AVSpeechSynthesizer`'s Android counterpart is `android.speech.tts.TextToSpeech`; haptics via `HapticFeedbackConstants`; image picker via Activity Result APIs.
 
+**The study card's flip, measured (2026-09-04, `emulator-5554`, Type the answer on).** The turn was dropping every other frame, and the cause was the keyboard: the answer field took focus as the back face composed, at the 90° crossing, and showing the IME makes SurfaceFlinger allocate its window surface, which the card's frames then blocked behind (`eglSwapBuffers` ~425 ms, found with `atrace --async_start view gfx`). Focus now follows the flip.
+
+| | Before | After |
+| --- | --- | --- |
+| Frames per 750 ms flip | 21 | 44 |
+| Janky frames | 13.6% | 7.1% |
+| p90 frame | 32 ms | 16 ms |
+| Card y across front / answering / graded | 405 → 579 → 405 | 405 in all three |
+
+Seven other causes were built and benched first, and p99 stayed at 400–450 ms through each: a height animation on the rows under the card, composing the back face at the crossing, `TextAutoSize`, the rounded clip outside the 3D layer, `rotationY` itself, the reveal haptic, and the card's ripple. Two more things from the same run. `imePadding()` pads by the keyboard's whole height, so moving it from the screen onto the input block sheared Give up off the bottom — laid out, drawn nowhere, answering no tap; the screen carries no `imePadding()` at all, and the card's own height clears the keyboard. And the input is drawn from the card's own `CardSnapshot`, because `AnimatedContent` keeps the outgoing card composed through its fade and re-runs the content lambda: read from live state, the outgoing card drew the next card's input and raised the keyboard over a front (8 of 8 advances, read from `dumpsys input_method`).
+
 ### 5.2 iOS (`iosApp/`)
 
 - **UI:** SwiftUI, styled by Loopky design tokens mirrored in Swift.
@@ -266,7 +277,7 @@ Bulk file import (`BulkImportViewModel`) rejoins this flow at the publish step, 
 - `iosApp/iosApp/Pubky/IosPubkyClient.swift` conforms to **`RawPubkyClient`**, not `PubkyClient` — a dumb pass-through returning the FFI's native `[status, payload]` arrays, because `kotlin.Result` and suspend functions cannot be implemented from Swift. `IosPubkyClientAdapter` (`shared/iosMain/.../data/pubky/`) wraps it into the shared `PubkyClient` contract on the Kotlin side and does the threading. Binary payloads cross the boundary Base64-encoded and are decoded in the Swift layer so blobs land raw on the homeserver.
 - The Xcode target already embeds `PubkyCore.xcframework` and compiles `pubkycore.swift` + `IosPubkyClient.swift`; `iOSApp.swift` hands the client to Koin via `doInitKoin(rawPubkyClient:)`.
 
-The iOS app runs against a real homeserver; see the iOS section of `journeys/RESULTS.md` for what has been driven.
+The iOS app runs against a real homeserver; `journeys/README.md` lists what has not been driven there.
 
 ### 7.4 Regenerating bindings
 
@@ -980,7 +991,7 @@ The trade-off is deliberate: editing one card now rewrites a ~63 KB chunk instea
 
 `moveCard` is what makes reordering affordable at that size. Order lives on `Card.ord`, and `chunk n` owns exactly `[n · CHUNK_SIZE · ORD_STRIDE, (n+1) · CHUNK_SIZE · ORD_STRIDE)` — a private slice of the ord line — so the landing chunk is renumbered inside its own range and no other chunk moves. A move is one chunk write plus the manifest, or two when it crosses a boundary; the **landing** chunk is written first, so a failure between the two leaves the card in both records rather than in neither. Destination positions come from `CardChunking.positionAt`, arithmetic over the manifest's chunk counts, so locating position 12,345 costs no reads.
 
-`loopky card mv` is the same call from the CLI, with `--to <position>` or `--after <cardId>` resolved to an index over the deck without the moved card. Resolving a position needs every card before it, so a standalone `card mv` reads the whole deck for its one write; in `batch` only the first move does. A move does not touch anyone's review state: that is keyed by `card_id` (§8.0), and the SRS chunk a state lives in is recorded when it is first written and never re-derived from the card's position. Driven on staging with a follower mid-session — see `journeys/RESULTS.md`.
+`loopky card mv` is the same call from the CLI, with `--to <position>` or `--after <cardId>` resolved to an index over the deck without the moved card. Resolving a position needs every card before it, so a standalone `card mv` reads the whole deck for its one write; in `batch` only the first move does. A move does not touch anyone's review state: that is keyed by `card_id` (§8.0), and the SRS chunk a state lives in is recorded when it is first written and never re-derived from the card's position. Driven on staging with a follower mid-session (2026-10-04).
 
 **A landing chunk only grows.** `moveCard` adds the card to the landing record and never splits it, and compaction merges neighbours but does not split either, so every move across a boundary leaves that record one card bigger for good. A person moving rows by hand never notices; an agent batching fifty late cards into episode 2 leaves chunk 0 at 150. It costs weight, not correctness — `renumber` spreads any count across the chunk's slice of the ord line, and every later edit in that chunk rewrites the larger record — which is why the skill keeps `card mv` to a few cards and sends anything larger to `card reorder`, which re-chunks.
 
@@ -997,7 +1008,7 @@ Four things about it are load-bearing. **Both copies of a card in step 2 carry i
 
 Two more rules follow from the marker. **Card writes are refused while it is set** — `upsertCard`, `appendCards`, `deleteCard` and `moveCard` throw `DeckReorderPendingException` (CLI exit 9, naming the command that fixes it), and compaction and the media sweep skip the deck. A moved card is in two records until the reorder finishes, so a delete would remove one copy and leave the card in the deck. `updateMetadata` keeps the marker whatever the caller's copy says; a full `publish` clears it, since it replaces every record. Any complete order finishes a pending reorder, including the deck as `card list` now prints it, so a lost order file is not a dead end. **A resumed run lists the deck's `cards/` directory** rather than trusting the table for what to delete: the run that died may already have written the shorter table, and the record it meant to drop is then on no list.
 
-Measured on staging (2026-10-04): 700 cards in ~10 s, 5,000 cards (50 records) in ~25 s. With three other processes reading the deck throughout, every one of 24 snapshots held the complete deck. Killed at ten points across a 250- and a 5,000-card deck, no read afterwards was missing a card, and the same command again finished each one. What a kill *can* leave until then is a part-old, part-new order for a reader with a cold cache, when it lands in step 2. See `journeys/RESULTS.md`.
+Measured on staging (2026-10-04): 700 cards in ~10 s, 5,000 cards (50 records) in ~25 s. With three other processes reading the deck throughout, every one of 24 snapshots held the complete deck. Killed at ten points across a 250- and a 5,000-card deck, no read afterwards was missing a card, and the same command again finished each one. What a kill *can* leave until then is a part-old, part-new order for a reader with a cold cache, when it lands in step 2.
 
 Drag-to-reorder is therefore offered only while the whole deck fits in one page (`DRAG_REORDER_LIMIT`, 100). Above that the row's position number opens "move to position…", which can target a position the list has never loaded.
 
@@ -1345,11 +1356,11 @@ integration smoke target; earlier drafts of this doc listed all three as though 
 - Scheduler and parser units (`SrsScheduler`, `CardChunking`, `SpeakMatcher`, `LanguageTags`) are
   pure functions and tested directly.
 
-**End-to-end is manual, and scripted.** `journeys/*.xml` holds 25 numbered journeys — onboarding and
+**End-to-end is manual, and scripted.** `journeys/*.xml` holds 27 numbered journeys — onboarding and
 Ring auth, paste import, the study loop, discovery, deck management, offline errors, signup — driven
 on a device or emulator with `android-cli` (`android run`, `adb shell input tap`, `android layout` to
-assert on text). Results and their dates are recorded in `journeys/RESULTS.md`, including the
-failures and what caused them. This is the tier that catches what unit tests cannot: a green
+assert on text). Each run's result goes in its PR description; `journeys/README.md` holds the driving traps and
+what has not been run. This is the tier that catches what unit tests cannot: a green
 `assembleDebug` says nothing about what the screen renders.
 
 Two things the journeys have repeatedly caught and unit tests did not: Ring sign-in flakiness on the
@@ -1413,7 +1424,7 @@ emulator, and SRS flush failures that only appear when the network goes away mid
     gated on `shared/**` and `iosApp/**`. Business logic is shared, so a `commonMain` change breaks
     iOS as easily as Android; before this there was no iOS job at all. It does **not** compile the
     SwiftUI app — that needs a framework link plus `xcodebuild`, and the Swift half is checked by
-    driving the app (`journeys/RESULTS.md`).
+    driving the app (`journeys/README.md`).
 
   Two mechanics worth knowing. The path gating is a `changes` job doing an inline `git diff` rather
   than GitHub's workflow-wide `paths:` filter or a third-party action, because `macos-14` bills at a
