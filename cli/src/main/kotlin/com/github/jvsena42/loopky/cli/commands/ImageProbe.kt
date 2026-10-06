@@ -123,19 +123,16 @@ internal suspend fun checkImageUrls(
     onNote: (String) -> Unit,
     concurrency: Int = PROBE_CONCURRENCY,
     writes: Boolean = true,
-    probe: suspend (String) -> ImageCheck = PacedProbe(onNote = onNote)::probe,
+    probe: suspend (String) -> ImageCheck = PacedProbe(concurrency, onNote = onNote)::probe,
 ): List<ImageCheck> {
     val distinct = urls.filter { it.isNotBlank() }.distinct()
     if (distinct.isEmpty()) return emptyList()
     onNote("loopky: checking ${distinct.size} distinct picture URL(s)…")
 
-    // A permit rather than a barrier per group. `chunked(n)` waits for the slowest URL in each
-    // group before starting the next, so with the retry path one throttled address can hold two
-    // healthy ones for a couple of `Retry-After`s — which matters now the cap is three, not eight.
-    val gate = Semaphore(concurrency.coerceAtLeast(1))
-    val answers = coroutineScope {
-        distinct.map { url -> async { gate.withPermit { probe(url) } } }.awaitAll()
-    }
+    // Every URL is started at once; what bounds the requests in flight is [PacedProbe]'s gate,
+    // taken per request, so a URL queued behind a rate-limited host holds nothing another host
+    // could use.
+    val answers = coroutineScope { distinct.map { url -> async { probe(url) } }.awaitAll() }
     val problems = answers.filterNot { it.ok }
     // `card check-images` prints its own rows, with the cards each URL is on.
     if (!writes) return problems
@@ -211,11 +208,18 @@ private fun attempt(url: String): ProbeAnswer {
  * [attempt] and [pause] are parameters so the pacing is testable without a host or a clock.
  */
 internal class PacedProbe(
+    concurrency: Int = PROBE_CONCURRENCY,
     private val attempt: (String) -> ProbeAnswer = ::attempt,
     private val pause: suspend (Long) -> Unit = ::delay,
     private val onNote: (String) -> Unit = {},
 ) {
     private val hosts = ConcurrentHashMap<String, HostPace>()
+
+    /**
+     * Requests in flight, across every host. Held for one request and never across a wait: a
+     * permit kept while queued on a limited host's lane is one a healthy host cannot use.
+     */
+    private val gate = Semaphore(concurrency.coerceAtLeast(1))
 
     suspend fun probe(url: String): ImageCheck {
         val host = runCatching { URI(url).host }.getOrNull() ?: url
@@ -224,8 +228,8 @@ internal class PacedProbe(
             url,
             TOO_MANY_REQUESTS,
             unverified = true,
-            reason = "$host was still rate-limiting after ${RATE_LIMIT_BUDGET_MS / MILLIS_PER_SECOND}s of " +
-                "waiting, so the check stopped asking it — $CHECK_LATER",
+            reason = "$host answered nothing but rate limits through " +
+                "${RATE_LIMIT_BUDGET_MS / MILLIS_PER_SECOND}s of waiting, so the check stopped asking it",
         )
         return answer.classified(url)
     }
@@ -237,9 +241,11 @@ internal class PacedProbe(
      * Three rules. A `429` moves the whole host into the slow lane, not just the URL that drew it,
      * because the limit is the host's. The wait is `Retry-After` or a doubling back-off, whichever
      * is longer — a host that names one second and keeps refusing is not being believed twice.
-     * And the waiting is **budgeted per host** ([RATE_LIMIT_BUDGET_MS]): this is a pre-flight
-     * check in front of a write, so a host that never relents costs two minutes and then every URL
-     * left on it is reported unverified without being asked.
+     * And **unproductive** waiting is budgeted per host ([RATE_LIMIT_BUDGET_MS]): this is a
+     * pre-flight check in front of a write, so a host that never relents costs two minutes and
+     * then every URL left on it is reported unverified without being asked. Any answer that is not
+     * a `429` resets it — a host that is slow but answering is never cut off, however long the
+     * list.
      */
     private inner class HostPace(private val host: String) {
         private val lane = Mutex()
@@ -251,8 +257,10 @@ internal class PacedProbe(
 
         /** The host's answer for [url], or null when the budget ran out before it could be asked. */
         suspend fun ask(url: String): ProbeAnswer? {
-            if (!limited) {
-                val first = send(url)
+            // Asked under the permit, so a URL that queued for one while the host was still fast
+            // does not join the burst after the host has said stop.
+            val first = gate.withPermit { if (limited) null else send(url) }
+            if (first != null) {
                 if (first.status != TOO_MANY_REQUESTS) return first
                 lane.withLock { slowDown(first) }
             }
@@ -265,12 +273,17 @@ internal class PacedProbe(
                         waitedMs += waitMs
                         waitMs = 0
                     }
-                    send(url).also { if (it.status == TOO_MANY_REQUESTS) strike(it) else strikes = 0 }
+                    gate.withPermit { send(url) }.also { if (it.status == TOO_MANY_REQUESTS) strike(it) else relent() }
                 }
                 if (answer.status != TOO_MANY_REQUESTS) return answer
                 last = answer
             }
             return last
+        }
+
+        private fun relent() {
+            strikes = 0
+            waitedMs = 0
         }
 
         private suspend fun send(url: String): ProbeAnswer = withContext(Dispatchers.IO) { attempt(url) }
@@ -322,7 +335,7 @@ internal fun ProbeAnswer.classified(url: String): ImageCheck {
             status,
             type,
             unverified = true,
-            reason = "the host kept rate-limiting this check after $RATE_LIMIT_ATTEMPTS slowed-down tries — $CHECK_LATER",
+            reason = "the host kept rate-limiting this check after $RATE_LIMIT_ATTEMPTS slowed-down tries",
         )
 
         status in SERVER_ERROR -> ImageCheck(
@@ -430,10 +443,8 @@ private const val RATE_LIMIT_BACKOFF_MS = 1_000L
 private const val MAX_BACKOFF_DOUBLINGS = 5
 private const val MAX_RATE_LIMIT_WAIT_MS = 30_000L
 
-/** All the waiting one host is worth in one run. See [PacedProbe]. */
+/** The waiting one host is worth without a single answer in return. See [PacedProbe]. */
 internal const val RATE_LIMIT_BUDGET_MS = 120_000L
-
-private const val CHECK_LATER = "finish the check later with `loopky card check-images <deckId>`"
 private const val MILLIS_PER_SECOND = 1_000L
 
 private const val PROBE_CONNECT_TIMEOUT_MS = 5_000

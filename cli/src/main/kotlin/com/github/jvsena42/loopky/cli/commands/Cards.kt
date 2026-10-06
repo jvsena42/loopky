@@ -185,7 +185,13 @@ suspend fun cardEdit(
 private suspend fun List<PlannedWrite>.checkedImages(args: Args, onNote: (String) -> Unit): List<ImageCheck> {
     if (!args.checksImages()) return emptyList()
     val urls = flatMap { listOfNotNull(it.card.front.imageRef?.url, it.card.back.imageRef?.url) }
-    return checkImageUrls(urls, onNote, args.imageCheckConcurrency())
+    val checks = checkImageUrls(urls, onNote, args.imageCheckConcurrency())
+    // Here and not in the probe's own message: only a caller with a deck can name the command.
+    val deckId = firstOrNull()?.card?.deckId
+    if (deckId != null && checks.any { it.unverified }) {
+        onNote("loopky: ask again later with `loopky card check-images $deckId` — it writes nothing.")
+    }
+    return checks
 }
 
 suspend fun cardRemove(args: Args, decks: DeckRepository): CommandResult {

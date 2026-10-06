@@ -487,9 +487,10 @@ Four properties, and each is a decision rather than an omission:
   URL on that host in a single file: the check waits `Retry-After` (or a doubling back-off,
   whichever is longer) and then asks one URL at a time. Other hosts keep their pace. Against a
   host allowing five requests a second, 150 URLs at `--check-images-concurrency 8` used to end
-  with 144 unverified and now end with none. The waiting is capped at two minutes per host; what
-  is left after that is reported as unverified without being asked, and
-  `card check-images` below is how to finish it.
+  with 144 unverified and now end with none, and 650 end 650 answered after 132 `429`s. A host
+  that gives nothing but `429`s through two minutes of waiting is given up on: what is left on it
+  is reported as unverified without being asked, and `card check-images` below asks again later.
+  Any real answer resets that clock, so a host that is slow but answering is never cut off.
 - **It sends a real user agent.** `403 Please set a user-agent` is Wikimedia's answer to a generic
   client, which is the very failure this exists to catch; a probe that produced it on every
   Wikimedia URL would be worse than no probe. A host that refuses `HEAD` outright is asked again

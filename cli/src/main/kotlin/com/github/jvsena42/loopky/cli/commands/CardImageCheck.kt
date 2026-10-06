@@ -54,8 +54,6 @@ suspend fun cardCheckImages(
     },
 ): CommandResult {
     val deckId = args.requireWord(2, "deckId")
-    // Before the deck is read, so a bad `--check-images-concurrency` costs no round trip.
-    args.imageCheckConcurrency()
     val deck = decks.sync(deckId).getOrElse { throw asCliError(it) }
     val cardsByUrl = cards.fetchByDeck(deck).getOrElse { throw asCliError(it) }
         .flatMap { card -> listOfNotNull(card.front.imageRef?.url, card.back.imageRef?.url).map { it to card.id } }
@@ -82,6 +80,7 @@ suspend fun cardCheckImages(
         // Unverified first and the summary last: a terminal keeps its last lines.
         problems.sortedByDescending { it.unverified }.forEach { appendLine(it.toLine()) }
         append("$deckId: ${payload.ok} ok, $wrong wrong, $unverified could not be checked. Nothing was written.")
+        if (unverified > 0) append(" Run it again later for the ones that could not be checked.")
     }
     return result(payload, text)
 }

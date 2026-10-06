@@ -4528,3 +4528,17 @@ On `main` the 404 was among the 144 nobody managed to ask. On the branch the hos
 written in, so the deck read ran only against the fake repositories (`CardCheckImagesTest`); the
 probe underneath it is the one measured above. **Wikimedia itself** — provoking its rate limit on
 purpose to measure this was not worth doing to a third party.
+
+**After review** (same day, same local host). The budget counted every wait in the run, so a long
+list on a host that was answering would still have been cut off. With 650 URLs, one a 404, at
+`--check-images-concurrency 8`:
+
+| ok | wrong | could not be checked | `429`s absorbed | Time |
+| --- | --- | --- | --- | --- |
+| 649 | 1 (the 404) | 0 | 132 | 131 s |
+
+132 one-second waits is past the two minutes the first version allowed in total; the budget now
+resets on any real answer. The concurrency permit is taken per request and no longer held while a
+URL waits on a limited host's lane (`urls queued behind a limited host do not hold up another
+host`, which hangs on the first version). The burst test that failed on the Linux runner is
+replaced by one that limits the host before anything concurrent starts; it ran six times clean.

@@ -6,8 +6,11 @@ import com.github.jvsena42.loopky.cli.commands.ProbeAnswer
 import com.github.jvsena42.loopky.cli.commands.RATE_LIMIT_BUDGET_MS
 import com.github.jvsena42.loopky.cli.commands.checkImageUrls
 import com.github.jvsena42.loopky.cli.commands.classified
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -189,39 +192,96 @@ class ImageProbeTest {
 
     /**
      * #454: 650 URLs on one host at eight in flight, and half ended unverified. A host that
-     * refuses the burst and then serves one request at a time is the shape of that run.
+     * refuses the burst and serves whatever comes after a wait is the shape of that run.
      */
     @Test
-    fun `a host that rate-limits the burst is asked again, one at a time, until every url is answered`() =
-        runBlocking {
-            val inFlight = AtomicInteger()
-            var calm = false
-            val refusedWhileCalm = AtomicInteger()
-            val pauses = ConcurrentLinkedQueue<Long>()
-            val notes = ConcurrentLinkedQueue<String>()
-            val probe = PacedProbe(
-                onNote = notes::add,
-                attempt = {
-                    val alone = inFlight.incrementAndGet() == 1
-                    Thread.sleep(2)
-                    inFlight.decrementAndGet()
-                    if (calm && !alone) refusedWhileCalm.incrementAndGet()
-                    if (calm && alone) jpeg else limited
-                },
-                pause = {
-                    pauses += it
-                    calm = true
-                },
-            )
-            val urls = List(60) { "https://x.test/$it.jpg" }
+    fun `a host that rate-limits the burst is waited on until every url is answered`() = runBlocking {
+        val calm = AtomicBoolean()
+        val pauses = ConcurrentLinkedQueue<Long>()
+        val notes = ConcurrentLinkedQueue<String>()
+        val probe = PacedProbe(
+            concurrency = 8,
+            attempt = { if (calm.get()) jpeg else limited },
+            pause = {
+                pauses += it
+                calm.set(true)
+            },
+            onNote = notes::add,
+        )
 
-            val problems = checkImageUrls(urls, notes::add, concurrency = 8, probe = probe::probe)
+        val problems = checkImageUrls(List(60) { "https://x.test/$it.jpg" }, notes::add, probe = probe::probe)
 
-            assertEquals(emptyList(), problems)
-            assertEquals(0, refusedWhileCalm.get(), "after the first 429 the host is asked one URL at a time")
-            assertTrue(pauses.isNotEmpty(), "the 429 was waited on rather than retried at once")
-            assertEquals(1, notes.count { "one URL at a time" in it }, "said once per host, not once per URL")
-        }
+        assertEquals(emptyList(), problems)
+        assertTrue(pauses.isNotEmpty(), "the 429 was waited on rather than retried at once")
+        assertEquals(1, notes.count { "one URL at a time" in it }, "said once per host, not once per URL")
+    }
+
+    /**
+     * The host is limited before anything concurrent starts, so every request below goes through
+     * its lane and any two in flight together are the pacing's fault and nobody else's.
+     */
+    @Test
+    fun `a limited host is asked one url at a time, whatever the concurrency`() = runBlocking {
+        val inFlight = AtomicInteger()
+        val overlaps = AtomicInteger()
+        val refuseNext = AtomicBoolean(true)
+        val probe = PacedProbe(
+            concurrency = 8,
+            attempt = {
+                if (inFlight.incrementAndGet() > 1) overlaps.incrementAndGet()
+                Thread.sleep(1)
+                inFlight.decrementAndGet()
+                if (refuseNext.getAndSet(false)) limited else jpeg
+            },
+            pause = {},
+        )
+        assertTrue(probe.probe("https://x.test/first.jpg").ok)
+
+        val problems = checkImageUrls(List(40) { "https://x.test/$it.jpg" }, {}, probe = probe::probe)
+
+        assertEquals(emptyList(), problems)
+        assertEquals(0, overlaps.get())
+    }
+
+    /** The reviewer's case on #456: a long list on a host that keeps answering between 429s. */
+    @Test
+    fun `a host that is slow but answering is never cut off by the budget`() = runBlocking {
+        val calls = AtomicInteger()
+        var waited = 0L
+        val probe = PacedProbe(
+            attempt = { if (calls.getAndIncrement() % 2 == 0) ProbeAnswer(429, null, retryAfterMs = 30_000) else jpeg },
+            pause = { waited += it },
+        )
+
+        val checks = List(50) { probe.probe("https://x.test/$it.jpg") }
+
+        assertTrue(waited > RATE_LIMIT_BUDGET_MS, "the run waited ${waited}ms in all")
+        assertTrue(checks.all { it.ok })
+    }
+
+    /** A permit held while queued on a limited host's lane is one a healthy host cannot use. */
+    @Test
+    fun `urls queued behind a limited host do not hold up another host`() = runBlocking {
+        val fastHostDone = CompletableDeferred<Unit>()
+        val fastAnswered = AtomicInteger()
+        val probe = PacedProbe(
+            concurrency = 2,
+            attempt = { url ->
+                when {
+                    "fast.test" in url -> jpeg.also { if (fastAnswered.incrementAndGet() == 5) fastHostDone.complete(Unit) }
+                    fastHostDone.isCompleted -> jpeg
+                    else -> limited
+                }
+            },
+            // The slow host's lane stays shut until the other host has had every answer.
+            pause = { fastHostDone.await() },
+        )
+        val urls = List(6) { "https://slow.test/$it.jpg" } + List(5) { "https://fast.test/$it.jpg" }
+
+        val problems = withTimeout(10_000) { checkImageUrls(urls, {}, probe = probe::probe) }
+
+        assertEquals(emptyList(), problems)
+    }
 
     @Test
     fun `the wait is the host's Retry-After when that is longer than the back-off`() = runBlocking {
@@ -257,7 +317,7 @@ class ImageProbeTest {
         assertTrue(checks.all { it.unverified }, "a 429 is never a finding about the picture")
         assertTrue(waited < RATE_LIMIT_BUDGET_MS + 30_000, "waited ${waited}ms")
         assertTrue(asked.get() < 200, "the URLs after the budget ran out are not asked at all")
-        assertContains(checks.last().reason.orEmpty(), "card check-images")
+        assertContains(checks.last().reason.orEmpty(), "stopped asking")
     }
 
     @Test

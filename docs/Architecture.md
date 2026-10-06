@@ -1863,8 +1863,11 @@ host that is not Wikimedia rather than as a speed dial. A `429` that arrives any
 **host's** to pace, not the URL's (#454): retrying each URL on its own clock sends the whole burst
 back together, so 650 URLs at eight in flight ended half unverified. The first `429` moves every
 remaining URL on that host into one lane — wait `Retry-After` or a doubling back-off, whichever is
-longer, then one request at a time — while other hosts keep their pace, and the waiting is
-budgeted at two minutes a host because this runs in front of a write. `card check-images <deckId>`
+longer, then one request at a time. Other hosts keep their pace, which holds only because the
+concurrency permit is taken per request and never across a wait: held for the whole probe, three
+URLs queued on the slow host's lane starve everyone else. Waiting that draws nothing but `429`s
+is budgeted at two minutes a host, because this runs in front of a write, and any real answer
+resets it — a total would cut off a 650-URL list on a host that was answering all along. `card check-images <deckId>`
 runs the same probe over the pictures a deck already has and writes nothing, which is what makes
 an unverified answer something to finish rather than to redo by hand. And neither bucket prints more than 20
 lines on stderr, with the static advice held back and printed **after** the network block, because
