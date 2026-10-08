@@ -315,6 +315,13 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
     just narrower content. Prefer that over centring a phone column when a screen would otherwise
     use a third of the height.
 
+  - A screen that pads itself uses `WindowInsets.screenEdges` (`ui/layout/ScreenInsets.kt`), never
+    `WindowInsets.systemBars` or `statusBars`: those are right only in portrait. Rotated, the
+    cutout sits on one side and three-button navigation on the other, and a window targeting SDK
+    35+ is laid out under both (#339). `MainScreen` consumes the edges its rail or tab bar already
+    cover, so the tab screens use the same value as everything else. Not `safeDrawing` — it
+    includes the keyboard, which the study screen must not be padded for.
+
   Three traps. **Never ask "is this a tablet"** (`userInterfaceIdiom`, screen size, a build
   config): split-screen and rotation change the answer while the app is running, which is exactly
   why the width class is read from the *window*. Where a screen paints its own background, the cap
