@@ -58,6 +58,7 @@ fun RestoreFileRoute(
             when (effect) {
                 RestoreEffect.NavigateHome -> currentOnRestored()
                 is RestoreEffect.NavigateUnregistered -> currentOnUnregistered(effect.pubky)
+                RestoreEffect.ReadFromPasswordManager -> Unit
             }
         }
     }

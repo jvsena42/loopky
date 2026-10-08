@@ -481,6 +481,7 @@ private fun NavGraphBuilder.restoreDestinations(navController: NavHostController
             onBack = { navController.popBackStack() },
             onRestoreWithPhrase = { navController.navigateTo(Routes.RESTORE_PHRASE) },
             onRestoreWithFile = { navController.navigateTo(Routes.RESTORE_FILE) },
+            onRestoreWithPasswordManager = { navController.navigateTo(Routes.RESTORE_MANAGER) },
         )
     }
     unregisteredKeyDestination(navController)
@@ -535,6 +536,16 @@ private fun NavGraphBuilder.restoreFileDestination(navController: NavHostControl
             // account" is a screen arguing with what the user just did. Ring is one deliberate tap
             // away on the Profile backup card.
             onRestored = { navController.goHomeSignedIn() },
+        )
+    }
+    composable(Routes.RESTORE_MANAGER) {
+        RestorePhraseRoute(
+            onBack = { navController.popBackStack() },
+            onUnregistered = { pubky ->
+                navController.navigateTo(Routes.unregisteredKey(pubky, loopkyHoldsKey = true))
+            },
+            onRestored = { navController.goHomeSignedIn() },
+            startFromPasswordManager = true,
         )
     }
     composable(Routes.RESTORE_PHRASE) {

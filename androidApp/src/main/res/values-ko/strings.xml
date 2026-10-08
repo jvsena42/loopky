@@ -715,6 +715,10 @@
     <string name="unregistered_ring_import">복구 문구로 복원</string>
     <string name="restore_method_file">암호화된 복구 파일</string>
     <string name="restore_method_file_detail">recovery.pkarr 파일과 그 암호예요.</string>
+    <string name="restore_method_manager">비밀번호 관리자</string>
+    <string name="restore_method_manager_detail">비밀번호 관리자에 저장한 12개의 단어예요.</string>
+    <string name="restore_phrase_from_manager">내 비밀번호 관리자 사용</string>
+    <string name="restore_phrase_manager_empty">비밀번호 관리자에서 아무것도 가져오지 못했어요. 12개의 단어를 직접 입력해도 돼요.</string>
     <string name="restore_file_title">복구 파일 열기</string>
     <string name="restore_file_subtitle">저장해 둔 파일을 고른 다음 암호를 입력하세요.</string>
     <string name="restore_file_choose">파일 선택</string>

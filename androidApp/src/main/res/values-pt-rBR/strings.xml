@@ -703,6 +703,10 @@
     <string name="unregistered_ring_import">Restaurar com minha frase de recuperação</string>
     <string name="restore_method_file">Arquivo de recuperação criptografado</string>
     <string name="restore_method_file_detail">Um arquivo recovery.pkarr e sua senha.</string>
+    <string name="restore_method_manager">Gerenciador de senhas</string>
+    <string name="restore_method_manager_detail">As doze palavras que você salvou em um gerenciador de senhas.</string>
+    <string name="restore_phrase_from_manager">Usar meu gerenciador de senhas</string>
+    <string name="restore_phrase_manager_empty">Nada veio do seu gerenciador de senhas. Você pode digitar as doze palavras.</string>
     <string name="restore_file_title">Abra seu arquivo de recuperação</string>
     <string name="restore_file_subtitle">Escolha o arquivo que você salvou e digite a senha dele.</string>
     <string name="restore_file_choose">Escolher arquivo</string>

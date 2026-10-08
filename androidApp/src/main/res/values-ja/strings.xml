@@ -754,6 +754,10 @@
     <string name="unregistered_ring_import">リカバリーフレーズで復元</string>
     <string name="restore_method_file">暗号化されたリカバリーファイル</string>
     <string name="restore_method_file_detail">recovery.pkarr ファイルとそのパスフレーズ。</string>
+    <string name="restore_method_manager">パスワードマネージャー</string>
+    <string name="restore_method_manager_detail">パスワードマネージャーに保存した12個の単語です。</string>
+    <string name="restore_phrase_from_manager">パスワードマネージャーを使う</string>
+    <string name="restore_phrase_manager_empty">パスワードマネージャーから何も返されませんでした。12個の単語を入力することもできます。</string>
     <string name="restore_file_title">リカバリーファイルを開く</string>
     <string name="restore_file_subtitle">保存したファイルを選んで、パスフレーズを入力してください。</string>
     <string name="restore_file_choose">ファイルを選択</string>

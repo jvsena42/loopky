@@ -760,6 +760,10 @@
     <string name="unregistered_ring_import">Restore with my recovery phrase</string>
     <string name="restore_method_file">Encrypted recovery file</string>
     <string name="restore_method_file_detail">A recovery.pkarr file and its passphrase.</string>
+    <string name="restore_method_manager">Password manager</string>
+    <string name="restore_method_manager_detail">The twelve words you saved to a password manager.</string>
+    <string name="restore_phrase_from_manager">Use my password manager</string>
+    <string name="restore_phrase_manager_empty">Nothing came back from your password manager. You can type the twelve words instead.</string>
     <string name="restore_file_title">Open your recovery file</string>
     <string name="restore_file_subtitle">Choose the file you saved, then enter its passphrase.</string>
     <string name="restore_file_choose">Choose file</string>

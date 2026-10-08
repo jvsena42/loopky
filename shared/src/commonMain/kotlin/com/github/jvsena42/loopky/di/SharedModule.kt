@@ -152,7 +152,7 @@ val sharedModule = module {
     }
 
     viewModel { OnboardingViewModel(identityRepository = get(), ringPresence = get()) }
-    viewModel { RestorePhraseViewModel(identityRepository = get()) }
+    viewModel { RestorePhraseViewModel(identityRepository = get(), passwordManager = get()) }
     viewModel { RestoreFileViewModel(identityRepository = get()) }
     viewModel { params ->
         UnregisteredKeyViewModel(

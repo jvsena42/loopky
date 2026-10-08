@@ -759,6 +759,10 @@
     <string name="unregistered_ring_import">用我的復原短語還原</string>
     <string name="restore_method_file">加密復原檔案</string>
     <string name="restore_method_file_detail">一個 recovery.pkarr 檔案及其密碼短語。</string>
+    <string name="restore_method_manager">密碼管理工具</string>
+    <string name="restore_method_manager_detail">你儲存到密碼管理工具的十二個單字。</string>
+    <string name="restore_phrase_from_manager">使用我的密碼管理工具</string>
+    <string name="restore_phrase_manager_empty">密碼管理工具沒有傳回任何內容。你可以直接輸入這十二個單字。</string>
     <string name="restore_file_title">開啟你的復原檔案</string>
     <string name="restore_file_subtitle">選擇你儲存的檔案，然後輸入它的密碼短語。</string>
     <string name="restore_file_choose">選擇檔案</string>

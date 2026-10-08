@@ -703,6 +703,10 @@
     <string name="unregistered_ring_import">Mit meiner Wiederherstellungsphrase wiederherstellen</string>
     <string name="restore_method_file">Verschlüsselte Wiederherstellungsdatei</string>
     <string name="restore_method_file_detail">Eine recovery.pkarr-Datei und ihre Passphrase.</string>
+    <string name="restore_method_manager">Passwort-Manager</string>
+    <string name="restore_method_manager_detail">Die zwölf Wörter, die du in einem Passwort-Manager gespeichert hast.</string>
+    <string name="restore_phrase_from_manager">Meinen Passwort-Manager verwenden</string>
+    <string name="restore_phrase_manager_empty">Dein Passwort-Manager hat nichts zurückgegeben. Du kannst die zwölf Wörter stattdessen eintippen.</string>
     <string name="restore_file_title">Öffne deine Wiederherstellungsdatei</string>
     <string name="restore_file_subtitle">Wähle die gespeicherte Datei und gib dann ihre Passphrase ein.</string>
     <string name="restore_file_choose">Datei wählen</string>

@@ -1,7 +1,8 @@
 package com.github.jvsena42.loopky.platform
 
 /**
- * Whether this device can put the recovery phrase into a password manager.
+ * Whether this device can put the recovery phrase into a password manager, and read it back out
+ * on the restore screen.
  *
  * Platform-provided via Koin (like [PubkyRingPresence]) rather than `expect`/`actual`, and
  * deliberately **only the question**, not the act. Saving raises a system sheet and so needs an
@@ -15,6 +16,6 @@ package com.github.jvsena42.loopky.platform
  * and permanent answer.
  */
 interface PasswordManagerPresence {
-    /** True when a save can actually be attempted. */
+    /** True when a save, or a read on restore, can actually be attempted. */
     fun canSave(): Boolean
 }
