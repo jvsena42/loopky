@@ -49,6 +49,18 @@ struct BackupStartScreen: View {
                 )
                 .accessibilityIdentifier("backup_method_file")
 
+                // Opens the phrase screen, where the save is: the words are shown before anything
+                // offers to store them. Its own row so a save made there has a tick to come back to.
+                if uiState?.showPasswordManager ?? false {
+                    MethodCard(
+                        title: "backup_method_password_manager",
+                        detail: "backup_method_password_manager_detail",
+                        isDone: isDone(.passwordmanager),
+                        action: onPhrase
+                    )
+                    .accessibilityIdentifier("backup_method_password_manager")
+                }
+
                 // Still offered when Ring is absent — the screen behind it installs — but it says
                 // so, rather than looking identical and explaining itself one tap later.
                 MethodCard(

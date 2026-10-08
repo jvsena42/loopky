@@ -24,6 +24,7 @@ enum IdentityRoute: Hashable {
 
     case restoreStart
     case restorePhrase
+    case restoreManager
     case restoreFile
 
     /// `loopkyHoldsKey` decides whether this screen may offer to register the key, or only to

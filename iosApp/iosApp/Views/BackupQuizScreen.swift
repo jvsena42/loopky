@@ -10,6 +10,11 @@ struct BackupQuizScreen: View {
     @State private var uiState: BackupQuizUiState?
     @State private var stateSink: FlowEffectSink?
     @State private var effectSink: FlowEffectSink?
+    @State private var passwordManager = PasswordManagerSheet()
+
+    /// A phrase saved to Passwords was never copied down, so recalling three words tests nothing
+    /// the user did. That path checks the entry is still there and still right instead.
+    private var isSavedMode: Bool { uiState?.mode == .passwordmanager }
 
     /// `List<Int>` arrives as boxed numbers; unboxed one at a time rather than by casting the
     /// whole array, which fails wholesale and silently leaves the screen blank.
@@ -23,8 +28,10 @@ struct BackupQuizScreen: View {
 
     var body: some View {
         SignupScaffold(
-            title: "backup_quiz_title",
-            subtitle: NSLocalizedString("backup_quiz_subtitle", comment: ""),
+            title: isSavedMode ? "backup_quiz_saved_title" : "backup_quiz_title",
+            subtitle: NSLocalizedString(
+                isSavedMode ? "backup_quiz_saved_subtitle" : "backup_quiz_subtitle", comment: ""
+            ),
             errorTitle: uiState?.failed ?? false
                 ? NSLocalizedString("restore_error_unreadable_title", comment: "")
                 : nil,
@@ -32,7 +39,9 @@ struct BackupQuizScreen: View {
             onBack: onBack
         ) {
             VStack(alignment: .leading, spacing: 24) {
-                if uiState?.isLoading ?? true {
+                if isSavedMode {
+                    savedCheck
+                } else if uiState?.isLoading ?? true {
                     ProgressView().controlSize(.regular).tint(LoopkyColor.accentPrimary)
                 } else {
                     ForEach(Array(positions.enumerated()), id: \.offset) { index, position in
@@ -61,6 +70,24 @@ struct BackupQuizScreen: View {
         .modifier(SecureScreenModifier())
         .onAppear { attach() }
         .onDisappear { detach() }
+    }
+
+    @ViewBuilder
+    private var savedCheck: some View {
+        if uiState?.wrong ?? false {
+            Text("backup_quiz_saved_wrong")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(LoopkyColor.danger)
+                .accessibilityIdentifier("backup_quiz_saved_wrong")
+        }
+        SignupPrimaryButton(
+            title: "backup_quiz_saved_check",
+            isLoading: uiState?.isChecking ?? false,
+            isEnabled: uiState?.canCheckSaved ?? false
+        ) {
+            viewModel?.onCheckSavedClick()
+        }
+        .accessibilityIdentifier("backup_quiz_saved_check")
     }
 
     private static let optionColumns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible())]
@@ -126,7 +153,14 @@ struct BackupQuizScreen: View {
         viewModel = vm
         stateSink = FlowEffectSink(vm.state) { uiState = $0 as? BackupQuizUiState }
         effectSink = FlowEffectSink(vm.effects) { effect in
-            if effect is BackupEffectDone { onDone() }
+            switch effect {
+            case is BackupEffectDone:
+                onDone()
+            case is BackupEffectReadBackFromPasswordManager:
+                Task { vm.onPasswordManagerReadBack(secret: await passwordManager.read()) }
+            default:
+                break
+            }
         }
     }
 

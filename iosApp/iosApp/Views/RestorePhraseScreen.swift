@@ -6,7 +6,13 @@ struct RestorePhraseScreen: View {
     var onBack: () -> Void
     var onRestored: () -> Void
     var onUnregistered: (String) -> Void
+    /// Entered from the "Password manager" card: the saved-password sheet is raised on arrival.
+    var startFromPasswordManager = false
 
+    @State private var passwordManager = PasswordManagerSheet()
+    /// Survives the screen being covered, so coming back from the unregistered-key screen does
+    /// not raise the sheet a second time.
+    @State private var didRaisePicker = false
     @State private var viewModel: RestorePhraseViewModel?
     @State private var uiState: RestorePhraseUiState?
     @State private var stateSink: FlowEffectSink?
@@ -38,7 +44,7 @@ struct RestorePhraseScreen: View {
                     .autocorrectionDisabled()
                     // Deliberately no `.textContentType` — see `PassphraseField`. `.password`
                     // would offer the recovery phrase to iCloud Keychain (#148).
-                    .disabled(isChecking)
+                    .disabled(isChecking || isReadingPasswordManager)
                     .onChange(of: phrase) { _, value in viewModel?.onPhraseChange(phrase: value) }
                     .padding(14)
                     .background(RoundedRectangle(cornerRadius: 12).fill(LoopkyColor.surfaceCard))
@@ -56,6 +62,26 @@ struct RestorePhraseScreen: View {
                     action: submit
                 )
                 .accessibilityIdentifier("restore_phrase_submit")
+
+                if uiState?.canUsePasswordManager ?? false {
+                    Spacer().frame(height: 14)
+                    Button("restore_phrase_from_manager") {
+                        guard let viewModel, viewModel.beginPasswordManagerRead() else { return }
+                        readFromPasswordManager(viewModel)
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(LoopkyColor.accentSecondary)
+                    .frame(maxWidth: .infinity)
+                    .disabled(isChecking || isReadingPasswordManager)
+                    .accessibilityIdentifier("restore_phrase_from_manager")
+                }
+                if uiState?.passwordManagerEmpty ?? false {
+                    Spacer().frame(height: 8)
+                    Text("restore_phrase_manager_empty")
+                        .font(.system(size: 12))
+                        .foregroundStyle(LoopkyColor.foregroundSecondary)
+                        .accessibilityIdentifier("restore_phrase_manager_empty")
+                }
 
                 if let outcome = uiState?.outcome {
                     Spacer().frame(height: 20)
@@ -88,6 +114,22 @@ struct RestorePhraseScreen: View {
 
     private var isChecking: Bool { uiState?.isChecking ?? false }
 
+    private var isReadingPasswordManager: Bool { uiState?.isReadingPasswordManager ?? false }
+
+    /// The read is claimed by the caller (`beginPasswordManagerRead`) and answered here, without
+    /// the effect flow — the same reason as on Android, where an effect emitted as the screen
+    /// opens is dropped before anything collects it.
+    ///
+    /// The field owns its text, so the phrase is put there first: the ViewModel submits what it
+    /// was handed, and the screen must show the same words.
+    private func readFromPasswordManager(_ viewModel: RestorePhraseViewModel) {
+        Task {
+            let secret = await passwordManager.read()?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let secret, !secret.isEmpty { phrase = secret }
+            viewModel.onPasswordManagerResult(secret: secret)
+        }
+    }
+
     private var isInvalid: Bool { uiState?.outcome is RestoreOutcomeInvalidPhrase }
 
     private func attach() {
@@ -104,6 +146,10 @@ struct RestorePhraseScreen: View {
             default:
                 break
             }
+        }
+        if startFromPasswordManager, !didRaisePicker {
+            didRaisePicker = true
+            if vm.beginPasswordManagerRead() { readFromPasswordManager(vm) }
         }
     }
 
