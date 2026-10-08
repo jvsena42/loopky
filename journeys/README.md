@@ -93,3 +93,7 @@ a line when you close it.
   `validate_mnemonic_phrase` had answered `true`. Not reproduced since 2026-08-29; do not assume it
   is fixed.
 - **#423, a band above the deck-detail cover on iOS.** Not reproduced on 2026-10-01; no change made.
+- **A second code scanner after rotating the first one** (04, Android). On `Pixel_Tablet` (API 35),
+  scan → rotate with the scanner open → Back once left a fresh scanner on screen, with Loopky
+  already told the scan was cancelled. Not reproduced in nine further runs on 2026-10-08, in either
+  direction, nor in one on `main`.
