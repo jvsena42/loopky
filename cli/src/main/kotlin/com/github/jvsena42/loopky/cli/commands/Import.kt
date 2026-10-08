@@ -150,6 +150,7 @@ suspend fun import(
     val source = args.requireSource()
     val title = args.requireOption("title").trim()
     if (title.isEmpty()) throw CliError(ExitCode.Usage, "--title cannot be empty.")
+    args.deckDescription()
 
     val parsed = parseSource(args, imports, source, title, keepImageBytes = true)
     val draft = parsed.draft
@@ -290,6 +291,7 @@ suspend fun importDryRun(
 ): CommandResult {
     val source = args.requireSource()
     val title = args.option("title")?.trim()?.takeIf { it.isNotEmpty() }
+    args.deckDescription()
 
     // Nothing is uploaded, so blobs are measured and dropped rather than held: a dry run of a
     // 500-image deck should not need the deck's media in heap to answer how big it is.
@@ -512,7 +514,7 @@ private fun Deck.overlaidWith(args: Args): Deck? {
     val frontLang = args.option("front-lang") ?: frontLang
     val backLang = args.option("back-lang") ?: backLang
     val updated = copy(
-        description = args.option("description")?.takeIf { it.isNotBlank() } ?: description,
+        description = args.deckDescription() ?: description,
         coverEmoji = args.option("cover-emoji")?.takeIf { it.isNotBlank() } ?: coverEmoji,
         // Checked at the top of `import`, into the same advice log as every other picture.
         coverImageRef = args.option("cover-url")?.let(::remoteImage)
@@ -566,7 +568,7 @@ private fun newDeck(
         id = deckId,
         authorPubky = session.identity.pubky,
         title = args.requireOption("title").trim(),
-        description = args.option("description")?.takeIf { it.isNotBlank() },
+        description = args.deckDescription(),
         coverEmoji = args.option("cover-emoji")?.takeIf { it.isNotBlank() },
         coverImageRef = args.option("cover-url")?.let(::remoteImage),
         // A declared pair labels the deck, exactly as on a phone. This is the path most decks arrive

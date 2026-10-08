@@ -184,7 +184,7 @@ private val CARD_FIELDS = listOf(
 
 private val DECK_METADATA = listOf(
     CliOption("title", "the deck title"),
-    CliOption("description", "the deck description"),
+    CliOption("description", "the deck description, at most 500 characters"),
     CliOption("tag", "a tag - repeat for several, and it replaces rather than appends"),
     CliOption("cover-url", "https URL for the cover image"),
     CliOption("cover-emoji", "an emoji to use as the cover"),
@@ -327,7 +327,7 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         operand = Operand.Path,
         options = listOf(
             CliOption("title", "the deck title"),
-            CliOption("description", "the deck description"),
+            CliOption("description", "the deck description, at most 500 characters"),
             CliOption("tag", "a tag - repeat for several"),
             CliOption("separator", "how the columns are split", OptionValue.OneOf(SEPARATORS)),
             CliOption("resume", "carry on an import that stopped part way", OptionValue.Switch),

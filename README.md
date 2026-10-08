@@ -47,6 +47,7 @@ homeserver you hold the key to.
 - **Import spec:** [`docs/specs.md`](./docs/specs.md) — the paste-to-import flow and the parser
   rules the test suite is written against.
 - **Privacy:** [`PRIVACY.md`](./PRIVACY.md) — what reaches a homeserver, and whose it is.
+- **Terms:** [`TERMS.md`](./TERMS.md) — no warranty, no Loopky servers, and what you publish is public.
 
 ---
 

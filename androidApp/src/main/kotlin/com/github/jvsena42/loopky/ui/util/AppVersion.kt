@@ -24,7 +24,7 @@ fun rememberAppVersion(): String {
     }
 }
 
-/** Public policy documents, served from the repository so they need no hosting of their own. */
-const val PRIVACY_POLICY_URL = "https://github.com/jvsena42/loopky/blob/main/PRIVACY.md"
+/** The page is published from `PRIVACY.md`, which stays the source (loopky.github.io#12). */
+const val PRIVACY_POLICY_URL = "https://loopky.app/privacy/"
 
 const val LICENSE_URL = "https://github.com/jvsena42/loopky/blob/main/LICENSE"

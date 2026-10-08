@@ -5,6 +5,7 @@ import com.github.jvsena42.loopky.cli.CliError
 import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.FakeDeckRepository
 import com.github.jvsena42.loopky.cli.testDeck
+import com.github.jvsena42.loopky.domain.model.DeckLimits
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.remoteImageRef
 import kotlinx.coroutines.runBlocking
@@ -70,6 +71,31 @@ class DeckEditTest {
         deckEdit(edit("--description="), decks)
 
         assertNull(decks.metadataWrites.single().description)
+    }
+
+    @Test
+    fun `a description at the cap is written and one past it is refused before any write`() = runBlocking {
+        val decks = FakeDeckRepository(deck)
+
+        deckEdit(edit("--description", "a".repeat(DeckLimits.DESCRIPTION_MAX_LENGTH)), decks)
+        assertEquals(DeckLimits.DESCRIPTION_MAX_LENGTH, decks.metadataWrites.single().description?.length)
+
+        val error = assertFailsWith<CliError> {
+            deckEdit(edit("--description", "a".repeat(DeckLimits.DESCRIPTION_MAX_LENGTH + 1)), decks)
+        }
+        assertEquals(ExitCode.BadInput, error.exitCode)
+        assertEquals(1, decks.metadataWrites.size)
+    }
+
+    /** A deck written before the cap keeps its description through an unrelated edit. */
+    @Test
+    fun `an over-long description already on the deck does not block another field's edit`() = runBlocking {
+        val long = "a".repeat(DeckLimits.DESCRIPTION_MAX_LENGTH + 1)
+        val decks = FakeDeckRepository(deck.copy(description = long))
+
+        deckEdit(edit("--title", "Capitais do mundo"), decks)
+
+        assertEquals(long, decks.metadataWrites.single().description)
     }
 
     @Test

@@ -205,6 +205,18 @@ class AgentPluginTest {
         }
     }
 
+    /** The directory refuses a submission missing any of these, and a later edit could drop one (loopky.github.io#12). */
+    @Test
+    fun `a Codex manifest carries its website, privacy and terms links over HTTPS`() {
+        codexManifests().forEach { manifest ->
+            val ui = manifest.json()["interface"]!!.jsonObject
+            CODEX_REQUIRED_URLS.forEach { key ->
+                val url = ui[key]?.jsonPrimitive?.content.orEmpty()
+                assertTrue(url.startsWith("https://"), "${manifest.relative()}: $key is '$url'")
+            }
+        }
+    }
+
     /** Codex reads the same skill; its manifest must describe the same plugin as Claude's. */
     @Test
     fun `the Claude and Codex manifests agree on the plugin`() {
@@ -258,6 +270,7 @@ class AgentPluginTest {
         const val CODEX_DEVELOPER_MAX = 80
         const val CODEX_PROMPTS_MAX = 3
         const val CODEX_PROMPT_MAX = 128
+        val CODEX_REQUIRED_URLS = listOf("websiteURL", "privacyPolicyURL", "termsOfServiceURL")
         const val RAW_WARNING = "never install from `raw.githubusercontent.com"
         val TEXT_EXTENSIONS = setOf("md", "sh", "ps1", "json", "txt", "yaml", "yml")
         val FETCH_AND_RUN = listOf(
