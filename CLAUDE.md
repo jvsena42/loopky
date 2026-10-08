@@ -701,6 +701,11 @@ legitimately be different shapes.
   `feat/…` / `fix/…` branch first, even for a one-line change.
 - **Finish the work by opening a PR.** Push the branch and `gh pr create` against `main`; the
   change isn't delivered while it only exists locally.
+- **`main` merges only on a fully green CI run, through one required check.** Branch protection
+  requires `All checks pass` (`ci-ok` in `ci.yml`), which fails if any job failed or was
+  cancelled. A job added to `ci.yml` goes in that job's `needs` — the gate fails itself when one
+  is missing — and never into branch protection by name: a matrix row skipped by `if:` reports
+  under its unexpanded name, so a required row would wait forever.
 - **A change that spans several dependent steps ships as a stack, via `gh stack`** (the
   `github/gh-stack` extension, already installed). One PR per step, each based on the one below it,
   so a reviewer sees one variable per PR instead of a single unreviewable diff — and so an early
