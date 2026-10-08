@@ -1,0 +1,82 @@
+# Monthly dependency PRs, cut so that each one changes what a single part of CI tests.
+#
+# In every group below, minor and patch updates share one PR. A **major** is never grouped on
+# the Gradle side: it gets a PR of its own, so a red run names the dependency that broke it.
+#
+# Not here, on purpose:
+#   docker  `cli/Dockerfile` pins `ubuntu:22.04` for the glibc floor (see the file), and
+#           `debian:bookworm-slim` carries no version Dependabot can compare. Its only possible
+#           PR would be the one that must not merge.
+#   GraalVM `GRAALVM_VERSION` in that Dockerfile and `java-version` in the workflows are plain
+#           strings to Dependabot. They move by hand, together.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    groups:
+      # Workflows pin major tags (`@v7`), so nearly every update lands in `actions-major`. An
+      # action used only by `release.yml` is not exercised by the PR's own run.
+      actions-minor:
+        update-types: [minor, patch]
+      actions-major:
+        update-types: [major]
+
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: build
+    ignore:
+      # Vendored under `shared/libs/maven` and tied to the Rust crate version inside
+      # pubky-core-ffi-fork; it is on no registry Dependabot can read.
+      - dependency-name: "rustls:rustls-platform-verifier"
+      # 0.5.0 onwards compiles against detekt 2, which has published only alphas. Lift this
+      # with the detekt 2 move — see `detektComposeRules` in gradle/libs.versions.toml.
+      - dependency-name: "io.nlopez.compose.rules:detekt"
+        versions: [">=0.5.0"]
+    # First match wins, so `other` only collects what no group above it claimed.
+    groups:
+      # The compiler and its plugins. The one group that can break Kotlin/Native, so its PR is
+      # the one whose iOS row matters.
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin:*"
+          - "org.jetbrains.kotlin.*"
+          - "org.jetbrains.kotlinx:*"
+        update-types: [minor, patch]
+      # How the build runs rather than what ships. A wrapper update rewrites
+      # `distributionSha256Sum` too — check that it did.
+      build-tooling:
+        patterns:
+          - "gradle-wrapper"
+          - "com.android.application"
+          - "com.android.kotlin.multiplatform.library"
+          - "org.gradle.toolchains.foojay-resolver-convention"
+          - "io.gitlab.arturbosch.detekt*"
+        update-types: [minor, patch]
+      # What reaches the `native-image` binary. Reachability metadata is hand-curated against
+      # these, so this PR is unverified until all three CLI binary rows have compiled it.
+      cli-native:
+        patterns:
+          - "org.graalvm.buildtools*"
+          - "net.java.dev.jna:*"
+          - "org.xerial:*"
+        update-types: [minor, patch]
+      # Android-only UI and platform libraries. CI proves these compile; what a screen renders
+      # still needs the journeys.
+      android-ui:
+        patterns:
+          - "androidx.*"
+          - "com.google.android.*"
+          - "io.coil-kt.coil3:*"
+        update-types: [minor, patch]
+      other:
+        patterns: ["*"]
+        update-types: [minor, patch]
