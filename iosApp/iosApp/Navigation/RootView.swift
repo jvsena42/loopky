@@ -98,12 +98,16 @@ struct RootView: View {
             // completes over the relay poll and only needs to bring Loopky back to the front.
             if url.isFileURL {
                 deckPath.append(.importBulk(url))
-            } else if let route = Self.linkRoute(url) {
-                pendingLink = route
-                openPendingLink()
-            } else {
+            } else if !openLink(url) {
                 print("[Loopky] received deeplink: \(url.absoluteString)")
             }
+        }
+        // A fallback only. On the iOS 26.5 simulator a universal link arrives through `onOpenURL`,
+        // warm and cold, and this is never called, even with `onOpenURL` removed. Kept for an OS
+        // that delivers the activity instead; both firing for one tap pushes once, because
+        // `openPendingLink` skips the route already on top.
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            if let url = activity.webpageURL { _ = openLink(url) }
         }
         .onChange(of: isSignedIn || isGuest) { openPendingLink() }
     }
@@ -358,6 +362,14 @@ struct RootView: View {
         guard isSignedIn || isGuest, let route = pendingLink else { return }
         pendingLink = nil
         if deckPath.last != route { deckPath.append(route) }
+    }
+
+    /// False when the URL names no deck and no profile.
+    private func openLink(_ url: URL) -> Bool {
+        guard let route = Self.linkRoute(url) else { return false }
+        pendingLink = route
+        openPendingLink()
+        return true
     }
 
     private static func linkRoute(_ url: URL) -> DeckRoute? {
