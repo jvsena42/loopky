@@ -102,9 +102,10 @@ struct RootView: View {
                 print("[Loopky] received deeplink: \(url.absoluteString)")
             }
         }
-        // A tapped universal link reaches the app as a browsing activity. SwiftUI normally passes
-        // it on to `onOpenURL` as well; this covers the case where it does not (#347). Both firing
-        // for one tap is harmless: `openPendingLink` never pushes the route already on top.
+        // A fallback only. On the iOS 26.5 simulator a universal link arrives through `onOpenURL`,
+        // warm and cold, and this is never called, even with `onOpenURL` removed. Kept for an OS
+        // that delivers the activity instead; both firing for one tap pushes once, because
+        // `openPendingLink` skips the route already on top.
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
             if let url = activity.webpageURL { _ = openLink(url) }
         }

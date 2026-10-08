@@ -65,9 +65,9 @@ a line when you close it.
 - **08 — the system photo picker** (gallery path), and pasting an image as bytes (#168).
 - **09 — the Correct/Wrong outcome of Speak**, the `LanguageUnavailable` sheet, and which language
   each engine actually uses. Needs a device with Google speech.
-- **15 — a deep link while signed out**, on both platforms. And `https://loopky.app/…` links on
-  iOS: after the site serves `apple-app-site-association` (#347), tap one in Notes on a TestFlight
-  build.
+- **15 — a deep link while signed out**, on both platforms. And a `https://loopky.app/…` link
+  tapped in Notes on a TestFlight build: a simulator opens them (`simctl openurl`, warm and cold),
+  but that delivery has never called `onContinueUserActivity`, so the fallback is unexercised.
 - **22 — a real local signup end to end.** It needs a signup token (SMS, sats or an invite code).
   Redemption, the backup screens and the unbacked sign-out warning are covered by unit tests only.
 - **Backup and restore by file, and Ring export** — the confirmed-write halves end in system UI the
