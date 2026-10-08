@@ -40,7 +40,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -110,6 +109,7 @@ import com.github.jvsena42.loopky.ui.components.errorTitle
 import com.github.jvsena42.loopky.ui.components.rememberReduceMotion
 import com.github.jvsena42.loopky.ui.layout.WindowWidthClass
 import com.github.jvsena42.loopky.ui.layout.contentPane
+import com.github.jvsena42.loopky.ui.layout.screenEdges
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.toast
@@ -279,7 +279,7 @@ fun StudySessionScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.surfaceSecondary)
-            .windowInsetsPadding(WindowInsets.systemBars)
+            .windowInsetsPadding(WindowInsets.screenEdges)
             // Deliberately *not* `imePadding()`. The card is `weight(1f)` of this column, so
             // padding the whole screen for the keyboard resized the card every time the keyboard
             // came or went — a ~145 dp jump on a phone, landing exactly when a typed answer opened
