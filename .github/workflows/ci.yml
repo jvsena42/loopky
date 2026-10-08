@@ -1155,3 +1155,51 @@ jobs:
 
       - name: Lint the Swift
         run: ./gradlew lintSwift
+
+  ci-ok:
+    # **The one check branch protection requires, standing for every job above.** Requiring the
+    # jobs by name cannot work: a matrix job skipped by `if:` reports once under its unexpanded
+    # name (`CLI behind sandbox proxies (${{ matrix.build }})`), so its real rows are never there
+    # to require on a PR that skips them and a required row would wait forever. Only two jobs
+    # were required before this, and #463 merged with `CLI as a native binary` red.
+    #
+    # `if: always()` is the point — without it a failed `needs` *skips* this job, and a skipped
+    # required check passes. `skipped` is accepted for the path-gated rows; a row skipped because
+    # the job it needs failed is caught by that job's own result.
+    name: All checks pass
+    needs:
+      - changes
+      - lint
+      - test-build
+      - cli-linux
+      - agent-plugin
+      - cli-windows
+      - cli-binary
+      - cli-sandbox-sim
+      - cli-binary-macos
+      - ios
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/workflows/ci.yml
+          sparse-checkout-cone-mode: false
+
+      # A job added above and left out of `needs` would be a check that cannot block a merge,
+      # with nothing reporting it.
+      - name: Every job in this workflow is in `needs`
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          diff <(yq -r '.jobs | keys | .[]' .github/workflows/ci.yml | grep -vx ci-ok | sort) \
+               <(jq -r 'keys[]' <<<"$NEEDS" | sort)
+
+      - name: No job failed or was cancelled
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          jq -r 'to_entries[] | "\(.value.result)\t\(.key)"' <<<"$NEEDS"
+          jq -e 'all(.[]; .result == "success" or .result == "skipped")' <<<"$NEEDS" >/dev/null
