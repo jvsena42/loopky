@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -49,6 +50,9 @@ fun SignupScaffold(
         modifier = modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.screenEdges)
+            // On a landscape tablet the keyboard covers the submit button under the field, and
+            // without this there is nothing to scroll it back with.
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .contentPane(PaneWidth.Focused)
             .padding(horizontal = 24.dp),
