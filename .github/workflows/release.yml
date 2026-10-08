@@ -156,7 +156,7 @@ jobs:
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       # A tag has to produce a signed APK or the release is broken, so a missing keystore is a
       # hard failure on that path. A `workflow_dispatch` dry run is allowed to skip instead, so the
@@ -375,7 +375,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Build the binary
         run: ./gradlew :cli:nativeCompile
@@ -447,7 +447,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Build the binary
         run: ./gradlew :cli:nativeCompile
