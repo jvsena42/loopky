@@ -44,7 +44,7 @@ kvault = "1.12.0"
 sqliteJdbc = "3.53.4.0"
 playServicesCodeScanner = "16.1.0"
 playAppUpdate = "2.1.0"
-coil = "3.6.2"
+coil = "3.6.3"
 # QR encoding for the tablet Pubky Ring sign-in panel. Core only — the `android` artifact
 # pulls in a camera/scanner stack we already cover with play-services-code-scanner.
 zxing = "3.5.4"
