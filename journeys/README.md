@@ -62,6 +62,9 @@ found. Results up to 2026-10-06 were kept in `RESULTS.md`, which is in this dire
 - **The automation cannot reach out-of-process system UI:** the document picker, the share sheet,
   the paste menu and ⌘V, Slide Over and Split View.
 - **`BGProcessingTaskRequest.submit` throws on a simulator.**
+- **The saved-password "Sign In" sheet ignores synthetic input.** `snapshot-ui` does not list it,
+  and AXe's coordinate `tap` and `touch` report success and do nothing. "Use Password" needs a
+  hand on the Simulator window. The "Save Password" alert before it is an ordinary alert and taps.
 - **A translation is checked with `-AppleLanguages "(ja)"`** as a launch argument.
 
 ## Not run on a device yet
@@ -78,9 +81,12 @@ a line when you close it.
   but that delivery has never called `onContinueUserActivity`, so the fallback is unexercised.
 - **22 — a real local signup end to end.** It needs a signup token (SMS, sats or an invite code).
   Redemption, the backup screens and the unbacked sign-out warning are covered by unit tests only.
-- **28 — the password manager, end to end.** Saving, the read-back check and restoring all need a
-  device with a credential provider; no emulator here has one, so only the empty path (no provider:
-  the save fails, the restore picker returns nothing) has been driven.
+- **28 — the password manager, end to end.** On Android, saving, the read-back check and restoring
+  all need a device with a credential provider; no emulator here has one, so only the empty path
+  (no provider: the save fails, the restore picker returns nothing) has been driven. On iOS the
+  simulator saves and raises the "Sign In" sheet for the right pubky, but nothing has accepted
+  that sheet, so the verified state and a restore from a saved entry are undriven — and nothing at
+  all has run on a device, which is the only place the `webcredentials` association is enforced.
 - **Backup and restore by file, and Ring export** — the confirmed-write halves end in system UI the
   automation cannot reach.
 - **In-app update prompt:** Play's consent screen, the download and the installing restart need a
