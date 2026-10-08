@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- The Pubky FFI needs network access for the DHT + relay HTTP calls. -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -214,6 +215,13 @@
                 <data android:pathPattern=".*\\..*\\..*\\..*\\.apkg" />
             </intent-filter>
         </activity>
+
+        <!-- play-services-code-scanner's manifest pins its trampoline to portrait, and Play
+             attributes the merged entry to Loopky. 16.1.0 is the newest release, so the
+             restriction is dropped here rather than by a bump (#340). -->
+        <activity
+            android:name="com.google.mlkit.vision.codescanner.internal.GmsBarcodeScanningDelegateActivity"
+            tools:remove="android:screenOrientation" />
 
         <!-- The QR image the share sheet attaches. Not exported: the receiving app reads it
              through the one-shot grant on the ACTION_SEND intent, which is what
