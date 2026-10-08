@@ -628,8 +628,9 @@ Two things the post record has to get right, both silent when wrong:
   `PubkyLinks.parse` reads them back, so a pasted or scanned one resolves like a `pubky://` one.
   Query parameters rather than a path because the site is static GitHub Pages, where a path route
   exists only as a `404.html` served with status 404. The `pubky://` URI stays the post's `embed`.
-  iOS cannot claim the links yet: universal links need an `apple-app-site-association` naming a
-  Team ID, and `Config.xcconfig` has none.
+  iOS claims the same links as universal links: the site's `apple-app-site-association` names the
+  Team ID and bundle id for `/deck` and `/profile`, and `Loopky.entitlements` carries
+  `applinks:loopky.app`. A build signed by any other team is not verified and opens Safari.
 - **Post ids are timestamp-derived, not content-derived.** `TimestampId::create_id` is
   Crockford-base32 of the 8 big-endian bytes of a microsecond Unix timestamp — always 13 chars —
   and `validate_id` only checks the length, the decode, and that the time is after 2024-10-01 and
@@ -1476,7 +1477,7 @@ passed roughly ninety Compose screens ago.
 5. **Binding regeneration automation.** Today the fork's `build_android.sh` / `build_ios.sh` are run manually and artifacts are copied in (§7.4). A Gradle task can automate this once the fork API stabilises.
 6. **Local-key custody handover.** Exporting a key to Pubky Ring (§7.5) currently *copies* it — Loopky keeps its own copy and its session, and the UI says so. Whether "exported to Ring" should eventually mean dropping the local key and reverting to Ring-authorised sessions is deliberately unanswered: it is the strongest end state, but Ring gives no confirmation that the import succeeded, so a device that dropped its key on a failed export would be locked out. `LocalKeyStore` is shaped so this becomes a flag transition rather than a rewrite.
 7. **Cookie vs grant for local auth.** `signIn`/`signUp` bind to the FFI's cookie variants because the grant flow fails against Synonym's staging homeserver — `export_grant_session_secret` writes outside `/pub/`, which it refuses with a 403 (§7.8). Upstream marks the cookie flow deprecated, so this is a hold, not a destination; it needs a homeserver that accepts the grant flow before it can move. Tracked with #130.
-8. **Password-manager backup** needs a domain serving `assetlinks.json` and `apple-app-site-association` before either platform can start — #150. **iOS parity** for the whole local-key surface is #149; iOS has no signup screens at all today, so that is a build-out rather than an addition.
+8. **Password-manager backup is Android-only and save-only.** `PasswordManagerSheet` saves the phrase and reads it back to verify, with the credential held against the app's own identity — no domain association is involved, and `loopky.app`'s `assetlinks.json` and `apple-app-site-association` carry link handling only (`handle_all_urls`, `applinks`). Open: a restore option that reads from the password manager, and a credential id that is the pubky rather than the app name (#471); whether a `webcredentials` association lets iOS save at all, where `IosPasswordManagerPresence` currently answers no (#472); sharing the credential with pubky.app (#254).
 9. **When the ObjC bridge goes.** Swift export is the successor to the `RawPubkyClient` pass-through and the `IosFlowWatcher` layer, and on Kotlin 2.4.20 it does not build here — §9.7 has the two shapes that stop it, the one line to re-check, and why `Result<T>` makes it worth waiting for rather than working around.
 
 ---
