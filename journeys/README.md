@@ -36,6 +36,14 @@ found. Results up to 2026-10-06 were kept in `RESULTS.md`, which is in this dire
   `adb emu rotate` all leaving `rotation=0`) and sometimes boots with no network. `wm density 240`
   on a phone AVD reaches the expanded width class through the same `currentWindowAdaptiveInfo`
   path; say so in the PR when that is what was done.
+- **Insets are only wrong in the configurations nobody holds a device in** (#339). Check a layout
+  change with a cutout and three-button navigation, rotated both ways:
+  `cmd overlay enable-exclusive --category com.android.internal.display.cutout.emulation.tall` and
+  `…systemui.navbar.threebutton` (`…navbar.gestural` to go back). The frames to compare against are
+  in `dumpsys window | grep 'InsetsSource id'` — `statusBars`, `navigationBars`, `displayCutout`
+  and `ime`.
+- **An AVD with `hw.keyboard=yes` never shows the soft keyboard**, so every keyboard check passes.
+  `settings put secure show_ime_with_hard_keyboard 1` brings it back.
 - **The keyboard's state is readable:** `adb shell dumpsys input_method | grep mInputShown`. Poll
   it for a second after an action — a keyboard that flashes is seen in one sample out of twelve.
 - **Chrome's "Copy image" wedges the emulator**, with or without Loopky in the foreground, and
@@ -80,6 +88,8 @@ a line when you close it.
   "もう一度" on Android.
 - **Tablets:** 04's two-pane browse grid full of decks, in both orientations; the study screen's
   grade column in a signed-in session; Today's hero card on Android at either width class.
+- **A landscape tablet hides Check and Give up behind the keyboard** on a typed card. The
+  keyboard's action key still checks the answer; Give up needs the keyboard dismissed first.
 - **A phone in landscape cannot type on a card** — at `h411dp` the keyboard leaves the card a
   ~40 px strip. A height problem, not a width-class one.
 - **CLI:** `card edit` clearing an image and `card check-images`, against staging (#453, #454); a

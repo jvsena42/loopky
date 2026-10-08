@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +27,7 @@ import com.github.jvsena42.loopky.ui.components.signupErrorMessage
 import com.github.jvsena42.loopky.ui.components.signupErrorTitle
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
+import com.github.jvsena42.loopky.ui.layout.screenEdges
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 
 /**
@@ -48,7 +49,10 @@ fun SignupScaffold(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.systemBars)
+            .windowInsetsPadding(WindowInsets.screenEdges)
+            // On a landscape tablet the keyboard covers the submit button under the field, and
+            // without this there is nothing to scroll it back with.
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .contentPane(PaneWidth.Focused)
             .padding(horizontal = 24.dp),

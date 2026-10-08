@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -88,6 +87,7 @@ import com.github.jvsena42.loopky.presentation.settings.UnsplashKeyStatus
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
+import com.github.jvsena42.loopky.ui.layout.screenEdges
 import com.github.jvsena42.loopky.ui.nav.Routes
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.LICENSE_URL
@@ -208,7 +208,7 @@ private fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.surfacePrimary)
-            .windowInsetsPadding(WindowInsets.systemBars)
+            .windowInsetsPadding(WindowInsets.screenEdges)
             // Without this the scroll container keeps its full height behind the keyboard, and
             // the Unsplash key editor's Save button is unreachable while the user is typing into
             // the field right above it.

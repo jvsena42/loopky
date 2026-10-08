@@ -182,6 +182,32 @@ Both platforms consume the same VMs. Only rendering, navigation, and platform gl
 - **DI:** Koin Android, started in `LoopkyApp.onCreate` (the `Application`, not the activity — WorkManager can start the process without one). Screens resolve their VM via `koinViewModel()`, which scopes it to the nav backstack entry.
 - **Platform glue:** `AVSpeechSynthesizer`'s Android counterpart is `android.speech.tts.TextToSpeech`; haptics via `HapticFeedbackConstants`; image picker via Activity Result APIs.
 
+**Edge-to-edge, and Play's warning about it (#339).** `MainActivity` is the only activity Loopky
+owns and it calls `enableEdgeToEdge()` before `super.onCreate`. Play Console still attaches "Edge-to-edge
+may not display for all users" to the release. What a static look at the build shows, as of 1.5.0:
+
+- No Loopky class calls `Window.setStatusBarColor`, `setNavigationBarColor` or
+  `setNavigationBarDividerColor`. The only callers in the dex are AndroidX's own
+  (`androidx.activity.EdgeToEdgeApi*`, `androidx.core.splashscreen.SplashScreen$Impl31`,
+  `androidx.core.view.WindowCompat`) — the backward-compatible paths `enableEdgeToEdge()` itself is
+  made of. No theme sets `windowOptOutEdgeToEdgeEnforcement`, and no dialog is full-screen.
+- The merged manifest carries six activities Loopky does not own. Five are translucent or hidden
+  trampolines (Play Services auth, Credentials, Play Core). The sixth,
+  `GmsBarcodeScanningDelegateActivity`, declares no theme, so it inherits the application's, and
+  nothing in it can be made to call `enableEdgeToEdge()` from here.
+
+So nothing in Loopky's own code is what the warning could be keyed on, and the wording is advisory —
+it does not name a class. The Console's detail view was not available when this was written; if it
+names one, that is the thing to re-check, and whether shrinking the release (#338) changes the
+answer is untested.
+
+The device pass the warning asks for did find real defects, none of them in portrait. Every screen
+that padded itself did so for `WindowInsets.systemBars` or `statusBars`, which leave out the display
+cutout and, on a tab screen, a navigation bar that is not at the bottom. In landscape with
+three-button navigation that put the study screen's Close button under the cutout and Home's
+"See all" under the navigation bar; beside the rail, and in the guest shell, the end of a list sat
+under the bar. All of them now read `WindowInsets.screenEdges` (`ui/layout/ScreenInsets.kt`).
+
 **The study card's flip, measured (2026-09-04, `emulator-5554`, Type the answer on).** The turn was dropping every other frame, and the cause was the keyboard: the answer field took focus as the back face composed, at the 90° crossing, and showing the IME makes SurfaceFlinger allocate its window surface, which the card's frames then blocked behind (`eglSwapBuffers` ~425 ms, found with `atrace --async_start view gfx`). Focus now follows the flip.
 
 | | Before | After |

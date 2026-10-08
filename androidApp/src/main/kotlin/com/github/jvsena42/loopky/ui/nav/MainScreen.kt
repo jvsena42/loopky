@@ -2,7 +2,10 @@ package com.github.jvsena42.loopky.ui.nav
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -17,6 +20,7 @@ import com.github.jvsena42.loopky.ui.backup.BackupReminderRoute
 import com.github.jvsena42.loopky.ui.decks.DecksRoute
 import com.github.jvsena42.loopky.ui.discover.DiscoverRoute
 import com.github.jvsena42.loopky.ui.home.HomeRoute
+import com.github.jvsena42.loopky.ui.layout.screenEdges
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.profile.ProfileRoute
 import kotlinx.coroutines.launch
@@ -85,9 +89,16 @@ fun MainScreen(
             )
         }
         Scaffold(
-            // The tab screens each apply their own status-bar inset, and the bottom bar consumes
-            // the navigation-bar inset natively. Zero out the Scaffold's content insets so the
-            // status-bar height isn't added twice above each page title.
+            // The rail already sits inside the start edge's cutout or navigation bar, so the tab
+            // screens beside it must not pad for that edge a second time.
+            modifier = if (useRail) {
+                Modifier.consumeWindowInsets(WindowInsets.screenEdges.only(WindowInsetsSides.Start))
+            } else {
+                Modifier
+            },
+            // The tab screens each apply their own insets, less the ones consumed here and below.
+            // Zero out the Scaffold's content insets so the status-bar height isn't added twice
+            // above each page title.
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (!useRail) {
@@ -102,7 +113,8 @@ fun MainScreen(
                 state = pagerState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding),
             ) { page ->
                 when (LoopkyTab.entries[page]) {
                     LoopkyTab.STUDY -> HomeRoute(
