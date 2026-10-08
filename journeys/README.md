@@ -1,6 +1,6 @@
 # Journeys
 
-27 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
+28 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
 on iOS. The CLI has none — it has no screen — and its equivalent is the `cli-linux` and `cli-binary`
 jobs in `.github/workflows/ci.yml`.
 
@@ -78,6 +78,9 @@ a line when you close it.
   but that delivery has never called `onContinueUserActivity`, so the fallback is unexercised.
 - **22 — a real local signup end to end.** It needs a signup token (SMS, sats or an invite code).
   Redemption, the backup screens and the unbacked sign-out warning are covered by unit tests only.
+- **28 — the password manager, end to end.** Saving, the read-back check and restoring all need a
+  device with a credential provider; no emulator here has one, so only the empty path (no provider:
+  the save fails, the restore picker returns nothing) has been driven.
 - **Backup and restore by file, and Ring export** — the confirmed-write halves end in system UI the
   automation cannot reach.
 - **In-app update prompt:** Play's consent screen, the download and the installing restart need a

@@ -269,7 +269,7 @@ Open [`/iosApp`](./iosApp) in Xcode and run. `shared` is consumed as a static fr
 
 CI runs detekt, the unit tests, and an Android debug build on every PR.
 
-End-to-end coverage is manual and scripted: [`journeys/`](./journeys) holds 27 numbered journeys
+End-to-end coverage is manual and scripted: [`journeys/`](./journeys) holds 28 numbered journeys
 driven on a device with `android-cli` and `xcodebuildmcp`; each run's result goes in its PR, and
 [`journeys/README.md`](./journeys/README.md) lists what has not been driven. A green build says nothing about what the screen
 renders.
