@@ -110,12 +110,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # **v5, not v6, and not for lack of looking.** v6 moved this action's caching into a
-      # separate `gradle-actions-caching` component that is no longer open-source and whose Terms
-      # of Use you accept by upgrading, and it dropped the configuration-cache support this build
-      # uses. v5 is the Node 24 runtime and nothing else, which is all the deprecation asked for.
+      # **`cache-provider: basic` on every `setup-gradle`, here and in release.yml.** v6's default
+      # is `gradle-actions-caching`, which is not open-source and whose Terms of Use you accept by
+      # using it; `basic` is the MIT one over `actions/cache`. It costs a cache that only refreshes
+      # when a build file changes. A step added without the input falls back to the default.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Run detekt
         run: ./gradlew detektAll
@@ -148,6 +150,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Run unit tests
         run: ./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest
@@ -195,6 +199,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       # Runs the whole shared suite on the jvm() target, including the FFI smoke test that loads
       # the real .so and derives a keypair through it.
@@ -436,6 +442,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: The CLI's own tests
         run: ./gradlew :cli:test
@@ -937,6 +945,8 @@ jobs:
       - name: Set up Gradle
         if: matrix.build == 'jar'
         uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Build the distribution
         if: matrix.build == 'jar'
@@ -997,6 +1007,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       # `checkNativeImageIsOneFile` is wired as `finalizedBy` on this task, so the property that
       # broke in #237 is asserted by the build itself — the step below is what a reader can see.
@@ -1133,6 +1145,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       # `~/.konan` is the Kotlin/Native compiler plus its platform libraries — a few hundred MB
       # that `setup-gradle` does not cache, and that would otherwise be downloaded on every run of
