@@ -8,6 +8,7 @@ import androidx.credentials.GetPasswordOption
 import androidx.credentials.PasswordCredential
 import androidx.credentials.exceptions.CreateCredentialException
 import androidx.credentials.exceptions.GetCredentialException
+import com.github.jvsena42.loopky.R
 import com.github.jvsena42.loopky.util.Log
 
 private const val TAG = "Loopky/PasswordManager"
@@ -45,20 +46,28 @@ class PasswordManagerSheet(private val context: Context) {
     }
 
     /**
-     * Read the credential back for [account].
+     * Read the credential back for [account], a pubky.
      *
      * This is what turns "a sheet appeared" into "the account is recoverable". Returns null when
      * nothing comes back, which the caller must treat as *not backed up* — the whole reason the
      * save is verified rather than assumed.
+     *
+     * The app's own name is asked for as well: it was every credential's id before the pubky was,
+     * and those entries still hold a good phrase. Neither id is proof of whose phrase came back —
+     * a provider may ignore the filter — so the caller compares the words themselves.
      */
-    suspend fun read(account: String): String? = try {
+    suspend fun readBack(account: String): String? =
+        read(allowedIds = setOf(account, context.getString(R.string.app_name)))
+
+    /** Let the user pick any phrase saved from Loopky — the restore path, where no pubky is known yet. */
+    suspend fun pick(): String? = read(allowedIds = emptySet())
+
+    private suspend fun read(allowedIds: Set<String>): String? = try {
         val response = credentialManager.getCredential(
             context = context,
-            request = GetCredentialRequest(listOf(GetPasswordOption())),
+            request = GetCredentialRequest(listOf(GetPasswordOption(allowedUserIds = allowedIds))),
         )
-        (response.credential as? PasswordCredential)
-            ?.takeIf { it.id == account }
-            ?.password
+        (response.credential as? PasswordCredential)?.password
     } catch (e: GetCredentialException) {
         Log.e(TAG, "read: FAILED — ${e::class.simpleName}")
         null

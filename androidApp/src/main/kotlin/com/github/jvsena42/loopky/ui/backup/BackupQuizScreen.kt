@@ -66,14 +66,13 @@ fun BackupQuizRoute(
     // here and the ViewModel only asks for it and judges the answer.
     val context = LocalContext.current
     val sheet = remember(context) { PasswordManagerSheet(context) }
-    val account = stringResource(R.string.app_name)
 
     LaunchedEffect(viewModel, sheet) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
                 BackupEffect.Done -> currentOnDone()
-                BackupEffect.ReadBackFromPasswordManager ->
-                    viewModel.onPasswordManagerReadBack(sheet.read(account))
+                is BackupEffect.ReadBackFromPasswordManager ->
+                    viewModel.onPasswordManagerReadBack(sheet.readBack(effect.account))
                 else -> Unit
             }
         }
