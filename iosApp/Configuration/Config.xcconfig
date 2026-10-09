@@ -34,7 +34,8 @@ MARKETING_VERSION=1.5.0
 // Associated Domains, so a tapped https://loopky.app/deck/… or /profile/… link opens the app.
 // The site serves the matching /.well-known/apple-app-site-association, which names
 // TEAM_ID.PRODUCT_BUNDLE_IDENTIFIER — a build signed by any other team is not verified and the
-// link opens Safari instead.
+// link opens Safari instead. `webcredentials:loopky.app` in the same entitlement is what lets the
+// backup screen save the recovery phrase as a loopky.app password; it fails the same quiet way.
 //
 // A personal (free) team cannot sign this capability and a device build fails with it. To build
 // on one, blank it in Local.xcconfig: `CODE_SIGN_ENTITLEMENTS=`. Links then open the web page.

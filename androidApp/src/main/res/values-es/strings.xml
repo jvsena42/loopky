@@ -638,6 +638,7 @@
     <string name="backup_phrase_save_to_manager">Guardar en el gestor de contraseñas</string>
     <string name="backup_phrase_saved_to_manager">Guardada y comprobada. Tu gestor de contraseñas tiene la frase.</string>
     <string name="backup_phrase_save_failed">No se guardó nada. Puede que tu gestor de contraseñas lo haya rechazado, o que lo hayas cancelado.</string>
+    <string name="backup_phrase_saved_unchecked">Guardado, pero no pudimos comprobarlo. Repite la comprobación y elige la entrada que acabas de guardar.</string>
     <string name="backup_quiz_saved_title">Comprueba tu frase guardada</string>
     <string name="backup_quiz_saved_subtitle">Guardaste esta frase en un gestor de contraseñas, así que no hay nada que recordar. La leeremos de nuevo para comprobar que sigue ahí.</string>
     <string name="backup_quiz_saved_check">Comprobar frase guardada</string>

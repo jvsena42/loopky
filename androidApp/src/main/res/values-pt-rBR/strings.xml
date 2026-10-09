@@ -638,6 +638,7 @@
     <string name="backup_phrase_save_to_manager">Salvar no gerenciador de senhas</string>
     <string name="backup_phrase_saved_to_manager">Salva e verificada. Seu gerenciador de senhas tem a frase.</string>
     <string name="backup_phrase_save_failed">Nada foi salvo. Seu gerenciador de senhas pode ter recusado, ou você cancelou.</string>
+    <string name="backup_phrase_saved_unchecked">Salvo, mas não conseguimos conferir. Tente a verificação de novo e escolha a entrada que você acabou de salvar.</string>
     <string name="backup_quiz_saved_title">Confira sua frase salva</string>
     <string name="backup_quiz_saved_subtitle">Você salvou esta frase em um gerenciador de senhas, então não há nada para lembrar. Vamos lê-la de volta para conferir se continua lá.</string>
     <string name="backup_quiz_saved_check">Conferir frase salva</string>

@@ -134,7 +134,13 @@ private fun BackupPhraseScreen(
                 modifier = Modifier.fillMaxWidth().testTag("backup_phrase_save_manager"),
             ) {
                 Text(
-                    text = stringResource(R.string.backup_phrase_save_to_manager),
+                    text = stringResource(
+                        if (state.passwordManagerUnchecked) {
+                            R.string.backup_quiz_saved_check
+                        } else {
+                            R.string.backup_phrase_save_to_manager
+                        },
+                    ),
                     color = colors.accentSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -148,6 +154,15 @@ private fun BackupPhraseScreen(
                 color = colors.foregroundMuted,
                 fontSize = 12.sp,
                 modifier = Modifier.testTag("backup_phrase_manager_saved"),
+            )
+        }
+        if (state.passwordManagerUnchecked) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.backup_phrase_saved_unchecked),
+                color = colors.foregroundSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.testTag("backup_phrase_manager_unchecked"),
             )
         }
         if (state.passwordManagerFailed) {

@@ -648,6 +648,7 @@
     <string name="backup_phrase_save_to_manager">비밀번호 관리자에 저장</string>
     <string name="backup_phrase_saved_to_manager">저장하고 확인했어요. 비밀번호 관리자에 문구가 있어요.</string>
     <string name="backup_phrase_save_failed">아무것도 저장되지 않았어요. 비밀번호 관리자가 거부했거나 취소했을 수 있어요.</string>
+    <string name="backup_phrase_saved_unchecked">저장했지만 확인하지 못했어요. 다시 확인하고 방금 저장한 항목을 선택하세요.</string>
     <string name="backup_quiz_saved_title">저장한 문구 확인</string>
     <string name="backup_quiz_saved_subtitle">이 문구는 비밀번호 관리자에 저장했으니 외울 필요가 없어요. 아직 그곳에 있는지 읽어서 확인할게요.</string>
     <string name="backup_quiz_saved_check">저장한 문구 확인</string>

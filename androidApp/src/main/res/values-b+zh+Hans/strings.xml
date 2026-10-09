@@ -646,6 +646,7 @@
     <string name="backup_phrase_save_to_manager">保存到密码管理器</string>
     <string name="backup_phrase_saved_to_manager">已保存并核对。你的密码管理器中已有这个恢复短语。</string>
     <string name="backup_phrase_save_failed">没有保存任何内容。可能是密码管理器拒绝了，或者你取消了操作。</string>
+    <string name="backup_phrase_saved_unchecked">已保存，但未能核对。请再核对一次，并选择你刚保存的条目。</string>
     <string name="backup_quiz_saved_title">检查已保存的恢复短语</string>
     <string name="backup_quiz_saved_subtitle">你已将恢复短语保存到密码管理器，所以不需要回忆。我们会读取它，确认它仍然在那里。</string>
     <string name="backup_quiz_saved_check">检查已保存的恢复短语</string>

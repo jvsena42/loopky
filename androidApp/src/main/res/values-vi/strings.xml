@@ -690,6 +690,7 @@
     <string name="backup_phrase_save_to_manager">Lưu vào trình quản lý mật khẩu</string>
     <string name="backup_phrase_saved_to_manager">Đã lưu và kiểm tra. Trình quản lý mật khẩu của bạn đã có cụm từ này.</string>
     <string name="backup_phrase_save_failed">Chưa có gì được lưu. Có thể trình quản lý mật khẩu đã từ chối, hoặc bạn đã hủy.</string>
+    <string name="backup_phrase_saved_unchecked">Đã lưu, nhưng chúng tôi chưa kiểm tra được. Hãy kiểm tra lại và chọn mục bạn vừa lưu.</string>
     <string name="backup_quiz_saved_title">Kiểm tra cụm từ đã lưu</string>
     <string name="backup_quiz_saved_subtitle">Bạn đã lưu cụm từ này vào trình quản lý mật khẩu, nên không cần nhớ lại. Chúng tôi sẽ đọc lại để kiểm tra nó vẫn còn đó.</string>
     <string name="backup_quiz_saved_check">Kiểm tra cụm từ đã lưu</string>

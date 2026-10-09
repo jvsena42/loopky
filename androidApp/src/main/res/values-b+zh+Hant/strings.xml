@@ -690,6 +690,7 @@
     <string name="backup_phrase_save_to_manager">儲存到密碼管理工具</string>
     <string name="backup_phrase_saved_to_manager">已儲存並檢查。你的密碼管理工具中已有這組短語。</string>
     <string name="backup_phrase_save_failed">沒有儲存任何內容。可能是你的密碼管理工具拒絕了，或你取消了。</string>
+    <string name="backup_phrase_saved_unchecked">已儲存，但無法核對。請再核對一次，並選擇你剛儲存的項目。</string>
     <string name="backup_quiz_saved_title">檢查已儲存的短語</string>
     <string name="backup_quiz_saved_subtitle">你已將這組短語儲存到密碼管理工具，所以不必憑記憶作答。我們會讀取它，確認它還在。</string>
     <string name="backup_quiz_saved_check">檢查已儲存的短語</string>

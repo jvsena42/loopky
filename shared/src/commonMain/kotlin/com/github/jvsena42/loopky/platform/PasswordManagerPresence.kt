@@ -11,9 +11,7 @@ package com.github.jvsena42.loopky.platform
  * whether to offer the button at all.
  *
  * False hides the offer instead of failing it. A screen that shows "Save to password manager" and
- * then explains it cannot is worse than one that never made the offer — and on iOS, where writing
- * an arbitrary secret into the Passwords app is not something an app may do, false is the honest
- * and permanent answer.
+ * then explains it cannot is worse than one that never made the offer.
  */
 interface PasswordManagerPresence {
     /** True when a save, or a read on restore, can actually be attempted. */

@@ -279,7 +279,8 @@ struct RootView: View {
             RestoreStartScreen(
                 onBack: pop,
                 onRestoreWithPhrase: { identityPath.append(.restorePhrase) },
-                onRestoreWithFile: { identityPath.append(.restoreFile) }
+                onRestoreWithFile: { identityPath.append(.restoreFile) },
+                onRestoreWithPasswordManager: { identityPath.append(.restoreManager) }
             )
         case .restorePhrase:
             RestorePhraseScreen(
@@ -289,6 +290,15 @@ struct RootView: View {
                     // Loopky holds this one — it was just derived from the phrase.
                     identityPath.append(.unregisteredKey(pubky: pubky, loopkyHoldsKey: true))
                 }
+            )
+        case .restoreManager:
+            RestorePhraseScreen(
+                onBack: pop,
+                onRestored: signIn,
+                onUnregistered: { pubky in
+                    identityPath.append(.unregisteredKey(pubky: pubky, loopkyHoldsKey: true))
+                },
+                startFromPasswordManager: true
             )
         case .restoreFile:
             RestoreFileScreen(

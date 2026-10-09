@@ -5,6 +5,7 @@ struct RestoreStartScreen: View {
     var onBack: () -> Void
     var onRestoreWithPhrase: () -> Void
     var onRestoreWithFile: () -> Void
+    var onRestoreWithPasswordManager: () -> Void
 
     var body: some View {
         SignupScaffold(
@@ -26,6 +27,13 @@ struct RestoreStartScreen: View {
                     action: onRestoreWithFile
                 )
                 .accessibilityIdentifier("restore_method_file")
+
+                MethodCard(
+                    title: "restore_method_manager",
+                    detail: "restore_method_manager_detail",
+                    action: onRestoreWithPasswordManager
+                )
+                .accessibilityIdentifier("restore_method_manager")
             }
         }
     }
