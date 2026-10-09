@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -96,6 +97,9 @@ class BackupPhraseViewModel(
 
     private var loadJob: Job? = null
 
+    /** Fixed when the save starts, so the read-back asks for the entry that save wrote. */
+    private var account: String? = null
+
     init {
         onEnter()
     }
@@ -134,7 +138,13 @@ class BackupPhraseViewModel(
         if (words.isEmpty() || _state.value.isSavingToPasswordManager) return
         _state.update { it.copy(isSavingToPasswordManager = true, passwordManagerFailed = false) }
         viewModelScope.launch {
-            _effects.emit(BackupPhraseEffect.SaveToPasswordManager(words.joinToString(" ")))
+            val pubky = keyBackup.custody.first().loopkyPubky()
+            if (pubky == null) {
+                _state.update { it.copy(isSavingToPasswordManager = false, passwordManagerFailed = true) }
+                return@launch
+            }
+            account = pubky
+            _effects.emit(BackupPhraseEffect.SaveToPasswordManager(pubky, words.joinToString(" ")))
         }
     }
 
@@ -147,11 +157,14 @@ class BackupPhraseViewModel(
      * one lost phone from gone.
      */
     fun onPasswordManagerSaveResult(saved: Boolean) {
-        if (!saved) {
+        // An answer for a save nobody is waiting on — the screen was left while the sheet was up.
+        if (!_state.value.isSavingToPasswordManager) return
+        val pubky = account
+        if (!saved || pubky == null) {
             _state.update { it.copy(isSavingToPasswordManager = false, passwordManagerFailed = true) }
             return
         }
-        viewModelScope.launch { _effects.emit(BackupPhraseEffect.ReadBackFromPasswordManager) }
+        viewModelScope.launch { _effects.emit(BackupPhraseEffect.ReadBackFromPasswordManager(pubky)) }
     }
 
     /**
@@ -159,6 +172,7 @@ class BackupPhraseViewModel(
      * the point: it is the difference between "a sheet appeared" and "this account is recoverable".
      */
     fun onPasswordManagerReadBack(secret: String?) {
+        if (!_state.value.isSavingToPasswordManager) return
         val expected = _state.value.words.joinToString(" ")
         val verified = secret != null && expected.isNotEmpty() && secret.trim() == expected
         if (!verified) {
@@ -200,12 +214,17 @@ sealed interface BackupPhraseEffect {
      * Raise the platform's "save a password" sheet for [secret]. Carries the phrase, so it goes
      * straight to the platform layer and is never logged, cached or held in a field — the same rule
      * as `ringExportUrl`.
+     *
+     * [account] is the full pubky. It is the credential's id because two accounts saved from one
+     * device must not share an entry, and it is the only name pubky.app knows the same identity by.
      */
-    data class SaveToPasswordManager(val secret: String) : BackupPhraseEffect
+    data class SaveToPasswordManager(val account: String, val secret: String) : BackupPhraseEffect
 
-    /** Read the credential back, so the save can be verified rather than assumed. */
-    data object ReadBackFromPasswordManager : BackupPhraseEffect
+    /** Read [account]'s credential back, so the save can be verified rather than assumed. */
+    data class ReadBackFromPasswordManager(val account: String) : BackupPhraseEffect
 }
+
+private fun KeyCustody.loopkyPubky(): String? = (this as? KeyCustody.Loopky)?.pubky
 
 /**
  * The confirm quiz. **Passing this is what marks the phrase backed up, not seeing it.** Someone who
@@ -296,11 +315,19 @@ class BackupQuizViewModel(
     fun onCheckSavedClick() {
         if (_state.value.isChecking) return
         _state.update { it.copy(isChecking = true, wrong = false) }
-        viewModelScope.launch { _effects.emit(BackupEffect.ReadBackFromPasswordManager) }
+        viewModelScope.launch {
+            val pubky = keyBackup.custody.first().loopkyPubky()
+            if (pubky == null) {
+                _state.update { it.copy(isChecking = false, wrong = true) }
+                return@launch
+            }
+            _effects.emit(BackupEffect.ReadBackFromPasswordManager(pubky))
+        }
     }
 
     /** What the credential manager returned, compared against the real phrase. */
     fun onPasswordManagerReadBack(secret: String?) {
+        if (!_state.value.isChecking) return
         viewModelScope.launch {
             val expected = keyBackup.revealRecoveryPhrase().getOrNull()
             if (secret == null || expected.isNullOrBlank() || secret.trim() != expected) {
@@ -474,6 +501,6 @@ sealed interface BackupEffect {
     /** The store listing for Pubky Ring, so "not installed" is not a dead end. */
     data class OpenInstallPage(val url: String) : BackupEffect
 
-    /** Read the saved credential back, so the confirm step checks it rather than the user. */
-    data object ReadBackFromPasswordManager : BackupEffect
+    /** Read [account]'s saved credential back, so the confirm step checks it rather than the user. */
+    data class ReadBackFromPasswordManager(val account: String) : BackupEffect
 }

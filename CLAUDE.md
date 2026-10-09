@@ -17,7 +17,7 @@ A fresh session has none of this in context, so establish it before the first ed
   iOS is the XcodeBuildMCP CLI / `xcodebuildmcp` MCP server (see Build & run below), never bare
   `xcodebuild`, `xcrun` or `simctl`. Their skills — `android-cli` and `xcodebuildmcp-cli` — are
   installed; invoke the relevant one rather than reconstructing commands from memory.
-- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 27 numbered
+- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 28 numbered
   `journeys/*.xml` scripts (onboarding, import, study, discovery, signup/restore …) driven by hand
   on a device. Read `journeys/README.md` first — the driving traps, and what has never been run on
   a device, neither of which a green build says anything about — then re-run the journeys your

@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.KeySource
+import com.github.jvsena42.loopky.platform.PasswordManagerPresence
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
 import com.github.jvsena42.loopky.testing.VALID_TEST_MNEMONIC
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -33,7 +35,12 @@ class RestorePhraseViewModelTest {
 
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = RestorePhraseViewModel(identityRepository = identityRepo)
+    private fun viewModel(canUsePasswordManager: Boolean = true) = RestorePhraseViewModel(
+        identityRepository = identityRepo,
+        passwordManager = object : PasswordManagerPresence {
+            override fun canSave(): Boolean = canUsePasswordManager
+        },
+    )
 
     private fun TestScope.collectEffects(vm: RestorePhraseViewModel): List<RestoreEffect> {
         val effects = mutableListOf<RestoreEffect>()
@@ -41,6 +48,105 @@ class RestorePhraseViewModelTest {
             vm.effects.collect { effects.add(it) }
         }
         return effects
+    }
+
+    @Test
+    fun aPhraseFromThePasswordManagerSignsInWithoutBeingTyped() = runTest {
+        identityRepo.homeserverLookup = HomeserverLookup.Registered("homeserver-pubky")
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+
+        vm.onUsePasswordManagerClick()
+        advanceUntilIdle()
+        assertEquals(listOf<RestoreEffect>(RestoreEffect.ReadFromPasswordManager), effects)
+        assertFalse(vm.state.value.canSubmit, "nothing to submit while the picker is up")
+
+        vm.onPasswordManagerResult(" $VALID_TEST_MNEMONIC\n")
+        advanceUntilIdle()
+
+        val source = assertIs<KeySource.Phrase>(identityRepo.signInWithKeyCalls.single())
+        assertEquals(VALID_TEST_MNEMONIC, source.mnemonic)
+        assertEquals(RestoreEffect.NavigateHome, effects.last())
+    }
+
+    @Test
+    fun aSavedPhraseIsCheckedLikeATypedOneAndTheEntryIsNeverTrusted() = runTest {
+        // A password manager can hold anything under Loopky's name. What it hands back gets the
+        // same derivation and lookup as typed words, and the same honest outcomes.
+        identityRepo.derivedPubky = Result.failure(IllegalArgumentException("Invalid mnemonic phrase"))
+        val vm = viewModel()
+
+        vm.onUsePasswordManagerClick()
+        advanceUntilIdle()
+        vm.onPasswordManagerResult("hunter2")
+        advanceUntilIdle()
+
+        assertIs<RestoreOutcome.InvalidPhrase>(vm.state.value.outcome)
+        assertTrue(identityRepo.signInWithKeyCalls.isEmpty())
+    }
+
+    @Test
+    fun aCancelledPickerLeavesTheFieldUsableAndSaysNothingCameBack() = runTest {
+        val vm = viewModel()
+
+        vm.onUsePasswordManagerClick()
+        advanceUntilIdle()
+        vm.onPasswordManagerResult(null)
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.passwordManagerEmpty)
+        assertFalse(vm.state.value.isReadingPasswordManager)
+        assertEquals(0, identityRepo.lookupCount)
+
+        vm.onPhraseChange("abandon")
+        assertFalse(vm.state.value.passwordManagerEmpty, "the note is about the picker, not about what is typed next")
+    }
+
+    @Test
+    fun aPickerAnsweringAfterTheScreenWasLeftSignsNobodyIn() = runTest {
+        identityRepo.homeserverLookup = HomeserverLookup.Registered("homeserver-pubky")
+        val vm = viewModel()
+
+        vm.onUsePasswordManagerClick()
+        advanceUntilIdle()
+        vm.onLeave()
+        vm.onPasswordManagerResult(VALID_TEST_MNEMONIC)
+        advanceUntilIdle()
+
+        assertTrue(identityRepo.signInWithKeyCalls.isEmpty())
+        assertEquals("", vm.state.value.phrase)
+    }
+
+    @Test
+    fun aPlatformWithNoPasswordManagerNeverOffersOrAsks() = runTest {
+        val vm = viewModel(canUsePasswordManager = false)
+        val effects = collectEffects(vm)
+
+        assertFalse(vm.state.value.canUsePasswordManager)
+        vm.onUsePasswordManagerClick()
+        advanceUntilIdle()
+
+        assertTrue(effects.isEmpty())
+    }
+
+    @Test
+    fun aScreenThatRaisesThePickerItselfClaimsTheReadOnceAndGetsNoEffect() = runTest {
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+
+        assertTrue(vm.beginPasswordManagerRead())
+        assertFalse(vm.beginPasswordManagerRead(), "a second picker over the first")
+        advanceUntilIdle()
+
+        assertTrue(effects.isEmpty())
+        assertTrue(vm.state.value.isReadingPasswordManager)
+    }
+
+    @Test
+    fun leavingKeepsWhetherThePlatformCanAsk() = runTest {
+        val vm = viewModel()
+        vm.onLeave()
+        assertTrue(vm.state.value.canUsePasswordManager)
     }
 
     @Test

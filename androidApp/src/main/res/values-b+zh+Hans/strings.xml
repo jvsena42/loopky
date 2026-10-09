@@ -713,6 +713,10 @@
     <string name="unregistered_ring_import">用我的恢复短语恢复</string>
     <string name="restore_method_file">加密恢复文件</string>
     <string name="restore_method_file_detail">一个 recovery.pkarr 文件及其密码短语。</string>
+    <string name="restore_method_manager">密码管理器</string>
+    <string name="restore_method_manager_detail">你保存到密码管理器的十二个单词。</string>
+    <string name="restore_phrase_from_manager">使用我的密码管理器</string>
+    <string name="restore_phrase_manager_empty">密码管理器没有返回任何内容。你可以直接输入这十二个单词。</string>
     <string name="restore_file_title">打开你的恢复文件</string>
     <string name="restore_file_subtitle">选择你保存的文件，然后输入它的密码短语。</string>
     <string name="restore_file_choose">选择文件</string>

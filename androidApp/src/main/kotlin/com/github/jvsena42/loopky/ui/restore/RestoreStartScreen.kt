@@ -22,17 +22,12 @@ import com.github.jvsena42.loopky.R
 import com.github.jvsena42.loopky.ui.signup.SignupScaffold
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 
-/**
- * Pick how to restore.
- *
- * One option today; the encrypted recovery file joins it in the next phase, which is why this is a
- * list rather than a button that goes straight to the phrase screen.
- */
 @Composable
 fun RestoreStartRoute(
     onBack: () -> Unit,
     onRestoreWithPhrase: () -> Unit,
     onRestoreWithFile: () -> Unit,
+    onRestoreWithPasswordManager: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     SignupScaffold(
@@ -53,6 +48,13 @@ fun RestoreStartRoute(
             detail = stringResource(R.string.restore_method_file_detail),
             onClick = onRestoreWithFile,
             modifier = Modifier.testTag("restore_method_file"),
+        )
+        Spacer(Modifier.height(12.dp))
+        RestoreMethodCard(
+            label = stringResource(R.string.restore_method_manager),
+            detail = stringResource(R.string.restore_method_manager_detail),
+            onClick = onRestoreWithPasswordManager,
+            modifier = Modifier.testTag("restore_method_manager"),
         )
     }
 }
@@ -92,6 +94,11 @@ private fun RestoreMethodCard(
 @Composable
 private fun RestoreStartPreview() {
     LoopkyTheme {
-        RestoreStartRoute(onBack = {}, onRestoreWithPhrase = {}, onRestoreWithFile = {})
+        RestoreStartRoute(
+            onBack = {},
+            onRestoreWithPhrase = {},
+            onRestoreWithFile = {},
+            onRestoreWithPasswordManager = {},
+        )
     }
 }

@@ -10,7 +10,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -23,12 +26,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+private const val PUBKY = "pk1owner"
 private const val PHRASE = "keep amused equip turkey turtle eyebrow alpha comic twin barely chef feature"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BackupPhraseViewModelTest {
 
-    private val custody = MutableStateFlow<KeyCustody>(KeyCustody.External)
+    private val custody = MutableStateFlow<KeyCustody>(KeyCustody.Loopky(pubky = PUBKY))
     private val marked = mutableListOf<BackupMethod>()
     private val mainDispatcher = StandardTestDispatcher()
 
@@ -52,6 +56,52 @@ class BackupPhraseViewModelTest {
             override fun canSave(): Boolean = canSave
         },
     )
+
+    private fun TestScope.collectEffects(vm: BackupPhraseViewModel): List<BackupPhraseEffect> {
+        val effects = mutableListOf<BackupPhraseEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.effects.collect { effects.add(it) }
+        }
+        return effects
+    }
+
+    /** The app's name was the id once, so two accounts on one device shared an entry. */
+    @Test
+    fun `the credential is filed under the pubky and read back under it`() = runTest {
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+        advanceUntilIdle()
+        vm.onRevealClick()
+
+        vm.onSaveToPasswordManagerClick()
+        advanceUntilIdle()
+        vm.onPasswordManagerSaveResult(saved = true)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(
+                BackupPhraseEffect.SaveToPasswordManager(account = PUBKY, secret = PHRASE),
+                BackupPhraseEffect.ReadBackFromPasswordManager(account = PUBKY),
+            ),
+            effects,
+        )
+    }
+
+    @Test
+    fun `a key Loopky does not hold has no account to save under`() = runTest {
+        custody.value = KeyCustody.External
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+        advanceUntilIdle()
+        vm.onRevealClick()
+
+        vm.onSaveToPasswordManagerClick()
+        advanceUntilIdle()
+
+        assertTrue(effects.isEmpty())
+        assertTrue(vm.state.value.passwordManagerFailed)
+        assertFalse(vm.state.value.isSavingToPasswordManager)
+    }
 
     /**
      * The rotation bug: `onLeave` empties a ViewModel that outlives the screen, and loading used
@@ -140,6 +190,23 @@ class BackupPhraseViewModelTest {
         assertTrue(vm.state.value.savedToPasswordManager)
         assertFalse(vm.state.value.passwordManagerFailed)
         assertContains(marked, BackupMethod.PasswordManager)
+    }
+
+    /** The sheet's fallback answer arrives after `onLeave` when the screen is left with it up. */
+    @Test
+    fun `an answer arriving after the screen was left changes nothing`() = runTest {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onRevealClick()
+        vm.onSaveToPasswordManagerClick()
+        advanceUntilIdle()
+
+        vm.onLeave()
+        vm.onPasswordManagerSaveResult(saved = false)
+        vm.onPasswordManagerReadBack(null)
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.passwordManagerFailed, "a failure line for a save nobody is waiting on")
     }
 
     @Test

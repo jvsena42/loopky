@@ -42,6 +42,7 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.LeaveEffect
 import com.github.jvsena42.loopky.ui.util.PasswordManagerSheet
 import com.github.jvsena42.loopky.ui.util.SecureScreen
+import com.github.jvsena42.loopky.ui.util.answerEvenIfCancelled
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -61,18 +62,20 @@ fun BackupPhraseRoute(
     LeaveEffect { viewModel.onLeave() }
 
     // The credential sheet needs an Activity, so the platform half of the save lives here and the
-    // ViewModel only asks for it. `state.pubky` is not on this screen, so the account label is the
-    // app's own name plus the phrase's owner, resolved by the sheet.
+    // ViewModel only asks for it.
     val context = LocalContext.current
     val sheet = remember(context) { PasswordManagerSheet(context) }
-    val account = stringResource(R.string.app_name)
     LaunchedEffect(viewModel, sheet) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
                 is BackupPhraseEffect.SaveToPasswordManager ->
-                    viewModel.onPasswordManagerSaveResult(sheet.save(account, effect.secret))
-                BackupPhraseEffect.ReadBackFromPasswordManager ->
-                    viewModel.onPasswordManagerReadBack(sheet.read(account))
+                    answerEvenIfCancelled(fallback = false, deliver = viewModel::onPasswordManagerSaveResult) {
+                        sheet.save(effect.account, effect.secret)
+                    }
+                is BackupPhraseEffect.ReadBackFromPasswordManager ->
+                    answerEvenIfCancelled(fallback = null, deliver = viewModel::onPasswordManagerReadBack) {
+                        sheet.readBack(effect.account)
+                    }
             }
         }
     }

@@ -9,11 +9,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +41,9 @@ import com.github.jvsena42.loopky.ui.components.errorTitle
 import com.github.jvsena42.loopky.ui.signup.SignupScaffold
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.LeaveEffect
+import com.github.jvsena42.loopky.ui.util.PasswordManagerSheet
 import com.github.jvsena42.loopky.ui.util.SecureScreen
+import com.github.jvsena42.loopky.ui.util.answerEvenIfCancelled
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -45,6 +53,7 @@ fun RestorePhraseRoute(
     onRestored: () -> Unit,
     onUnregistered: (String) -> Unit,
     modifier: Modifier = Modifier,
+    startFromPasswordManager: Boolean = false,
     viewModel: RestorePhraseViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -59,12 +68,29 @@ fun RestorePhraseRoute(
     // without this they stay in memory — and in any heap dump — after the user has navigated away.
     LeaveEffect { viewModel.onLeaveUnlessCorrecting() }
 
-    LaunchedEffect(viewModel) {
+    // The credential picker needs an Activity, so the read lives here and the ViewModel judges it.
+    val context = LocalContext.current
+    val sheet = remember(context) { PasswordManagerSheet(context) }
+
+    LaunchedEffect(viewModel, sheet) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
                 RestoreEffect.NavigateHome -> currentOnRestored()
                 is RestoreEffect.NavigateUnregistered -> currentOnUnregistered(effect.pubky)
+                RestoreEffect.ReadFromPasswordManager -> viewModel.answerFrom(sheet)
             }
+        }
+    }
+
+    // Arriving from the "Password manager" card raises the picker without a second tap. Saveable,
+    // so a rotation or a return from the unregistered-key screen does not raise it again. Called
+    // directly rather than through the effect, which would be emitted before the collector above
+    // has subscribed.
+    var pickerRaised by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(startFromPasswordManager, sheet) {
+        if (startFromPasswordManager && !pickerRaised) {
+            pickerRaised = true
+            if (viewModel.beginPasswordManagerRead()) viewModel.answerFrom(sheet)
         }
     }
 
@@ -72,16 +98,21 @@ fun RestorePhraseRoute(
         state = state,
         onPhraseChange = viewModel::onPhraseChange,
         onSubmit = viewModel::onSubmit,
+        onUsePasswordManager = viewModel::onUsePasswordManagerClick,
         onBack = onBack,
         modifier = modifier,
     )
 }
+
+private suspend fun RestorePhraseViewModel.answerFrom(sheet: PasswordManagerSheet) =
+    answerEvenIfCancelled(fallback = null, deliver = this::onPasswordManagerResult) { sheet.pick() }
 
 @Composable
 private fun RestorePhraseScreen(
     state: RestorePhraseUiState,
     onPhraseChange: (String) -> Unit,
     onSubmit: () -> Unit,
+    onUsePasswordManager: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -108,7 +139,7 @@ private fun RestorePhraseScreen(
             // Locked while the DHT lookup and sign-in are in flight. Editable, the field let a
             // user keep fixing a typo during the round trip, so the words that got checked and the
             // words on screen could differ — and everything downstream keys off the submitted ones.
-            enabled = !state.isChecking,
+            enabled = !state.isChecking && !state.isReadingPasswordManager,
             placeholder = {
                 Text(text = stringResource(R.string.restore_phrase_placeholder), color = colors.foregroundMuted)
             },
@@ -143,6 +174,31 @@ private fun RestorePhraseScreen(
             loading = state.isChecking,
             modifier = Modifier.testTag("restore_phrase_submit"),
         )
+
+        if (state.canUsePasswordManager) {
+            Spacer(Modifier.height(10.dp))
+            TextButton(
+                onClick = onUsePasswordManager,
+                enabled = !state.isChecking && !state.isReadingPasswordManager,
+                modifier = Modifier.fillMaxWidth().testTag("restore_phrase_from_manager"),
+            ) {
+                Text(
+                    text = stringResource(R.string.restore_phrase_from_manager),
+                    color = colors.accentSecondary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+        if (state.passwordManagerEmpty) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.restore_phrase_manager_empty),
+                color = colors.foregroundSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.testTag("restore_phrase_manager_empty"),
+            )
+        }
 
         state.outcome?.let {
             Spacer(Modifier.height(20.dp))
@@ -242,6 +298,7 @@ private fun RestorePhraseNoAccountPreview() {
             ),
             onPhraseChange = {},
             onSubmit = {},
+            onUsePasswordManager = {},
             onBack = {},
         )
     }
@@ -258,6 +315,7 @@ private fun RestorePhraseCouldNotCheckPreview() {
             ),
             onPhraseChange = {},
             onSubmit = {},
+            onUsePasswordManager = {},
             onBack = {},
         )
     }

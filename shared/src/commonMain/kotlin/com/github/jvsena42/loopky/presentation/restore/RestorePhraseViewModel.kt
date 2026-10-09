@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.KeySource
+import com.github.jvsena42.loopky.platform.PasswordManagerPresence
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.Job
@@ -34,9 +35,12 @@ import kotlinx.coroutines.launch
  */
 class RestorePhraseViewModel(
     private val identityRepository: IdentityRepository,
+    passwordManager: PasswordManagerPresence,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(RestorePhraseUiState())
+    private val canUsePasswordManager = passwordManager.canSave()
+
+    private val _state = MutableStateFlow(blankState())
     val state: StateFlow<RestorePhraseUiState> = _state.asStateFlow()
 
     private val _effects = MutableSharedFlow<RestoreEffect>(extraBufferCapacity = 4)
@@ -48,7 +52,41 @@ class RestorePhraseViewModel(
         // Clearing the outcome on edit is the point: the previous answer was about the previous
         // words, and leaving "that phrase has no account" under a field the user is fixing reads
         // as a verdict on what they are typing now.
-        _state.update { it.copy(phrase = phrase, outcome = null) }
+        _state.update { it.copy(phrase = phrase, outcome = null, passwordManagerEmpty = false) }
+    }
+
+    /**
+     * Ask the platform's credential picker for a saved phrase. What comes back is checked exactly
+     * like typed words — the entry's id is never trusted to say whose phrase it is.
+     */
+    fun onUsePasswordManagerClick() {
+        if (!beginPasswordManagerRead()) return
+        viewModelScope.launch { _effects.emit(RestoreEffect.ReadFromPasswordManager) }
+    }
+
+    /**
+     * Claim the read without emitting the effect, for a screen that raises the picker as it opens:
+     * an effect emitted before the screen's collector has subscribed is dropped, and the field
+     * would stay locked waiting for an answer nobody was asked for. False means do not raise it.
+     */
+    fun beginPasswordManagerRead(): Boolean {
+        val current = _state.value
+        if (!canUsePasswordManager || current.isChecking || current.isReadingPasswordManager) return false
+        _state.update { it.copy(isReadingPasswordManager = true, passwordManagerEmpty = false, outcome = null) }
+        return true
+    }
+
+    /** Null for a cancel, no provider, or nothing saved: the field stays, so the words can be typed. */
+    fun onPasswordManagerResult(secret: String?) {
+        // A picker answering after the screen was left must not sign anyone in.
+        if (!_state.value.isReadingPasswordManager) return
+        val phrase = secret?.trim().orEmpty()
+        if (phrase.isEmpty()) {
+            _state.update { it.copy(isReadingPasswordManager = false, passwordManagerEmpty = true) }
+            return
+        }
+        _state.update { it.copy(phrase = phrase, isReadingPasswordManager = false, outcome = null) }
+        onSubmit()
     }
 
     fun onSubmit() {
@@ -103,7 +141,7 @@ class RestorePhraseViewModel(
         }
             .onSuccess {
                 // The words are done with the moment the session exists.
-                _state.update { RestorePhraseUiState() }
+                _state.update { blankState() }
                 _effects.emit(RestoreEffect.NavigateHome)
             }
             .onFailure { error ->
@@ -152,8 +190,10 @@ class RestorePhraseViewModel(
      */
     fun onLeave() {
         submitJob?.cancel()
-        _state.update { RestorePhraseUiState() }
+        _state.update { blankState() }
     }
+
+    private fun blankState() = RestorePhraseUiState(canUsePasswordManager = canUsePasswordManager)
 
     /** True while an outcome is on screen that the user is expected to come back and act on. */
     private val isAwaitingCorrection: Boolean
@@ -170,8 +210,11 @@ data class RestorePhraseUiState(
     val phrase: String = "",
     val isChecking: Boolean = false,
     val outcome: RestoreOutcome? = null,
+    val canUsePasswordManager: Boolean = false,
+    val isReadingPasswordManager: Boolean = false,
+    val passwordManagerEmpty: Boolean = false,
 ) {
-    val canSubmit: Boolean get() = phrase.isNotBlank() && !isChecking
+    val canSubmit: Boolean get() = phrase.isNotBlank() && !isChecking && !isReadingPasswordManager
 }
 
 /**
@@ -231,6 +274,9 @@ sealed interface RestoreEffect {
      * recognising it is not theirs is the fastest diagnosis the user can make.
      */
     data class NavigateUnregistered(val pubky: String) : RestoreEffect
+
+    /** Raise the platform's credential picker; the answer returns through `onPasswordManagerResult`. */
+    data object ReadFromPasswordManager : RestoreEffect
 }
 
 private const val TAG = "Loopky/RestorePhraseVM"

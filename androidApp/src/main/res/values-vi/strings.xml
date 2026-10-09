@@ -759,6 +759,10 @@
     <string name="unregistered_ring_import">Khôi phục bằng cụm từ khôi phục</string>
     <string name="restore_method_file">Tệp khôi phục mã hóa</string>
     <string name="restore_method_file_detail">Một tệp recovery.pkarr và cụm mật khẩu của nó.</string>
+    <string name="restore_method_manager">Trình quản lý mật khẩu</string>
+    <string name="restore_method_manager_detail">Mười hai từ bạn đã lưu vào trình quản lý mật khẩu.</string>
+    <string name="restore_phrase_from_manager">Dùng trình quản lý mật khẩu của tôi</string>
+    <string name="restore_phrase_manager_empty">Trình quản lý mật khẩu không trả về gì. Bạn có thể tự nhập mười hai từ.</string>
     <string name="restore_file_title">Mở tệp khôi phục</string>
     <string name="restore_file_subtitle">Chọn tệp bạn đã lưu, rồi nhập cụm mật khẩu của tệp.</string>
     <string name="restore_file_choose">Chọn tệp</string>

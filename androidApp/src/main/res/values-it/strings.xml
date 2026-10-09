@@ -703,6 +703,10 @@
     <string name="unregistered_ring_import">Ripristina con la mia frase di recupero</string>
     <string name="restore_method_file">File di recupero crittografato</string>
     <string name="restore_method_file_detail">Un file recovery.pkarr e la sua password.</string>
+    <string name="restore_method_manager">Gestore di password</string>
+    <string name="restore_method_manager_detail">Le dodici parole che hai salvato in un gestore di password.</string>
+    <string name="restore_phrase_from_manager">Usa il mio gestore di password</string>
+    <string name="restore_phrase_manager_empty">Il gestore di password non ha restituito nulla. Puoi digitare le dodici parole.</string>
     <string name="restore_file_title">Apri il tuo file di recupero</string>
     <string name="restore_file_subtitle">Scegli il file che hai salvato, poi inserisci la sua password.</string>
     <string name="restore_file_choose">Scegli file</string>

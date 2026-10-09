@@ -41,6 +41,9 @@ object Routes {
     const val RESTORE_PHRASE = "restore/phrase"
     const val RESTORE_FILE = "restore/file"
 
+    /** The phrase screen, entered with the password-manager picker already raised. */
+    const val RESTORE_MANAGER = "restore/manager"
+
     /** A valid key with no account: `{pubky}`, plus who holds it. */
     const val ACCOUNT_UNREGISTERED = "account/unregistered/{pubky}?local={local}"
 
