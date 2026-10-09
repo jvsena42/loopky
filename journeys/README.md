@@ -87,6 +87,9 @@ a line when you close it.
   simulator saves and raises the "Sign In" sheet for the right pubky, but nothing has accepted
   that sheet, so the verified state and a restore from a saved entry are undriven — and nothing at
   all has run on a device, which is the only place the `webcredentials` association is enforced.
+  Also undriven: whether that association makes Password AutoFill offer the phrase on the
+  recovery-file passphrase and Unsplash key fields (a simulator with a hardware keyboard shows no
+  QuickType bar), the unchecked state, and a rotation with either sheet up.
 - **Backup and restore by file, and Ring export** — the confirmed-write halves end in system UI the
   automation cannot reach.
 - **In-app update prompt:** Play's consent screen, the download and the installing restart need a
