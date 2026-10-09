@@ -44,6 +44,7 @@ import com.github.jvsena42.loopky.ui.signup.SignupScaffold
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.PasswordManagerSheet
 import com.github.jvsena42.loopky.ui.util.SecureScreen
+import com.github.jvsena42.loopky.ui.util.answerEvenIfCancelled
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -72,7 +73,9 @@ fun BackupQuizRoute(
             when (effect) {
                 BackupEffect.Done -> currentOnDone()
                 is BackupEffect.ReadBackFromPasswordManager ->
-                    viewModel.onPasswordManagerReadBack(sheet.readBack(effect.account))
+                    answerEvenIfCancelled(fallback = null, deliver = viewModel::onPasswordManagerReadBack) {
+                        sheet.readBack(effect.account)
+                    }
                 else -> Unit
             }
         }

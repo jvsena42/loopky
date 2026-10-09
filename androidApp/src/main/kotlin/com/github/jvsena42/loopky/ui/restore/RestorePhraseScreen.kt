@@ -43,6 +43,7 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.LeaveEffect
 import com.github.jvsena42.loopky.ui.util.PasswordManagerSheet
 import com.github.jvsena42.loopky.ui.util.SecureScreen
+import com.github.jvsena42.loopky.ui.util.answerEvenIfCancelled
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -103,20 +104,8 @@ fun RestorePhraseRoute(
     )
 }
 
-/**
- * A rotation cancels the coroutine waiting on the picker while the ViewModel outlives it. Without
- * the `finally`, the field stays locked on an answer that can no longer arrive.
- */
-private suspend fun RestorePhraseViewModel.answerFrom(sheet: PasswordManagerSheet) {
-    var answered = false
-    try {
-        val secret = sheet.pick()
-        answered = true
-        onPasswordManagerResult(secret)
-    } finally {
-        if (!answered) onPasswordManagerResult(null)
-    }
-}
+private suspend fun RestorePhraseViewModel.answerFrom(sheet: PasswordManagerSheet) =
+    answerEvenIfCancelled(fallback = null, deliver = this::onPasswordManagerResult) { sheet.pick() }
 
 @Composable
 private fun RestorePhraseScreen(

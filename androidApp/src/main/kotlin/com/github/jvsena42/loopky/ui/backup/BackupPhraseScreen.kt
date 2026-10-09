@@ -42,6 +42,7 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.LeaveEffect
 import com.github.jvsena42.loopky.ui.util.PasswordManagerSheet
 import com.github.jvsena42.loopky.ui.util.SecureScreen
+import com.github.jvsena42.loopky.ui.util.answerEvenIfCancelled
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -68,9 +69,13 @@ fun BackupPhraseRoute(
         viewModel.effects.collectLatest { effect ->
             when (effect) {
                 is BackupPhraseEffect.SaveToPasswordManager ->
-                    viewModel.onPasswordManagerSaveResult(sheet.save(effect.account, effect.secret))
+                    answerEvenIfCancelled(fallback = false, deliver = viewModel::onPasswordManagerSaveResult) {
+                        sheet.save(effect.account, effect.secret)
+                    }
                 is BackupPhraseEffect.ReadBackFromPasswordManager ->
-                    viewModel.onPasswordManagerReadBack(sheet.readBack(effect.account))
+                    answerEvenIfCancelled(fallback = null, deliver = viewModel::onPasswordManagerReadBack) {
+                        sheet.readBack(effect.account)
+                    }
             }
         }
     }

@@ -23,6 +23,24 @@ private const val TAG = "Loopky/PasswordManager"
  * Nothing here logs the phrase. The failure paths log an exception *class*, never a message, since
  * a provider is free to put whatever it likes in the latter.
  */
+/**
+ * Ask a system sheet, and hand [deliver] an answer even when the wait is cancelled.
+ *
+ * A rotation restarts the effect that is suspended on the sheet while the ViewModel survives it.
+ * Without the [fallback] the ViewModel keeps waiting for an answer that can no longer arrive, and
+ * the button that raised the sheet stays disabled until the screen is left.
+ */
+suspend fun <T> answerEvenIfCancelled(fallback: T, deliver: (T) -> Unit, ask: suspend () -> T) {
+    var answered = false
+    try {
+        val answer = ask()
+        answered = true
+        deliver(answer)
+    } finally {
+        if (!answered) deliver(fallback)
+    }
+}
+
 class PasswordManagerSheet(private val context: Context) {
 
     private val credentialManager = CredentialManager.create(context)

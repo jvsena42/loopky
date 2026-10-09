@@ -157,6 +157,8 @@ class BackupPhraseViewModel(
      * one lost phone from gone.
      */
     fun onPasswordManagerSaveResult(saved: Boolean) {
+        // An answer for a save nobody is waiting on — the screen was left while the sheet was up.
+        if (!_state.value.isSavingToPasswordManager) return
         val pubky = account
         if (!saved || pubky == null) {
             _state.update { it.copy(isSavingToPasswordManager = false, passwordManagerFailed = true) }
@@ -170,6 +172,7 @@ class BackupPhraseViewModel(
      * the point: it is the difference between "a sheet appeared" and "this account is recoverable".
      */
     fun onPasswordManagerReadBack(secret: String?) {
+        if (!_state.value.isSavingToPasswordManager) return
         val expected = _state.value.words.joinToString(" ")
         val verified = secret != null && expected.isNotEmpty() && secret.trim() == expected
         if (!verified) {
@@ -324,6 +327,7 @@ class BackupQuizViewModel(
 
     /** What the credential manager returned, compared against the real phrase. */
     fun onPasswordManagerReadBack(secret: String?) {
+        if (!_state.value.isChecking) return
         viewModelScope.launch {
             val expected = keyBackup.revealRecoveryPhrase().getOrNull()
             if (secret == null || expected.isNullOrBlank() || secret.trim() != expected) {

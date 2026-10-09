@@ -192,6 +192,23 @@ class BackupPhraseViewModelTest {
         assertContains(marked, BackupMethod.PasswordManager)
     }
 
+    /** The sheet's fallback answer arrives after `onLeave` when the screen is left with it up. */
+    @Test
+    fun `an answer arriving after the screen was left changes nothing`() = runTest {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onRevealClick()
+        vm.onSaveToPasswordManagerClick()
+        advanceUntilIdle()
+
+        vm.onLeave()
+        vm.onPasswordManagerSaveResult(saved = false)
+        vm.onPasswordManagerReadBack(null)
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.passwordManagerFailed, "a failure line for a save nobody is waiting on")
+    }
+
     @Test
     fun `a cancelled sheet is a failure and not a backup`() = runTest {
         val vm = viewModel()
