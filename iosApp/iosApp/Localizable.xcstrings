@@ -1634,6 +1634,77 @@
         }
       }
     },
+    "backup_phrase_saved_unchecked": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gespeichert, aber wir konnten es nicht prüfen. Starte die Prüfung noch einmal und wähle den Eintrag, den du gerade gespeichert hast."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved, but we couldn't check it. Try the check again and choose the entry you just saved."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardado, pero no pudimos comprobarlo. Repite la comprobación y elige la entrada que acabas de guardar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré, mais nous n’avons pas pu le vérifier. Relance la vérification et choisis l’entrée que tu viens d’enregistrer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvato, ma non siamo riusciti a verificarlo. Ripeti la verifica e scegli la voce che hai appena salvato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存しましたが、確認できませんでした。もう一度確認して、いま保存した項目を選んでください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장했지만 확인하지 못했어요. 다시 확인하고 방금 저장한 항목을 선택하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvo, mas não conseguimos conferir. Tente a verificação de novo e escolha a entrada que você acabou de salvar."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu, nhưng chúng tôi chưa kiểm tra được. Hãy kiểm tra lại và chọn mục bạn vừa lưu."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存，但未能核对。请再核对一次，并选择你刚保存的条目。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已儲存，但無法核對。請再核對一次，並選擇你剛儲存的項目。"
+          }
+        }
+      }
+    },
     "backup_phrase_saved_to_manager": {
       "extractionState": "manual",
       "localizations": {

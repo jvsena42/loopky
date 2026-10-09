@@ -160,8 +160,38 @@ class BackupPhraseViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.state.value.savedToPasswordManager)
-        assertTrue(vm.state.value.passwordManagerFailed)
+        assertTrue(vm.state.value.passwordManagerUnchecked)
         assertTrue(marked.isEmpty(), "nothing verified, so nothing recorded")
+    }
+
+    /** Dismissing the check sheet leaves a real entry behind; "nothing was saved" would be false. */
+    @Test
+    fun `a dismissed check after a save is unchecked and the retry only checks`() = runTest {
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+        advanceUntilIdle()
+        vm.onRevealClick()
+        vm.onSaveToPasswordManagerClick()
+        advanceUntilIdle()
+        vm.onPasswordManagerSaveResult(saved = true)
+        advanceUntilIdle()
+
+        vm.onPasswordManagerReadBack(null)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.passwordManagerUnchecked)
+        assertFalse(vm.state.value.passwordManagerFailed)
+        assertTrue(marked.isEmpty())
+
+        vm.onSaveToPasswordManagerClick()
+        advanceUntilIdle()
+        assertEquals(BackupPhraseEffect.ReadBackFromPasswordManager(account = PUBKY), effects.last())
+        assertEquals(1, effects.count { it is BackupPhraseEffect.SaveToPasswordManager }, "saved twice")
+
+        vm.onPasswordManagerReadBack(PHRASE)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.savedToPasswordManager)
+        assertFalse(vm.state.value.passwordManagerUnchecked)
+        assertContains(marked, BackupMethod.PasswordManager)
     }
 
     @Test

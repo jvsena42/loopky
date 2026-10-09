@@ -136,8 +136,15 @@ class BackupPhraseViewModel(
     fun onSaveToPasswordManagerClick() {
         val words = _state.value.words
         if (words.isEmpty() || _state.value.isSavingToPasswordManager) return
+        val saved = account.takeIf { _state.value.passwordManagerUnchecked }
         _state.update { it.copy(isSavingToPasswordManager = true, passwordManagerFailed = false) }
         viewModelScope.launch {
+            // Already saved and only the check is owed: saving again would write a second entry
+            // over the first, or prompt to replace one the user just made.
+            if (saved != null) {
+                _effects.emit(BackupPhraseEffect.ReadBackFromPasswordManager(saved))
+                return@launch
+            }
             val pubky = keyBackup.custody.first().loopkyPubky()
             if (pubky == null) {
                 _state.update { it.copy(isSavingToPasswordManager = false, passwordManagerFailed = true) }
@@ -176,13 +183,20 @@ class BackupPhraseViewModel(
         val expected = _state.value.words.joinToString(" ")
         val verified = secret != null && expected.isNotEmpty() && secret.trim() == expected
         if (!verified) {
-            _state.update { it.copy(isSavingToPasswordManager = false, passwordManagerFailed = true) }
+            // The read-back only runs after a save that succeeded, so this is "saved, not checked"
+            // and never "nothing was saved" — a dismissed check sheet leaves a real entry behind.
+            _state.update { it.copy(isSavingToPasswordManager = false, passwordManagerUnchecked = true) }
             return
         }
         viewModelScope.launch {
             keyBackup.markBackedUp(BackupMethod.PasswordManager)
             _state.update {
-                it.copy(isSavingToPasswordManager = false, passwordManagerFailed = false, savedToPasswordManager = true)
+                it.copy(
+                    isSavingToPasswordManager = false,
+                    passwordManagerFailed = false,
+                    passwordManagerUnchecked = false,
+                    savedToPasswordManager = true,
+                )
             }
         }
     }
@@ -203,6 +217,8 @@ data class BackupPhraseUiState(
     val isSavingToPasswordManager: Boolean = false,
     val savedToPasswordManager: Boolean = false,
     val passwordManagerFailed: Boolean = false,
+    /** The save went through and the read-back did not confirm it. The next tap checks, not saves. */
+    val passwordManagerUnchecked: Boolean = false,
 ) {
     /** Offered only once the words are visible — see `onSaveToPasswordManagerClick`. */
     val showPasswordManagerSave: Boolean

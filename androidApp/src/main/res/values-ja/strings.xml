@@ -685,6 +685,7 @@
     <string name="backup_phrase_save_to_manager">パスワードマネージャーに保存</string>
     <string name="backup_phrase_saved_to_manager">保存して確認しました。パスワードマネージャーにフレーズが保存されています。</string>
     <string name="backup_phrase_save_failed">何も保存されませんでした。パスワードマネージャーが拒否したか、キャンセルされた可能性があります。</string>
+    <string name="backup_phrase_saved_unchecked">保存しましたが、確認できませんでした。もう一度確認して、いま保存した項目を選んでください。</string>
     <string name="backup_quiz_saved_title">保存したフレーズを確認</string>
     <string name="backup_quiz_saved_subtitle">このフレーズはパスワードマネージャーに保存したので、思い出す必要はありません。まだ保存されているか読み取って確認します。</string>
     <string name="backup_quiz_saved_check">保存したフレーズを確認</string>

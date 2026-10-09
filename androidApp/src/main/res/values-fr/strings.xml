@@ -638,6 +638,7 @@
     <string name="backup_phrase_save_to_manager">Enregistrer dans le gestionnaire de mots de passe</string>
     <string name="backup_phrase_saved_to_manager">Enregistrée et vérifiée. Ton gestionnaire de mots de passe a la phrase.</string>
     <string name="backup_phrase_save_failed">Rien n’a été enregistré. Ton gestionnaire de mots de passe a peut-être refusé, ou tu as annulé.</string>
+    <string name="backup_phrase_saved_unchecked">Enregistré, mais nous n’avons pas pu le vérifier. Relance la vérification et choisis l’entrée que tu viens d’enregistrer.</string>
     <string name="backup_quiz_saved_title">Vérifie ta phrase enregistrée</string>
     <string name="backup_quiz_saved_subtitle">Tu as enregistré cette phrase dans un gestionnaire de mots de passe, donc rien à retenir. On va la relire pour vérifier qu’elle y est toujours.</string>
     <string name="backup_quiz_saved_check">Vérifier la phrase enregistrée</string>

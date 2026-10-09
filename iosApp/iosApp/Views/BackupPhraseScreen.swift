@@ -62,7 +62,11 @@ struct BackupPhraseScreen: View {
         if uiState?.showPasswordManagerSave ?? false {
             let isBusy = uiState?.isSavingToPasswordManager ?? false
             let isSaved = uiState?.savedToPasswordManager ?? false
-            Button("backup_phrase_save_to_manager") { viewModel?.onSaveToPasswordManagerClick() }
+            // Saved but not confirmed: the next tap raises the check alone, never a second save.
+            let isUnchecked = uiState?.passwordManagerUnchecked ?? false
+            Button(isUnchecked ? "backup_quiz_saved_check" : "backup_phrase_save_to_manager") {
+                viewModel?.onSaveToPasswordManagerClick()
+            }
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(LoopkyColor.accentSecondary)
                 .frame(maxWidth: .infinity)
@@ -74,6 +78,12 @@ struct BackupPhraseScreen: View {
                 .font(.system(size: 12))
                 .foregroundStyle(LoopkyColor.foregroundMuted)
                 .accessibilityIdentifier("backup_phrase_manager_saved")
+        }
+        if uiState?.passwordManagerUnchecked ?? false {
+            Text("backup_phrase_saved_unchecked")
+                .font(.system(size: 12))
+                .foregroundStyle(LoopkyColor.foregroundSecondary)
+                .accessibilityIdentifier("backup_phrase_manager_unchecked")
         }
         if uiState?.passwordManagerFailed ?? false {
             Text("backup_phrase_save_failed")

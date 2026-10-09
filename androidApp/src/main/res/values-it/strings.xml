@@ -638,6 +638,7 @@
     <string name="backup_phrase_save_to_manager">Salva nel gestore di password</string>
     <string name="backup_phrase_saved_to_manager">Salvata e verificata. Il tuo gestore di password ha la frase.</string>
     <string name="backup_phrase_save_failed">Non è stato salvato nulla. Il gestore di password potrebbe aver rifiutato, oppure hai annullato.</string>
+    <string name="backup_phrase_saved_unchecked">Salvato, ma non siamo riusciti a verificarlo. Ripeti la verifica e scegli la voce che hai appena salvato.</string>
     <string name="backup_quiz_saved_title">Controlla la frase salvata</string>
     <string name="backup_quiz_saved_subtitle">Hai salvato questa frase in un gestore di password, quindi non c\'è niente da ricordare. La rileggiamo per controllare che sia ancora lì.</string>
     <string name="backup_quiz_saved_check">Controlla la frase salvata</string>
