@@ -5,9 +5,11 @@
     and still opens the `pubky://` URIs older shares carry; this journey checks that tapping either,
     or sharing the message that carries it back into Loopky, lands on the screen it names.
 
-    Until the Play signing fingerprint is in the landing site's assetlinks.json, the https link is
-    unverified and Android 12+ opens it in the browser, so these steps pin the package with `-p`.
-    `adb shell pm get-app-links com.github.jvsena42.loopky` shows the verification state.
+    The https link is a verified App Link only for a build signed with a key in the landing site's
+    assetlinks.json. A Play install and a GitHub release APK are (one key signs both); a debug
+    build usually is not, and Android 12+ then opens the link in the browser, so these steps pin
+    the package with `-p`. `adb shell pm get-app-links com.github.jvsena42.loopky` shows the
+    verification state.
 
     Needs a signed-in session (journey 01), one published deck (journey 02) and, for the foreign
     half, one account you follow (journey 04). Deck ids appear in logcat as
