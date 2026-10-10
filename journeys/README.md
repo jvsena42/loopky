@@ -36,6 +36,12 @@ found. Results up to 2026-10-06 were kept in `RESULTS.md`, which is in this dire
   `adb emu rotate` all leaving `rotation=0`) and sometimes boots with no network. `wm density 240`
   on a phone AVD reaches the expanded width class through the same `currentWindowAdaptiveInfo`
   path; say so in the PR when that is what was done.
+- **An AVD's clock can be days behind**, and then every sign-in fails as a bare "Something went
+  wrong" with `signInWithKey: FAILED — PubkyError` in logcat, because the auth token is dated in
+  the past. Compare `adb shell date` with the host's; `adb shell cmd alarm set-time <epoch ms>`
+  sets it without root, which `adb shell date` cannot.
+- **On a landscape tablet the keyboard covers `restore_phrase_submit`**, and it then is not in
+  `android layout` at all. One `input keyevent 4` dismisses the keyboard without leaving the screen.
 - **Insets are only wrong in the configurations nobody holds a device in** (#339). Check a layout
   change with a cutout and three-button navigation, rotated both ways:
   `cmd overlay enable-exclusive --category com.android.internal.display.cutout.emulation.tall` and
