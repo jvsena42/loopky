@@ -207,7 +207,7 @@ private suspend fun dispatch(
     args.requireImageCheckOptions()
     // Around the whole command, not the write inside it: the deck is read first, and a manifest
     // read before another process's write is the stale copy this exists to prevent.
-    return DeckWriteLock.holding(DeckWriteLock.target(args), note) {
+    return DeckWriteLock().holding(DeckWriteLock.target(args), note) {
         route(args, identity, koin, environment, json, sessions, progress, note, text)
     }
 }
@@ -283,6 +283,7 @@ private suspend fun route(
                     session = session,
                     onProgress = progress,
                     onNote = note,
+                    lock = DeckWriteLock(),
                 )
             }
         }

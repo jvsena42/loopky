@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.cli.commands
 
 import com.github.jvsena42.loopky.cli.Args
+import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.ImportRepository
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.CardSide
@@ -26,7 +27,7 @@ internal class SpeechSettings(
  */
 internal fun Args.requireSpeechPairForNewDeck() {
     if (has("resume")) return
-    requireSpeechPair(flag("listen", default = false), flag("speak", default = false), option("front-lang"), option("back-lang"))
+    requireSpeechPair(flag("listen", default = false), flag("speak", default = false), language("front-lang"), language("back-lang"))
 }
 
 internal fun Args.speechSettings(deck: Deck?, draft: ImportDraft): SpeechSettings {
@@ -35,8 +36,8 @@ internal fun Args.speechSettings(deck: Deck?, draft: ImportDraft): SpeechSetting
     return SpeechSettings(
         listen = flagOrNull("listen") ?: deck?.listenEnabled ?: false,
         speak = speak,
-        frontLang = option("front-lang") ?: deck?.frontLang,
-        backLang = option("back-lang") ?: deck?.backLang,
+        frontLang = language("front-lang") ?: deck?.frontLang,
+        backLang = language("back-lang") ?: deck?.backLang,
         modes = StudyModes(
             reverse = flagOrNull("reverse") ?: deck?.reverseEnabled ?: draft.suggestsReverse,
             graded = type || speak,
@@ -69,3 +70,13 @@ private fun DraftCardImage.adviceRef(): MediaRef.Image = MediaRef.Image(
     height = null,
     url = url,
 )
+
+/**
+ * The one deck `--resume` will continue, or null when there is none, several, or no `--resume`.
+ * Quiet on purpose: `resumeState` reports and refuses those cases, inside the lock this is for.
+ */
+internal suspend fun Args.resumedDeckId(decks: DeckRepository): String? {
+    if (!has("resume")) return null
+    val title = option("title")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    return decks.listOwned().singleOrNull { it.title == title }?.id
+}

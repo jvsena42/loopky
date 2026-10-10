@@ -23,27 +23,13 @@ import java.nio.file.StandardOpenOption
  * file (read-only, a sandbox) runs the command unlocked rather than failing a write over
  * bookkeeping. The lock dies with its process, so a killed run leaves nothing to clean up.
  */
-internal object DeckWriteLock {
+class DeckWriteLock(
+    private val home: Path = ConfigHome.resolve(),
+    private val pollMillis: Long = POLL_MILLIS,
+) {
 
-    /** The deck [args] is about to write, or null for a read, a dry run or a command with no deck yet. */
-    fun target(args: Args): String? {
-        if (args.has(DRY_RUN_FLAG)) return null
-        val deckId = when (args.verb) {
-            in WRITE_VERBS -> args.word(2)
-            // A minted id cannot collide; a supplied one is how two retries of one create meet.
-            "deck create" -> args.option("id")?.trim()
-            else -> null
-        }
-        return deckId?.takeIf { FILE_SAFE.matches(it) }
-    }
-
-    suspend fun <T> holding(
-        deckId: String?,
-        onNote: (String) -> Unit,
-        home: Path = ConfigHome.resolve(),
-        block: suspend () -> T,
-    ): T {
-        val channel = deckId?.let { open(home, it) } ?: return block()
+    suspend fun <T> holding(deckId: String?, onNote: (String) -> Unit, block: suspend () -> T): T {
+        val channel = deckId?.takeIf { FILE_SAFE.matches(it) }?.let { open(it) } ?: return block()
         return channel.use {
             val lock = acquire(it, deckId, onNote)
             try {
@@ -54,7 +40,7 @@ internal object DeckWriteLock {
         }
     }
 
-    private fun open(home: Path, deckId: String): FileChannel? =
+    private fun open(deckId: String): FileChannel? =
         try {
             val dir = ConfigHome.prepare(home.resolve(LOCK_DIR))
             FileChannel.open(dir.resolve("$deckId.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE)
@@ -66,7 +52,7 @@ internal object DeckWriteLock {
 
     /** Null when the lock cannot be asked for at all; the command then runs without one. */
     private suspend fun acquire(channel: FileChannel, deckId: String, onNote: (String) -> Unit): FileLock? {
-        var announced = false
+        var polls = 0L
         while (true) {
             val lock = try {
                 channel.tryLock()
@@ -76,19 +62,49 @@ internal object DeckWriteLock {
                 return null
             }
             if (lock != null) return lock
-            if (!announced) {
-                onNote("loopky: another loopky command is writing deck $deckId - waiting for it to finish.")
-                announced = true
+            // Said again as long as it lasts, with how long that has been. The wait has no bound
+            // of its own — the other command may be an hour-long import — so the caller is the
+            // one who decides when it has gone on too long, and one line then silence gave it
+            // nothing to decide with.
+            if (polls % POLLS_PER_NOTE == 0L) {
+                val waited = polls * pollMillis / MILLIS_PER_SECOND
+                onNote(
+                    "loopky: another loopky command is writing deck $deckId - waiting for it to finish" +
+                        (if (polls == 0L) "." else " (${waited}s so far). If none is running, it is stuck: stop it."),
+                )
             }
-            delay(POLL_MILLIS)
+            polls++
+            delay(pollMillis)
         }
     }
 
-    private val WRITE_VERBS = setOf(
-        "deck edit", "deck delete", "deck compact",
-        "card add", "card edit", "card rm", "card mv", "card reorder",
-    )
-    private val FILE_SAFE = Regex("[A-Za-z0-9_-]{1,64}")
-    private const val LOCK_DIR = "locks"
-    private const val POLL_MILLIS = 250L
+    companion object {
+        /**
+         * The deck [args] is about to write, or null for a read, a dry run or a command with no deck
+         * yet. `import --resume` is not here because its deck is found by title: it takes the lock
+         * itself, in `import`, once it knows which deck that is.
+         */
+        fun target(args: Args): String? {
+            if (args.has(DRY_RUN_FLAG)) return null
+            val deckId = when (args.verb) {
+                in WRITE_VERBS -> args.word(2)
+                // A minted id cannot collide; a supplied one is how two retries of one create meet.
+                "deck create" -> args.option("id")?.trim()
+                else -> null
+            }
+            return deckId?.takeIf { FILE_SAFE.matches(it) }
+        }
+
+        private val WRITE_VERBS = setOf(
+            "deck edit", "deck delete", "deck compact",
+            "card add", "card edit", "card rm", "card mv", "card reorder",
+        )
+        private val FILE_SAFE = Regex("[A-Za-z0-9_-]{1,64}")
+        private const val LOCK_DIR = "locks"
+        private const val POLL_MILLIS = 250L
+
+        /** Half a minute at the default poll. */
+        private const val POLLS_PER_NOTE = 120L
+        private const val MILLIS_PER_SECOND = 1_000L
+    }
 }
