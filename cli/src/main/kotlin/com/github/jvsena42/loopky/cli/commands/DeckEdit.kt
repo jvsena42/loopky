@@ -13,6 +13,8 @@ import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.LanguageTags
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.Tag
+import com.github.jvsena42.loopky.domain.model.TagLabels
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -27,6 +29,11 @@ data class DeckEditResult(
     val changed: Boolean,
     /** Which manifest fields moved, named as [DeckView] names them. Empty when [changed] is false. */
     val fields: List<String> = emptyList(),
+    /**
+     * Every label stored under a different spelling than it had: a `--tag` as it was typed, or a
+     * tag the deck already carried from before labels were folded (#479). See [TagFold].
+     */
+    @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
 )
 
 /**
@@ -73,18 +80,19 @@ suspend fun deckEdit(args: Args, decks: DeckRepository): CommandResult {
     val edited = current.applying(args)
 
     val fields = edited.changedFieldsFrom(current)
+    val tagFolds = args.tagSource(current).tagFolds()
     if (fields.isEmpty()) {
         return result(
-            DeckEditResult(current.toView(), changed = false),
-            "No change to ${current.id} — every field given already held that value.",
+            DeckEditResult(current.toView(), changed = false, tagsNormalized = tagFolds),
+            "No change to ${current.id} — every field given already held that value." + tagFolds.describe(),
         )
     }
 
     val updated = decks.updateMetadata(edited.copy(updatedAt = System.currentTimeMillis()))
         .getOrElse { throw asCliError(it) }
     return result(
-        DeckEditResult(updated.toView(), changed = true, fields = fields),
-        "Updated ${updated.id} — ${fields.joinToString(", ")}",
+        DeckEditResult(updated.toView(), changed = true, fields = fields, tagsNormalized = tagFolds),
+        "Updated ${updated.id} — ${fields.joinToString(", ")}" + tagFolds.describe(),
     )
 }
 
@@ -147,7 +155,9 @@ private fun Args.editedTags(deck: Deck, frontLang: String?, backLang: String?): 
     val tags = when {
         clearTags -> emptyList()
         requested.isNotEmpty() -> requested
-        else -> deck.tags.map { it.value }
+        // Folded even though nobody named them: a deck tagged before #479 would otherwise keep its
+        // accented label through every edit that is not about tags.
+        else -> TagLabels.normalizeAll(deck.tags.map { it.value })
     }
     val named = has("front-lang") || has("back-lang")
     val labelled = if (named) {
@@ -156,6 +166,12 @@ private fun Args.editedTags(deck: Deck, frontLang: String?, backLang: String?): 
         tags
     }
     return labelled.map { Tag(it) }
+}
+
+/** The labels as written that [editedTags] starts from, for reporting which of them were folded. */
+private fun Args.tagSource(deck: Deck): List<String> = when {
+    has("clear-tags") -> emptyList()
+    else -> options("tag").filter { it.isNotBlank() }.ifEmpty { deck.tags.map { it.value } }
 }
 
 /**

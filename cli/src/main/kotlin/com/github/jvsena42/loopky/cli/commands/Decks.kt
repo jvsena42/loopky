@@ -13,9 +13,7 @@ import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.DeckLimits
-import com.github.jvsena42.loopky.domain.model.LanguageTags
 import com.github.jvsena42.loopky.domain.model.MediaRef
-import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.remoteImageRef
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -159,36 +157,6 @@ internal fun Args.deckDescription(): String? {
     }
     return description
 }
-
-/**
- * The tags a deck carries once its declared languages have contributed theirs: what `--tag` asked
- * for, plus `"spanish"` and the `"language"` umbrella for a deck typed as English-to-Spanish.
- *
- * Deriving them is the whole reason a pair is worth declaring beyond the audio (#225). A tag
- * record is the only thing Loopky publishes that a network-wide index can answer questions about
- * (Architecture.md §7.7), so a deck that *says* it is Japanese in its manifest and carries no
- * label is invisible to tag browse, to `tag trending` and to anyone on Nexus looking for Japanese
- * decks — while the byte-identical deck published from a phone is not, because both ViewModels
- * route a language pick through [LanguageTags.retag]. Nothing reported the difference: the deck
- * published, `--json` said ok, and the only symptom was a search that came back empty somewhere
- * else entirely.
- *
- * **A deck that declares no pair gets nothing**, umbrella included — most decks are not language
- * decks, and `LanguageTags.forPair` is what keeps `"language"` off a deck of capital cities.
- *
- * The labels are ordinary author-removable tags rather than a reserved family, which is why
- * `deck edit --tag` is allowed to replace the set and drop them (see `editedTags`).
- *
- * [LanguageTags.retag] rather than `forPair` even here, where there is no previous pair to drop:
- * one function across create, import and edit is one dedupe and one ordering rule, and a
- * hand-typed `--tag language` beside a declared pair must not become two chips.
- */
-internal fun deckTags(requested: List<String>, frontLang: String?, backLang: String?): List<Tag> =
-    LanguageTags.retag(requested.normalizedTags(), null, null, frontLang, backLang).map(::Tag)
-
-/** `--tag` as it is stored: trimmed, blanks dropped, first occurrence wins. */
-internal fun List<String>.normalizedTags(): List<String> =
-    mapNotNull { it.trim().takeIf(String::isNotEmpty) }.distinct()
 
 /**
  * `--dry-run`: read, validate, report, write nothing.
