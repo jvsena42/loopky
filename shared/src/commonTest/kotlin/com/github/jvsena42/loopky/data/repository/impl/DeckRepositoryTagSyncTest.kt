@@ -1,5 +1,7 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.pubky.PubkyPaths
+import com.github.jvsena42.loopky.data.pubky.toDto
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.testing.CountingRevalidator
@@ -11,6 +13,7 @@ import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testDeck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -52,6 +55,31 @@ class DeckRepositoryTagSyncTest {
         // Left behind, the dropped label keeps the deck listed under a topic it no longer carries.
         assertEquals(listOf(deck.pubkyUri to Tag("language")), tagRepo.removedTags)
         assertEquals(listOf(Tag("spanish")), repo.getLocal("deck1")?.tags)
+    }
+
+    @Test
+    fun publishStoresAndIndexesTagsFolded() = runTest {
+        // The repository is the one place no caller can skip, whatever it did to its input (#479).
+        val deck = testDeck(id = "deck1", tags = listOf(Tag("Bioquímica"), Tag("bioquimica"), Tag("first year")))
+
+        val published = repo.publish(deck, listOf(testCard("c1"))).getOrThrow()
+
+        assertEquals(listOf(Tag("bioquimica"), Tag("first-year")), published.tags)
+        assertEquals(published.tags, tagRepo.putTags.map { it.second })
+    }
+
+    @Test
+    fun updateMetadataFoldsADeckTaggedBeforeLabelsWereFolded() = runTest {
+        val deck = repo.publish(testDeck(id = "deck1"), listOf(testCard("c1"))).getOrThrow()
+        seedLegacyTags(deck.id, listOf(Tag("café")))
+        tagRepo.putTags.clear()
+
+        val updated = repo.updateMetadata(deck.copy(title = "Renamed", tags = listOf(Tag("café")))).getOrThrow()
+
+        // The accented record goes and the folded one arrives, or the deck sits on both shelves.
+        assertEquals(listOf(Tag("cafe")), updated.tags)
+        assertEquals(listOf(deck.pubkyUri to Tag("cafe")), tagRepo.putTags)
+        assertEquals(listOf(deck.pubkyUri to Tag("café")), tagRepo.removedTags)
     }
 
     @Test
@@ -110,5 +138,13 @@ class DeckRepositoryTagSyncTest {
         repo.publish(deck.copy(tags = listOf(Tag("spanish"))), listOf(testCard("c2"))).getOrThrow()
 
         assertEquals(listOf(deck.pubkyUri to Tag("language")), tagRepo.removedTags)
+    }
+
+    /** Puts [tags] in the manifest the way a client older than #479 wrote them, and reloads it. */
+    private suspend fun seedLegacyTags(deckId: String, tags: List<Tag>) {
+        val deck = requireNotNull(repo.getLocal(deckId))
+        pubky.store[PubkyPaths.manifest(deck.authorPubky, deckId)] =
+            loopkyJson.encodeToString(deck.copy(tags = tags).toDto())
+        repo.sync(deckId).getOrThrow()
     }
 }

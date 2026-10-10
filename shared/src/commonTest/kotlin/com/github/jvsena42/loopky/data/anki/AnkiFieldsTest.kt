@@ -98,6 +98,12 @@ class AnkiFieldsTest {
     }
 
     @Test
+    fun anAccentedNoteTagIsSuggestedUnderTheLabelItWouldBeStoredAs() {
+        // Counted together too: split by accent, neither spelling might make the cut.
+        assertEquals(listOf("bioquimica"), suggestDeckTags(listOf("Bioquímica", "bioquimica")))
+    }
+
+    @Test
     fun onlyAHandfulAreSuggested() {
         val tags = (1..20).map { "tag$it" }
         assertEquals(5, suggestDeckTags(tags).size)

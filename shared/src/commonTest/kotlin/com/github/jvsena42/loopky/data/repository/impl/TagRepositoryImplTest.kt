@@ -103,11 +103,31 @@ class TagRepositoryImplTest {
     }
 
     @Test
-    fun putTagRejectsLabelWithInnerWhitespace() = runTest {
-        val result = repo.putTag(deckUri, Tag("two words"))
+    fun putTagFoldsAccentsAndSeparatorsIntoOneLabel() = runTest {
+        // Four spellings of one topic have to land on one record, or they are four shelves (#479).
+        listOf("Bioquímica Básica", "bioquimica_basica", "bioquimica  basica", "bioquimica-basica").forEach {
+            repo.putTag(deckUri, Tag(it)).getOrThrow()
+        }
 
-        assertTrue(result.isFailure)
+        assertEquals(setOf(tagUrlFor("bioquimica-basica")), pubky.puts.map { it.first }.toSet())
+    }
+
+    @Test
+    fun putTagRefusesALabelThatFoldsIntoTheReservedNamespace() = runTest {
+        assertTrue(repo.putTag(deckUri, Tag("Loopky_Deck")).isFailure)
         assertTrue(pubky.puts.isEmpty())
+    }
+
+    @Test
+    fun removeTagAddressesTheLabelAsItWasWritten() = runTest {
+        // A record from before the fold is keyed by `café`; deriving the id of `cafe` would leave
+        // it on the homeserver and the deck listed under it forever.
+        val legacyUrl = tagUrlFor("café")
+        pubky.store[legacyUrl] = "{}"
+
+        repo.removeTag(deckUri, Tag("café")).getOrThrow()
+
+        assertTrue(legacyUrl !in pubky.store)
     }
 
     // ── removeTag ────────────────────────────────────────────────────────

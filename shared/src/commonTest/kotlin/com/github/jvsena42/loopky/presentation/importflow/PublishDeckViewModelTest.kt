@@ -179,6 +179,18 @@ class PublishDeckViewModelTest {
     }
 
     @Test
+    fun aTypedTagIsShownAsItWillBePublished() = runTest {
+        val vm = viewModel()
+
+        vm.onAddTag("Bioquímica Básica")
+        vm.onAddTag("bioquimica_basica")
+        vm.onAddTag("a".repeat(21))
+
+        // One chip, in the folded spelling (#479); the over-long label never becomes one.
+        assertEquals(listOf("bioquimica-basica"), vm.state.value.tags)
+    }
+
+    @Test
     fun aLabelAlreadyOnTheDeckIsNotAddedTwice() = runTest {
         val vm = viewModel()
 

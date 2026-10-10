@@ -333,6 +333,18 @@ class DeckEditorViewModelTest {
     }
 
     @Test
+    fun `a typed tag is shown as it will be published`() = runTest {
+        seedDeckWithMedia()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onAddTag("Bioquímica Básica")
+        vm.onAddTag("bioquimica_basica")
+
+        assertEquals(listOf("bioquimica-basica"), vm.state.value.tags)
+    }
+
+    @Test
     fun `a label already on the deck is not added twice`() = runTest {
         seedDeckWithMedia()
         val vm = viewModel()

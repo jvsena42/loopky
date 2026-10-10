@@ -37,6 +37,7 @@ import com.github.jvsena42.loopky.domain.model.ORD_STRIDE
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.inStudyOrder
+import com.github.jvsena42.loopky.domain.model.normalized
 import com.github.jvsena42.loopky.platform.BackgroundTasks
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.epochMillis
@@ -185,7 +186,12 @@ class DeckRepositoryImpl(
         val staleChunks = previous?.chunks.orEmpty().map { it.n }.filter { it >= batches.size }
 
         // Every record is rewritten, so whatever a dead reorder left behind is replaced with it.
-        val manifestDeck = deck.copy(cardCount = cards.size, chunks = chunkMeta, reorderPending = false)
+        val manifestDeck = deck.copy(
+            cardCount = cards.size,
+            chunks = chunkMeta,
+            reorderPending = false,
+            tags = deck.tags.normalized(),
+        )
 
         // Claim the deck *before* uploading its cards. With the manifest written last, a failure
         // partway left orphaned chunks under a deck root with no manifest — invisible to
@@ -294,6 +300,9 @@ class DeckRepositoryImpl(
             val previous = getLocal(deck.id)
             val updated = patchDeckLocked(deck.id) { current ->
                 deck.copy(
+                    // Folded here as well as at the inputs, so a deck tagged before #479 loses its
+                    // accented label on its next metadata write — syncTags then drops that record.
+                    tags = deck.tags.normalized(),
                     chunks = current.chunks,
                     cardCount = current.cardCount,
                     // The caller's copy may predate a reorder; the marker is the homeserver's to say.

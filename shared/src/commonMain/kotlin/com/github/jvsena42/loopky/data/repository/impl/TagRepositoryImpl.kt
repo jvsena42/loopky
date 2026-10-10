@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Tag
+import com.github.jvsena42.loopky.domain.model.TagLabels
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.epochMillis
 import com.github.jvsena42.loopky.util.runSuspendCatching
@@ -41,9 +42,10 @@ import kotlinx.serialization.encodeToString
  * watcher rejects the record and the tag is never indexed at all, silently. That is what Loopky
  * did before issue #40.
  *
- * Labels are sanitized to the spec (trimmed, lowercase, 1–20 chars, no whitespace) before
+ * Labels are folded by [TagLabels] and checked against the spec (1–20 chars, no whitespace) before
  * hashing so the derived id always matches what the indexer validates. The resource path does no
- * sanitizing of its own, so this is the only thing keeping deck labels from fragmenting by case.
+ * sanitizing of its own, so this is the only thing keeping deck labels from fragmenting by case,
+ * accent or separator (#479).
  */
 class TagRepositoryImpl(
     private val pubky: PubkyClient,
@@ -53,7 +55,8 @@ class TagRepositoryImpl(
 ) : TagRepository {
 
     override suspend fun putTag(subjectUri: PubkyUri, tag: Tag): Result<Unit> = runSuspendCatching {
-        rejectReserved(tag).getOrThrow()
+        // On the folded label: `loopky_deck` is not reserved as typed and is once it is stored.
+        rejectReserved(Tag(TagLabels.fold(tag.value))).getOrThrow()
         write(subjectUri, tag).getOrThrow()
     }
 
@@ -73,7 +76,7 @@ class TagRepositoryImpl(
     }
 
     private suspend fun write(subjectUri: PubkyUri, tag: Tag): Result<Unit> = runSuspendCatching {
-        val label = sanitizeLabel(tag).getOrThrow()
+        val label = sanitizeLabel(TagLabels.fold(tag.value)).getOrThrow()
         val owner = session.requireSession().identity.pubky
         val tagId = pubky.createTagId(subjectUri.value, label).getOrThrow()
         val body = loopkyJson.encodeToString(
@@ -89,7 +92,9 @@ class TagRepositoryImpl(
     }
 
     private suspend fun erase(subjectUri: PubkyUri, tag: Tag): Result<Unit> = runSuspendCatching {
-        val label = sanitizeLabel(tag).getOrThrow()
+        // Not folded: a record written before #479 is keyed by the label as it was typed, and
+        // folding here would derive the id of a record that was never there.
+        val label = sanitizeLabel(tag.verbatim()).getOrThrow()
         val owner = session.requireSession().identity.pubky
         val tagId = pubky.createTagId(subjectUri.value, label).getOrThrow()
         val path = recordPath(owner, subjectUri, tagId)
@@ -153,7 +158,7 @@ class TagRepositoryImpl(
         skip: Int,
         sorting: NexusResourceSorting,
     ): List<TaggedSubject> {
-        val label = sanitizeLabel(tag).getOrElse { return emptyList() }
+        val label = sanitizeLabel(tag.verbatim()).getOrElse { return emptyList() }
         // Propagated, not swallowed — see the contract. An unreachable indexer must never reach a
         // screen as "nothing published".
         return nexus.resourcesByTag(label, limit, skip, sorting)
@@ -172,7 +177,7 @@ class TagRepositoryImpl(
     }
 
     override suspend fun usersTagged(tag: Tag, limit: Int): List<String> {
-        val label = sanitizeLabel(tag).getOrElse { return emptyList() }
+        val label = sanitizeLabel(tag.verbatim()).getOrElse { return emptyList() }
         // Propagated, not swallowed: a 404 here means the indexer predates the endpoint, and the
         // caller falls back to the deck-derived sources on it. See the contract.
         return nexus.usersByProfileTag(label, limit)
@@ -181,14 +186,14 @@ class TagRepositoryImpl(
     }
 
     override suspend fun postAuthorsTagged(tag: Tag, limit: Int): List<String> {
-        val label = sanitizeLabel(tag).getOrElse { return emptyList() }
+        val label = sanitizeLabel(tag.verbatim()).getOrElse { return emptyList() }
         return nexus.postAuthorsByTag(label, limit)
             .onFailure { Log.w(TAG, "postAuthorsTagged('$label'): FAILED — ${it.message}") }
             .getOrElse { emptyList() }
     }
 
     override suspend fun isSelfTagged(pubky: String, tag: Tag): Boolean {
-        val label = sanitizeLabel(tag).getOrElse { return false }
+        val label = sanitizeLabel(tag.verbatim()).getOrElse { return false }
         return pubky in nexus.userTaggers(pubky, label).getOrElse { emptyList() }
     }
 
@@ -203,8 +208,6 @@ class TagRepositoryImpl(
         const val TAG = "Loopky/TagRepo"
     }
 }
-
-private const val MAX_LABEL_LENGTH = 20
 
 private fun rejectReserved(tag: Tag): Result<Unit> =
     if (ReservedTags.isReserved(tag)) {
@@ -236,16 +239,21 @@ private fun recordPath(owner: String, subjectUri: PubkyUri, tagId: String): Stri
         PubkyPaths.loopkyTag(owner, tagId)
     }
 
-/** pubky-app-specs tag label rules: trimmed, lowercase, 1–20 chars, no whitespace. */
-private fun sanitizeLabel(tag: Tag): Result<String> {
-    val label = tag.value.trim().lowercase()
-    return when {
+/**
+ * The label as it was typed, for anything that has to address a record that already exists: a
+ * read or a delete of a pre-#479 `café` must ask for `café`, since the indexer matches byte for byte.
+ */
+private fun Tag.verbatim(): String = value.trim().lowercase()
+
+/** pubky-app-specs tag label rules: 1–20 chars, no whitespace. */
+private fun sanitizeLabel(label: String): Result<String> =
+    when {
         label.isEmpty() ->
             Result.failure(IllegalArgumentException("Tag label must not be empty"))
 
-        label.length > MAX_LABEL_LENGTH ->
+        label.length > TagLabels.MAX_LENGTH ->
             Result.failure(
-                IllegalArgumentException("Tag label must be at most $MAX_LABEL_LENGTH chars"),
+                IllegalArgumentException("Tag label must be at most ${TagLabels.MAX_LENGTH} chars"),
             )
 
         label.any { it.isWhitespace() } ->
@@ -255,4 +263,3 @@ private fun sanitizeLabel(tag: Tag): Result<String> {
 
         else -> Result.success(label)
     }
-}
