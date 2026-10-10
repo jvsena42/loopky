@@ -95,6 +95,11 @@ data class BatchSinks(
     val emitEvent: (String) -> Unit,
     val emitText: (String) -> Unit,
     val note: (String) -> Unit,
+    /**
+     * Operations done out of the total, after each one. Under `--json` it feeds the same heartbeat
+     * the operations report into, so a run of hundreds of quick ones still says it is moving.
+     */
+    val progress: (String) -> Unit = {},
 )
 
 /**
@@ -122,6 +127,7 @@ suspend fun batch(
         if (stopped) break
         val outcome = runOperation(operation, runOne, sinks)
         results += outcome
+        sinks.progress("${results.size}/${operations.size} operations")
         if (!outcome.ok) {
             sinks.note("loopky: operation ${operation.index}${operation.label()} failed: ${outcome.message}")
             stopped = stopOnError

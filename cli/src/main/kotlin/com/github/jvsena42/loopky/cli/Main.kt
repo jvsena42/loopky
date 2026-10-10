@@ -127,7 +127,13 @@ private fun run(argv: Array<String>): ExitCode {
                 // rather than about a deck that does not exist. See `requireSupportedHost`.
                 requireSupportedHost()
                 val koin = startCli(environment, args.has("json"))
-                dispatch(args, koin.identity(), koin, environment, args.has("json"), SessionCache())
+                val json = args.has("json")
+                // Built here rather than in `dispatch`, which `batch` re-enters per operation: a
+                // heartbeat made there restarts its clock each time, and a batch of hundreds of
+                // quick operations ran for minutes without one line (#482 review).
+                val progress: (String) -> Unit =
+                    if (json) ProgressHeartbeat(System.err::println)::report else System.err::println
+                dispatch(args, koin.identity(), koin, environment, json, SessionCache(), progress)
             }
             emit(args, environment, args.verb, result, updates.notice(update.await()))
             ExitCode.Ok
@@ -179,6 +185,8 @@ private suspend fun dispatch(
     json: Boolean,
     /** Resolved once for the process; see [SessionCache]. `batch` re-enters here with the same one. */
     sessions: SessionCache,
+    /** Shared by a `batch` and its operations, so they report against one clock. */
+    progress: (String) -> Unit,
 ): CommandResult {
     // Two sinks, because they are two different things and collapsing them silenced a warning in the
     // mode an agent runs. `progress` is a counter — thousands of lines on a large import — so under
@@ -186,7 +194,6 @@ private suspend fun dispatch(
     // streamed: silence for five minutes is indistinguishable from a hang (#480). `note` is
     // something the caller needs to *know* and goes to stderr always: an agent capturing stderr for
     // diagnostics must not get an empty file because it asked for JSON.
-    val progress: (String) -> Unit = if (json) ProgressHeartbeat(System.err::println)::report else System.err::println
     val note: (String) -> Unit = System.err::println
     // stdout, and only in the human mode — the same split `emit` makes for a single command. A
     // batch operation's *result* is a result, so it belongs on the channel results go to.
@@ -271,11 +278,21 @@ private suspend fun dispatch(
         // session true: `authed` resolves through it, so the first operation that needs a session
         // pays for it and the rest do not. Passing a fresh one here would put a `revalidateSession`
         // round trip on every operation under `LOOPKY_SESSION`.
-        "batch" -> batch(
-            args,
-            { operation -> dispatch(operation, identity, koin, environment, json, sessions) },
-            BatchSinks({ line -> if (json) println(line) }, text, note),
-        )
+        "batch" -> {
+            var started = 0
+            batch(
+                args,
+                { operation ->
+                    val index = ++started
+                    // Named, because under `--json` this line may be the one the heartbeat prints,
+                    // and "1/1 cards" from the middle of a batch says nothing about the batch.
+                    val named: (String) -> Unit = if (json) { line -> progress("operation $index: $line") } else progress
+                    dispatch(operation, identity, koin, environment, json, sessions, named)
+                },
+                // The count only under `--json`: the human mode already prints each operation's result.
+                BatchSinks({ line -> if (json) println(line) }, text, note, if (json) progress else { _ -> }),
+            )
+        }
 
         // `update` and `completion` are deliberately absent: both are handled in `run` before
         // Koin starts, since neither may depend on an install healthy enough to load the FFI.

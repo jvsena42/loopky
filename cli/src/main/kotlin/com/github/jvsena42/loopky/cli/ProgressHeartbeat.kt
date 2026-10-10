@@ -8,6 +8,10 @@ package com.github.jvsena42.loopky.cli
  * suppressing all of it left a 270-row `card edit --from-file` and a whole-deck `card reorder`
  * silent for five minutes, and an agent watching that cannot tell slow from stuck (#480). A line
  * every so often answers that without putting a 20,000-card import's counter on stderr.
+ *
+ * **Driven by progress, never by a timer.** A line is printed only when a caller reports one, so
+ * each is evidence that something completed; a timer would keep printing through a real hang. The
+ * cost is that a single slow request, or a phase that reports nothing, is a gap.
  */
 internal class ProgressHeartbeat(
     private val sink: (String) -> Unit,

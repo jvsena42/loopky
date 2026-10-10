@@ -91,8 +91,11 @@ or as one `loopky batch`.
 
 **Slow is not stuck.** `card edit --from-file` costs about a second a row and a whole-deck
 `card reorder` minutes on a deck of thousands. Under `--json` a long write prints
-`loopky: still working - <done>/<total>` on stderr every 15 seconds; wait while those arrive. A
-session lasts about an hour, so split an edit of thousands of rows across files.
+`loopky: still working - <done>/<total>` on stderr as its writes complete, at most every 15
+seconds. Each line means progress, so wait while they arrive. A gap is not proof of a hang: one
+request may be slow, or the command may be reading the deck, which reports nothing. Give it a few
+minutes before treating it as stuck. A session lasts about an hour, so split an edit of thousands
+of rows across files.
 
 **A card in the wrong place moves with `loopky card mv <deckId> <cardId> --after <cardId>`**, or
 `--to <position>`, counting from 1 as `card list` prints them. Never delete and re-add a card to

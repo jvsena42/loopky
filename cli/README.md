@@ -768,11 +768,17 @@ in again would fail the same way). Worth checking before starting an hour-long i
 - **stdout is the machine channel, and it is held that way at the descriptor.** Results and
   failures both go there as `--json`; the QR code, prompts, progress and every log line go to
   stderr. `--json` thins **progress counters** on stderr to a heartbeat, because the result carries
-  the same numbers: a write that runs past 15 seconds prints `loopky: still working - 135/270 cards`
-  once every 15 seconds, and a quick one prints nothing. That is how a caller tells a five-minute
-  `card edit --from-file` or a whole-deck `card reorder` from a hung one (#480). It does not silence
-  stderr either way — warnings still arrive there, so capturing it for diagnostics is worth doing
-  in either mode.
+  the same numbers: `loopky: still working - 135/270 cards`, at most one line every 15 seconds, and
+  none from a command that finishes sooner. That is how a caller tells a five-minute
+  `card edit --from-file` or a whole-deck `card reorder` from a hung one (#480). **A line is printed
+  when a write completes, never on a clock**, so each one is evidence of progress: a timer would go
+  on printing through a real hang. The other side of that is a gap means nothing has *completed*
+  since the last line — one slow or retried request, or a phase that reports nothing (reading the
+  deck before the first write, the manifest writes of a reorder, `--check-images`) — and not that
+  the process has died. A `batch` and its operations share one heartbeat, and its lines count
+  operations (`3/60 operations`) or name the one they come from (`operation 4: 12/270 cards`). It
+  does not silence stderr either way — warnings still arrive there, so capturing it for diagnostics
+  is worth doing in either mode.
 
   **One write at a time per deck.** A deck's manifest is one record rewritten whole, and the lock
   that serializes those writes lives inside a single `loopky` process. Two invocations writing the
