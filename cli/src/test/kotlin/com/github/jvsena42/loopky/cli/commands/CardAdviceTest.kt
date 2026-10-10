@@ -42,13 +42,13 @@ class CardAdviceTest {
 
         assertEquals(
             listOf(
-                "duplicate_front" to listOf("Card 1", "Card 2"),
-                "aside_holds_answer" to listOf("Card 4"),
-                "alternatives" to listOf("Card 3"),
+                "duplicate_front" to listOf("Line 1", "Line 2"),
+                "aside_holds_answer" to listOf("Line 4"),
+                "alternatives" to listOf("Line 3"),
             ),
             result.cardAdvice(),
         )
-        assertTrue(notes.any { it.contains("Card 1, Card 2") }, notes.toString())
+        assertTrue(notes.any { it.contains("Line 1, Line 2") }, notes.toString())
     }
 
     @Test
@@ -60,7 +60,7 @@ class CardAdviceTest {
 
         assertEquals(emptyList(), plain.cardAdvice())
         assertEquals(
-            listOf("duplicate_back" to listOf("Card 1", "Card 2"), "nothing_to_grade" to listOf("Card 3")),
+            listOf("duplicate_back" to listOf("Line 1", "Line 2"), "nothing_to_grade" to listOf("Line 3")),
             strict.cardAdvice(),
         )
     }
@@ -80,7 +80,7 @@ class CardAdviceTest {
         val result = deckCreate(create("--from-file", cardFile("casa\thouse", "casa\thome")), decks, session(), {}) {}
 
         assertEquals(2, published)
-        assertEquals(listOf("duplicate_front" to listOf("Card 1", "Card 2")), result.cardAdvice())
+        assertEquals(listOf("duplicate_front" to listOf("Line 1", "Line 2")), result.cardAdvice())
     }
 
     @Test
@@ -96,7 +96,34 @@ class CardAdviceTest {
         )
 
         // The two `gato` cards disagree as well, and nobody asked about those.
+        assertEquals(listOf("duplicate_front" to listOf("card e1", "Line 1")), result.cardAdvice())
+    }
+
+    /** The picture advice for the same file says `Line N`, and an agent edits the line it is told. */
+    @Test
+    fun `a finding names the line of the file, comments and blank lines counted`() = runBlocking {
+        val file = cardFile("# Spanish, week 1", "", "casa\thouse", "", "casa\thome")
+
+        assertEquals(listOf("duplicate_front" to listOf("Line 3", "Line 5")), dryRun(file).cardAdvice())
+    }
+
+    @Test
+    fun `a card given as flags is named by position, there being no line`() = runBlocking {
+        val result = cardAdd(
+            Args.parse(arrayOf("card", "add", "d1", "--front", "casa", "--back", "home", "--dry-run")),
+            FakeDeckRepository(testDeck(cardCount = 1)),
+            FakeCardRepository(listOf(card("e1", "casa", "house"))),
+            {},
+        )
+
         assertEquals(listOf("duplicate_front" to listOf("card e1", "Card 1")), result.cardAdvice())
+    }
+
+    @Test
+    fun `symbols and emoji keep prompts apart`() = runBlocking {
+        val file = cardFile("🇧🇷\tBrazil", "🇫🇷\tFrance", "C++\tcompiled", "C#\tmanaged", "कल\ttomorrow", "काल\ttime")
+
+        assertEquals(emptyList(), dryRun(file, "--reverse").cardAdvice())
     }
 
     @Test
@@ -131,6 +158,24 @@ class CardAdviceTest {
 
         assertEquals(ExitCode.Usage, error.exitCode)
         assertTrue(error.message.orEmpty().contains("--back-lang"), error.message)
+    }
+
+    /** An empty value is not a language: it reached the manifest as one and counted as declared. */
+    @Test
+    fun `a blank language is no language`() = runBlocking {
+        listOf(arrayOf("--front-lang", "", "--back-lang", ""), arrayOf("--front-lang", "  ", "--back-lang", "es-ES")).forEach {
+            assertFailsWith<CliError> {
+                deckCreate(create("--listen", "--dry-run", *it), FakeDeckRepository(testDeck()), null, {}) {}
+            }
+        }
+        val published = deckCreate(
+            create("--front-lang", "", "--dry-run"),
+            FakeDeckRepository(testDeck()),
+            null,
+            {},
+        ) {}
+
+        assertEquals("null", published.data.jsonObject.getValue("deck").jsonObject.getValue("front_lang").toString())
     }
 
     @Test

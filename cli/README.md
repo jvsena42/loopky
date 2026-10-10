@@ -292,16 +292,20 @@ the command still exits 0.
 | `alternatives` | The answer lists alternatives with a slash (`vegetariano / vegetariana`) |
 | `nothing_to_grade` | With `--type` or `--speak`, the answer has no letters or digits to match |
 
-`where` names the cards: `Card 12` is the twelfth card of the file, and on `card add` a card already
-in the deck is `card <id>` — the new cards are checked together with the deck they join, and
-findings among the deck's own cards are left out. A `--dry-run` also carries `composition`: for
+`where` names the cards the way the picture advice beside it does: `Line 12` is line 12 of the card
+file as an editor counts it, comments and blank lines included, and `Card 12` is the twelfth card
+of an `import` or a card given as flags. On `card add` a card already in the deck is `card <id>` —
+the new cards are checked together with the deck they join, and findings among the deck's own
+cards are left out. Two prompts are the same when their text is, case and spacing aside, and their
+picture is: `C++` and `C#`, two flag emoji, or a word with and without an aside are different
+prompts. A `--dry-run` also carries `composition`: for
 each stretch of the file (100 cards up to 500, then 500), how many answers are one word and how
 many are longer, which is how a deck that is a word list for its first 500 cards shows up before
 it is published.
 
 **`--listen` and `--speak` are refused without both languages** (exit 2), on `deck create`, `import`
 and a `deck edit` that turns one on or clears a language they depend on. A deck already published
-without the pair stays editable. A `--front-lang`/`--back-lang` that no language picker offers (a
+without the pair stays editable. An empty `--front-lang ""` is no language. A `--front-lang`/`--back-lang` that no language picker offers (a
 bare `es`, a typo) is stored as given and noted in `language_advice`.
 
 **Tags are folded to one spelling.** A tag is a public record the indexer matches byte for byte,
@@ -809,8 +813,10 @@ in again would fail the same way). Worth checking before starting an hour-long i
   that serializes those writes lives inside a single `loopky` process. Two invocations writing the
   same deck at once can each read the manifest, patch it and write it back, and the later write
   drops what the earlier one added, with both exiting 0. So a command that writes a deck takes a
-  file lock on it first (`locks/<deckId>.lock` under the config home), and a second one waits,
-  saying so on stderr. That covers one machine and one config home: a command on another machine,
+  file lock on it first (`locks/<deckId>.lock` under the config home), `import --resume` included,
+  and a second one waits, saying so on stderr and again every half minute with how long it has
+  been. The wait has no limit of its own: the other command may be a long import, so the caller
+  decides when to stop it. That covers one machine and one config home: a command on another machine,
   or in a sandbox with its own `LOOPKY_CONFIG_HOME`, is not seen, and a config home that cannot
   hold the file runs unlocked. Across those, run them one after another yourself.
 

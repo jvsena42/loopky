@@ -1843,8 +1843,10 @@ agent's normal recovery is to re-run the command.
   its answer, alternatives joined by a slash, and an answer nothing typed or spoken could match;
   the CLI reports them as `card_advice` and, on a dry run, a per-stretch `composition`. Three
   decisions. **Advice, never a refusal**: every rule has honest exceptions, and a check that can be
-  wrong must not stop a publish. **A prompt's key is its full text and its picture**: the aside is
-  what tells `começar` from `começar (formal)`, and ten flags share one question. **`card add`
+  wrong must not stop a publish. **A prompt's key is its text as written and its picture**, never
+  `AnswerMatcher.normalize`: that keeps letters and digits only, which is right for grading and
+  makes `C++`/`C#`, two flag emoji and Hindi words differing by a vowel sign one prompt. The aside
+  stays in the key too, since it is what tells `começar` from `começar (formal)`. **`card add`
   checks the new cards together with the deck** and reports only findings a new card is part of.
   The one refusal in the change is `--listen`/`--speak` without both languages (exit 2), because
   that is a deck that silently does not do what was asked — and only when the invocation is what
@@ -1852,7 +1854,8 @@ agent's normal recovery is to re-run the command.
 - **One writer per deck is a file lock, and it is best effort by design.** `DeckWriteLock` holds
   `locks/<deckId>.lock` under the config home around the whole command, the read included, since a
   manifest read before another process's write is the stale copy. A second command waits and says
-  so. It cannot see another machine or another `LOOPKY_CONFIG_HOME`, and a home that cannot hold
+  so, again every half minute. `import --resume` finds its deck by title, so it takes the lock
+  itself once it knows the id and looks the deck up again inside it. It cannot see another machine or another `LOOPKY_CONFIG_HOME`, and a home that cannot hold
   the file runs unlocked: a write must not fail over bookkeeping.
 - **`--tag` is folded, and the envelope says what it became** (#479, §7.7 point 5a). `--tag café`
   is stored as `cafe`, and `tags_normalized: [{"from": "café", "to": "cafe"}]` reports it on

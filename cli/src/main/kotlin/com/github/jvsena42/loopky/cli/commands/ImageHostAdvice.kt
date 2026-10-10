@@ -8,11 +8,11 @@ package com.github.jvsena42.loopky.cli.commands
  */
 internal fun nonFreeWikimediaAdvice(url: String): String? {
     val project = WIKIMEDIA_PROJECT.find(url)?.groupValues?.get(1) ?: return null
-    if (project == COMMONS_PROJECT) return null
+    if (project in FREE_ONLY_PROJECTS) return null
     return "$url\n" +
-        "  This file is on the $project Wikipedia, not on Wikimedia Commons. Those paths hold files a " +
-        "Wikipedia article may use under fair use and a public deck may not. Use a file under " +
-        "/wikipedia/commons/, after reading its licence."
+        "  This file was uploaded to one Wikipedia edition (/wikipedia/$project/), not to Wikimedia " +
+        "Commons. Those paths are where an edition keeps files it may use under fair use and a public " +
+        "deck may not. Use a file under /wikipedia/commons/, after reading its licence."
 }
 
 /**
@@ -30,7 +30,16 @@ internal fun hotlinkAdvice(url: String): String? {
 }
 
 private val WIKIMEDIA_PROJECT = Regex("""^https://(?:upload|thumb)\.wikimedia\.org/wikipedia/([a-z0-9-]+)/""")
-private const val COMMONS_PROJECT = "commons"
+
+/**
+ * Directories under `/wikipedia/` that are not a Wikipedia edition: Commons itself, and the
+ * sister and coordination projects, none of which host fair-use files. Everything else there is
+ * a language edition (`en`, `pt`, `simple`, `zh-yue`).
+ */
+private val FREE_ONLY_PROJECTS = setOf(
+    "commons", "meta", "mediawiki", "species", "sources", "foundation", "incubator",
+    "outreach", "wikimania", "test", "test2", "beta",
+)
 
 private const val SEARCH_THUMBNAIL =
     "This is a search engine's thumbnail of someone else's picture, with no licence to read."

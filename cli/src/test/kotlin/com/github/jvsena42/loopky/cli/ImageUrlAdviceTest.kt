@@ -224,6 +224,17 @@ class ImageUrlAdviceTest {
         assertNull(imageUrlAdvice("https://upload.wikimedia.org/wikipedia/commons/a/ab/Cat.jpg"))
     }
 
+    /** Not every directory there is a Wikipedia: the sister projects host free files only. */
+    @Test
+    fun `a sister project is not mistaken for a language Wikipedia`() {
+        listOf("meta", "mediawiki", "species", "foundation").forEach {
+            assertNull(imageUrlAdvice("https://upload.wikimedia.org/wikipedia/$it/a/ab/Logo.png"), it)
+        }
+        listOf("pt", "simple", "zh-yue").forEach {
+            assertTrue(imageUrlAdvice("https://upload.wikimedia.org/wikipedia/$it/a/ab/Capa.jpg") != null, it)
+        }
+    }
+
     @Test
     fun `a host that forbids hotlinking or carries no licence is flagged`() {
         listOf(

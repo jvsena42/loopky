@@ -18,7 +18,11 @@ import kotlinx.serialization.Serializable
 data class CardAdvice(
     /** `duplicate_front`, `duplicate_back`, `aside_holds_answer`, `alternatives`, `nothing_to_grade`. */
     val rule: String,
-    /** The cards it is about: `Card 12` for a row of the file, `card <id>` for one already in the deck. */
+    /**
+     * The cards it is about. `Line 12` is a line of the card file, counted as an editor counts
+     * them; `Card 12` is the twelfth card of an `import`, as its `image_advice` names it; and
+     * `card <id>` is one already in the deck.
+     */
     val where: List<String>,
     val advice: String,
 )
@@ -33,18 +37,24 @@ internal fun List<Card>.compositionView(): List<CompositionView> =
 private fun CompositionStretch.toView() = CompositionView(from, to, words, phrases, untexted)
 
 /**
- * [CardChecks] over [cards], as advice. [label] names the card at a position; [worthSaying] drops
- * a finding nobody asked about — for `card add`, one that involves only cards already in the deck.
+ * [CardChecks] over [cards], as advice. [label] names the card at a position. With [addedFrom],
+ * the cards before it are the deck the rest are joining, and only findings a joining card is part
+ * of are reported.
  */
 internal fun cardAdvice(
     cards: List<Card>,
     modes: StudyModes,
+    addedFrom: Int = 0,
     label: (Int) -> String = { "Card ${it + 1}" },
-    worthSaying: (List<Int>) -> Boolean = { true },
 ): List<CardAdvice> =
-    CardChecks.check(cards, modes)
-        .filter { worthSaying(it.cards) }
+    CardChecks.check(cards, modes, addedFrom)
         .map { CardAdvice(it.rule.json, it.cards.map(label), it.rule.advice) }
+
+/**
+ * How advice names a card read from a file: by its line, as the picture advice beside it does.
+ * `Card N` only where there is no file — a card given as flags.
+ */
+internal fun CardFileRow.adviceLabel(position: Int): String = line?.let { "Line $it" } ?: "Card ${position + 1}"
 
 private val CardRule.json: String
     get() = when (this) {

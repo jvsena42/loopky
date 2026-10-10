@@ -27,6 +27,13 @@ internal fun requireSpeechPair(listen: Boolean, speak: Boolean, frontLang: Strin
 }
 
 /**
+ * `--front-lang` or `--back-lang` as given, or null when it was absent **or blank**. `--front-lang ""`
+ * otherwise reached the manifest as an empty tag: not null, so the pair counted as declared, and
+ * no language any engine can voice.
+ */
+internal fun Args.language(flag: String): String? = option(flag)?.trim()?.takeIf { it.isNotEmpty() }
+
+/**
  * [requireSpeechPair] for a command that changes a deck that already exists, where only a change
  * **this invocation** makes is refused. A deck published before the pair existed carries the
  * opt-ins and no languages, and renaming it, or resuming an import into it, must still work.

@@ -140,9 +140,8 @@ suspend fun deckCreate(
     // `ImageAdviceLog`. A 1210-row file of bad thumbnail widths otherwise printed 1210 multi-line
     // notes ahead of the probe's block and put none of them in `--json`.
     val log = ImageAdviceLog()
-    val cards = args.option("from-file")
-        ?.let { readCardFile(it, log, onNote).requireBothSides().toCards(deckId, now) }
-        .orEmpty()
+    val rows = args.option("from-file")?.let { readCardFile(it, log, onNote).requireBothSides() }.orEmpty()
+    val cards = rows.toCards(deckId, now)
     val imageChecks = if (args.checksImages()) {
         checkImageUrls(
             cards.flatMap { listOfNotNull(it.front.imageRef?.url, it.back.imageRef?.url) },
@@ -157,7 +156,8 @@ suspend fun deckCreate(
 
     // After the deck is assembled, so `--cover-url`'s advice is in it, and after the probe.
     log.advice.reportStaticImageAdvice(onNote)
-    val cardNotes = cardAdvice(cards, StudyModes(deck)).also { it.reportCardAdvice(onNote) }
+    val cardNotes = cardAdvice(cards, StudyModes(deck), label = { rows[it].adviceLabel(it) })
+        .also { it.reportCardAdvice(onNote) }
     val languageNotes = languageAdvice(deck.frontLang, deck.backLang).also { it.reportLanguageAdvice(onNote) }
 
     val idChecked = args.option("id") != null
@@ -203,8 +203,8 @@ private fun Args.newDeck(
     now: Long,
     log: ImageAdviceLog,
 ): Deck {
-    val frontLang = option("front-lang")
-    val backLang = option("back-lang")
+    val frontLang = language("front-lang")
+    val backLang = language("back-lang")
     return Deck(
         id = deckId,
         authorPubky = session?.identity?.pubky.orEmpty(),

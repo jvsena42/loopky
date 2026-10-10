@@ -73,6 +73,7 @@ suspend fun cardAdd(
     val seen = existing.mapTo(mutableSetOf()) { it.identityOf() }
     val now = System.currentTimeMillis()
     val planned = mutableListOf<PlannedWrite>()
+    val labels = mutableListOf<String>()
     var skipped = 0
 
     for ((index, row) in rows.withIndex()) {
@@ -86,11 +87,12 @@ suspend fun cardAdd(
             continue
         }
         planned += PlannedWrite(row = index + 1, card = card)
+        labels += row.adviceLabel(index)
     }
 
     val checks = planned.checkedImages(args, onNote)
     log.advice.reportStaticImageAdvice(onNote)
-    val cardNotes = planned.adviceAgainst(existing.inStudyOrder(), StudyModes(deck))
+    val cardNotes = planned.adviceAgainst(existing.inStudyOrder(), StudyModes(deck), labels)
     cardNotes.reportCardAdvice(onNote)
     if (args.has(DRY_RUN_FLAG)) {
         return result(
@@ -119,12 +121,16 @@ suspend fun cardAdd(
  * much a duplicate as one asked twice in the file. Findings among the deck's own cards are left
  * out — nobody asked about those, and a deck of thousands would bury the ones that were.
  */
-private fun List<PlannedWrite>.adviceAgainst(existing: List<Card>, modes: StudyModes): List<CardAdvice> =
+private fun List<PlannedWrite>.adviceAgainst(
+    existing: List<Card>,
+    modes: StudyModes,
+    labels: List<String>,
+): List<CardAdvice> =
     cardAdvice(
         cards = existing + map { it.card },
         modes = modes,
-        label = { index -> getOrNull(index - existing.size)?.let { "Card ${it.row}" } ?: "card ${existing[index].id}" },
-        worthSaying = { found -> found.any { it >= existing.size } },
+        addedFrom = existing.size,
+        label = { index -> labels.getOrNull(index - existing.size) ?: "card ${existing[index].id}" },
     )
 
 /**
