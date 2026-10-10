@@ -205,6 +205,26 @@ private suspend fun dispatch(
     // before any of it runs. `--check-images-concurrency` is otherwise read only from behind
     // `--check-images`, so on its own it was accepted and ignored.
     args.requireImageCheckOptions()
+    // Around the whole command, not the write inside it: the deck is read first, and a manifest
+    // read before another process's write is the stale copy this exists to prevent.
+    return DeckWriteLock.holding(DeckWriteLock.target(args), note) {
+        route(args, identity, koin, environment, json, sessions, progress, note, text)
+    }
+}
+
+/** [dispatch]'s routing table. Split from it only so the write lock wraps one call. */
+@Suppress("CyclomaticComplexMethod", "LongParameterList", "LongMethod")
+private suspend fun route(
+    args: Args,
+    identity: IdentityRepository,
+    koin: Koin,
+    environment: CliEnvironment,
+    json: Boolean,
+    sessions: SessionCache,
+    progress: (String) -> Unit,
+    note: (String) -> Unit,
+    text: (String) -> Unit,
+): CommandResult {
     return when (val verb = args.verb) {
         "login" -> login(
             args,
@@ -454,8 +474,10 @@ internal val USAGE = """
                                 --id with --if-not-exists is the idempotent form: an existing deck
                                 is returned untouched (created: false). Without --if-not-exists an
                                 existing id is refused. A language pair also tags the deck
-                                ("spanish" plus "language"). --dry-run validates everything and
-                                publishes nothing. --description holds at most 500 characters,
+                                ("spanish" plus "language"), and --listen/--speak are refused
+                                without one. --dry-run validates everything and publishes
+                                nothing; its card_advice names cards that break a card-writing
+                                rule, and composition counts words against phrases per stretch. --description holds at most 500 characters,
                                 here and on `deck edit` and `import`; a longer one is refused.
       deck edit <deckId> [--title T] [--description D] [--cover-url URL] [--cover-emoji E]
                   [--tag T]... [--clear-tags] [--clear-cover]

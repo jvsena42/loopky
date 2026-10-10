@@ -75,6 +75,10 @@ data class ImportResult(
     @SerialName("image_advice") val imageAdvice: List<ImageAdvice> = emptyList(),
     /** Every `--tag` stored under a different spelling than it was given. See [TagFold]. */
     @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
+    /** Card-writing rules the cards break, decided without asking anyone. See [CardAdvice]. */
+    @SerialName("card_advice") val cardAdvice: List<CardAdvice> = emptyList(),
+    /** Notes about a `--front-lang`/`--back-lang` value a speech engine is unlikely to honour. */
+    @SerialName("language_advice") val languageAdvice: List<String> = emptyList(),
 )
 
 /**
@@ -111,6 +115,12 @@ data class ImportPreview(
     @SerialName("image_advice") val imageAdvice: List<ImageAdvice> = emptyList(),
     /** How each `--tag` would be stored, where that differs from how it was given. See [TagFold]. */
     @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
+    /** Card-writing rules the cards break, decided without asking anyone. See [CardAdvice]. */
+    @SerialName("card_advice") val cardAdvice: List<CardAdvice> = emptyList(),
+    /** Notes about a `--front-lang`/`--back-lang` value a speech engine is unlikely to honour. */
+    @SerialName("language_advice") val languageAdvice: List<String> = emptyList(),
+    /** How each stretch of the file splits between one-word answers and longer ones. See [CompositionView]. */
+    val composition: List<CompositionView> = emptyList(),
 )
 
 /** The `--json` spelling of a format, kept beside the enum so the two cannot drift. */
@@ -156,6 +166,7 @@ suspend fun import(
     if (title.isEmpty()) throw CliError(ExitCode.Usage, "--title cannot be empty.")
     args.deckDescription()
     val tagFolds = args.requestedTagFolds()
+    args.requireSpeechPairForNewDeck()
 
     val parsed = parseSource(args, imports, source, title, keepImageBytes = true)
     val draft = parsed.draft
@@ -171,6 +182,14 @@ suspend fun import(
     // a cover URL is a picture like any other and belongs in the same block and the same array.
     args.option("cover-url")?.let { log.checked(it, "--cover-url") }
     val resume = resumeState(args, decks, cards, title, onNote)
+    // Before a byte is uploaded, against the deck this run will leave: on a resumed run the
+    // flags overlay a deck that may already carry the pair.
+    val speech = args.speechSettings(resume.deck, draft)
+    // `--resume` that matched nothing publishes a new deck, which the check at the top skipped.
+    resume.deck?.let { args.requireSpeechPairAfter(it, speech.listen, speech.speak, speech.frontLang, speech.backLang) }
+        ?: requireSpeechPair(speech.listen, speech.speak, speech.frontLang, speech.backLang)
+    val cardNotes = cardAdvice(imports.adviceCards(draft), speech.modes)
+    val languageNotes = languageAdvice(args.option("front-lang"), args.option("back-lang"))
     // Minted once and threaded down: every card carries its deck's id, so deriving it twice is how
     // a resumed run writes cards addressed to a deck that does not exist.
     val deckId = resume.deck?.id ?: generateId()
@@ -181,6 +200,8 @@ suspend fun import(
     // also gets the chance to say the pictures are wrong before the quota is spent on them.
     val imageChecks = images.map { it.second }.checkedIfAsked(args, onNote)
     log.advice.reportStaticImageAdvice(onNote)
+    cardNotes.reportCardAdvice(onNote)
+    languageNotes.reportLanguageAdvice(onNote)
 
     // Blobs this invocation wrote, so an aborted publish of a *new* deck can take them back out.
     val uploaded = mutableListOf<MediaRef>()
@@ -223,6 +244,8 @@ suspend fun import(
             imageChecks = imageChecks,
             imageAdvice = log.advice,
             tagsNormalized = tagFolds,
+            cardAdvice = cardNotes,
+            languageAdvice = languageNotes,
         ),
         describeImport(written, title, parsed, resume) + tagFolds.describe(),
     )
@@ -299,6 +322,7 @@ suspend fun importDryRun(
     val title = args.option("title")?.trim()?.takeIf { it.isNotEmpty() }
     args.deckDescription()
     val tagFolds = args.requestedTagFolds()
+    args.requireSpeechPairForNewDeck()
 
     // Nothing is uploaded, so blobs are measured and dropped rather than held: a dry run of a
     // 500-image deck should not need the deck's media in heap to answer how big it is.
@@ -314,6 +338,12 @@ suspend fun importDryRun(
     args.option("cover-url")?.let { log.checked(it, "--cover-url") }
     val imageChecks = images.map { it.second }.checkedIfAsked(args, onNote)
     log.advice.reportStaticImageAdvice(onNote)
+    val speech = args.speechSettings(deck = null, draft)
+    val adviceCards = imports.adviceCards(draft)
+    val cardNotes = cardAdvice(adviceCards, speech.modes)
+    cardNotes.reportCardAdvice(onNote)
+    val languageNotes = languageAdvice(speech.frontLang, speech.backLang)
+    languageNotes.reportLanguageAdvice(onNote)
     imports.clear()
 
     return result(
@@ -330,6 +360,9 @@ suspend fun importDryRun(
             imageChecks = imageChecks,
             imageAdvice = log.advice,
             tagsNormalized = tagFolds,
+            cardAdvice = cardNotes,
+            languageAdvice = languageNotes,
+            composition = adviceCards.compositionView(),
         ),
         buildString {
             appendLine("$source would publish $cards ${if (cards == 1) "card" else "cards"}. Nothing was written.")

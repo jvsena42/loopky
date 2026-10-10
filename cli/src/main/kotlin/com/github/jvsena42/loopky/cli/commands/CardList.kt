@@ -86,6 +86,13 @@ data class CardWriteResult(
      */
     @SerialName("image_advice") val imageAdvice: List<ImageAdvice> = emptyList(),
     /**
+     * Card-writing rules the cards this command adds break, among themselves or against the deck
+     * they join. See [CardAdvice]. `card add` only: an edit names one field of a card.
+     */
+    @SerialName("card_advice") val cardAdvice: List<CardAdvice> = emptyList(),
+    /** On `card add --dry-run`, the composition of the cards that would be added. See [CompositionView]. */
+    val composition: List<CompositionView> = emptyList(),
+    /**
      * True when `--dry-run` reported what would be written instead of writing it.
      *
      * [written] then counts rows that *would* be written, and [cards] is empty — nothing has an id
