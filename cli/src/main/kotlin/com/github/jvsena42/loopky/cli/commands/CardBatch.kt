@@ -167,6 +167,7 @@ internal suspend fun applyBatch(
     verb: BatchVerb,
     imageChecks: List<ImageCheck>,
     imageAdvice: List<ImageAdvice>,
+    onProgress: (String) -> Unit = {},
 ): CommandResult {
     val written = mutableListOf<Card>()
     val failures = mutableListOf<CardWriteFailure>()
@@ -196,6 +197,7 @@ internal suspend fun applyBatch(
             }
         }
         index++
+        onProgress("$index/${planned.size} cards" + if (failures.isEmpty()) "" else ", ${failures.size} failed")
         if (stopped != null) break
     }
 

@@ -130,6 +130,7 @@ suspend fun cardEdit(
     decks: DeckRepository,
     cards: CardRepository,
     onNote: (String) -> Unit = System.err::println,
+    onProgress: (String) -> Unit = {},
 ): CommandResult {
     // Operands and the file are resolved before the first read, so a usage mistake exits 9 rather
     // than surfacing as whatever the homeserver says about the deck (#240, #370).
@@ -180,7 +181,7 @@ suspend fun cardEdit(
 
     val checks = planned.checkedImages(args, onNote)
     log.advice.reportStaticImageAdvice(onNote)
-    return applyBatch(deckId, deck, decks, cards, planned, skipped, BatchVerb.Edit, checks, log.advice)
+    return applyBatch(deckId, deck, decks, cards, planned, skipped, BatchVerb.Edit, checks, log.advice, onProgress)
 }
 
 /**

@@ -767,9 +767,18 @@ in again would fail the same way). Worth checking before starting an hour-long i
   watching.
 - **stdout is the machine channel, and it is held that way at the descriptor.** Results and
   failures both go there as `--json`; the QR code, prompts, progress and every log line go to
-  stderr. `--json` silences **progress counters** on stderr, because the result carries the same
-  numbers — it does not silence stderr. Warnings still arrive there, so capturing stderr for
-  diagnostics is worth doing in either mode.
+  stderr. `--json` thins **progress counters** on stderr to a heartbeat, because the result carries
+  the same numbers: a write that runs past 15 seconds prints `loopky: still working - 135/270 cards`
+  once every 15 seconds, and a quick one prints nothing. That is how a caller tells a five-minute
+  `card edit --from-file` or a whole-deck `card reorder` from a hung one (#480). It does not silence
+  stderr either way — warnings still arrive there, so capturing it for diagnostics is worth doing
+  in either mode.
+
+  **One write at a time per deck.** A deck's manifest is one record rewritten whole, and the lock
+  that serializes those writes lives inside a single `loopky` process. Two invocations writing the
+  same deck at once can each read the manifest, patch it and write it back, and the later write
+  drops what the earlier one added, with both exiting 0. Run them one after another, or as one
+  `loopky batch`.
 
   That is enforced rather than agreed: `libpubkycore` installs a `tracing` subscriber whose default
   writer is stdout, so a DHT bootstrap error — routine on a box that reaches the homeserver fine —

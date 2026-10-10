@@ -445,13 +445,19 @@ class DeckRepositoryImpl(
         }
 
     override suspend fun reorderCards(deckId: String, cardIds: List<String>): Result<Deck> =
-        runSuspendCatching {
-            requireOwnedDeck(deckId)
-            withDeckWrite(deckId) {
-                val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }
-                reorderer.reorderLocked(deck, cardIds)
-            }
+        reorderCards(deckId, cardIds) { _, _ -> }
+
+    override suspend fun reorderCards(
+        deckId: String,
+        cardIds: List<String>,
+        onProgress: (written: Int, total: Int) -> Unit,
+    ): Result<Deck> = runSuspendCatching {
+        requireOwnedDeck(deckId)
+        withDeckWrite(deckId) {
+            val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }
+            reorderer.reorderLocked(deck, cardIds, onProgress)
         }
+    }
 
     override suspend fun rehostBlob(deckId: String, sha256: String): Result<Unit> =
         runSuspendCatching {

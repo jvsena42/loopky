@@ -181,11 +181,12 @@ private suspend fun dispatch(
     sessions: SessionCache,
 ): CommandResult {
     // Two sinks, because they are two different things and collapsing them silenced a warning in the
-    // mode an agent runs. `progress` is a counter — thousands of lines on a large import — so it is
-    // suppressed under `--json`, where the result carries the same numbers. `note` is something the
-    // caller needs to *know* and goes to stderr always: an agent capturing stderr for diagnostics
-    // must not get an empty file because it asked for JSON.
-    val progress: (String) -> Unit = { line -> if (!json) System.err.println(line) }
+    // mode an agent runs. `progress` is a counter — thousands of lines on a large import — so under
+    // `--json`, where the result carries the same numbers, it is thinned to a heartbeat rather than
+    // streamed: silence for five minutes is indistinguishable from a hang (#480). `note` is
+    // something the caller needs to *know* and goes to stderr always: an agent capturing stderr for
+    // diagnostics must not get an empty file because it asked for JSON.
+    val progress: (String) -> Unit = if (json) ProgressHeartbeat(System.err::println)::report else System.err::println
     val note: (String) -> Unit = System.err::println
     // stdout, and only in the human mode — the same split `emit` makes for a single command. A
     // batch operation's *result* is a result, so it belongs on the channel results go to.
@@ -226,13 +227,17 @@ private suspend fun dispatch(
         "card add" -> authed(sessions, identity, environment) {
             cardAdd(args, koin.decks(), koin.cards(), note, progress)
         }
-        "card edit" -> authed(sessions, identity, environment) { cardEdit(args, koin.decks(), koin.cards(), note) }
+        "card edit" -> authed(sessions, identity, environment) {
+            cardEdit(args, koin.decks(), koin.cards(), note, progress)
+        }
         "card rm" -> authed(sessions, identity, environment) { cardRemove(args, koin.decks()) }
         "card mv" -> authed(sessions, identity, environment) { cardMove(args, koin.decks(), koin.cards()) }
         CARD_CHECK_IMAGES -> authed(sessions, identity, environment) {
             cardCheckImages(args, koin.decks(), koin.cards(), note)
         }
-        "card reorder" -> authed(sessions, identity, environment) { cardReorder(args, koin.decks(), koin.cards()) }
+        "card reorder" -> authed(sessions, identity, environment) {
+            cardReorder(args, koin.decks(), koin.cards(), progress)
+        }
 
         // `--dry-run` deliberately sits outside `authed`: it reads a local file and writes
         // nothing, so requiring a live session would put a sign-in between an agent and the check

@@ -54,6 +54,17 @@ class DeckRepositoryReorderTest {
     }
 
     @Test
+    fun progressCountsEveryChunkWriteUpToTheTotal() = runTest {
+        publish()
+        val progress = mutableListOf<Pair<Int, Int>>()
+
+        repo.reorderCards("deck1", ids.reversed()) { written, total -> progress += written to total }.getOrThrow()
+
+        // Three records, each written once holding everything and once trimmed.
+        assertEquals((1..6).map { it to 6 }, progress)
+    }
+
+    @Test
     fun cardIdsSurviveSoReviewStateDoes() = runTest {
         publish()
 
