@@ -213,4 +213,32 @@ class ImageUrlAdviceTest {
         assertEquals(1, notes.size)
         assertContains(notes.single(), "--back-image")
     }
+
+    // ---- where the picture is hosted --------------------------------------------------------
+
+    @Test
+    fun `a file on a language Wikipedia rather than Commons is flagged`() {
+        val advice = imageUrlAdvice("https://upload.wikimedia.org/wikipedia/en/a/ab/Film_poster.jpg")
+
+        assertTrue(advice.orEmpty().contains("/wikipedia/commons/"), advice)
+        assertNull(imageUrlAdvice("https://upload.wikimedia.org/wikipedia/commons/a/ab/Cat.jpg"))
+    }
+
+    @Test
+    fun `a host that forbids hotlinking or carries no licence is flagged`() {
+        listOf(
+            "https://cdn.pixabay.com/photo/2020/01/01/cat.jpg",
+            "https://i.pinimg.com/originals/aa/bb/cc.jpg",
+            "https://scontent.cdninstagram.com/v/t51/x.jpg",
+            "https://encrypted-tbn0.gstatic.com/images?q=tbn:abc",
+            "https://plus.unsplash.com/premium_photo-1.jpg",
+        ).forEach { assertTrue(imageUrlAdvice(it) != null, "no advice for $it") }
+    }
+
+    @Test
+    fun `the free Unsplash host and other gstatic hosts are left alone`() {
+        assertNull(imageUrlAdvice("https://images.unsplash.com/photo-1?w=1080&fm=jpg"))
+        assertNull(imageUrlAdvice("https://fonts.gstatic.com/s/whatever.png"))
+        assertNull(imageUrlAdvice("https://notpixabay.com/cat.jpg"))
+    }
 }
