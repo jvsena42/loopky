@@ -217,7 +217,7 @@ private suspend fun dispatch(
             val offline = args.has(DRY_RUN_FLAG) && args.option("id") == null
             deckCreate(args, koin.decks(), if (offline) null else sessions.require(identity, environment), note, progress)
         }
-        "deck edit" -> authed(sessions, identity, environment) { deckEdit(args, koin.decks()) }
+        "deck edit" -> authed(sessions, identity, environment) { deckEdit(args, koin.decks(), note) }
         "deck delete" -> authed(sessions, identity, environment) { deckDelete(args, koin.decks()) }
         "deck sync" -> authed(sessions, identity, environment) { deckSync(args, koin.decks(), koin.cards()) }
         "deck compact" -> authed(sessions, identity, environment) { deckCompact(args, koin.decks()) }

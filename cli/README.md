@@ -294,7 +294,10 @@ loopky deck edit <deckId> --tag café --json
 when every tag was already in its stored spelling. A tag that is longer than 20 characters once
 folded, or that lands in the reserved `loopky-` namespace, is refused with exit 9 rather than
 dropped. `deck edit` also folds the tags a deck already had, so the first edit of a deck tagged by
-an older release moves its accented tags over and reports them the same way.
+an older release moves its accented tags over and reports them the same way. A tag such a deck
+carries that cannot be stored at all (over 20 characters, or reserved; older releases checked
+neither) is removed by that edit, and named in `tags_dropped` and in a note on stderr, never in
+`tags_normalized`.
 
 **Brackets are notes, not answer.** Typing, Speak and Listen all drop a parenthesized aside —
 ASCII `( )` and full-width `（ ）` — while the card still shows it. That makes it the place for a

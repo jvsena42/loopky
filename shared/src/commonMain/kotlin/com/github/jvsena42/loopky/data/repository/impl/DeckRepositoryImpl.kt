@@ -277,8 +277,12 @@ class DeckRepositoryImpl(
             }
         }
 
-        val dropped = previous?.tags.orEmpty().filterNot { ReservedTags.isReserved(it) } -
-            current.toSet()
+        // Compared the way a record is keyed, trimmed and lowercased, not as written: an older CLI
+        // stored `Geography` in the manifest over a record keyed `geography`, and removing that
+        // "dropped" label deletes the record the loop above has just written.
+        val kept = current.mapTo(mutableSetOf()) { it.value }
+        val dropped = previous?.tags.orEmpty()
+            .filterNot { ReservedTags.isReserved(it) || it.value.trim().lowercase() in kept }
         for (tag in dropped) {
             tagRepo.removeTag(deck.pubkyUri, tag).onFailure {
                 Log.e(TAG, "syncTags: tag '${tag.value}' removal failed — ${it.message}", it)

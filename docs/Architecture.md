@@ -664,11 +664,14 @@ diacritics stripped, every run of whitespace, `_` and `-` collapsed to one `-`, 
   folding there would derive the id of a record that was never written.
 - **A deck tagged before the fold is repaired by its next metadata write.** `updateMetadata` folds
   the list, and `syncTags` then removes the accented record as a dropped tag and writes the folded
-  one. Nothing sweeps decks nobody edits.
+  one. Nothing sweeps decks nobody edits. The drop is decided on the label **as a record is
+  keyed**, trimmed and lowercased: an older CLI stored `Geography` in the manifest over a record
+  keyed `geography`, and treating that as a dropped tag deletes the record just written.
 - **Search folds its query, and asks twice when that changes it.** `searchDecks` reads the tag
   index for the folded label and, when the query as typed could itself be a label, for that too —
   the only way to a deck still tagged `café`. Matching against the sample folds both sides. A phrase
-  is now a tag read as well (`spanish verbs` → `spanish-verbs`).
+  is now a tag read as well (`spanish verbs` → `spanish-verbs`). A query that folds to nothing
+  (`--`) matches no tag, since every label starts with the empty string.
 
 The CLI refuses a reserved or over-long `--tag` (exit 9) where the apps drop one, and reports each
 fold as `tags_normalized: [{from, to}]` on `deck create`, `deck edit`, `import` and their dry runs
@@ -1840,7 +1843,9 @@ agent's normal recovery is to re-run the command.
   commands echoing back exactly what they were sent. A label that folds into `loopky-*` or past 20
   characters is `bad_input` rather than dropped: five tags asked for and four stored with exit 0 is
   a loss nobody goes looking for. `deck edit` also folds the tags a deck already carried, so an
-  edit about something else repairs a deck tagged before the fold and names `tags` in `fields`.
+  edit about something else repairs a deck tagged before the fold and names `tags` in `fields`. A
+  carried tag that cannot be stored at all is removed and reported as `tags_dropped` plus a note on
+  stderr; `tags_normalized` lists only what was kept.
 - **`card edit --from-file` is idempotent, which is why it has no `--resume`.** A row already
   holding what it asks for is skipped rather than rewritten, so re-running the same file *is* the
   resume: no cursor to keep, nothing to pass, and no `updated_at` churn on rows that did not

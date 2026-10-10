@@ -94,6 +94,15 @@ class DiscoveryRepositoryTagSearchTest {
         assertEquals(listOf("legacy"), repo.searchDecks("bioquimica").map { it.id })
     }
 
+    /** Folds to nothing, and every label starts with nothing. */
+    @Test
+    fun searchDecksMatchesNoTagForAQueryMadeOnlyOfSeparators() = runTest {
+        putRemoteManifest("strangerpk", "tagged", updatedAt = 100L, title = "Enzimas", tags = listOf(Tag("bioquimica")))
+        sampleOf("strangerpk" to "tagged")
+
+        listOf("--", "__", "-_", "- -").forEach { assertEquals(emptyList(), repo.searchDecks(it).map { d -> d.id }, "query '$it'") }
+    }
+
     private fun putRemoteManifest(
         author: String,
         deckId: String,

@@ -112,6 +112,37 @@ class DeckTagNormalizationTest {
         assertTrue(result.text.contains("tags"), result.text)
     }
 
+    /**
+     * An older release had no length check, so a deck can carry a label no fold makes storable.
+     * It goes, and the envelope has to say it went rather than report it as stored.
+     */
+    @Test
+    fun `a legacy tag that cannot be stored is reported as dropped, not as folded`() = runBlocking {
+        val legacy = listOf("International_Relations", "internationalrelations", "Loopky_Deck", "Café").map(::Tag)
+        val decks = FakeDeckRepository(testDeck(id = "d1").copy(tags = legacy))
+        val notes = mutableListOf<String>()
+
+        val result = deckEdit(args("deck", "edit", "d1", "--description", "x"), decks, notes::add)
+
+        assertEquals(listOf(Tag("cafe")), decks.metadataWrites.single().tags)
+        assertEquals(listOf("Café" to "cafe"), result.folds())
+        assertEquals(
+            listOf("International_Relations", "internationalrelations", "Loopky_Deck"),
+            result.data.jsonObject.getValue("tags_dropped").jsonArray.map { it.jsonPrimitive.content },
+        )
+        assertTrue(result.text.contains("internationalrelations"), result.text)
+        assertTrue(notes.single().contains("International_Relations"), notes.toString())
+    }
+
+    @Test
+    fun `nothing is reported dropped when every tag can be stored`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck(id = "d1").copy(tags = listOf(Tag("Café"))))
+
+        val result = deckEdit(args("deck", "edit", "d1", "--description", "x"), decks)
+
+        assertEquals(emptyList(), result.data.jsonObject.getValue("tags_dropped").jsonArray.toList())
+    }
+
     @Test
     fun `a deck whose tags are already folded is not rewritten for them`() = runBlocking {
         val decks = FakeDeckRepository(testDeck(id = "d1").copy(tags = listOf(Tag("cafe"))))

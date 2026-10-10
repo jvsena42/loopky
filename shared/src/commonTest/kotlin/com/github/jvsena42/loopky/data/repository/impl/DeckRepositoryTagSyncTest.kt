@@ -1,10 +1,12 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.toDto
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.testing.CountingRevalidator
+import com.github.jvsena42.loopky.testing.FakeHttpFetcher
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
 import com.github.jvsena42.loopky.testing.deckRepository
@@ -32,6 +34,13 @@ class DeckRepositoryTagSyncTest {
     private val tagRepo = RecordingTagRepository()
     private val cardRepo = CardRepositoryImpl(pubky, session, revalidator, Dispatchers.Unconfined)
     private val repo = deckRepository(pubky, session, cardRepo, revalidator, tagRepo)
+    private val realRepo = deckRepository(
+        pubky,
+        session,
+        cardRepo,
+        revalidator,
+        TagRepositoryImpl(pubky, session, revalidator, NexusClient(FakeHttpFetcher(), "https://nexus.test")),
+    )
 
     @Test
     fun updateMetadataMirrorsANewlyAddedTag() = runTest {
@@ -80,6 +89,40 @@ class DeckRepositoryTagSyncTest {
         assertEquals(listOf(Tag("cafe")), updated.tags)
         assertEquals(listOf(deck.pubkyUri to Tag("cafe")), tagRepo.putTags)
         assertEquals(listOf(deck.pubkyUri to Tag("café")), tagRepo.removedTags)
+    }
+
+    /**
+     * Over the real tag repository, because the recording fake cannot see it: a record is keyed
+     * by its lowercased label, so `Geography` and `geography` are one record under two names.
+     * An older CLI stored `--tag` with its case and wrote the record lowercased.
+     */
+    @Test
+    fun aLabelThatDiffersOnlyByCaseKeepsItsRecordThroughTheRepair() = runTest {
+        val deck = realRepo.publish(testDeck(id = "deck1", tags = listOf(Tag("geography"))), listOf(testCard("c1")))
+            .getOrThrow()
+        pubky.store[PubkyPaths.manifest(deck.authorPubky, deck.id)] =
+            loopkyJson.encodeToString(deck.copy(tags = listOf(Tag("Geography"))).toDto())
+        val legacy = realRepo.sync(deck.id).getOrThrow()
+        val record = PubkyPaths.loopkyTag(deck.authorPubky, pubky.createTagId(deck.pubkyUri.value, "geography").getOrThrow())
+
+        val updated = realRepo.updateMetadata(legacy.copy(title = "Renamed")).getOrThrow()
+
+        assertEquals(listOf(Tag("geography")), updated.tags)
+        assertTrue(record in pubky.store, "the repair deleted the record it had just written")
+    }
+
+    @Test
+    fun republishingADeckWhoseLabelDiffersOnlyByCaseKeepsItsRecord() = runTest {
+        val deck = realRepo.publish(testDeck(id = "deck1", tags = listOf(Tag("geography"))), listOf(testCard("c1")))
+            .getOrThrow()
+        pubky.store[PubkyPaths.manifest(deck.authorPubky, deck.id)] =
+            loopkyJson.encodeToString(deck.copy(tags = listOf(Tag(" Geography"))).toDto())
+        val legacy = realRepo.sync(deck.id).getOrThrow()
+        val record = PubkyPaths.loopkyTag(deck.authorPubky, pubky.createTagId(deck.pubkyUri.value, "geography").getOrThrow())
+
+        realRepo.publish(legacy, listOf(testCard("c1"))).getOrThrow()
+
+        assertTrue(record in pubky.store, "the republish deleted the record it had just written")
     }
 
     @Test

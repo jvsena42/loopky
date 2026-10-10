@@ -34,6 +34,12 @@ data class DeckEditResult(
      * tag the deck already carried from before labels were folded (#479). See [TagFold].
      */
     @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
+    /**
+     * Tags the deck carried that this edit removed because no fold makes them storable: over
+     * [TagLabels.MAX_LENGTH] or in the reserved namespace. Only a deck tagged by a release that
+     * checked neither has any — a `--tag` like that is refused, not dropped.
+     */
+    @SerialName("tags_dropped") val tagsDropped: List<String> = emptyList(),
 )
 
 /**
@@ -63,7 +69,11 @@ data class DeckEditResult(
  * The study opt-ins are in here with the metadata because turning one off costs no progress: review
  * state is keyed by `card_id` alone and the modes decide only how a card is *presented*.
  */
-suspend fun deckEdit(args: Args, decks: DeckRepository): CommandResult {
+suspend fun deckEdit(
+    args: Args,
+    decks: DeckRepository,
+    onNote: (String) -> Unit = System.err::println,
+): CommandResult {
     val id = args.requireWord(2, "deckId")
     if (EDIT_FLAGS.none { args.has(it) }) {
         throw CliError(
@@ -80,7 +90,9 @@ suspend fun deckEdit(args: Args, decks: DeckRepository): CommandResult {
     val edited = current.applying(args)
 
     val fields = edited.changedFieldsFrom(current)
-    val tagFolds = args.tagSource(current).tagFolds()
+    // Split by what `editedTags` keeps, so a label that was removed is never reported as stored.
+    val (storable, dropped) = args.tagSource(current).partition { TagLabels.normalize(it) != null }
+    val tagFolds = storable.tagFolds()
     if (fields.isEmpty()) {
         return result(
             DeckEditResult(current.toView(), changed = false, tagsNormalized = tagFolds),
@@ -90,9 +102,25 @@ suspend fun deckEdit(args: Args, decks: DeckRepository): CommandResult {
 
     val updated = decks.updateMetadata(edited.copy(updatedAt = System.currentTimeMillis()))
         .getOrElse { throw asCliError(it) }
+    val droppedText = if (dropped.isEmpty()) {
+        ""
+    } else {
+        "Tags removed, being reserved or over ${TagLabels.MAX_LENGTH} characters once stored: " +
+            dropped.joinToString(", ")
+    }
+    // A note as well as a field: it is a loss the caller did not ask for, and under `--json`
+    // stderr is where an agent reads what it needs to know.
+    if (dropped.isNotEmpty()) onNote("loopky: $droppedText")
     return result(
-        DeckEditResult(updated.toView(), changed = true, fields = fields, tagsNormalized = tagFolds),
-        "Updated ${updated.id} — ${fields.joinToString(", ")}" + tagFolds.describe(),
+        DeckEditResult(
+            updated.toView(),
+            changed = true,
+            fields = fields,
+            tagsNormalized = tagFolds,
+            tagsDropped = dropped,
+        ),
+        "Updated ${updated.id} — ${fields.joinToString(", ")}" + tagFolds.describe() +
+            (if (dropped.isEmpty()) "" else "\n$droppedText"),
     )
 }
 
@@ -171,7 +199,7 @@ private fun Args.editedTags(deck: Deck, frontLang: String?, backLang: String?): 
 /** The labels as written that [editedTags] starts from, for reporting which of them were folded. */
 private fun Args.tagSource(deck: Deck): List<String> = when {
     has("clear-tags") -> emptyList()
-    else -> options("tag").filter { it.isNotBlank() }.ifEmpty { deck.tags.map { it.value } }
+    else -> options("tag").filter { it.isNotBlank() }.map(String::trim).ifEmpty { deck.tags.map { it.value } }
 }
 
 /**
