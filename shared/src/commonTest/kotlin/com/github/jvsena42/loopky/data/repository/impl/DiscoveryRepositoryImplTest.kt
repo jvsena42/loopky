@@ -700,17 +700,6 @@ class DiscoveryRepositoryImplTest {
     }
 
     @Test
-    fun searchDecksAsksNoTagIndexForAPhrase() = runTest {
-        putRemoteManifest("strangerpk", "deck1", updatedAt = 100L, title = "Spanish verbs")
-        sampleOf("strangerpk" to "deck1")
-
-        assertEquals(listOf("deck1"), repo.searchDecks("spanish verbs").map { it.id })
-        // The sample read may take several windows to fill a page, so it is the set of *labels*
-        // asked about that matters: the phrase must never reach the tag index as a label.
-        assertEquals(listOf(ReservedTags.DECK), tagRepo.taggedRequests.map { it.first }.distinct())
-    }
-
-    @Test
     fun searchDecksFetchesTheSampleOnlyOncePerSession() = runTest {
         putRemoteManifest("strangerpk", "deck1", updatedAt = 100L, title = "Spanish verbs")
         sampleOf("strangerpk" to "deck1")

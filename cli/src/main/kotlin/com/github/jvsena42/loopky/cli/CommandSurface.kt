@@ -182,10 +182,12 @@ private val CARD_FIELDS = listOf(
     CliOption("from-file", "a TSV or JSONL card file instead of the flags above", OptionValue.Path),
 ) + IMAGE_CHECK_OPTIONS
 
+private const val TAG_HELP = "a tag, stored lowercase with no accents and - between words - repeat for several"
+
 private val DECK_METADATA = listOf(
     CliOption("title", "the deck title"),
     CliOption("description", "the deck description, at most 500 characters"),
-    CliOption("tag", "a tag - repeat for several, and it replaces rather than appends"),
+    CliOption("tag", "$TAG_HELP, and it replaces rather than appends"),
     CliOption("cover-url", "https URL for the cover image"),
     CliOption("cover-emoji", "an emoji to use as the cover"),
 )
@@ -328,7 +330,7 @@ internal fun cliCommands(): List<CliCommand> = listOf(
         options = listOf(
             CliOption("title", "the deck title"),
             CliOption("description", "the deck description, at most 500 characters"),
-            CliOption("tag", "a tag - repeat for several"),
+            CliOption("tag", TAG_HELP),
             CliOption("separator", "how the columns are split", OptionValue.OneOf(SEPARATORS)),
             CliOption("resume", "carry on an import that stopped part way", OptionValue.Switch),
             CliOption("front-field", "which .apkg field becomes the front, by number or name"),

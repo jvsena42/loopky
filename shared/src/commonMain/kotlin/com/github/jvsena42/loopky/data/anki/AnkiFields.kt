@@ -1,5 +1,7 @@
 package com.github.jvsena42.loopky.data.anki
 
+import com.github.jvsena42.loopky.domain.model.TagLabels
+
 /**
  * Choosing the two fields to import, when nobody has said which.
  *
@@ -54,9 +56,8 @@ private fun List<List<AnkiField>>.isReadableProse(ord: Int): Boolean {
  * this is a suggestion for the commit screen's chips rather than an import. The most-used labels
  * win, since a tag on three notes out of 1,400 describes those notes and not the deck.
  *
- * Labels that cannot survive Loopky's own tag rules are dropped here rather than offered and then
- * rejected at publish: lowercase, no whitespace, 1..[MAX_TAG_LENGTH] chars, and never the reserved
- * `loopky-` prefix, which is the app's own bookkeeping.
+ * Labels that cannot survive [TagLabels.normalize] are dropped here rather than offered and then
+ * rejected at publish.
  */
 internal fun suggestDeckTags(noteTags: List<String>, limit: Int = MAX_SUGGESTED_TAGS): List<String> =
     noteTags
@@ -70,18 +71,9 @@ internal fun suggestDeckTags(noteTags: List<String>, limit: Int = MAX_SUGGESTED_
         .map { it.key }
 
 private fun String.toDeckTagLabel(): String? =
-    substringAfterLast(TAG_HIERARCHY)
-        .trim()
-        .lowercase()
-        .replace('_', '-')
-        .takeIf { it.isNotBlank() && it.length <= MAX_TAG_LENGTH && it.none { c -> c.isWhitespace() } }
-        ?.takeUnless { it.startsWith(RESERVED_TAG_PREFIX) }
+    TagLabels.normalize(substringAfterLast(TAG_HIERARCHY))
 
 private const val TAG_HIERARCHY = "::"
-
-/** pubky-app-specs tag label rules, mirrored from `TagRepositoryImpl`. */
-private const val MAX_TAG_LENGTH = 20
-private const val RESERVED_TAG_PREFIX = "loopky-"
 
 private const val MAX_SUGGESTED_TAGS = 5
 private const val FIRST_FIELD = 0

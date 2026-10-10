@@ -37,6 +37,7 @@ import com.github.jvsena42.loopky.domain.model.ORD_STRIDE
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.inStudyOrder
+import com.github.jvsena42.loopky.domain.model.normalized
 import com.github.jvsena42.loopky.platform.BackgroundTasks
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.epochMillis
@@ -185,7 +186,12 @@ class DeckRepositoryImpl(
         val staleChunks = previous?.chunks.orEmpty().map { it.n }.filter { it >= batches.size }
 
         // Every record is rewritten, so whatever a dead reorder left behind is replaced with it.
-        val manifestDeck = deck.copy(cardCount = cards.size, chunks = chunkMeta, reorderPending = false)
+        val manifestDeck = deck.copy(
+            cardCount = cards.size,
+            chunks = chunkMeta,
+            reorderPending = false,
+            tags = deck.tags.normalized(),
+        )
 
         // Claim the deck *before* uploading its cards. With the manifest written last, a failure
         // partway left orphaned chunks under a deck root with no manifest — invisible to
@@ -271,8 +277,12 @@ class DeckRepositoryImpl(
             }
         }
 
-        val dropped = previous?.tags.orEmpty().filterNot { ReservedTags.isReserved(it) } -
-            current.toSet()
+        // Compared the way a record is keyed, trimmed and lowercased, not as written: an older CLI
+        // stored `Geography` in the manifest over a record keyed `geography`, and removing that
+        // "dropped" label deletes the record the loop above has just written.
+        val kept = current.mapTo(mutableSetOf()) { it.value }
+        val dropped = previous?.tags.orEmpty()
+            .filterNot { ReservedTags.isReserved(it) || it.value.trim().lowercase() in kept }
         for (tag in dropped) {
             tagRepo.removeTag(deck.pubkyUri, tag).onFailure {
                 Log.e(TAG, "syncTags: tag '${tag.value}' removal failed — ${it.message}", it)
@@ -294,6 +304,9 @@ class DeckRepositoryImpl(
             val previous = getLocal(deck.id)
             val updated = patchDeckLocked(deck.id) { current ->
                 deck.copy(
+                    // Folded here as well as at the inputs, so a deck tagged before #479 loses its
+                    // accented label on its next metadata write — syncTags then drops that record.
+                    tags = deck.tags.normalized(),
                     chunks = current.chunks,
                     cardCount = current.cardCount,
                     // The caller's copy may predate a reorder; the marker is the homeserver's to say.
@@ -432,13 +445,19 @@ class DeckRepositoryImpl(
         }
 
     override suspend fun reorderCards(deckId: String, cardIds: List<String>): Result<Deck> =
-        runSuspendCatching {
-            requireOwnedDeck(deckId)
-            withDeckWrite(deckId) {
-                val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }
-                reorderer.reorderLocked(deck, cardIds)
-            }
+        reorderCards(deckId, cardIds) { _, _ -> }
+
+    override suspend fun reorderCards(
+        deckId: String,
+        cardIds: List<String>,
+        onProgress: (written: Int, total: Int) -> Unit,
+    ): Result<Deck> = runSuspendCatching {
+        requireOwnedDeck(deckId)
+        withDeckWrite(deckId) {
+            val deck = requireNotNull(getLocal(deckId)) { "Deck $deckId is not loaded" }
+            reorderer.reorderLocked(deck, cardIds, onProgress)
         }
+    }
 
     override suspend fun rehostBlob(deckId: String, sha256: String): Result<Unit> =
         runSuspendCatching {

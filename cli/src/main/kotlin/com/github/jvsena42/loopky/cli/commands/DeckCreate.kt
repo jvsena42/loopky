@@ -70,6 +70,8 @@ data class DeckCreateResult(
      * session (#367).
      */
     @SerialName("id_checked") val idChecked: Boolean = true,
+    /** Every `--tag` stored under a different spelling than it was given. See [TagFold]. */
+    @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
 )
 
 /**
@@ -107,6 +109,7 @@ suspend fun deckCreate(
     val title = args.requireOption("title").trim()
     if (title.isEmpty()) throw CliError(ExitCode.Usage, "--title cannot be empty.")
     args.deckDescription()
+    val tagFolds = args.requestedTagFolds()
 
     val deckId = args.deckIdToCreate()
     // Before the card file is read and before any picture is probed: when the deck is already
@@ -147,9 +150,13 @@ suspend fun deckCreate(
     val idChecked = args.option("id") != null
     if (args.has(DRY_RUN_FLAG)) {
         return result(
-            DeckCreateResult(deck.toView(), imageChecks, log.advice, created = true, dryRun = true, idChecked = idChecked),
+            DeckCreateResult(
+                deck.toView(), imageChecks, log.advice,
+                created = true, dryRun = true, idChecked = idChecked, tagsNormalized = tagFolds,
+            ),
             "$deckId would be created — $title (${cards.size} cards). Nothing was written." +
-                (if (idChecked) "" else " No --id was given, so the homeserver was not asked about one."),
+                (if (idChecked) "" else " No --id was given, so the homeserver was not asked about one.") +
+                tagFolds.describe(),
         )
     }
     requireNotNull(session) { "deck create publishes, so it needs a session" }
@@ -159,8 +166,8 @@ suspend fun deckCreate(
     }.getOrElse { throw asCliError(it) }
 
     return result(
-        DeckCreateResult(published.toView(), imageChecks, log.advice, idChecked = idChecked),
-        "Created ${published.id} — ${published.title} (${published.cardCount} cards)",
+        DeckCreateResult(published.toView(), imageChecks, log.advice, idChecked = idChecked, tagsNormalized = tagFolds),
+        "Created ${published.id} — ${published.title} (${published.cardCount} cards)" + tagFolds.describe(),
     )
 }
 

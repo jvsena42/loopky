@@ -127,7 +127,13 @@ private fun run(argv: Array<String>): ExitCode {
                 // rather than about a deck that does not exist. See `requireSupportedHost`.
                 requireSupportedHost()
                 val koin = startCli(environment, args.has("json"))
-                dispatch(args, koin.identity(), koin, environment, args.has("json"), SessionCache())
+                val json = args.has("json")
+                // Built here rather than in `dispatch`, which `batch` re-enters per operation: a
+                // heartbeat made there restarts its clock each time, and a batch of hundreds of
+                // quick operations ran for minutes without one line (#482 review).
+                val progress: (String) -> Unit =
+                    if (json) ProgressHeartbeat(System.err::println)::report else System.err::println
+                dispatch(args, koin.identity(), koin, environment, json, SessionCache(), progress)
             }
             emit(args, environment, args.verb, result, updates.notice(update.await()))
             ExitCode.Ok
@@ -179,13 +185,15 @@ private suspend fun dispatch(
     json: Boolean,
     /** Resolved once for the process; see [SessionCache]. `batch` re-enters here with the same one. */
     sessions: SessionCache,
+    /** Shared by a `batch` and its operations, so they report against one clock. */
+    progress: (String) -> Unit,
 ): CommandResult {
     // Two sinks, because they are two different things and collapsing them silenced a warning in the
-    // mode an agent runs. `progress` is a counter — thousands of lines on a large import — so it is
-    // suppressed under `--json`, where the result carries the same numbers. `note` is something the
-    // caller needs to *know* and goes to stderr always: an agent capturing stderr for diagnostics
-    // must not get an empty file because it asked for JSON.
-    val progress: (String) -> Unit = { line -> if (!json) System.err.println(line) }
+    // mode an agent runs. `progress` is a counter — thousands of lines on a large import — so under
+    // `--json`, where the result carries the same numbers, it is thinned to a heartbeat rather than
+    // streamed: silence for five minutes is indistinguishable from a hang (#480). `note` is
+    // something the caller needs to *know* and goes to stderr always: an agent capturing stderr for
+    // diagnostics must not get an empty file because it asked for JSON.
     val note: (String) -> Unit = System.err::println
     // stdout, and only in the human mode — the same split `emit` makes for a single command. A
     // batch operation's *result* is a result, so it belongs on the channel results go to.
@@ -217,7 +225,7 @@ private suspend fun dispatch(
             val offline = args.has(DRY_RUN_FLAG) && args.option("id") == null
             deckCreate(args, koin.decks(), if (offline) null else sessions.require(identity, environment), note, progress)
         }
-        "deck edit" -> authed(sessions, identity, environment) { deckEdit(args, koin.decks()) }
+        "deck edit" -> authed(sessions, identity, environment) { deckEdit(args, koin.decks(), note) }
         "deck delete" -> authed(sessions, identity, environment) { deckDelete(args, koin.decks()) }
         "deck sync" -> authed(sessions, identity, environment) { deckSync(args, koin.decks(), koin.cards()) }
         "deck compact" -> authed(sessions, identity, environment) { deckCompact(args, koin.decks()) }
@@ -226,13 +234,17 @@ private suspend fun dispatch(
         "card add" -> authed(sessions, identity, environment) {
             cardAdd(args, koin.decks(), koin.cards(), note, progress)
         }
-        "card edit" -> authed(sessions, identity, environment) { cardEdit(args, koin.decks(), koin.cards(), note) }
+        "card edit" -> authed(sessions, identity, environment) {
+            cardEdit(args, koin.decks(), koin.cards(), note, progress)
+        }
         "card rm" -> authed(sessions, identity, environment) { cardRemove(args, koin.decks()) }
         "card mv" -> authed(sessions, identity, environment) { cardMove(args, koin.decks(), koin.cards()) }
         CARD_CHECK_IMAGES -> authed(sessions, identity, environment) {
             cardCheckImages(args, koin.decks(), koin.cards(), note)
         }
-        "card reorder" -> authed(sessions, identity, environment) { cardReorder(args, koin.decks(), koin.cards()) }
+        "card reorder" -> authed(sessions, identity, environment) {
+            cardReorder(args, koin.decks(), koin.cards(), progress)
+        }
 
         // `--dry-run` deliberately sits outside `authed`: it reads a local file and writes
         // nothing, so requiring a live session would put a sign-in between an agent and the check
@@ -266,11 +278,21 @@ private suspend fun dispatch(
         // session true: `authed` resolves through it, so the first operation that needs a session
         // pays for it and the rest do not. Passing a fresh one here would put a `revalidateSession`
         // round trip on every operation under `LOOPKY_SESSION`.
-        "batch" -> batch(
-            args,
-            { operation -> dispatch(operation, identity, koin, environment, json, sessions) },
-            BatchSinks({ line -> if (json) println(line) }, text, note),
-        )
+        "batch" -> {
+            var started = 0
+            batch(
+                args,
+                { operation ->
+                    val index = ++started
+                    // Named, because under `--json` this line may be the one the heartbeat prints,
+                    // and "1/1 cards" from the middle of a batch says nothing about the batch.
+                    val named: (String) -> Unit = if (json) { line -> progress("operation $index: $line") } else progress
+                    dispatch(operation, identity, koin, environment, json, sessions, named)
+                },
+                // The count only under `--json`: the human mode already prints each operation's result.
+                BatchSinks({ line -> if (json) println(line) }, text, note, if (json) progress else { _ -> }),
+            )
+        }
 
         // `update` and `completion` are deliberately absent: both are handled in `run` before
         // Koin starts, since neither may depend on an install healthy enough to load the FFI.

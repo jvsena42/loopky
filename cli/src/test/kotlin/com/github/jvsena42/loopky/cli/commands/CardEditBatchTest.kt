@@ -69,6 +69,21 @@ class CardEditBatchTest {
         assertEquals(listOf("c2"), decks.upserted.map { it.id })
     }
 
+    /** A row is a chunk write plus a manifest patch, so 270 of them is minutes with nothing to show. */
+    @Test
+    fun `progress is reported as each row is applied`() = runBlocking {
+        val progress = mutableListOf<String>()
+
+        cardEdit(
+            editFile(edit("c1", "UNO"), edit("c2", "DUE"), edit("c3", "TRE")),
+            FakeDeckRepository(testDeck(cardCount = 3)),
+            FakeCardRepository(deckCards),
+            onProgress = progress::add,
+        )
+
+        assertEquals(listOf("1/3 cards", "2/3 cards", "3/3 cards"), progress)
+    }
+
     /** A mistake visible in `argv` must not first ask the homeserver about the deck (#370). */
     @Test
     fun `an empty card id is refused before the deck is read`() = runBlocking {

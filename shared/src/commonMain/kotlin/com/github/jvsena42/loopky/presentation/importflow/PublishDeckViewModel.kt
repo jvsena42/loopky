@@ -21,9 +21,9 @@ import com.github.jvsena42.loopky.domain.model.FormError
 import com.github.jvsena42.loopky.domain.model.ImportDraft
 import com.github.jvsena42.loopky.domain.model.LanguageTags
 import com.github.jvsena42.loopky.domain.model.MediaRef
-import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.SpeechLanguages
 import com.github.jvsena42.loopky.domain.model.Tag
+import com.github.jvsena42.loopky.domain.model.TagLabels
 import com.github.jvsena42.loopky.domain.model.frontBackOf
 import com.github.jvsena42.loopky.domain.model.remoteImageRef
 import com.github.jvsena42.loopky.presentation.share.DeckSharePrompt
@@ -85,7 +85,7 @@ class PublishDeckViewModel(
                     // notes were tagged with are a starting point the user edits, and the source
                     // that proposed them is not describing the deck the way they would.
                     description = draft.suggestedDescription.orEmpty(),
-                    tags = draft.suggestedTags.mapNotNull(::normalizeTag).distinct(),
+                    tags = TagLabels.normalizeAll(draft.suggestedTags),
                     cardCount = kept,
                     discardedCount = draft.rows.size - kept,
                     reverseEnabled = draft.suggestsReverse,
@@ -162,25 +162,16 @@ class PublishDeckViewModel(
     }
 
     fun onAddTag(tag: String) {
-        val trimmed = tag.trim().lowercase()
-        if (trimmed.isBlank()) return
-        // `loopky-*` is Loopky's own index namespace, not a topic (#40) — a hand-entered one would
-        // forge a global-browse entry and read as a topical chip on the deck.
-        if (ReservedTags.isReserved(trimmed)) {
-            Log.d(TAG, "onAddTag: ignoring reserved label '$trimmed'")
+        // Null covers `loopky-*` too: that is Loopky's own index namespace, not a topic (#40) — a
+        // hand-entered one would forge a global-browse entry and read as a topical chip.
+        val label = TagLabels.normalize(tag) ?: run {
+            Log.d(TAG, "onAddTag: ignoring '$tag' — blank, reserved or too long once folded")
             return
         }
         // Dedup: the tag input can be tapped twice with the same label, and a tag record is keyed
         // by label, so a duplicate is a no-op on the homeserver but a second chip in the UI (#83).
-        _state.update { s -> if (trimmed in s.tags) s else s.copy(tags = s.tags + trimmed) }
+        _state.update { s -> if (label in s.tags) s else s.copy(tags = s.tags + label) }
     }
-
-    /**
-     * A tag label as the publish flow will accept it, or null. Shares [onAddTag]'s rules so a
-     * suggested chip cannot arrive in a state the user could not have typed.
-     */
-    private fun normalizeTag(tag: String): String? =
-        tag.trim().lowercase().takeIf { it.isNotBlank() && !ReservedTags.isReserved(it) }
 
     fun onRemoveTag(tag: String) {
         _state.update { s -> s.copy(tags = s.tags - tag) }

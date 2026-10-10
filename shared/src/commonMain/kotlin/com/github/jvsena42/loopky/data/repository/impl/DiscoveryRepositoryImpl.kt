@@ -33,6 +33,7 @@ import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Tag
+import com.github.jvsena42.loopky.domain.model.TagLabels
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.epochMillis
 import com.github.jvsena42.loopky.util.runSuspendCatching
@@ -258,9 +259,11 @@ class DiscoveryRepositoryImpl(
     override suspend fun decksByTag(tag: Tag): List<Deck> {
         val following = decksFromFollowing()
         val own = runSuspendCatching { deckRepository.listOwned() }.getOrElse { emptyList() }
+        // Both sides folded, so a deck still carrying a pre-#479 `café` answers a browse for `cafe`.
+        val label = TagLabels.fold(tag.value)
         return (following + own)
             .distinctBy { it.id }
-            .filter { tag in it.tags }
+            .filter { deck -> deck.tags.any { TagLabels.fold(it.value) == label } }
             .sortedByDescending { it.updatedAt }
     }
 
@@ -366,20 +369,24 @@ class DiscoveryRepositoryImpl(
         val (sample, tagged) = coroutineScope {
             val sample = async { searchableDecks() }
             val tagged = async {
-                if (!isTagShaped(needle)) {
-                    emptyList()
-                } else {
-                    runSuspendCatching { decksByTagGlobal(Tag(needle), limit) }
+                searchLabels(needle).mapConcurrently { label ->
+                    runSuspendCatching { decksByTagGlobal(Tag(label), limit) }
                         .onFailure { Log.w(TAG, "searchDecks: tag read failed — ${it.message}") }
                         .getOrElse { emptyList() }
-                }
+                }.flatten()
             }
             sample.await() to tagged.await()
         }
 
-        val matches = (sample.filter { it.matches(needle) } + tagged)
-            .distinctBy { it.authorPubky + "/" + it.id }
-            .sortedByDescending { it.relevanceTo(needle) }
+        // Folded once, here: relevance is asked per deck by the filter and twice per comparison by
+        // the sort.
+        val label = TagLabels.fold(needle)
+        val scored = (sample.map { it to it.relevanceTo(needle, label) }.filter { it.second > NO_MATCH } +
+            tagged.map { it to it.relevanceTo(needle, label) })
+        val matches = scored
+            .distinctBy { (deck, _) -> deck.authorPubky + "/" + deck.id }
+            .sortedByDescending { it.second }
+            .map { it.first }
             .take(limit)
         Log.d(TAG, "searchDecks('$q'): ${matches.size} of ${sample.size} sampled + ${tagged.size} tagged")
         return matches
@@ -610,22 +617,25 @@ class DiscoveryRepositoryImpl(
 /**
  * How well a deck answers [needle], most specific first: the title someone typed, then the title
  * they half-remembered, then a topic, then a key they were handed.
+ *
+ * [label] is [needle] folded as a tag. Empty for a query made only of separators (`--`), which
+ * must match no tag: every label starts with the empty string.
  */
-private fun Deck.relevanceTo(needle: String): Int = when {
+private fun Deck.relevanceTo(needle: String, label: String): Int = when {
     title.lowercase().startsWith(needle) -> TITLE_PREFIX_MATCH
     title.lowercase().contains(needle) -> TITLE_BODY_MATCH
-    tags.any { it.value.lowercase().startsWith(needle) } -> TAG_MATCH
+    label.isNotEmpty() && tags.any { TagLabels.fold(it.value).startsWith(label) } -> TAG_MATCH
     authorPubky.startsWith(needle) -> AUTHOR_MATCH
     else -> NO_MATCH
 }
 
-private fun Deck.matches(needle: String): Boolean = relevanceTo(needle) > NO_MATCH
-
 /**
- * Whether [needle] could be a tag label. Tags are single lowercase words, so a phrase is a title
- * search and asking the indexer about it would only cost a round-trip that cannot match.
+ * The labels worth asking the indexer about for [needle]: the folded one every tag is stored under
+ * since #479, and the query as typed when that differs and could still be a label — the indexer
+ * matches byte for byte, so that second read is the only way to a deck tagged `café` before the fold.
  */
-private fun isTagShaped(needle: String): Boolean = needle.none { it.isWhitespace() }
+private fun searchLabels(needle: String): List<String> =
+    listOfNotNull(TagLabels.normalize(needle), needle.takeIf { it.none(Char::isWhitespace) }).distinct()
 
 private const val TITLE_PREFIX_MATCH = 4
 private const val TITLE_BODY_MATCH = 3

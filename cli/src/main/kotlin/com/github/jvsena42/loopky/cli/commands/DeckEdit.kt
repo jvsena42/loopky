@@ -13,6 +13,8 @@ import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.LanguageTags
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.Tag
+import com.github.jvsena42.loopky.domain.model.TagLabels
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -27,6 +29,17 @@ data class DeckEditResult(
     val changed: Boolean,
     /** Which manifest fields moved, named as [DeckView] names them. Empty when [changed] is false. */
     val fields: List<String> = emptyList(),
+    /**
+     * Every label stored under a different spelling than it had: a `--tag` as it was typed, or a
+     * tag the deck already carried from before labels were folded (#479). See [TagFold].
+     */
+    @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
+    /**
+     * Tags the deck carried that this edit removed because no fold makes them storable: over
+     * [TagLabels.MAX_LENGTH] or in the reserved namespace. Only a deck tagged by a release that
+     * checked neither has any — a `--tag` like that is refused, not dropped.
+     */
+    @SerialName("tags_dropped") val tagsDropped: List<String> = emptyList(),
 )
 
 /**
@@ -56,7 +69,11 @@ data class DeckEditResult(
  * The study opt-ins are in here with the metadata because turning one off costs no progress: review
  * state is keyed by `card_id` alone and the modes decide only how a card is *presented*.
  */
-suspend fun deckEdit(args: Args, decks: DeckRepository): CommandResult {
+suspend fun deckEdit(
+    args: Args,
+    decks: DeckRepository,
+    onNote: (String) -> Unit = System.err::println,
+): CommandResult {
     val id = args.requireWord(2, "deckId")
     if (EDIT_FLAGS.none { args.has(it) }) {
         throw CliError(
@@ -73,18 +90,37 @@ suspend fun deckEdit(args: Args, decks: DeckRepository): CommandResult {
     val edited = current.applying(args)
 
     val fields = edited.changedFieldsFrom(current)
+    // Split by what `editedTags` keeps, so a label that was removed is never reported as stored.
+    val (storable, dropped) = args.tagSource(current).partition { TagLabels.normalize(it) != null }
+    val tagFolds = storable.tagFolds()
     if (fields.isEmpty()) {
         return result(
-            DeckEditResult(current.toView(), changed = false),
-            "No change to ${current.id} — every field given already held that value.",
+            DeckEditResult(current.toView(), changed = false, tagsNormalized = tagFolds),
+            "No change to ${current.id} — every field given already held that value." + tagFolds.describe(),
         )
     }
 
     val updated = decks.updateMetadata(edited.copy(updatedAt = System.currentTimeMillis()))
         .getOrElse { throw asCliError(it) }
+    val droppedText = if (dropped.isEmpty()) {
+        ""
+    } else {
+        "Tags removed, being reserved or over ${TagLabels.MAX_LENGTH} characters once stored: " +
+            dropped.joinToString(", ")
+    }
+    // A note as well as a field: it is a loss the caller did not ask for, and under `--json`
+    // stderr is where an agent reads what it needs to know.
+    if (dropped.isNotEmpty()) onNote("loopky: $droppedText")
     return result(
-        DeckEditResult(updated.toView(), changed = true, fields = fields),
-        "Updated ${updated.id} — ${fields.joinToString(", ")}",
+        DeckEditResult(
+            updated.toView(),
+            changed = true,
+            fields = fields,
+            tagsNormalized = tagFolds,
+            tagsDropped = dropped,
+        ),
+        "Updated ${updated.id} — ${fields.joinToString(", ")}" + tagFolds.describe() +
+            (if (dropped.isEmpty()) "" else "\n$droppedText"),
     )
 }
 
@@ -147,7 +183,9 @@ private fun Args.editedTags(deck: Deck, frontLang: String?, backLang: String?): 
     val tags = when {
         clearTags -> emptyList()
         requested.isNotEmpty() -> requested
-        else -> deck.tags.map { it.value }
+        // Folded even though nobody named them: a deck tagged before #479 would otherwise keep its
+        // accented label through every edit that is not about tags.
+        else -> TagLabels.normalizeAll(deck.tags.map { it.value })
     }
     val named = has("front-lang") || has("back-lang")
     val labelled = if (named) {
@@ -156,6 +194,12 @@ private fun Args.editedTags(deck: Deck, frontLang: String?, backLang: String?): 
         tags
     }
     return labelled.map { Tag(it) }
+}
+
+/** The labels as written that [editedTags] starts from, for reporting which of them were folded. */
+private fun Args.tagSource(deck: Deck): List<String> = when {
+    has("clear-tags") -> emptyList()
+    else -> options("tag").filter { it.isNotBlank() }.map(String::trim).ifEmpty { deck.tags.map { it.value } }
 }
 
 /**

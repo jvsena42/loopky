@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.cli.Args
 import com.github.jvsena42.loopky.cli.CliError
 import com.github.jvsena42.loopky.cli.CommandResult
 import com.github.jvsena42.loopky.cli.ExitCode
+import com.github.jvsena42.loopky.cli.ProgressHeartbeat
 import com.github.jvsena42.loopky.cli.ok
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
@@ -55,6 +56,41 @@ class BatchTest {
         Args.parse(arrayOf("batch", source) + extra)
 
     private fun event(index: Int) = Json.parseToJsonElement(events[index]).jsonObject["data"]!!.jsonObject
+
+    // -- progress --------------------------------------------------------------------------------
+
+    @Test
+    fun `the operations done are counted out of the total as each one ends`() = runBlocking {
+        val progress = mutableListOf<String>()
+        val source = file(*Array(3) { """{"argv": ["deck", "list"]}""" })
+
+        batch(batchArgs(source), runner(), BatchSinks({}, {}, {}, progress::add))
+
+        assertEquals(listOf("1/3 operations", "2/3 operations", "3/3 operations"), progress)
+    }
+
+    /**
+     * One heartbeat for the whole run. A fresh one per operation never prints for a batch whose
+     * operations each finish inside the interval, however long the batch runs.
+     */
+    @Test
+    fun `a long batch of quick operations still reports through one heartbeat`() = runBlocking {
+        var clock = 0L
+        val lines = mutableListOf<String>()
+        val heartbeat = ProgressHeartbeat(lines::add, intervalMillis = 15_000L, now = { clock })
+        val source = file(*Array(6) { """{"argv": ["deck", "list"]}""" })
+        val sixSecondsEach: suspend (Args) -> CommandResult = { args ->
+            clock += 6_000L
+            CommandResult(buildJsonObject { put("verb", args.verb) }, "")
+        }
+
+        batch(batchArgs(source), sixSecondsEach, BatchSinks({}, {}, {}, heartbeat::report))
+
+        assertEquals(
+            listOf("loopky: still working - 3/6 operations", "loopky: still working - 6/6 operations"),
+            lines,
+        )
+    }
 
     // -- the ordinary run ------------------------------------------------------------------------
 

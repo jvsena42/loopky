@@ -165,6 +165,7 @@ loopky update                    # fetch it, check its digest, replace this bina
 
 loopky deck list
 loopky deck create --title "Capitais" --tag geografia --tag "português" --from-file cards.tsv
+                                    # stored as geografia, portugues - see "Tags are folded" below
 loopky deck create --title "Capitais" --id capitais0001 --if-not-exists   # safe to re-run
 loopky deck create --title "Capitais" --from-file cards.tsv --dry-run     # pre-flight, no write
 loopky deck show <deckId> --json
@@ -277,6 +278,26 @@ Four rules:
   ```
 
   Naming *no* pair leaves them alone, so `--clear-tags` on a language deck really does empty it.
+
+**Tags are folded to one spelling.** A tag is a public record the indexer matches byte for byte,
+so `--tag` is stored lowercase, without Latin accents, and with one `-` wherever words were
+separated by spaces, `_` or `-`: `Bioquímica Básica`, `bioquimica_basica` and `bioquimica-basica`
+are all `bioquimica-basica`. Scripts with no Latin base (CJK, Cyrillic, Arabic, …) are stored as
+typed. `--json` says what happened:
+
+```shell
+loopky deck edit <deckId> --tag café --json
+# "tags": ["cafe"], "tags_normalized": [{"from": "café", "to": "cafe"}]
+```
+
+`tags_normalized` is on `deck create`, `deck edit`, `import` and their `--dry-run`s, and is empty
+when every tag was already in its stored spelling. A tag that is longer than 20 characters once
+folded, or that lands in the reserved `loopky-` namespace, is refused with exit 9 rather than
+dropped. `deck edit` also folds the tags a deck already had, so the first edit of a deck tagged by
+an older release moves its accented tags over and reports them the same way. A tag such a deck
+carries that cannot be stored at all (over 20 characters, or reserved; older releases checked
+neither) is removed by that edit, and named in `tags_dropped` and in a note on stderr, never in
+`tags_normalized`.
 
 **Brackets are notes, not answer.** Typing, Speak and Listen all drop a parenthesized aside —
 ASCII `( )` and full-width `（ ）` — while the card still shows it. That makes it the place for a
@@ -746,9 +767,24 @@ in again would fail the same way). Worth checking before starting an hour-long i
   watching.
 - **stdout is the machine channel, and it is held that way at the descriptor.** Results and
   failures both go there as `--json`; the QR code, prompts, progress and every log line go to
-  stderr. `--json` silences **progress counters** on stderr, because the result carries the same
-  numbers — it does not silence stderr. Warnings still arrive there, so capturing stderr for
-  diagnostics is worth doing in either mode.
+  stderr. `--json` thins **progress counters** on stderr to a heartbeat, because the result carries
+  the same numbers: `loopky: still working - 135/270 cards`, at most one line every 15 seconds, and
+  none from a command that finishes sooner. That is how a caller tells a five-minute
+  `card edit --from-file` or a whole-deck `card reorder` from a hung one (#480). **A line is printed
+  when a write completes, never on a clock**, so each one is evidence of progress: a timer would go
+  on printing through a real hang. The other side of that is a gap means nothing has *completed*
+  since the last line — one slow or retried request, or a phase that reports nothing (reading the
+  deck before the first write, the manifest writes of a reorder, `--check-images`) — and not that
+  the process has died. A `batch` and its operations share one heartbeat, and its lines count
+  operations (`3/60 operations`) or name the one they come from (`operation 4: 12/270 cards`). It
+  does not silence stderr either way — warnings still arrive there, so capturing it for diagnostics
+  is worth doing in either mode.
+
+  **One write at a time per deck.** A deck's manifest is one record rewritten whole, and the lock
+  that serializes those writes lives inside a single `loopky` process. Two invocations writing the
+  same deck at once can each read the manifest, patch it and write it back, and the later write
+  drops what the earlier one added, with both exiting 0. Run them one after another, or as one
+  `loopky batch`.
 
   That is enforced rather than agreed: `libpubkycore` installs a `tracing` subscriber whose default
   writer is stdout, so a DHT bootstrap error — routine on a box that reaches the homeserver fine —

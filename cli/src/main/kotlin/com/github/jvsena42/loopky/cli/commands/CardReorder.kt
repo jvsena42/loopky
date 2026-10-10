@@ -29,7 +29,12 @@ import java.io.File
  * **Re-runnable.** The same file again finishes a run that died partway, and writes nothing once
  * the deck is in that order.
  */
-suspend fun cardReorder(args: Args, decks: DeckRepository, cards: CardRepository): CommandResult {
+suspend fun cardReorder(
+    args: Args,
+    decks: DeckRepository,
+    cards: CardRepository,
+    onProgress: (String) -> Unit = {},
+): CommandResult {
     val deckId = args.requireWord(2, "deckId")
     val wanted = readOrderFile(args.requireOption("from-file"))
 
@@ -39,7 +44,12 @@ suspend fun cardReorder(args: Args, decks: DeckRepository, cards: CardRepository
 
     val moved = wanted.indices.count { wanted[it] != current[it] }
     val dryRun = args.has(DRY_RUN_FLAG)
-    val stored = if (dryRun) deck else decks.reorderCards(deckId, wanted).getOrElse { throw asCliError(it) }
+    val stored = if (dryRun) {
+        deck
+    } else {
+        decks.reorderCards(deckId, wanted) { done, total -> onProgress("$done/$total chunk writes") }
+            .getOrElse { throw asCliError(it) }
+    }
     // The repository hands the deck back untouched when every record already held its cards in
     // order, which a run finishing an interrupted one does not: `moved` can be 0 and this true.
     val written = stored.updatedAt != deck.updatedAt

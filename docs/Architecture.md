@@ -638,6 +638,45 @@ Two things the post record has to get right, both silent when wrong:
   in pure Kotlin. That is safe here in a way hand-rolling a tag id would not be: a tag id has to
   match a blake3 derivation byte for byte.
 
+**5a. Labels are folded to one canonical form before they are written (#479).** The indexer
+matches labels byte for byte, so `café`, `cafe`, `Foo Bar` and `foo_bar` are four shelves unless
+every writer agrees on one. `TagLabels` (`domain/model`) is that agreement: lowercase, Latin
+diacritics stripped, every run of whitespace, `_` and `-` collapsed to one `-`, then empties,
+`loopky-*` and anything past 20 characters dropped, duplicates last. Five details:
+
+- **It runs at the inputs *and* at the repository.** Both tag sheets and the Anki tag suggestions
+  fold on entry so a chip shows what will be published; `DeckRepositoryImpl` folds again in
+  `publish` and `updateMetadata`, because that is the one place no caller can skip — and
+  `TagRepositoryImpl.putTag` folds before deriving the record id.
+- **Only Latin letters lose their marks.** NFD plus "drop every combining mark" would turn Cyrillic
+  `й` into `и`, Japanese `が` into `か`, and take the vowels out of Arabic and Devanagari. So the
+  fold is a table of precomposed Latin letters (checked against `java.text.Normalizer` over the
+  whole BMP by `TagLabelsJvmTest`, since `commonMain` has no normalizer of its own) plus the seven
+  letters Unicode gives no decomposition — `ß æ œ ø đ ł ı` — and a combining mark is dropped only
+  when it follows a Latin letter.
+- **Emoji pass through whole, and the limit counts code points.** The fold walks UTF-16 units and
+  touches only Latin letters, separators and a mark after a Latin letter, so a surrogate pair, a
+  ZWJ sequence, a flag and a keycap all come out as they went in. `TagLabels.lengthOf` counts the
+  way pubky-app-specs does (`chars().count()`): `String.length` counts an emoji twice, and refused
+  a label of eleven emoji that the indexer accepts.
+- **Reads and deletes address a label verbatim.** A record written before the fold is keyed by the
+  label as it was typed, so `removeTag` and every Nexus read ask for exactly what they were handed;
+  folding there would derive the id of a record that was never written.
+- **A deck tagged before the fold is repaired by its next metadata write.** `updateMetadata` folds
+  the list, and `syncTags` then removes the accented record as a dropped tag and writes the folded
+  one. Nothing sweeps decks nobody edits. The drop is decided on the label **as a record is
+  keyed**, trimmed and lowercased: an older CLI stored `Geography` in the manifest over a record
+  keyed `geography`, and treating that as a dropped tag deletes the record just written.
+- **Search folds its query, and asks twice when that changes it.** `searchDecks` reads the tag
+  index for the folded label and, when the query as typed could itself be a label, for that too —
+  the only way to a deck still tagged `café`. Matching against the sample folds both sides. A phrase
+  is now a tag read as well (`spanish verbs` → `spanish-verbs`). A query that folds to nothing
+  (`--`) matches no tag, since every label starts with the empty string.
+
+The CLI refuses a reserved or over-long `--tag` (exit 9) where the apps drop one, and reports each
+fold as `tags_normalized: [{from, to}]` on `deck create`, `deck edit`, `import` and their dry runs
+— §13.7.
+
 **6. The universal path does not validate or sanitize.** Unlike the pubky.app path it checks
 neither the tag id against the body nor the label's casing
 (`nexus-watcher/src/events/handlers/universal_tag.rs:62`). `TagRepositoryImpl.sanitizeLabel`
@@ -1797,6 +1836,16 @@ agent's normal recovery is to re-run the command.
   the pick. The second half matters as much as the first: most decks are not language decks, and
   `LanguageTags.forPair` returning nothing for an undeclared deck is what keeps `"language"` off a
   deck of capital cities. A hand-typed `--tag spanish` beside a declared pair stays one chip.
+- **`--tag` is folded, and the envelope says what it became** (#479, §7.7 point 5a). `--tag café`
+  is stored as `cafe`, and `tags_normalized: [{"from": "café", "to": "cafe"}]` reports it on
+  `deck create`, `deck edit`, `import` and their `--dry-run`s — the verification channel has to say
+  what was *stored*, and before this the two spellings put two decks on two shelves with both
+  commands echoing back exactly what they were sent. A label that folds into `loopky-*` or past 20
+  characters is `bad_input` rather than dropped: five tags asked for and four stored with exit 0 is
+  a loss nobody goes looking for. `deck edit` also folds the tags a deck already carried, so an
+  edit about something else repairs a deck tagged before the fold and names `tags` in `fields`. A
+  carried tag that cannot be stored at all is removed and reported as `tags_dropped` plus a note on
+  stderr; `tags_normalized` lists only what was kept.
 - **`card edit --from-file` is idempotent, which is why it has no `--resume`.** A row already
   holding what it asks for is skipped rather than rewritten, so re-running the same file *is* the
   resume: no cursor to keep, nothing to pass, and no `updated_at` churn on rows that did not

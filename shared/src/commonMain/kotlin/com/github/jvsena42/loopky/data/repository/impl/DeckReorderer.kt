@@ -10,6 +10,8 @@ import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.inStudyOrder
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.epochMillis
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Puts a whole deck into a given order by re-chunking it (#449).
@@ -52,7 +54,11 @@ internal class DeckReorderer(
      * **The caller must hold [deck]'s write lock.** [cardIds] has to name every card in the deck
      * exactly once; anything else throws before the first write.
      */
-    suspend fun reorderLocked(deck: Deck, cardIds: List<String>): Deck {
+    suspend fun reorderLocked(
+        deck: Deck,
+        cardIds: List<String>,
+        onProgress: (written: Int, total: Int) -> Unit = { _, _ -> },
+    ): Deck {
         val records = deck.chunks.sortedBy { it.n }
             .mapConcurrently { meta -> meta.n to readRecord(deck, meta.n) }
             .toMap()
@@ -84,15 +90,25 @@ internal class DeckReorderer(
 
         if (!resuming) decks.patchLocked(deck.id) { it.copy(reorderPending = true) }
 
+        val trimmed = changed.filterKeys { leftovers.getValue(it).isNotEmpty() }
+        // Chunks complete out of order, so the shared counter needs the lock.
+        val progressLock = Mutex()
+        var written = 0
+        val total = changed.size + trimmed.size
+        suspend fun wrote() = onProgress(progressLock.withLock { ++written }, total)
+
         changed.entries.toList().mapConcurrently { (n, cards) ->
             cardRepo.writeChunk(deck.id, n, cards + leftovers.getValue(n)).getOrThrow()
+            wrote()
         }
         decks.patchLocked(deck.id) { current ->
             current.withTable(target, stampOf = { n -> current.chunks.firstOrNull { it.n == n }?.updatedAt })
         }
 
-        changed.filterKeys { leftovers.getValue(it).isNotEmpty() }.entries.toList()
-            .mapConcurrently { (n, cards) -> cardRepo.writeChunk(deck.id, n, cards).getOrThrow() }
+        trimmed.entries.toList().mapConcurrently { (n, cards) ->
+            cardRepo.writeChunk(deck.id, n, cards).getOrThrow()
+            wrote()
+        }
 
         val now = epochMillis()
         val restamped = if (resuming) target.keys else changed.keys

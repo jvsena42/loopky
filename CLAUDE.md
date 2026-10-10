@@ -344,6 +344,17 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   used to strand the screen on "Copying deck…" forever. And the iOS prompt is a `CopyDeckSheet`,
   not an `.alert`: an alert snapshots its `message`, so the "pick a different name" line could
   never appear as the reader typed. See Architecture.md §8.3.
+- **A tag label has one stored spelling, and `TagLabels` is the only thing that decides it (#479).**
+  The indexer matches labels byte for byte, so `café`/`cafe` and `foo bar`/`foo_bar` were separate
+  shelves. Every *write* folds — both tag sheets' ViewModels, the Anki suggestions, the CLI's
+  `--tag`, and `DeckRepositoryImpl.publish`/`updateMetadata` as the one place no caller can skip.
+  Three things not to undo. The fold is a **table of Latin letters, not NFD plus "strip combining
+  marks"**: that would rewrite Cyrillic `й`, Japanese `が` and every Arabic and Devanagari vowel
+  sign, and `commonMain` has no normalizer anyway — `TagLabelsJvmTest` holds the table to
+  `java.text.Normalizer`. **Reads and deletes stay verbatim**: a pre-fold record is keyed by the
+  label as typed, so folding in `removeTag` or a Nexus read derives the id of a record that was
+  never written, and the old one is never cleaned up. And the **reserved check runs on the folded
+  label** — `loopky_deck` is not reserved as typed and is once stored. Architecture.md §7.7 point 5a.
 - **Announcing a deck is opt-in, per action.** `DiscoveryRepository.announceDeck` writes a `pubky.app` post so a create/follow/clone reaches the user's followers, gated by `AppPreferences.shareOnPubky` (default on) *and* a confirm prompt each time. Off means never asked and never posted — the gate is on the write itself, not only in the ViewModels. **"Share" here means announcing, never visibility**: published decks are public either way (spec §11), and copy that blurs the two describes a privacy control Loopky does not have. Announcing is best-effort: a failed post must never roll back the deck, follow or clone. See Architecture.md §7.7 for the two things the post record has to get right.
 - **Pubky is the source of truth for published decks.** The app is not offline-first in v1 — repos talk directly to `PubkyClient` and keep only an in-memory cache for the session. A persistent SQLDelight cache may come later. There are no private/local-only decks in v1 (spec §11).
 - **Homeserver layout is fixed.** Decks published under `/pub/loopky/decks/{deckId}/{manifest.json, cards/{n}.json, media/{sha256}.{ext}}`. Cards are stored in **chunk records** (~100 per record, `CHUNK_SIZE` in `DeckDtos.kt`), and the manifest carries a chunk table + `card_count` — **not** a per-card index. Study order is the card's own sparse `ord`, not manifest position. Sync diffs `chunks[].updated_at`. Single-card writes go through `DeckRepository.upsertCard`/`deleteCard`, which own the chunk write and the manifest patch together — never write a chunk without patching the manifest. Full schemas in `docs/Architecture.md §8.0`. Binary media is written raw via the FFI's `put_bytes_with_session`; reads come back Base64-encoded from the FFI transport and are decoded in `MediaRepositoryImpl`.

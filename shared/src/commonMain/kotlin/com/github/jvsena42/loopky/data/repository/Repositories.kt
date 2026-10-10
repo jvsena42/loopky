@@ -397,6 +397,17 @@ interface DeckRepository {
     suspend fun reorderCards(deckId: String, cardIds: List<String>): Result<Deck>
 
     /**
+     * [reorderCards], calling [onProgress] with the chunk writes done and the total as each lands.
+     * A 5,000-card deck is a hundred-odd writes over minutes, and a caller with nothing to show
+     * cannot tell that from a hang (#480).
+     */
+    suspend fun reorderCards(
+        deckId: String,
+        cardIds: List<String>,
+        onProgress: (written: Int, total: Int) -> Unit,
+    ): Result<Deck> = reorderCards(deckId, cardIds)
+
+    /**
      * Copy the blob [sha256] under [deckId]'s own media path and rewrite every ref carrying it, so
      * a clone stops depending on the original author's copy.
      *

@@ -73,6 +73,8 @@ data class ImportResult(
      * wrong about rather than what a host happened to answer this minute.
      */
     @SerialName("image_advice") val imageAdvice: List<ImageAdvice> = emptyList(),
+    /** Every `--tag` stored under a different spelling than it was given. See [TagFold]. */
+    @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
 )
 
 /**
@@ -107,6 +109,8 @@ data class ImportPreview(
     @SerialName("image_checks") val imageChecks: List<ImageCheck> = emptyList(),
     /** The same as [ImportResult.imageAdvice], and worth the most here: nothing is written yet. */
     @SerialName("image_advice") val imageAdvice: List<ImageAdvice> = emptyList(),
+    /** How each `--tag` would be stored, where that differs from how it was given. See [TagFold]. */
+    @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
 )
 
 /** The `--json` spelling of a format, kept beside the enum so the two cannot drift. */
@@ -151,6 +155,7 @@ suspend fun import(
     val title = args.requireOption("title").trim()
     if (title.isEmpty()) throw CliError(ExitCode.Usage, "--title cannot be empty.")
     args.deckDescription()
+    val tagFolds = args.requestedTagFolds()
 
     val parsed = parseSource(args, imports, source, title, keepImageBytes = true)
     val draft = parsed.draft
@@ -217,8 +222,9 @@ suspend fun import(
             apkg = parsed.apkg,
             imageChecks = imageChecks,
             imageAdvice = log.advice,
+            tagsNormalized = tagFolds,
         ),
-        describeImport(written, title, parsed, resume),
+        describeImport(written, title, parsed, resume) + tagFolds.describe(),
     )
 }
 
@@ -292,6 +298,7 @@ suspend fun importDryRun(
     val source = args.requireSource()
     val title = args.option("title")?.trim()?.takeIf { it.isNotEmpty() }
     args.deckDescription()
+    val tagFolds = args.requestedTagFolds()
 
     // Nothing is uploaded, so blobs are measured and dropped rather than held: a dry run of a
     // 500-image deck should not need the deck's media in heap to answer how big it is.
@@ -322,6 +329,7 @@ suspend fun importDryRun(
             apkg = parsed.apkg,
             imageChecks = imageChecks,
             imageAdvice = log.advice,
+            tagsNormalized = tagFolds,
         ),
         buildString {
             appendLine("$source would publish $cards ${if (cards == 1) "card" else "cards"}. Nothing was written.")
@@ -335,6 +343,7 @@ suspend fun importDryRun(
                 appendLine(summary.describe())
             }
             append(parsed.describeSeparator())
+            append(tagFolds.describe())
         },
     )
 }
