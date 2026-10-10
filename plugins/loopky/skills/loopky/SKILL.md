@@ -42,7 +42,8 @@ guessing, and trust them over anything here.
 
 5. **Write the cards to a file** (TSV: `front<TAB>back`, optionally two more columns of `https`
    image URLs, one per side; JSONL when a side holds a tab or a newline). Show the user the list
-   before publishing anything. Keep working files (card files, downloaded sources, your scripts)
+   before publishing anything; for a deck too long to read, show what "A deck too long to show"
+   below lists instead. Keep working files (card files, downloaded sources, your scripts)
    in the user's working directory or one they name, not the system's temporary directory, which
    a long session can lose with everything in it.
 
@@ -61,7 +62,10 @@ guessing, and trust them over anything here.
    loopky deck create --title "<Title>" --tag <topic> --from-file cards.tsv --json
    ```
 
-   Add `--id <word> --if-not-exists` when a retry must not publish a second deck.
+   Add `--id <word> --if-not-exists` when a retry must not publish a second deck. A tag is stored
+   lowercase, without accents and with `-` between words (`Bioquímica Básica` becomes
+   `bioquimica-basica`); `tags_normalized` in the result lists each one that changed, and that is
+   not an error.
 
 8. **Verify from what was stored, not what was sent:** `loopky deck show <deckId> --json` and
    `loopky card list <deckId> --json`. Results sit under `data`; a card's `front` is an object with
@@ -79,6 +83,17 @@ then a summary line last: read it line by line, since parsing it as one document
 not transactional: on failure, fix the cause and re-run the same file — `card add`,
 `card edit --from-file` and `deck create --id --if-not-exists` skip what already landed.
 
+**One write at a time per deck.** Never run two `loopky` commands that write to the same deck at
+once, and never let parallel agents publish to one deck: each write replaces the deck's whole
+record of where its cards are, so two at once can drop one's cards with both reporting success.
+Agents working in parallel write card files; one process publishes them, one command after another
+or as one `loopky batch`.
+
+**Slow is not stuck.** `card edit --from-file` costs about a second a row and a whole-deck
+`card reorder` minutes on a deck of thousands. Under `--json` a long write prints
+`loopky: still working - <done>/<total>` on stderr every 15 seconds; wait while those arrive. A
+session lasts about an hour, so split an edit of thousands of rows across files.
+
 **A card in the wrong place moves with `loopky card mv <deckId> <cardId> --after <cardId>`**, or
 `--to <position>`, counting from 1 as `card list` prints them. Never delete and re-add a card to
 move it: the new card has a new id, and everyone studying the deck loses their progress on it. A
@@ -93,7 +108,9 @@ first column is read, and the file has to name every card exactly once, or nothi
 Every card keeps its id, so nobody studying the deck loses progress. If it fails partway (exit 4,
 5 or 12), run the same command again with the same file: that finishes it, and until then the
 deck still has every card but refuses card writes with exit 9. If the file is lost, the output of
-`card list` works as the file.
+`card list` works as the file. `card add` only appends, so cards that belong in the middle of a
+deck are added first and placed with one reorder afterwards: build the whole order once, since
+every reorder rewrites the deck.
 
 **Already have an Anki deck?** `loopky import deck.apkg --dry-run --json` first — check which
 fields became front and back (`--front-field`/`--back-field` override it) and `images.bytes`, since
@@ -140,8 +157,15 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
 - **Pictures are `https` URLs, never uploads.** SVG, TIFF, WebM and STL do not render on either
   phone, whatever the host: use a JPEG, PNG or WebP. Add `--check-images` to the dry-run when the
   URLs came from anywhere you have not fetched. Which source to take them from is the next section.
-- **Tags are public** and indexed network-wide. Use a few honest topic words; never copy an Anki
-  deck's tags or description without reading them.
+- **Tags are public** and indexed network-wide. Use a few honest topic words, each at most 20
+  characters; never copy an Anki deck's tags or description without reading them.
+- **Every front leads to one answer, and with `--reverse` every back does too.** Two cards with the
+  same front cannot both be answered, and typing and Speak grade the other one's answer wrong. Give
+  the rarer synonym a short aside in the learner's language (`começar → start`,
+  `começar (formal) → commence`); give two senses
+  of one word an aside on the back (`bank (money)`, `bank (river)`), or keep the commoner sense.
+- **An aside never holds the answer or part of it**, in either language: a note that names the
+  target word turns the card into reading practice.
 - **Do not pad.** Make the cards the user asked for, at the count they asked for.
 
 ## Where to find pictures
@@ -169,8 +193,16 @@ picture: a near miss teaches the wrong thing.
    gives `thumburl` and `extmetadata.LicenseShortName`. Take only addresses under
    `upload.wikimedia.org/wikipedia/commons/`: `/wikipedia/en/` and other per-language paths hold
    non-free files a Wikipedia article may use and a deck may not. Thumbnails exist only at 120,
-   250, 330, 500, 960, 1280 and 1920 px; any other `NNNpx-` width is a blank card. For an SVG use
-   its `/thumb/…/500px-….svg.png` render, since the original never renders.
+   250, 330, 500, 960, 1280 and 1920 px; any other `NNNpx-` width is a blank card, so say which
+   width a card uses. For an SVG use its `/thumb/…/500px-….svg.png` render, since the original
+   never renders. The API's addresses end in a `?utm_…` query: drop it, and never build a
+   thumbnail address from one that still has it, which answers 400.
+
+   To search Commons rather than look up a name, ask for files whose structured data already says
+   they need no credit, which saves a licence lookup per file:
+   `…&generator=search&gsrnamespace=6&gsrsearch=<words> haswbstatement:P6216=Q19652` (public
+   domain) or `haswbstatement:P275=Q6938433` (CC0), with the same `prop=imageinfo` on the end.
+   Search one request every 3 seconds and wait out a `Retry-After`; four at once get 429.
 
 3. **Openverse**, which searches Flickr, museums and other open collections, with no key:
    `api.openverse.org/v1/images/?q=…&license=cc0,pdm` keeps to pictures that need no credit (add
@@ -185,9 +217,13 @@ picture: a near miss teaches the wrong thing.
    credit. Searching Unsplash needs an API key; without one the site answers with a bot check,
    which is not something to work around, so use an address the user gives you or move on.
 
-**Choosing pictures for many cards, look at them on contact sheets.** Paste a few candidates per
-card, a handful of cards per sheet, into one image and pick from that: it costs far less than
-opening pictures one by one and still catches near misses. Reject a single thing for a plural
+**Look at every picture before it goes on a card.** A search's first result shows the card's
+fact about half the time, and its second about a quarter, so a picture nobody looked at is wrong
+as often as right: when no candidate shows it, the card stays without one. For many cards, use
+contact sheets: paste a few candidates per card, a handful of cards per sheet, into one image and
+pick from that. It costs far less than opening pictures one by one and still catches near misses.
+Keep each chosen picture against its card's `id`, never its position, which moves whenever cards
+are added or reordered. Reject a single thing for a plural
 word, a part standing for the whole, a brand or mascot, and alcohol on a children's deck. Fetch
 from one host a few at a time; Wikimedia's thumbnails answer 429 at eight parallel requests.
 
@@ -207,6 +243,56 @@ A check can also come back with URLs it "could not check", when their host rate-
 out: that says nothing about the pictures. `loopky card check-images <deckId>` asks again over the
 deck as published and writes nothing, and it is how to find pictures that have died since; its
 `--json` lists `card_ids` for each bad URL, to fix with `card edit`.
+
+## General language decks
+
+"The essential English deck for Portuguese speakers" is a deck of thousands of cards that nobody
+reads before it is published, so its shape has to be right by construction. Declare the pair, and
+turn on `--listen`, `--speak`, `--type` and `--reverse` unless the user says otherwise. **Write
+the title and description in the learner's language**, not the one being learned: it is what they
+search in and what tells them the deck is for them.
+
+**What the research supports, so say this much and no more.** About 3,000 word families cover
+roughly 95% of spoken English, and 6,000–7,000 reach 98% (Nation 2006; van Zeeland & Schmitt
+2012), which is what justifies a size. Plain word cards work: a 2020 meta-analysis (Webb,
+Yanagisawa & Uchihara) found flashcards and word lists gave larger gains than writing or
+fill-in-the-blank exercises. A sentence around a word is not shown to teach its meaning better
+(Webb 2007; Laufer & Shmueli 1997), so a word stays a word card and phrases are added for usage,
+not in its place. Recalling the language being learned from the learner's own is the stronger
+direction (Nakata), which is why the front is the learner's language. "One new word per sentence"
+is a rule of thumb with no controlled study behind it. Do not present anything else as research.
+
+**Rank words from frequency data, never from memory.** Take a subtitle-based frequency list for
+the language and pass it through a CEFR-graded word list, weighting by level: raw subtitle counts
+are full of names, interjections and film vocabulary. Rank by lemma, so `go`, `went` and `going`
+are one entry instead of three.
+
+**Compose it as words and phrases together, and measure that before publishing.**
+
+- **About 40% of the cards are phrases or full sentences.** Count it per 100 cards across the
+  first 500 and per 500 after that, not only over the whole deck: strict frequency order puts every
+  function word first and every phrase last, and a learner meets a word list.
+- **Frequency order is the backbone, and each phrase sits right after the rarest word it uses**,
+  so a phrase card combines words already met.
+- **Open with a block of about 75 survival phrases learned whole** — greetings, asking for
+  something, not understanding, numbers in use — before the ranked list starts.
+- **A word with no clear one-word translation gets a short sentence, never a label.** Articles,
+  auxiliaries, most prepositions and inflected forms (`will`, `went`, `the`, `at`) are learned in
+  use: `Eu vou ligar para você → I will call you`, not `auxiliar de futuro → will`. A front that
+  is a grammar term is a card to rewrite.
+- **Put on the front what the learner's language leaves out and the answer states**: a dropped
+  subject pronoun, a gender, a formality. `(ela) Está cansada → She is tired`; without the aside a
+  correct `He is tired` is graded wrong.
+
+**Check the merged file, not the batches.** Cards written in separate batches or by parallel
+agents collide only once they are together. Before the dry run, a script confirms over the whole
+file: no front appears twice; with `--reverse`, no back does either; no aside contains its card's
+answer or a word of it; no front is a grammar label; and the phrase share holds in every stretch.
+
+**A deck too long to show is shown as evidence.** The user cannot read 5,000 cards, so give them:
+the composition per stretch (words, phrases, sentences), a random sample of about ten cards from
+each stretch, and the complete list of the riskiest category — false friends in most language
+pairs — which is short enough to read and is where a wrong card does the most harm.
 
 ## Decks from a TV series
 
