@@ -103,6 +103,15 @@ class TagRepositoryImplTest {
     }
 
     @Test
+    fun putTagWritesAnEmojiLabelUnchangedAndCountsEachEmojiOnce() = runTest {
+        repo.putTag(deckUri, Tag("🇧🇷")).getOrThrow()
+        repo.putTag(deckUri, Tag("🔥".repeat(20))).getOrThrow()
+
+        assertEquals(listOf(tagUrlFor("🇧🇷"), tagUrlFor("🔥".repeat(20))), pubky.puts.map { it.first })
+        assertTrue(repo.putTag(deckUri, Tag("🔥".repeat(21))).isFailure)
+    }
+
+    @Test
     fun putTagFoldsAccentsAndSeparatorsIntoOneLabel() = runTest {
         // Four spellings of one topic have to land on one record, or they are four shelves (#479).
         listOf("Bioquímica Básica", "bioquimica_basica", "bioquimica  basica", "bioquimica-basica").forEach {

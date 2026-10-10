@@ -54,6 +54,42 @@ class TagLabelsTest {
     }
 
     @Test
+    fun emojiPassThroughWholeWhateverTheyAreBuiltFrom() {
+        val emoji = listOf(
+            "🎉", // one surrogate pair
+            "👍🏽", // skin-tone modifier
+            "👨‍👩‍👧‍👦", // joined by zero-width joiners
+            "🇧🇷", // a pair of regional indicators
+            "❤️", // variation selector 16
+            "1️⃣", // keycap: digit, selector, combining enclosing keycap
+            "🏳️‍🌈",
+        )
+        emoji.forEach {
+            assertEquals(it, TagLabels.fold(it), "fold changed $it")
+            assertEquals(it, TagLabels.normalize(it), "normalize changed or refused $it")
+        }
+    }
+
+    @Test
+    fun theLengthLimitCountsAnEmojiOnce() {
+        // pubky-app-specs counts code points and accepts twenty emoji; counting UTF-16 units
+        // would stop at ten.
+        assertEquals("🔥".repeat(20), TagLabels.normalize("🔥".repeat(20)))
+        assertNull(TagLabels.normalize("🔥".repeat(21)))
+        assertEquals(20, TagLabels.lengthOf("🔥".repeat(20)))
+        assertEquals(7, TagLabels.lengthOf("👨‍👩‍👧‍👦"))
+    }
+
+    @Test
+    fun emojiBesideTextKeepTheTextFolding() {
+        assertEquals("cafe-☕", TagLabels.fold("Café ☕"))
+        assertEquals("🎉festa", TagLabels.fold("🎉Festa"))
+        assertEquals("a️⃣", TagLabels.fold("A️⃣"))
+        // A Latin letter straight after an emoji still loses its accent, and nothing else moves.
+        assertEquals("🇧🇷-sao-paulo", TagLabels.fold("🇧🇷 São_Paulo"))
+    }
+
+    @Test
     fun aCombiningMarkIsOnlyDroppedAfterALatinLetter() {
         // Decomposed `й`: the breve belongs to a Cyrillic letter and stays.
         assertEquals("и\u0306", TagLabels.fold("и\u0306"))

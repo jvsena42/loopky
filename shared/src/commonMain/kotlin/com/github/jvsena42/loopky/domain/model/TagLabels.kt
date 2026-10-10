@@ -20,6 +20,12 @@ object TagLabels {
     const val MAX_LENGTH = 20
 
     /**
+     * [label]'s length the way the spec counts it: in code points, not UTF-16 units. `String.length`
+     * counts an emoji twice, which refused a label of eleven emoji the indexer accepts.
+     */
+    fun lengthOf(label: String): Int = label.count { !it.isLowSurrogate() }
+
+    /**
      * [raw] in canonical shape: lowercased, Latin diacritics stripped, and every run of
      * whitespace, `_` and `-` collapsed to one `-`, with none left at either end. Says nothing
      * about whether the result is a label Loopky will store — that is [normalize].
@@ -43,7 +49,7 @@ object TagLabels {
 
     /** [raw] folded, or null when what is left is empty, reserved or longer than [MAX_LENGTH]. */
     fun normalize(raw: String): String? =
-        fold(raw).takeIf { it.isNotEmpty() && it.length <= MAX_LENGTH && !ReservedTags.isReserved(it) }
+        fold(raw).takeIf { it.isNotEmpty() && lengthOf(it) <= MAX_LENGTH && !ReservedTags.isReserved(it) }
 
     /** Every label of [raw] that survives [normalize], first occurrence winning after the fold. */
     fun normalizeAll(raw: List<String>): List<String> = raw.mapNotNull(::normalize).distinct()

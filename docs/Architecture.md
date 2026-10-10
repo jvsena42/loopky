@@ -654,6 +654,11 @@ diacritics stripped, every run of whitespace, `_` and `-` collapsed to one `-`, 
   whole BMP by `TagLabelsJvmTest`, since `commonMain` has no normalizer of its own) plus the seven
   letters Unicode gives no decomposition — `ß æ œ ø đ ł ı` — and a combining mark is dropped only
   when it follows a Latin letter.
+- **Emoji pass through whole, and the limit counts code points.** The fold walks UTF-16 units and
+  touches only Latin letters, separators and a mark after a Latin letter, so a surrogate pair, a
+  ZWJ sequence, a flag and a keycap all come out as they went in. `TagLabels.lengthOf` counts the
+  way pubky-app-specs does (`chars().count()`): `String.length` counts an emoji twice, and refused
+  a label of eleven emoji that the indexer accepts.
 - **Reads and deletes address a label verbatim.** A record written before the fold is keyed by the
   label as it was typed, so `removeTag` and every Nexus read ask for exactly what they were handed;
   folding there would derive the id of a record that was never written.

@@ -51,9 +51,9 @@ internal fun List<String>.normalizedTags(): List<String> =
                 ExitCode.BadInput,
                 "--tag $raw: the ${ReservedTags.PREFIX} prefix is reserved for Loopky's own index labels.",
             )
-            label.length > TagLabels.MAX_LENGTH -> throw CliError(
+            TagLabels.lengthOf(label) > TagLabels.MAX_LENGTH -> throw CliError(
                 ExitCode.BadInput,
-                "--tag $raw is ${label.length} characters once stored as \"$label\"; a tag holds at most " +
+                "--tag $raw is ${TagLabels.lengthOf(label)} characters once stored as \"$label\"; a tag holds at most " +
                     "${TagLabels.MAX_LENGTH}.",
             )
             else -> label

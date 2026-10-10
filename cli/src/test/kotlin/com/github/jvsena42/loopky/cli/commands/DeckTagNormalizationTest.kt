@@ -144,6 +144,23 @@ class DeckTagNormalizationTest {
         assertEquals(listOf("Geografía" to "geografia"), result.folds())
     }
 
+    @Test
+    fun `an emoji tag is stored as given and reports no fold`() = runBlocking {
+        val decks = capturingDecks()
+
+        val result = deckCreate(
+            args("deck", "create", "--title", "T", "--tag", "🇧🇷", "--tag", "👨‍👩‍👧‍👦", "--tag", "Café ☕", "--tag", "🔥".repeat(20)),
+            decks,
+            testSession(),
+        ) {}
+
+        assertEquals(
+            listOf(Tag("🇧🇷"), Tag("👨‍👩‍👧‍👦"), Tag("cafe-☕"), Tag("🔥".repeat(20))),
+            publishedDeck().tags,
+        )
+        assertEquals(listOf("Café ☕" to "cafe-☕"), result.folds())
+    }
+
     /** Refused, not dropped: five tags asked for and four stored with exit 0 is a thing nobody checks. */
     @Test
     fun `a tag past the limit once folded is bad input`() = runBlocking {

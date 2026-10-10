@@ -251,7 +251,7 @@ private fun sanitizeLabel(label: String): Result<String> =
         label.isEmpty() ->
             Result.failure(IllegalArgumentException("Tag label must not be empty"))
 
-        label.length > TagLabels.MAX_LENGTH ->
+        TagLabels.lengthOf(label) > TagLabels.MAX_LENGTH ->
             Result.failure(
                 IllegalArgumentException("Tag label must be at most ${TagLabels.MAX_LENGTH} chars"),
             )
