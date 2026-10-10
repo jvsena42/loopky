@@ -46,15 +46,22 @@ data class CompositionStretch(val from: Int, val to: Int, val words: Int, val ph
  */
 object CardChecks {
 
-    fun check(cards: List<Card>, modes: StudyModes): List<CardFinding> = buildList {
-        addAll(duplicates(cards, CardRule.DuplicateFront, prompt = { it.front }, answer = { it.back }))
+    /**
+     * Findings over [cards]. With [addedFrom], only those a card at or past that position is part
+     * of: the cards before it are a deck already published, which is searched for a prompt a new
+     * card repeats and is otherwise not re-examined — adding one card to a deck of 20,000 must
+     * not re-check 20,000 cards for asides.
+     */
+    fun check(cards: List<Card>, modes: StudyModes, addedFrom: Int = 0): List<CardFinding> = buildList {
+        val added = addedFrom until cards.size
+        addAll(duplicates(cards, addedFrom, CardRule.DuplicateFront, prompt = { it.front }, answer = { it.back }))
         if (modes.reverse) {
-            addAll(duplicates(cards, CardRule.DuplicateBack, prompt = { it.back }, answer = { it.front }))
+            addAll(duplicates(cards, addedFrom, CardRule.DuplicateBack, prompt = { it.back }, answer = { it.front }))
         }
-        addAll(perCard(cards, CardRule.AsideHoldsAnswer, modes.reverse, ::asideHoldsAnswer))
-        addAll(perCard(cards, CardRule.Alternatives, modes.reverse) { _, answer -> listsAlternatives(answer) })
+        addAll(perCard(cards, added, CardRule.AsideHoldsAnswer, modes.reverse, ::asideHoldsAnswer))
+        addAll(perCard(cards, added, CardRule.Alternatives, modes.reverse) { _, answer -> listsAlternatives(answer) })
         if (modes.graded) {
-            addAll(perCard(cards, CardRule.NothingToGrade, modes.reverse) { _, answer -> hasNothingToGrade(answer) })
+            addAll(perCard(cards, added, CardRule.NothingToGrade, modes.reverse) { _, answer -> hasNothingToGrade(answer) })
         }
     }
 
@@ -91,31 +98,40 @@ object CardChecks {
     /** One finding per prompt that several cards share while asking for different answers. */
     private fun duplicates(
         cards: List<Card>,
+        addedFrom: Int,
         rule: CardRule,
         prompt: (Card) -> CardSide,
         answer: (Card) -> CardSide,
     ): List<CardFinding> =
         cards.indices
             .filterNot { prompt(cards[it]).isEmpty }
-            // The aside is part of the key: it is what tells `começar` from `começar (formal)`.
-            // So is the picture, or ten flags under "Whose flag is this?" are one prompt.
             .groupBy { prompt(cards[it]).key() }
             .values
+            .filter { group -> group.last() >= addedFrom }
             .filter { group -> group.map { answer(cards[it]).key() }.distinct().size > 1 }
             .map { CardFinding(rule, it) }
 
+    /**
+     * What makes two sides the same side: the text **as written**, case and spacing aside, and
+     * the picture. Not [AnswerMatcher.normalize], which keeps letters and digits only — right for
+     * grading a reply and wrong here, where it makes `C++` and `C#` one prompt, drops the vowel
+     * signs that tell Hindi and Thai words apart, and reduces every emoji to nothing. The aside
+     * stays in for the same reason: it is what tells `começar` from `começar (formal)`. So does
+     * the picture, or ten flags under "Whose flag is this?" are one prompt.
+     */
     private fun CardSide.key(): String =
-        AnswerMatcher.normalize(text.orEmpty(), AnswerStrictness.Strict) + KEY_SEPARATOR +
+        text.orEmpty().trim().lowercase().replace(SPACES, " ") + KEY_SEPARATOR +
             imageRef?.let { it.url ?: it.sha256 }.orEmpty()
 
     /** [test] over each card's prompt and answer, and over the swapped pair when the deck reverses. */
     private fun perCard(
         cards: List<Card>,
+        among: IntRange,
         rule: CardRule,
         reverse: Boolean,
         test: (prompt: String, answer: String) -> Boolean,
     ): List<CardFinding> =
-        cards.indices.filter { index ->
+        among.filter { index ->
             val front = cards[index].front.text.orEmpty()
             val back = cards[index].back.text.orEmpty()
             test(front, back) || (reverse && test(back, front))
@@ -139,6 +155,7 @@ object CardChecks {
         AnswerMatcher.normalize(text, AnswerStrictness.Lenient).split(' ').filter { it.isNotEmpty() }
 
     private val ASIDE = Regex("""\([^()]*\)|（[^（）]*）""")
+    private val SPACES = Regex("""\s+""")
     private val SPACED_SLASH = Regex("""\S\s+/\s+\S""")
     private val WORD_SLASH_WORD = Regex("""\p{L}{2,}/\p{L}{2,}""")
 

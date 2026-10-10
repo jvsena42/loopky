@@ -24,7 +24,7 @@ class CardChecksTest {
     fun oneFrontAskedForTwoAnswersIsFound() {
         assertEquals(
             listOf(CardRule.DuplicateFront to listOf(0, 2)),
-            rules(plain, card("casa", "house"), card("rua", "street"), card("Casa!", "home")),
+            rules(plain, card("casa", "house"), card("rua", "street"), card(" Casa ", "home")),
         )
     }
 
@@ -39,6 +39,35 @@ class CardChecksTest {
                 card("Whose flag is this?", "Chile", "https://flagcdn.com/w640/cl.png"),
             ),
         )
+    }
+
+    /** A prompt is compared as written. Reduced to letters and digits, each pair here is one prompt. */
+    @Test
+    fun promptsThatDifferOnlyInSymbolsMarksOrEmojiAreDifferentPrompts() {
+        val pairs = listOf(
+            card("C++", "compiled") to card("C#", "managed"),
+            card("🇧🇷", "Brazil") to card("🇫🇷", "France"),
+            card("कल", "tomorrow") to card("काल", "time"),
+            card("มา", "to come") to card("ม้า", "horse"),
+            card("+", "plus") to card("−", "minus"),
+            card("casa", "house") to card("casa?", "is it a house?"),
+        )
+        pairs.forEach { (one, other) -> assertEquals(emptyList(), rules(reversed, one, other), "${one.front.text}") }
+        assertEquals(
+            listOf(CardRule.DuplicateFront to listOf(0, 1)),
+            rules(plain, card("🇧🇷", "Brazil"), card("🇧🇷", "Brasil")),
+        )
+    }
+
+    @Test
+    fun onlyFindingsAnAddedCardIsPartOfAreReported() {
+        val deck = listOf(card("gato", "cat"), card("gato", "tomcat"), card("ou", "either / or"), card("casa", "house"))
+        val added = listOf(card("casa", "home"), card("ou (either)", "either"))
+
+        val found = CardChecks.check(deck + added, plain, addedFrom = deck.size).map { it.rule to it.cards }
+
+        // Not the deck's own `gato` pair or its slashed answer: nobody asked about those.
+        assertEquals(listOf(CardRule.DuplicateFront to listOf(3, 4), CardRule.AsideHoldsAnswer to listOf(5)), found)
     }
 
     @Test
