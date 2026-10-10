@@ -279,6 +279,31 @@ Four rules:
 
   Naming *no* pair leaves them alone, so `--clear-tags` on a language deck really does empty it.
 
+**The cards are checked against the rules they have to survive.** `deck create`, `card add` and
+`import` read every card before writing and report what they find as `card_advice` in `--json` and
+in one block on stderr. It is advice: each rule has honest exceptions, so nothing is refused and
+the command still exits 0.
+
+| `rule` | What it found |
+| --- | --- |
+| `duplicate_front` | Several cards show the same front (text and picture) and want different answers |
+| `duplicate_back` | The same for backs, on a deck with `--reverse` |
+| `aside_holds_answer` | A parenthesized aside contains a word of the card's own answer |
+| `alternatives` | The answer lists alternatives with a slash (`vegetariano / vegetariana`) |
+| `nothing_to_grade` | With `--type` or `--speak`, the answer has no letters or digits to match |
+
+`where` names the cards: `Card 12` is the twelfth card of the file, and on `card add` a card already
+in the deck is `card <id>` — the new cards are checked together with the deck they join, and
+findings among the deck's own cards are left out. A `--dry-run` also carries `composition`: for
+each stretch of the file (100 cards up to 500, then 500), how many answers are one word and how
+many are longer, which is how a deck that is a word list for its first 500 cards shows up before
+it is published.
+
+**`--listen` and `--speak` are refused without both languages** (exit 2), on `deck create`, `import`
+and a `deck edit` that turns one on or clears a language they depend on. A deck already published
+without the pair stays editable. A `--front-lang`/`--back-lang` that no language picker offers (a
+bare `es`, a typo) is stored as given and noted in `language_advice`.
+
 **Tags are folded to one spelling.** A tag is a public record the indexer matches byte for byte,
 so `--tag` is stored lowercase, without Latin accents, and with one `-` wherever words were
 separated by spaces, `_` or `-`: `Bioquímica Básica`, `bioquimica_basica` and `bioquimica-basica`
@@ -783,8 +808,11 @@ in again would fail the same way). Worth checking before starting an hour-long i
   **One write at a time per deck.** A deck's manifest is one record rewritten whole, and the lock
   that serializes those writes lives inside a single `loopky` process. Two invocations writing the
   same deck at once can each read the manifest, patch it and write it back, and the later write
-  drops what the earlier one added, with both exiting 0. Run them one after another, or as one
-  `loopky batch`.
+  drops what the earlier one added, with both exiting 0. So a command that writes a deck takes a
+  file lock on it first (`locks/<deckId>.lock` under the config home), and a second one waits,
+  saying so on stderr. That covers one machine and one config home: a command on another machine,
+  or in a sandbox with its own `LOOPKY_CONFIG_HOME`, is not seen, and a config home that cannot
+  hold the file runs unlocked. Across those, run them one after another yourself.
 
   That is enforced rather than agreed: `libpubkycore` installs a `tracing` subscriber whose default
   writer is stdout, so a DHT bootstrap error — routine on a box that reaches the homeserver fine —

@@ -1836,6 +1836,24 @@ agent's normal recovery is to re-run the command.
   the pick. The second half matters as much as the first: most decks are not language decks, and
   `LanguageTags.forPair` returning nothing for an undeclared deck is what keeps `"language"` off a
   deck of capital cities. A hand-typed `--tag spanish` beside a declared pair stays one chip.
+- **The card-writing rules that can be decided from the cards are checked, not only taught.**
+  They were prose in the agent skill and nowhere else, and a dry run of a file breaking five of
+  them with every mode on answered `ok`. `CardChecks` (`domain/model`, so an editor can use it too)
+  finds a front asked for two answers, a back likewise under reverse, an aside holding a word of
+  its answer, alternatives joined by a slash, and an answer nothing typed or spoken could match;
+  the CLI reports them as `card_advice` and, on a dry run, a per-stretch `composition`. Three
+  decisions. **Advice, never a refusal**: every rule has honest exceptions, and a check that can be
+  wrong must not stop a publish. **A prompt's key is its full text and its picture**: the aside is
+  what tells `começar` from `começar (formal)`, and ten flags share one question. **`card add`
+  checks the new cards together with the deck** and reports only findings a new card is part of.
+  The one refusal in the change is `--listen`/`--speak` without both languages (exit 2), because
+  that is a deck that silently does not do what was asked — and only when the invocation is what
+  causes it, so a deck published before the pair existed stays editable.
+- **One writer per deck is a file lock, and it is best effort by design.** `DeckWriteLock` holds
+  `locks/<deckId>.lock` under the config home around the whole command, the read included, since a
+  manifest read before another process's write is the stale copy. A second command waits and says
+  so. It cannot see another machine or another `LOOPKY_CONFIG_HOME`, and a home that cannot hold
+  the file runs unlocked: a write must not fail over bookkeeping.
 - **`--tag` is folded, and the envelope says what it became** (#479, §7.7 point 5a). `--tag café`
   is stored as `cafe`, and `tags_normalized: [{"from": "café", "to": "cafe"}]` reports it on
   `deck create`, `deck edit`, `import` and their `--dry-run`s — the verification channel has to say

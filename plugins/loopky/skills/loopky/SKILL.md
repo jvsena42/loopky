@@ -54,7 +54,8 @@ guessing, and trust them over anything here.
    ```
 
    `--dry-run` exists on `deck create`, `card add` and `import`, and runs that command's own
-   parser. Read `image_advice` in the result and fix what it names.
+   parser. Read `image_advice`, `card_advice` and `language_advice` in the result and fix what
+   they name: they are advice, so the command still exits 0 with them in it.
 
 7. **Publish:**
 
@@ -83,11 +84,11 @@ then a summary line last: read it line by line, since parsing it as one document
 not transactional: on failure, fix the cause and re-run the same file — `card add`,
 `card edit --from-file` and `deck create --id --if-not-exists` skip what already landed.
 
-**One write at a time per deck.** Never run two `loopky` commands that write to the same deck at
-once, and never let parallel agents publish to one deck: each write replaces the deck's whole
-record of where its cards are, so two at once can drop one's cards with both reporting success.
-Agents working in parallel write card files; one process publishes them, one command after another
-or as one `loopky batch`.
+**One write at a time per deck.** Each write replaces the deck's whole record of where its cards
+are, so two at once can drop one's cards with both reporting success. On one machine `loopky` makes
+the second command wait and says so on stderr; nothing can make it wait for a command on another
+machine or in another sandbox. So agents working in parallel write card files, and one process
+publishes them, one command after another or as one `loopky batch`.
 
 **Slow is not stuck.** `card edit --from-file` costs about a second a row and a whole-deck
 `card reorder` minutes on a deck of thousands. Under `--json` a long write prints
@@ -155,7 +156,8 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   expected answer.
 - **Language decks declare their pair.** `--front-lang en-US --back-lang es-ES` (BCP-47) is what
   makes `--listen` and `--speak` work, and it also tags the deck `language` and `spanish` so learners
-  find it. Without the pair the phone reads Spanish in an English voice, so both switches stay off.
+  find it. Without the pair the phone would read Spanish in an English voice, so `loopky` refuses
+  either switch until both languages are given (exit 2).
   `--type` (typed answers) and `--reverse` (ask both directions) need no pair.
 - **Pictures are `https` URLs, never uploads.** SVG, TIFF, WebM and STL do not render on either
   phone, whatever the host: use a JPEG, PNG or WebP. Add `--check-images` to the dry-run when the
@@ -288,9 +290,12 @@ are one entry instead of three.
   correct `He is tired` is graded wrong.
 
 **Check the merged file, not the batches.** Cards written in separate batches or by parallel
-agents collide only once they are together. Before the dry run, a script confirms over the whole
-file: no front appears twice; with `--reverse`, no back does either; no aside contains its card's
-answer or a word of it; no front is a grammar label; and the phrase share holds in every stretch.
+agents collide only once they are together, so dry-run the whole file with the deck's real flags.
+`card_advice` names the cards where a front appears twice, where a back does under `--reverse`,
+where an aside contains a word of its own answer, and where an answer lists alternatives;
+`composition` counts one-word answers against longer ones for each stretch. Fix until both are
+right. Two things no dry run can see are yours to check with a script: no front is a grammar
+label, and the language of each side is the one declared.
 
 **A deck too long to show is shown as evidence.** The user cannot read 5,000 cards, so give them:
 the composition per stretch (words, phrases, sentences), a random sample of about ten cards from
