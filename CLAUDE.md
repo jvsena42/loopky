@@ -245,6 +245,17 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   its own exit code, because a Nexus read aimed at the wrong network answers *successfully and
   empty* — an agent that writes a tag, reads it back and sees `[]` concludes the write failed and
   retries. Every `--json` result carries the environment and the indexer for the same reason.
+- **A card-writing rule that can be decided from the cards belongs in `CardChecks`, not only in
+  the skill.** The skill is read by an agent that may not follow it; the binary sees every card.
+  `deck create`, `card add` and `import` report duplicate fronts, duplicate backs under reverse,
+  an aside holding its own answer, slashed alternatives and ungradable answers as `card_advice`,
+  and a dry run adds a per-stretch `composition`. Three things not to undo. They are **advice,
+  never a refusal** — every rule has honest exceptions, and the one refusal nearby
+  (`--listen`/`--speak` without both languages) is a deck that silently does not work, refused
+  only when the invocation causes it. A prompt's key is its **full text plus its picture**, or
+  `começar (formal)` and ten flag cards all read as duplicates. And `DeckWriteLock` is **best
+  effort on purpose**: one machine, one config home, and it runs unlocked rather than fail a write
+  when it cannot create its file. Architecture.md §13.7.
 - **`--json` is the CLI's verification channel, not its print format.** An agent cannot screenshot
   its way to checking that the picture it attached is the right picture, so reads echo back what
   was *stored* — image refs and tags, not just text. That makes the envelope an API surface:

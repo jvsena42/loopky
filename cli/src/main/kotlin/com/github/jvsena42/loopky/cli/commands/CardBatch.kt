@@ -61,6 +61,7 @@ internal suspend fun appendBatch(
     skipped: Int,
     imageChecks: List<ImageCheck>,
     imageAdvice: List<ImageAdvice>,
+    cardAdvice: List<CardAdvice>,
     onProgress: (String) -> Unit,
 ): CommandResult {
     val written = mutableListOf<Card>()
@@ -100,6 +101,7 @@ internal suspend fun appendBatch(
         notAttempted = notAttempted,
         imageChecks = imageChecks,
         imageAdvice = imageAdvice,
+        cardAdvice = cardAdvice,
     )
     val text = buildString {
         append("${BatchVerb.Add.past} ${written.size} card(s)")

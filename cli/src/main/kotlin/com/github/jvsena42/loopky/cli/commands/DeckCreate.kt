@@ -13,6 +13,7 @@ import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckSource
 import com.github.jvsena42.loopky.domain.model.Session
+import com.github.jvsena42.loopky.domain.model.StudyModes
 import com.github.jvsena42.loopky.util.generateId
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -72,6 +73,15 @@ data class DeckCreateResult(
     @SerialName("id_checked") val idChecked: Boolean = true,
     /** Every `--tag` stored under a different spelling than it was given. See [TagFold]. */
     @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
+    /** Card-writing rules the cards break, decided without asking anyone. See [CardAdvice]. */
+    @SerialName("card_advice") val cardAdvice: List<CardAdvice> = emptyList(),
+    /**
+     * On a dry run, how each stretch of the file splits between one-word answers and longer ones,
+     * so a deck that is a word list in its first 500 cards shows as one before it is published.
+     */
+    val composition: List<CompositionView> = emptyList(),
+    /** Notes about a `--front-lang`/`--back-lang` value a speech engine is unlikely to honour. */
+    @SerialName("language_advice") val languageAdvice: List<String> = emptyList(),
 )
 
 /**
@@ -110,6 +120,7 @@ suspend fun deckCreate(
     if (title.isEmpty()) throw CliError(ExitCode.Usage, "--title cannot be empty.")
     args.deckDescription()
     val tagFolds = args.requestedTagFolds()
+    args.requireSpeechPairForNewDeck()
 
     val deckId = args.deckIdToCreate()
     // Before the card file is read and before any picture is probed: when the deck is already
@@ -129,9 +140,8 @@ suspend fun deckCreate(
     // `ImageAdviceLog`. A 1210-row file of bad thumbnail widths otherwise printed 1210 multi-line
     // notes ahead of the probe's block and put none of them in `--json`.
     val log = ImageAdviceLog()
-    val cards = args.option("from-file")
-        ?.let { readCardFile(it, log, onNote).requireBothSides().toCards(deckId, now) }
-        .orEmpty()
+    val rows = args.option("from-file")?.let { readCardFile(it, log, onNote).requireBothSides() }.orEmpty()
+    val cards = rows.toCards(deckId, now)
     val imageChecks = if (args.checksImages()) {
         checkImageUrls(
             cards.flatMap { listOfNotNull(it.front.imageRef?.url, it.back.imageRef?.url) },
@@ -146,6 +156,9 @@ suspend fun deckCreate(
 
     // After the deck is assembled, so `--cover-url`'s advice is in it, and after the probe.
     log.advice.reportStaticImageAdvice(onNote)
+    val cardNotes = cardAdvice(cards, StudyModes(deck), label = { rows[it].adviceLabel(it) })
+        .also { it.reportCardAdvice(onNote) }
+    val languageNotes = languageAdvice(deck.frontLang, deck.backLang).also { it.reportLanguageAdvice(onNote) }
 
     val idChecked = args.option("id") != null
     if (args.has(DRY_RUN_FLAG)) {
@@ -153,6 +166,7 @@ suspend fun deckCreate(
             DeckCreateResult(
                 deck.toView(), imageChecks, log.advice,
                 created = true, dryRun = true, idChecked = idChecked, tagsNormalized = tagFolds,
+                cardAdvice = cardNotes, composition = cards.compositionView(), languageAdvice = languageNotes,
             ),
             "$deckId would be created — $title (${cards.size} cards). Nothing was written." +
                 (if (idChecked) "" else " No --id was given, so the homeserver was not asked about one.") +
@@ -166,7 +180,10 @@ suspend fun deckCreate(
     }.getOrElse { throw asCliError(it) }
 
     return result(
-        DeckCreateResult(published.toView(), imageChecks, log.advice, idChecked = idChecked, tagsNormalized = tagFolds),
+        DeckCreateResult(
+            published.toView(), imageChecks, log.advice,
+            idChecked = idChecked, tagsNormalized = tagFolds, cardAdvice = cardNotes, languageAdvice = languageNotes,
+        ),
         "Created ${published.id} — ${published.title} (${published.cardCount} cards)" + tagFolds.describe(),
     )
 }
@@ -186,8 +203,8 @@ private fun Args.newDeck(
     now: Long,
     log: ImageAdviceLog,
 ): Deck {
-    val frontLang = option("front-lang")
-    val backLang = option("back-lang")
+    val frontLang = language("front-lang")
+    val backLang = language("back-lang")
     return Deck(
         id = deckId,
         authorPubky = session?.identity?.pubky.orEmpty(),

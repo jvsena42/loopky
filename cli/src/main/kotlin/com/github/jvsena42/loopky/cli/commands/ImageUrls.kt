@@ -112,7 +112,12 @@ internal fun String.requireRenderableImageUrl(where: String): String {
  * thumbnail is the only rendered raster there is.
  */
 internal fun imageUrlAdvice(url: String): String? {
-    val notes = listOfNotNull(undecodableFormatAdvice(url), thumbnailWidthAdvice(url))
+    val notes = listOfNotNull(
+        undecodableFormatAdvice(url),
+        thumbnailWidthAdvice(url),
+        nonFreeWikimediaAdvice(url),
+        hotlinkAdvice(url),
+    )
     return notes.joinToString("\n").takeIf { it.isNotEmpty() }
 }
 

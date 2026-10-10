@@ -8,6 +8,7 @@ import com.github.jvsena42.loopky.domain.model.ordForIndex
 import com.github.jvsena42.loopky.util.generateId
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -46,6 +47,13 @@ data class CardFileRow(
     val back: String? = null,
     @SerialName("front_image_url") val frontImageUrl: String? = null,
     @SerialName("back_image_url") val backImageUrl: String? = null,
+    /**
+     * The line of the file this row came from, blank lines and comments counted, or null for a
+     * card given on the command line. Advice names it, the way the image advice names
+     * `Line N, column M`: a position among the parsed cards is off by one for every comment
+     * above it, and an agent then edits the wrong line.
+     */
+    @Transient val line: Int? = null,
 ) {
     val isEmpty: Boolean
         get() = front.isNullOrBlank() && back.isNullOrBlank() &&
@@ -141,7 +149,7 @@ private fun parseJsonl(text: String, log: ImageAdviceLog, onNote: (String) -> Un
             // skips the check rather than being refused as an address that could never render.
             row.frontImageUrl?.takeIf { it.isNotBlank() }?.let { log.checked(it, "$where, front_image_url") }
             row.backImageUrl?.takeIf { it.isNotBlank() }?.let { log.checked(it, "$where, back_image_url") }
-            row
+            row.copy(line = index + 1)
         }
         .toList()
     if (blobImages > 0) {
@@ -230,6 +238,7 @@ private fun parseTsv(text: String, log: ImageAdviceLog): List<CardFileRow> =
                 back = fields.getOrNull(BACK_COLUMN)?.trim(),
                 frontImageUrl = fields.imageUrlAt(FRONT_IMAGE_COLUMN, index, log),
                 backImageUrl = fields.imageUrlAt(BACK_IMAGE_COLUMN, index, log),
+                line = index + 1,
             ).also {
                 if (it.isEmpty) {
                     throw CliError(ExitCode.BadInput, "Line ${index + 1} has neither text nor an image.")

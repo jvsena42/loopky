@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.cli.Args
 import com.github.jvsena42.loopky.cli.CliError
 import com.github.jvsena42.loopky.cli.CommandResult
 import com.github.jvsena42.loopky.cli.DeckView
+import com.github.jvsena42.loopky.cli.DeckWriteLock
 import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.asCliError
 import com.github.jvsena42.loopky.cli.result
@@ -75,6 +76,10 @@ data class ImportResult(
     @SerialName("image_advice") val imageAdvice: List<ImageAdvice> = emptyList(),
     /** Every `--tag` stored under a different spelling than it was given. See [TagFold]. */
     @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
+    /** Card-writing rules the cards break, decided without asking anyone. See [CardAdvice]. */
+    @SerialName("card_advice") val cardAdvice: List<CardAdvice> = emptyList(),
+    /** Notes about a `--front-lang`/`--back-lang` value a speech engine is unlikely to honour. */
+    @SerialName("language_advice") val languageAdvice: List<String> = emptyList(),
 )
 
 /**
@@ -111,6 +116,12 @@ data class ImportPreview(
     @SerialName("image_advice") val imageAdvice: List<ImageAdvice> = emptyList(),
     /** How each `--tag` would be stored, where that differs from how it was given. See [TagFold]. */
     @SerialName("tags_normalized") val tagsNormalized: List<TagFold> = emptyList(),
+    /** Card-writing rules the cards break, decided without asking anyone. See [CardAdvice]. */
+    @SerialName("card_advice") val cardAdvice: List<CardAdvice> = emptyList(),
+    /** Notes about a `--front-lang`/`--back-lang` value a speech engine is unlikely to honour. */
+    @SerialName("language_advice") val languageAdvice: List<String> = emptyList(),
+    /** How each stretch of the file splits between one-word answers and longer ones. See [CompositionView]. */
+    val composition: List<CompositionView> = emptyList(),
 )
 
 /** The `--json` spelling of a format, kept beside the enum so the two cannot drift. */
@@ -134,8 +145,31 @@ internal val ImportFormat.json: String
  *
  * `--title` is required and beats any inference from the filename.
  */
-@Suppress("LongParameterList", "LongMethod")
+@Suppress("LongParameterList")
 suspend fun import(
+    args: Args,
+    imports: ImportRepository,
+    decks: DeckRepository,
+    cards: CardRepository,
+    media: MediaRepository,
+    session: Session,
+    onProgress: (String) -> Unit,
+    onNote: (String) -> Unit,
+    /** Null only where there is no second process to wait for: the tests. */
+    lock: DeckWriteLock? = null,
+): CommandResult {
+    // A resumed import appends to a deck that exists, so it is a write like `card add` and waits
+    // its turn like one. The deck is looked up again inside the lock: what was read before it
+    // may be the copy another command was about to replace.
+    val resumed = lock?.let { args.resumedDeckId(decks) }
+    val run: suspend () -> CommandResult = {
+        importLocked(args, imports, decks, cards, media, session, onProgress, onNote)
+    }
+    return lock?.holding(resumed, onNote, run) ?: run()
+}
+
+@Suppress("LongParameterList", "LongMethod")
+private suspend fun importLocked(
     args: Args,
     imports: ImportRepository,
     decks: DeckRepository,
@@ -156,6 +190,7 @@ suspend fun import(
     if (title.isEmpty()) throw CliError(ExitCode.Usage, "--title cannot be empty.")
     args.deckDescription()
     val tagFolds = args.requestedTagFolds()
+    args.requireSpeechPairForNewDeck()
 
     val parsed = parseSource(args, imports, source, title, keepImageBytes = true)
     val draft = parsed.draft
@@ -171,6 +206,14 @@ suspend fun import(
     // a cover URL is a picture like any other and belongs in the same block and the same array.
     args.option("cover-url")?.let { log.checked(it, "--cover-url") }
     val resume = resumeState(args, decks, cards, title, onNote)
+    // Before a byte is uploaded, against the deck this run will leave: on a resumed run the
+    // flags overlay a deck that may already carry the pair.
+    val speech = args.speechSettings(resume.deck, draft)
+    // `--resume` that matched nothing publishes a new deck, which the check at the top skipped.
+    resume.deck?.let { args.requireSpeechPairAfter(it, speech.listen, speech.speak, speech.frontLang, speech.backLang) }
+        ?: requireSpeechPair(speech.listen, speech.speak, speech.frontLang, speech.backLang)
+    val cardNotes = cardAdvice(imports.adviceCards(draft), speech.modes)
+    val languageNotes = languageAdvice(args.language("front-lang"), args.language("back-lang"))
     // Minted once and threaded down: every card carries its deck's id, so deriving it twice is how
     // a resumed run writes cards addressed to a deck that does not exist.
     val deckId = resume.deck?.id ?: generateId()
@@ -181,6 +224,8 @@ suspend fun import(
     // also gets the chance to say the pictures are wrong before the quota is spent on them.
     val imageChecks = images.map { it.second }.checkedIfAsked(args, onNote)
     log.advice.reportStaticImageAdvice(onNote)
+    cardNotes.reportCardAdvice(onNote)
+    languageNotes.reportLanguageAdvice(onNote)
 
     // Blobs this invocation wrote, so an aborted publish of a *new* deck can take them back out.
     val uploaded = mutableListOf<MediaRef>()
@@ -223,6 +268,8 @@ suspend fun import(
             imageChecks = imageChecks,
             imageAdvice = log.advice,
             tagsNormalized = tagFolds,
+            cardAdvice = cardNotes,
+            languageAdvice = languageNotes,
         ),
         describeImport(written, title, parsed, resume) + tagFolds.describe(),
     )
@@ -299,6 +346,7 @@ suspend fun importDryRun(
     val title = args.option("title")?.trim()?.takeIf { it.isNotEmpty() }
     args.deckDescription()
     val tagFolds = args.requestedTagFolds()
+    args.requireSpeechPairForNewDeck()
 
     // Nothing is uploaded, so blobs are measured and dropped rather than held: a dry run of a
     // 500-image deck should not need the deck's media in heap to answer how big it is.
@@ -314,6 +362,12 @@ suspend fun importDryRun(
     args.option("cover-url")?.let { log.checked(it, "--cover-url") }
     val imageChecks = images.map { it.second }.checkedIfAsked(args, onNote)
     log.advice.reportStaticImageAdvice(onNote)
+    val speech = args.speechSettings(deck = null, draft)
+    val adviceCards = imports.adviceCards(draft)
+    val cardNotes = cardAdvice(adviceCards, speech.modes)
+    cardNotes.reportCardAdvice(onNote)
+    val languageNotes = languageAdvice(speech.frontLang, speech.backLang)
+    languageNotes.reportLanguageAdvice(onNote)
     imports.clear()
 
     return result(
@@ -330,6 +384,9 @@ suspend fun importDryRun(
             imageChecks = imageChecks,
             imageAdvice = log.advice,
             tagsNormalized = tagFolds,
+            cardAdvice = cardNotes,
+            languageAdvice = languageNotes,
+            composition = adviceCards.compositionView(),
         ),
         buildString {
             appendLine("$source would publish $cards ${if (cards == 1) "card" else "cards"}. Nothing was written.")
@@ -486,28 +543,6 @@ private suspend fun resolveImage(
 private const val DEFAULT_IMAGE_MIME = "image/jpeg"
 
 /**
- * Take back the blobs an aborted publish already wrote.
- *
- * By hand rather than through `DeckRepository.delete`, which walks a manifest — and there is none
- * yet, because media goes up before `publish` writes one. Best-effort and never fatal: the import
- * quite plausibly aborted because storage ran out, and failing the failure replaces a useful error
- * with a useless one.
- */
-private suspend fun sweepUploadedMedia(
-    media: MediaRepository,
-    deckId: String,
-    uploaded: List<MediaRef>,
-    onNote: (String) -> Unit,
-) {
-    if (uploaded.isEmpty()) return
-    var failed = 0
-    uploaded.forEach { ref -> media.delete(deckId, ref).onFailure { failed++ } }
-    if (failed > 0) {
-        onNote("$failed of ${uploaded.size} pictures this run uploaded could not be removed again.")
-    }
-}
-
-/**
  * The existing deck with whatever metadata this invocation actually specified applied on top. Null
  * when nothing was, so a bare `--resume` costs no metadata write.
  *
@@ -520,8 +555,8 @@ private suspend fun sweepUploadedMedia(
  * go through [Args.flagOrNull]; without that a bare `--resume` would turn off every mode the deck had.
  */
 private fun Deck.overlaidWith(args: Args): Deck? {
-    val frontLang = args.option("front-lang") ?: frontLang
-    val backLang = args.option("back-lang") ?: backLang
+    val frontLang = args.language("front-lang") ?: frontLang
+    val backLang = args.language("back-lang") ?: backLang
     val updated = copy(
         description = args.deckDescription() ?: description,
         coverEmoji = args.option("cover-emoji")?.takeIf { it.isNotBlank() } ?: coverEmoji,
@@ -571,8 +606,8 @@ private fun newDeck(
     cardCount: Int,
 ): Deck {
     val now = System.currentTimeMillis()
-    val frontLang = args.option("front-lang")
-    val backLang = args.option("back-lang")
+    val frontLang = args.language("front-lang")
+    val backLang = args.language("back-lang")
     return Deck(
         id = deckId,
         authorPubky = session.identity.pubky,

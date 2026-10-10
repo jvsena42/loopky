@@ -11,6 +11,7 @@ import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.CardSide
+import com.github.jvsena42.loopky.domain.model.StudyModes
 import com.github.jvsena42.loopky.domain.model.inStudyOrder
 
 /**
@@ -72,6 +73,7 @@ suspend fun cardAdd(
     val seen = existing.mapTo(mutableSetOf()) { it.identityOf() }
     val now = System.currentTimeMillis()
     val planned = mutableListOf<PlannedWrite>()
+    val labels = mutableListOf<String>()
     var skipped = 0
 
     for ((index, row) in rows.withIndex()) {
@@ -85,10 +87,13 @@ suspend fun cardAdd(
             continue
         }
         planned += PlannedWrite(row = index + 1, card = card)
+        labels += row.adviceLabel(index)
     }
 
     val checks = planned.checkedImages(args, onNote)
     log.advice.reportStaticImageAdvice(onNote)
+    val cardNotes = planned.adviceAgainst(existing.inStudyOrder(), StudyModes(deck), labels)
+    cardNotes.reportCardAdvice(onNote)
     if (args.has(DRY_RUN_FLAG)) {
         return result(
             CardWriteResult(
@@ -99,6 +104,8 @@ suspend fun cardAdd(
                 cardCount = deck.cardCount,
                 imageChecks = checks,
                 imageAdvice = log.advice,
+                cardAdvice = cardNotes,
+                composition = planned.map { it.card }.compositionView(),
                 dryRun = true,
             ),
             "Would add ${planned.size} card(s) to $deckId" +
@@ -106,8 +113,25 @@ suspend fun cardAdd(
                 ". Nothing was written.",
         )
     }
-    return appendBatch(deckId, deck, decks, cards, planned, skipped, checks, log.advice, onProgress)
+    return appendBatch(deckId, deck, decks, cards, planned, skipped, checks, log.advice, cardNotes, onProgress)
 }
+
+/**
+ * The new cards checked together with the deck they join: a front the deck already asks is as
+ * much a duplicate as one asked twice in the file. Findings among the deck's own cards are left
+ * out — nobody asked about those, and a deck of thousands would bury the ones that were.
+ */
+private fun List<PlannedWrite>.adviceAgainst(
+    existing: List<Card>,
+    modes: StudyModes,
+    labels: List<String>,
+): List<CardAdvice> =
+    cardAdvice(
+        cards = existing + map { it.card },
+        modes = modes,
+        addedFrom = existing.size,
+        label = { index -> labels.getOrNull(index - existing.size) ?: "card ${existing[index].id}" },
+    )
 
 /**
  * Change cards that already exist, one or a fileful. A field that is not given is left alone rather

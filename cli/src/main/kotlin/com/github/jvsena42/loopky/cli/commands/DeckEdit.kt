@@ -40,6 +40,8 @@ data class DeckEditResult(
      * checked neither has any — a `--tag` like that is refused, not dropped.
      */
     @SerialName("tags_dropped") val tagsDropped: List<String> = emptyList(),
+    /** Notes about a `--front-lang`/`--back-lang` value a speech engine is unlikely to honour. */
+    @SerialName("language_advice") val languageAdvice: List<String> = emptyList(),
 )
 
 /**
@@ -88,6 +90,12 @@ suspend fun deckEdit(
     // out of the cache this populates, so a `deck edit` without it patches nothing.
     val current = decks.sync(id).getOrElse { throw asCliError(it) }
     val edited = current.applying(args)
+    args.requireSpeechPairAfter(current, edited.listenEnabled, edited.speakEnabled, edited.frontLang, edited.backLang)
+    val languageNotes = languageAdvice(
+        edited.frontLang.takeIf { args.has("front-lang") },
+        edited.backLang.takeIf { args.has("back-lang") },
+    )
+    languageNotes.reportLanguageAdvice(onNote)
 
     val fields = edited.changedFieldsFrom(current)
     // Split by what `editedTags` keeps, so a label that was removed is never reported as stored.
@@ -95,7 +103,7 @@ suspend fun deckEdit(
     val tagFolds = storable.tagFolds()
     if (fields.isEmpty()) {
         return result(
-            DeckEditResult(current.toView(), changed = false, tagsNormalized = tagFolds),
+            DeckEditResult(current.toView(), changed = false, tagsNormalized = tagFolds, languageAdvice = languageNotes),
             "No change to ${current.id} — every field given already held that value." + tagFolds.describe(),
         )
     }
@@ -118,6 +126,7 @@ suspend fun deckEdit(
             fields = fields,
             tagsNormalized = tagFolds,
             tagsDropped = dropped,
+            languageAdvice = languageNotes,
         ),
         "Updated ${updated.id} — ${fields.joinToString(", ")}" + tagFolds.describe() +
             (if (dropped.isEmpty()) "" else "\n$droppedText"),
