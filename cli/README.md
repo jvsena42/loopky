@@ -165,6 +165,7 @@ loopky update                    # fetch it, check its digest, replace this bina
 
 loopky deck list
 loopky deck create --title "Capitais" --tag geografia --tag "português" --from-file cards.tsv
+                                    # stored as geografia, portugues - see "Tags are folded" below
 loopky deck create --title "Capitais" --id capitais0001 --if-not-exists   # safe to re-run
 loopky deck create --title "Capitais" --from-file cards.tsv --dry-run     # pre-flight, no write
 loopky deck show <deckId> --json
@@ -277,6 +278,23 @@ Four rules:
   ```
 
   Naming *no* pair leaves them alone, so `--clear-tags` on a language deck really does empty it.
+
+**Tags are folded to one spelling.** A tag is a public record the indexer matches byte for byte,
+so `--tag` is stored lowercase, without Latin accents, and with one `-` wherever words were
+separated by spaces, `_` or `-`: `Bioquímica Básica`, `bioquimica_basica` and `bioquimica-basica`
+are all `bioquimica-basica`. Scripts with no Latin base (CJK, Cyrillic, Arabic, …) are stored as
+typed. `--json` says what happened:
+
+```shell
+loopky deck edit <deckId> --tag café --json
+# "tags": ["cafe"], "tags_normalized": [{"from": "café", "to": "cafe"}]
+```
+
+`tags_normalized` is on `deck create`, `deck edit`, `import` and their `--dry-run`s, and is empty
+when every tag was already in its stored spelling. A tag that is longer than 20 characters once
+folded, or that lands in the reserved `loopky-` namespace, is refused with exit 9 rather than
+dropped. `deck edit` also folds the tags a deck already had, so the first edit of a deck tagged by
+an older release moves its accented tags over and reports them the same way.
 
 **Brackets are notes, not answer.** Typing, Speak and Listen all drop a parenthesized aside —
 ASCII `( )` and full-width `（ ）` — while the card still shows it. That makes it the place for a
