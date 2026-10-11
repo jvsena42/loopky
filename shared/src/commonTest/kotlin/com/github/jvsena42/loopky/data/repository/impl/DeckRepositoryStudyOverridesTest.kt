@@ -225,6 +225,20 @@ class DeckRepositoryStudyOverridesTest {
         assertNull(pubky.store[SUBSCRIPTION_URL])
     }
 
+    @Test
+    fun signingInFromAPreviewOfADeckAlreadyFollowedKeepsTheOverrides() = runTest {
+        val deck = followedDeck()
+        repo.customizeStudy(deck.id, mine).getOrThrow()
+
+        // Signed out, previewed as a guest, then signed back in to the account that follows it.
+        val relaunched = newProcess()
+        relaunched.rememberFollowForSignIn(AUTHOR, deck.id)
+        relaunched.followPendingAfterSignIn().getOrThrow()
+
+        assertEquals(StudyOverridesDto(listen_enabled = false, type_enabled = true), subscription().study)
+        assertEquals(mine, assertNotNull(relaunched.getLocal(deck.id)).study)
+    }
+
     private fun subscription(): SubscriptionDto =
         loopkyJson.decodeFromString(pubky.store.getValue(SUBSCRIPTION_URL))
 

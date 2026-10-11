@@ -1001,23 +1001,27 @@ class DeckRepositoryImpl(
 
     override suspend fun followDeck(deck: Deck): Result<Unit> = runSuspendCatching {
         val owner = session.requireSession().identity.pubky
-        val record = SubscriptionDto(
-            deck_uri = deck.pubkyUri.value,
-            author_pubky = deck.authorPubky,
-            deck_id = deck.id,
-            followed_at = epochMillis(),
-            // Following from deck detail means you are looking at it, so it is seen by definition.
-            last_seen_updated_at = deck.updatedAt,
-        )
-        pubky.putWithSessionRetry(
-            PubkyPaths.subscription(owner, deck.authorPubky, deck.id),
-            loopkyJson.encodeToString(record),
-            session,
-            revalidator,
-        ).getOrThrow()
+        subscriptionWriteLock.withLock {
+            val record = SubscriptionDto(
+                deck_uri = deck.pubkyUri.value,
+                author_pubky = deck.authorPubky,
+                deck_id = deck.id,
+                followed_at = epochMillis(),
+                // Following from deck detail means you are looking at it, so it is seen by definition.
+                last_seen_updated_at = deck.updatedAt,
+                // A sign-in from a guest preview follows a deck the account may already follow, and
+                // this write replaces the whole record.
+                study = loadSubscriptions()[deck.id]?.study,
+            )
+            pubky.putWithSessionRetry(
+                PubkyPaths.subscription(owner, deck.authorPubky, deck.id),
+                loopkyJson.encodeToString(record),
+                session,
+                revalidator,
+            ).getOrThrow()
 
-        loadSubscriptions()
-        subscriptionLock.withLock { subscriptions?.put(deck.id, record) }
+            subscriptionLock.withLock { subscriptions?.put(deck.id, record) }
+        }
 
         // Best-effort: the reserved label is what makes "N people follow this" fall out of the
         // indexer's tagger count, but discoverability must not fail a follow.
