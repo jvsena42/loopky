@@ -36,8 +36,13 @@ import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.ORD_STRIDE
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
+import com.github.jvsena42.loopky.domain.model.StudyFeatures
+import com.github.jvsena42.loopky.domain.model.StudyOverrides
+import com.github.jvsena42.loopky.domain.model.asAuthored
 import com.github.jvsena42.loopky.domain.model.inStudyOrder
 import com.github.jvsena42.loopky.domain.model.normalized
+import com.github.jvsena42.loopky.domain.model.studiedWith
+import com.github.jvsena42.loopky.domain.model.study
 import com.github.jvsena42.loopky.platform.BackgroundTasks
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.epochMillis
@@ -100,6 +105,17 @@ class DeckRepositoryImpl(
      */
     private var subscriptions: MutableMap<String, SubscriptionDto>? = null
     private val subscriptionLock = Mutex()
+
+    /**
+     * Serializes the two read-modify-writes of a subscription record ([markSeen] and
+     * [customizeStudy]), each of which would otherwise write back a copy missing the other's field.
+     * Not [subscriptionLock], which is held for map access only.
+     */
+    private val subscriptionWriteLock = Mutex()
+    private val subscriptionLoadLock = Mutex()
+
+    /** Guarded by [subscriptionLoadLock]. See [readerSubscription]. */
+    private var subscriptionLoadFailedFor: String? = null
     private val pendingFollowLock = Mutex()
 
     /** Guarded by [subscriptionLock]. Who you follow is per-account; the cache must not outlive it. */
@@ -133,7 +149,10 @@ class DeckRepositoryImpl(
     )
     override val changes: SharedFlow<Unit> = _changes.asSharedFlow()
 
-    override suspend fun getLocal(id: String): Deck? = cacheLock.withLock { cache[id] }
+    override suspend fun getLocal(id: String): Deck? {
+        val deck = cacheLock.withLock { cache[id] } ?: return null
+        return deck.studiedWith(loadedSubscriptions()?.get(id))
+    }
 
     // runSuspendCatching rather than mapCatching: mapCatching is inline, so its lambda inherits the
     // suspend context and catches the cancellation cacheLock.withLock can throw.
@@ -142,8 +161,41 @@ class DeckRepositoryImpl(
             val json = pubky.get(PubkyPaths.manifest(authorPubky, deckId)).getOrThrow()
             val deck = loopkyJson.decodeFromString<ManifestDto>(json).toDomain()
             cacheLock.withLock { cache[deck.id] = deck }
-            deck
+            deck.studiedWith(readerSubscription(deck))
         }
+
+    /**
+     * [cache] holds every deck **as its author published it**; a followed deck gains the reader's
+     * study opt-ins on the way out, here and in [getLocal]. Keeping the overlay off the cache is
+     * what lets an unfollow, or a change made on another device, take effect without a refetch.
+     */
+    private fun Deck.studiedWith(sub: SubscriptionDto?): Deck =
+        if (sub == null || sub.author_pubky != authorPubky) this else studiedWith(sub.study.toDomain())
+
+    private suspend fun loadedSubscriptions(): Map<String, SubscriptionDto>? =
+        subscriptionLock.withLock { if (subscriptionAccount.changed()) null else subscriptions?.toMap() }
+
+    /**
+     * The reader's subscription to [deck], loading the listing if nothing has yet — a deck opened
+     * from a link is read before Home or the library has asked what is followed.
+     *
+     * One load at a time, and a failed one is not repeated from here: a feed resolves dozens of
+     * manifests at once, and each would otherwise pay for its own listing against a homeserver
+     * that has just shown it cannot answer. [getLocal] picks the overrides up once anything else
+     * loads the listing.
+     */
+    private suspend fun readerSubscription(deck: Deck): SubscriptionDto? {
+        val me = session.current()?.identity?.pubky ?: return null
+        if (deck.authorPubky == me) return null
+        loadedSubscriptions()?.let { return it[deck.id] }
+        return subscriptionLoadLock.withLock {
+            loadedSubscriptions()?.let { return@withLock it[deck.id] }
+            if (subscriptionLoadFailedFor == me) return@withLock null
+            val listing = runSuspendCatching { loadSubscriptionsListing() }.getOrNull()
+            if (listing?.complete != true) subscriptionLoadFailedFor = me
+            listing?.items?.firstOrNull { it.deck_id == deck.id }
+        }
+    }
 
     override suspend fun publish(deck: Deck, cards: List<Card>): Result<Deck> =
         publish(deck, cards, onProgress = {})
@@ -949,23 +1001,27 @@ class DeckRepositoryImpl(
 
     override suspend fun followDeck(deck: Deck): Result<Unit> = runSuspendCatching {
         val owner = session.requireSession().identity.pubky
-        val record = SubscriptionDto(
-            deck_uri = deck.pubkyUri.value,
-            author_pubky = deck.authorPubky,
-            deck_id = deck.id,
-            followed_at = epochMillis(),
-            // Following from deck detail means you are looking at it, so it is seen by definition.
-            last_seen_updated_at = deck.updatedAt,
-        )
-        pubky.putWithSessionRetry(
-            PubkyPaths.subscription(owner, deck.authorPubky, deck.id),
-            loopkyJson.encodeToString(record),
-            session,
-            revalidator,
-        ).getOrThrow()
+        subscriptionWriteLock.withLock {
+            val record = SubscriptionDto(
+                deck_uri = deck.pubkyUri.value,
+                author_pubky = deck.authorPubky,
+                deck_id = deck.id,
+                followed_at = epochMillis(),
+                // Following from deck detail means you are looking at it, so it is seen by definition.
+                last_seen_updated_at = deck.updatedAt,
+                // A sign-in from a guest preview follows a deck the account may already follow, and
+                // this write replaces the whole record.
+                study = loadSubscriptions()[deck.id]?.study,
+            )
+            pubky.putWithSessionRetry(
+                PubkyPaths.subscription(owner, deck.authorPubky, deck.id),
+                loopkyJson.encodeToString(record),
+                session,
+                revalidator,
+            ).getOrThrow()
 
-        loadSubscriptions()
-        subscriptionLock.withLock { subscriptions?.put(deck.id, record) }
+            subscriptionLock.withLock { subscriptions?.put(deck.id, record) }
+        }
 
         // Best-effort: the reserved label is what makes "N people follow this" fall out of the
         // indexer's tagger count, but discoverability must not fail a follow.
@@ -1085,7 +1141,7 @@ class DeckRepositoryImpl(
         return deck.updatedAt > sub.last_seen_updated_at
     }
 
-    override suspend fun markSeen(deck: Deck) {
+    override suspend fun markSeen(deck: Deck): Unit = subscriptionWriteLock.withLock {
         val sub = loadSubscriptions()[deck.id] ?: return
         if (sub.last_seen_updated_at >= deck.updatedAt) return
 
@@ -1104,6 +1160,30 @@ class DeckRepositoryImpl(
         subscriptionLock.withLock { subscriptions?.put(deck.id, updated) }
         _changes.tryEmit(Unit)
     }
+
+    override suspend fun customizeStudy(deckId: String, features: StudyFeatures): Result<Deck> =
+        runSuspendCatching {
+            subscriptionWriteLock.withLock {
+                val owner = session.requireSession().identity.pubky
+                val sub = requireNotNull(loadSubscriptions()[deckId]) {
+                    "customizeStudy: $deckId is not a deck you follow"
+                }
+                val authored = cacheLock.withLock { cache[deckId] }?.takeIf { it.authorPubky == sub.author_pubky }
+                    ?: fetchRemote(sub.author_pubky, deckId).getOrThrow().asAuthored()
+                val overrides = StudyOverrides.between(authored.study, features)
+                val updated = sub.copy(study = overrides.toDto())
+                pubky.putWithSessionRetry(
+                    PubkyPaths.subscription(owner, sub.author_pubky, sub.deck_id),
+                    loopkyJson.encodeToString(updated),
+                    session,
+                    revalidator,
+                ).getOrThrow()
+                subscriptionLock.withLock { subscriptions?.put(deckId, updated) }
+
+                _changes.tryEmit(Unit)
+                authored.studiedWith(overrides)
+            }
+        }
 
     override suspend fun clone(source: Deck, title: String): Result<Deck> = runSuspendCatching {
         val newTitle = title.trim()
@@ -1134,7 +1214,10 @@ class DeckRepositoryImpl(
             authorPubky = me,
             createdAt = now,
             updatedAt = now,
-            coverImageRef = source.coverImageRef?.absolutizedTo(source.authorPubky, source.id),
+            coverEmoji = null,
+            coverImageRef = null,
+            // The reader's opt-ins are already in the fields this copies; they are the copy's own now.
+            authorStudy = null,
             cardCount = cards.size,
             // publish() writes the real chunk table; the source's is about the source's records.
             chunks = emptyList(),

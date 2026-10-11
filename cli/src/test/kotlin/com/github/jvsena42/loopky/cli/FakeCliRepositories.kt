@@ -13,6 +13,7 @@ import com.github.jvsena42.loopky.domain.model.ChunkMeta
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckSource
 import com.github.jvsena42.loopky.domain.model.MediaRef
+import com.github.jvsena42.loopky.domain.model.StudyFeatures
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -190,6 +191,7 @@ class FakeDeckRepository(
     override suspend fun listFollowedBy(ownerPubky: String): List<Deck> = no("listFollowedBy")
     override suspend fun hasUpdate(deckId: String): Boolean = no("hasUpdate")
     override suspend fun markSeen(deck: Deck) = no("markSeen")
+    override suspend fun customizeStudy(deckId: String, features: StudyFeatures): Result<Deck> = no("customizeStudy")
     override suspend fun clone(source: Deck, title: String): Result<Deck> = no("clone")
 }
 

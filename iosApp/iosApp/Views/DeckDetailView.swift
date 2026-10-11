@@ -49,6 +49,8 @@ struct DeckDetailContent {
     var speakEnabled: Bool = false
     var typeEnabled: Bool = false
     var reverseEnabled: Bool = false
+    /// The four above are the reader's own choice for a deck they follow, not the author's.
+    var isStudyCustomized: Bool = false
 
     var hasStudyFeatures: Bool { listenEnabled || speakEnabled || typeEnabled || reverseEnabled }
 }
@@ -289,12 +291,13 @@ struct DeckDetailView: View {
             // of the same question: how big the deck is, and what answering it is like. It
             // carries its own caption for exactly one reason: without it, a second row of pills
             // under the tags reads as more tags.
-            if content.hasStudyFeatures {
+            if content.hasStudyFeatures || content.isStudyCustomized {
                 DeckFeatureBadges(
                     listenEnabled: content.listenEnabled,
                     speakEnabled: content.speakEnabled,
                     typeEnabled: content.typeEnabled,
-                    reverseEnabled: content.reverseEnabled
+                    reverseEnabled: content.reverseEnabled,
+                    isCustomized: content.isStudyCustomized
                 )
             }
 

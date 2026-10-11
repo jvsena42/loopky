@@ -69,6 +69,14 @@
     <string name="deck_detail_delete_cancel">Hủy</string>
     <string name="deck_detail_in_your_library">TRONG THƯ VIỆN CỦA BẠN</string>
     <string name="deck_detail_study_modes_label">CHẾ ĐỘ HỌC</string>
+    <string name="deck_detail_study_modes_label_yours">CHẾ ĐỘ HỌC CỦA BẠN</string>
+    <string name="deck_detail_study_modes_none">Đã tắt tất cả</string>
+    <string name="study_options_title">Cách bạn học bộ thẻ này</string>
+    <string name="study_options_subtitle">Chỉ dành cho bạn. Bộ thẻ của tác giả vẫn giữ nguyên và bạn vẫn nhận được các cập nhật.</string>
+    <string name="study_options_speech_unavailable">Nghe và Nói sẽ tắt cho đến khi tác giả đặt ngôn ngữ cho bộ thẻ này.</string>
+    <string name="study_options_reset">Dùng cài đặt của tác giả</string>
+    <string name="study_options_copy_title">Sửa thẻ hoặc chi tiết</string>
+    <string name="study_options_copy_subtitle">Tạo bản sao của riêng bạn cho bộ thẻ này</string>
     <string name="deck_detail_follow">Theo dõi bộ thẻ</string>
     <string name="deck_detail_following">Đang theo dõi</string>
     <string name="deck_detail_cloning">Đang sao chép bộ thẻ…</string>

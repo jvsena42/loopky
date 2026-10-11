@@ -35,8 +35,8 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
  * Icons and labels are the editor's own (`DeckStudyOptions`), so the row a reader sees names the
  * switches its author actually flipped.
  *
- * Read-only: these are the author's decisions, not the reader's, and a control here would be
- * editing someone else's deck.
+ * Read-only. On a deck the reader follows these may be their own choice rather than the author's
+ * ([isCustomized]) — the caption says which, and they are changed from the sheet behind Edit.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -46,15 +46,33 @@ fun DeckFeatureChips(
     typeEnabled: Boolean,
     reverseEnabled: Boolean,
     modifier: Modifier = Modifier,
+    isCustomized: Boolean = false,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = stringResource(R.string.deck_detail_study_modes_label),
+            text = stringResource(
+                if (isCustomized) {
+                    R.string.deck_detail_study_modes_label_yours
+                } else {
+                    R.string.deck_detail_study_modes_label
+                },
+            ),
+            modifier = Modifier.testTag("deck_detail_features_label"),
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.8.sp,
             color = LoopkyTheme.colors.foregroundMuted,
         )
+        // Only reachable customized: an author's deck with nothing on draws no row at all.
+        if (listOf(listenEnabled, speakEnabled, typeEnabled, reverseEnabled).none { it }) {
+            Text(
+                text = stringResource(R.string.deck_detail_study_modes_none),
+                fontSize = 13.sp,
+                color = LoopkyTheme.colors.foregroundSecondary,
+                modifier = Modifier.testTag("deck_detail_features_none"),
+            )
+            return@Column
+        }
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()

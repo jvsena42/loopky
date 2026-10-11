@@ -29,6 +29,7 @@ import com.github.jvsena42.loopky.domain.model.Separator
 import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.SrsState
+import com.github.jvsena42.loopky.domain.model.StudyFeatures
 import com.github.jvsena42.loopky.domain.model.StudySettings
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.TriageDecision
@@ -538,6 +539,19 @@ interface DeckRepository {
     suspend fun markSeen(deck: Deck)
 
     /**
+     * Change how **you** study a deck you follow, leaving the author's deck alone.
+     *
+     * Kept on your subscription record, so it syncs with the account and goes when you unfollow.
+     * Only the opt-ins that differ from the author's are stored; the rest keep following theirs,
+     * and passing the author's own values back clears the record's overrides entirely. Every read
+     * of the deck through this repository then carries [features] in its `…Enabled` fields, with
+     * [Deck.authorStudy] holding what the author chose.
+     *
+     * Fails for a deck you do not follow — your own deck's opt-ins are its manifest's.
+     */
+    suspend fun customizeStudy(deckId: String, features: StudyFeatures): Result<Deck>
+
+    /**
      * Copy [source] into your own account as an independent deck: new deck id, new card ids, you as
      * author, [title] as its name, `source` provenance pointing back.
      *
@@ -545,6 +559,10 @@ interface DeckRepository {
      * never touches the original. **New card ids are what keep SRS state from bleeding** between
      * the copies. Media is copied **by reference** (see [absolutizedTo], [MediaRepository.rehost]),
      * so cloning an Anki-sized deck stays instant. Commits through [publish]; unfollows [source].
+     *
+     * The copy carries the opt-ins [source] was being studied with, your own included, and **no
+     * cover**: the picture and emoji are how the author's deck is recognised, and a copy wearing
+     * them is the original's twin in a library that still lists the original's author elsewhere.
      *
      * [title] is required and **never defaulted to the source's**: the copy lands in a library that
      * already holds the deck it forked, and two identical titles there are indistinguishable. A

@@ -69,6 +69,14 @@
     <string name="deck_detail_delete_cancel">取消</string>
     <string name="deck_detail_in_your_library">已在你的卡组库中</string>
     <string name="deck_detail_study_modes_label">学习方式</string>
+    <string name="deck_detail_study_modes_label_yours">你的学习方式</string>
+    <string name="deck_detail_study_modes_none">已全部关闭</string>
+    <string name="study_options_title">你学习这个卡组的方式</string>
+    <string name="study_options_subtitle">仅对你生效。作者的卡组保持不变，你仍会收到作者的更新。</string>
+    <string name="study_options_speech_unavailable">在作者设置此卡组的语言之前，朗读和跟读保持关闭。</string>
+    <string name="study_options_reset">使用作者的设置</string>
+    <string name="study_options_copy_title">编辑卡片或详情</string>
+    <string name="study_options_copy_subtitle">创建此卡组的你自己的副本</string>
     <string name="deck_detail_follow">关注卡组</string>
     <string name="deck_detail_following">已关注</string>
     <string name="deck_detail_cloning">正在复制卡组…</string>

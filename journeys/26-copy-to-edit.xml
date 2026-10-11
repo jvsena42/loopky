@@ -1,9 +1,13 @@
-<journey name="Copy to edit — following is the only offer, and a copy is reached from Edit">
+<journey name="Copy to edit — following is the only offer; Edit offers your own study options, then a copy">
   <description>
     Deck detail for a deck you do not own (#254). Following used to sit beside a Clone pill of
     equal weight, which asked a reader who had just found a deck to choose between two words whose
     difference they had no reason to know yet. Follow is now the only offer; a copy is surfaced
     when you try to *edit* a deck you follow, where the difference is the question being asked.
+
+    Edit is two steps. The first is your own study options for the deck — Listen, Speak, Type the
+    answer, Both directions — which change how *you* study it and nothing about the author's deck.
+    The copy is the second, reached from "Edit cards or details" at the foot of that sheet.
 
     Needs a signed-in account and a deck published by somebody else — any tile in Discover whose
     author is not you. A small deck keeps the copy short.
@@ -20,12 +24,21 @@
     <action>Tap "deck_follow" and verify it flips to "Following" immediately; dismiss the "Share this on Pubky?" prompt if it appears</action>
     <action>Verify the stats bar has now swapped back: Total, Due, New and Mastered, with the follower and copy counts returning to their caption above the author (resource-id: deck_follower_count). Following is what makes your own progress a real number.</action>
     <action>Verify an Edit control (resource-id: deck_edit) has now appeared in the header, and that there is still no Delete control (a followed deck is not yours to delete)</action>
-    <action>Tap "deck_edit" and verify it does NOT open the deck editor. A copy prompt appears instead, titled "Make your own copy?", naming the card count and saying the copy will not get the author's updates and that progress starts over.</action>
+    <action>Tap "deck_edit" and verify it opens neither the deck editor nor the copy prompt. A sheet titled "How you study this deck" appears with four switches (resource-ids: study_options_listen, study_options_speak, study_options_type, study_options_reverse) set as the author set them, a Save button (study_options_save) and, below it, an "Edit cards or details" row (study_options_copy). No "Use the author's settings" control (study_options_reset) is shown while nothing differs.</action>
+    <action>On a deck whose author declared no language pair, verify the Listen and Speak switches are off and disabled, with a line saying they stay off until the author sets the deck's languages (study_options_speech_unavailable)</action>
+    <action>Flip two switches and verify "study_options_reset" appears. Tap "study_options_save" and verify the sheet closes and the deck's study row is now captioned "YOUR STUDY MODES" (resource-id: deck_detail_features_label) with chips matching what you chose. Turn every switch off and save, and verify the row stays, reading "All switched off" (deck_detail_features_none).</action>
+    <action>Force-stop and relaunch, open the deck again and verify the row still shows your choice — it is stored on your account, not on the device</action>
+    <action>Start a study session and verify it follows your switches, not the author's: with Type the answer off the card says "Tap card to reveal answer", and with Both directions on the counter reads twice the card count</action>
+    <action>Tap "deck_follow" to unfollow and verify the row returns at once to "STUDY MODES" with the author's chips. Follow again, tap "deck_edit" and verify the switches are the author's again with no "study_options_reset" — unfollowing kept nothing.</action>
+    <action>On a tablet, repeat the sheet at both widths: it must be a centred column, not full-width rows, and the two-pane deck detail must carry the same "YOUR STUDY MODES" caption</action>
+    <action>Change a switch, save, tap "deck_edit" again and tap "study_options_copy". Verify the sheet gives way to the copy prompt, titled "Make your own copy?", naming the card count and saying the copy will not get the author's updates and that progress starts over. On iOS this is one sheet changing content — verify the prompt actually appears rather than the sheet simply closing.</action>
     <action>Verify the confirm button (resource-id: deck_clone_confirm) is DISABLED while the name field (resource-id: deck_clone_title) is empty — naming the copy is mandatory</action>
     <action>Type the source deck's own title into "deck_clone_title", in any case or with extra spaces, and verify an error appears (resource-id: deck_clone_name_error) reading "Pick a different name from the original." and that "deck_clone_confirm" stays disabled</action>
     <action>Replace it with a different name and verify the error clears and "deck_clone_confirm" becomes enabled</action>
     <action>Tap "deck_clone_confirm" and verify a "Copying deck…" progress state is shown while the copy is written</action>
     <action>Verify that when it finishes the progress state CLEARS and the screen moves to the copy — do this with "Share on Pubky" switched OFF in Settings as well as on, since the spinner used to be cleared only on the share-prompt path and a copy made with the setting off left "Copying deck…" up forever (#254)</action>
+    <action>With "Share on Pubky" ON, verify the "Post about this copy?" prompt appears after the copy and that answering it moves the screen to the copy — a reload triggered by the copy's own unfollow used to drop the prompt and leave the screen on the source deck</action>
+    <action>Verify the copy's "STUDY MODES" row carries the switches you were studying the source with, not the author's, and that the copy has no cover of its own even when the source had an emoji or a picture — it shows the first letter of its new name</action>
     <action>Verify the screen now shows the copy: the name you typed, an "IN YOUR LIBRARY" badge, "Cloned from &lt;original author&gt;", Edit and Delete controls, the same card count, and Study offering the copy's own new cards</action>
     <action>Go back and verify the copy appears in the Decks tab under its new name, alongside the deck it was copied from</action>
     <action>Open the original deck again and verify it is no longer followed — copying it unfollows it, since you own a copy now</action>

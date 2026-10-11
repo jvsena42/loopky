@@ -69,6 +69,14 @@
     <string name="deck_detail_delete_cancel">キャンセル</string>
     <string name="deck_detail_in_your_library">ライブラリに追加済み</string>
     <string name="deck_detail_study_modes_label">学習モード</string>
+    <string name="deck_detail_study_modes_label_yours">あなたの学習モード</string>
+    <string name="deck_detail_study_modes_none">すべてオフ</string>
+    <string name="study_options_title">このデッキの学習方法</string>
+    <string name="study_options_subtitle">自分だけの設定です。作者のデッキはそのままで、更新も引き続き届きます。</string>
+    <string name="study_options_speech_unavailable">作者がこのデッキの言語を設定するまで、「聞く」と「話す」は使えません。</string>
+    <string name="study_options_reset">作者の設定に戻す</string>
+    <string name="study_options_copy_title">カードや詳細を編集</string>
+    <string name="study_options_copy_subtitle">このデッキの自分用コピーを作成</string>
     <string name="deck_detail_follow">デッキをフォロー</string>
     <string name="deck_detail_following">フォロー中</string>
     <string name="deck_detail_cloning">デッキをコピーしています…</string>

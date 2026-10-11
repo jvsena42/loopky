@@ -151,12 +151,13 @@ internal fun DeckDetailHeader(
         // the same question: how big the deck is, and what answering it is like. It carries its
         // own caption for exactly one reason: without it, a second row of pills under the tags
         // reads as more tags.
-        if (state.hasStudyFeatures) {
+        if (state.hasStudyFeatures || state.isStudyCustomized) {
             DeckFeatureChips(
                 listenEnabled = state.listenEnabled,
                 speakEnabled = state.speakEnabled,
                 typeEnabled = state.typeEnabled,
                 reverseEnabled = state.reverseEnabled,
+                isCustomized = state.isStudyCustomized,
             )
         }
 
