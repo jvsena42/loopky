@@ -344,15 +344,24 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   Clone used to be two pills of equal weight, which asked a reader who had just found a deck to
   choose between two words whose difference they had no reason to know — and made the cheap,
   reversible action look like half a decision (#254). The **Edit** control now appears on a deck
-  you *follow* (`Content.canEdit` is `isOwned || isFollowing`) and raises the copy prompt rather
-  than the editor. Four things not to undo. The prompt states the two consequences — no author
+  you *follow* (`Content.canEdit` is `isOwned || isFollowing`) and raises the reader's **own study
+  options** rather than the editor, with the copy prompt one step further in. The four opt-ins a
+  follower changes there live on their **subscription record** (`study`, Architecture.md §8.0), not
+  in a record of their own — that is what makes an unfollow leave nothing behind — and
+  `DeckRepositoryImpl` lays them over the author's on the way *out* of its cache, so anything that
+  needs the author's value reads `Deck.authorStudy`, never the `…Enabled` fields. A copy takes the
+  reader's opt-ins and **no cover**. Six things not to undo. The prompt states the two consequences — no author
   updates, progress starts over — in **one sentence**, because a paragraph there is a paragraph
   nobody reads. The copy's title is **mandatory and may not be the source's**: `clone(source,
   title)` fails on a blank one rather than defaulting, `Content.isSourceName` refuses the source's
   name case- and space-insensitively, and the field starts **empty** with the source title as
   placeholder — prefilled, everyone taps straight past it. `isCloning` is cleared on the clone's
   own success path, never inside `offerShare`, which returns early when announcements are off and
-  used to strand the screen on "Copying deck…" forever. And the iOS prompt is a `CopyDeckSheet`,
+  used to strand the screen on "Copying deck…" forever. The `deckRepository.changes` collector
+  must not reload while a copy is in flight or its share prompt is up: the copy unfollows its
+  source, and a reload rebuilds the state without the prompt that navigates to the copy. The two
+  iOS steps are **one** `.sheet` whose content changes — a second sheet presented in the update
+  that dismisses the first is dropped. And the iOS prompt is a `CopyDeckSheet`,
   not an `.alert`: an alert snapshots its `message`, so the "pick a different name" line could
   never appear as the reader typed. See Architecture.md §8.3.
 - **A tag label has one stored spelling, and `TagLabels` is the only thing that decides it (#479).**
