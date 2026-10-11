@@ -241,6 +241,7 @@ internal fun OptionToggleRow(
     icon: ImageVector,
     iconColor: Color,
     iconBackground: Color,
+    enabled: Boolean = true,
 ) {
     val colors = LoopkyTheme.colors
     Row(
@@ -269,6 +270,7 @@ internal fun OptionToggleRow(
         Switch(
             checked = checked,
             onCheckedChange = { onToggle() },
+            enabled = enabled,
             modifier = Modifier.testTag(testTag),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = colors.foregroundOnAccent,

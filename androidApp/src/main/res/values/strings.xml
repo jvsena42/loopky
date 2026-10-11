@@ -69,6 +69,14 @@
     <string name="deck_detail_delete_cancel">Cancel</string>
     <string name="deck_detail_in_your_library">IN YOUR LIBRARY</string>
     <string name="deck_detail_study_modes_label">STUDY MODES</string>
+    <string name="deck_detail_study_modes_label_yours">YOUR STUDY MODES</string>
+    <string name="deck_detail_study_modes_none">All switched off</string>
+    <string name="study_options_title">How you study this deck</string>
+    <string name="study_options_subtitle">Only for you. The author\'s deck stays as it is, and you keep getting their updates.</string>
+    <string name="study_options_speech_unavailable">Listen and Speak stay off until the author sets this deck\'s languages.</string>
+    <string name="study_options_reset">Use the author\'s settings</string>
+    <string name="study_options_copy_title">Edit cards or details</string>
+    <string name="study_options_copy_subtitle">Make your own copy of this deck</string>
     <string name="deck_detail_follow">Follow deck</string>
     <string name="deck_detail_following">Following</string>
     <string name="deck_detail_cloning">Copying deck…</string>

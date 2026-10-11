@@ -68,6 +68,14 @@
     <string name="deck_detail_delete_cancel">Annulla</string>
     <string name="deck_detail_in_your_library">NELLA TUA LIBRERIA</string>
     <string name="deck_detail_study_modes_label">MODALITÀ DI STUDIO</string>
+    <string name="deck_detail_study_modes_label_yours">LE TUE MODALITÀ DI STUDIO</string>
+    <string name="deck_detail_study_modes_none">Tutte disattivate</string>
+    <string name="study_options_title">Come studi questo mazzo</string>
+    <string name="study_options_subtitle">Solo per te. Il mazzo dell\'autore resta com\'è e continui a ricevere i suoi aggiornamenti.</string>
+    <string name="study_options_speech_unavailable">Ascolta e Parla restano disattivati finché l\'autore non imposta le lingue di questo mazzo.</string>
+    <string name="study_options_reset">Usa le impostazioni dell\'autore</string>
+    <string name="study_options_copy_title">Modifica carte o dettagli</string>
+    <string name="study_options_copy_subtitle">Crea una copia tua di questo mazzo</string>
     <string name="deck_detail_follow">Segui il mazzo</string>
     <string name="deck_detail_following">Segui già</string>
     <string name="deck_detail_cloning">Copio il mazzo…</string>

@@ -68,6 +68,14 @@
     <string name="deck_detail_delete_cancel">Cancelar</string>
     <string name="deck_detail_in_your_library">NA SUA BIBLIOTECA</string>
     <string name="deck_detail_study_modes_label">MODOS DE ESTUDO</string>
+    <string name="deck_detail_study_modes_label_yours">SEUS MODOS DE ESTUDO</string>
+    <string name="deck_detail_study_modes_none">Todos desativados</string>
+    <string name="study_options_title">Como você estuda este baralho</string>
+    <string name="study_options_subtitle">Só para você. O baralho do autor continua como está, e você segue recebendo as atualizações.</string>
+    <string name="study_options_speech_unavailable">Ouvir e Falar ficam desativados até o autor definir os idiomas deste baralho.</string>
+    <string name="study_options_reset">Usar as configurações do autor</string>
+    <string name="study_options_copy_title">Editar cartões ou detalhes</string>
+    <string name="study_options_copy_subtitle">Faça sua própria cópia deste baralho</string>
     <string name="deck_detail_follow">Seguir baralho</string>
     <string name="deck_detail_following">Seguindo</string>
     <string name="deck_detail_cloning">Copiando baralho…</string>

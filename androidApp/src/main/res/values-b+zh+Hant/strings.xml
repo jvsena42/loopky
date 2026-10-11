@@ -69,6 +69,14 @@
     <string name="deck_detail_delete_cancel">取消</string>
     <string name="deck_detail_in_your_library">已在你的牌組庫中</string>
     <string name="deck_detail_study_modes_label">學習方式</string>
+    <string name="deck_detail_study_modes_label_yours">你的學習方式</string>
+    <string name="deck_detail_study_modes_none">已全部關閉</string>
+    <string name="study_options_title">你學習這個牌組的方式</string>
+    <string name="study_options_subtitle">僅對你生效。作者的牌組保持不變，你仍會收到作者的更新。</string>
+    <string name="study_options_speech_unavailable">在作者設定此牌組的語言之前，聆聽和口說維持關閉。</string>
+    <string name="study_options_reset">使用作者的設定</string>
+    <string name="study_options_copy_title">編輯卡片或詳細資料</string>
+    <string name="study_options_copy_subtitle">建立此牌組的你自己的複本</string>
     <string name="deck_detail_follow">追蹤牌組</string>
     <string name="deck_detail_following">追蹤中</string>
     <string name="deck_detail_cloning">正在複製牌組…</string>

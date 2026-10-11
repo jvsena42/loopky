@@ -69,6 +69,14 @@
     <string name="deck_detail_delete_cancel">취소</string>
     <string name="deck_detail_in_your_library">내 보관함에 있음</string>
     <string name="deck_detail_study_modes_label">학습 모드</string>
+    <string name="deck_detail_study_modes_label_yours">나의 학습 모드</string>
+    <string name="deck_detail_study_modes_none">모두 꺼짐</string>
+    <string name="study_options_title">이 덱을 학습하는 방식</string>
+    <string name="study_options_subtitle">나에게만 적용됩니다. 작성자의 덱은 그대로이며 업데이트도 계속 받습니다.</string>
+    <string name="study_options_speech_unavailable">작성자가 이 덱의 언어를 설정할 때까지 듣기와 말하기는 꺼져 있습니다.</string>
+    <string name="study_options_reset">작성자 설정 사용</string>
+    <string name="study_options_copy_title">카드 또는 세부 정보 편집</string>
+    <string name="study_options_copy_subtitle">이 덱의 내 사본 만들기</string>
     <string name="deck_detail_follow">덱 팔로우</string>
     <string name="deck_detail_following">팔로잉</string>
     <string name="deck_detail_cloning">덱을 복사하는 중…</string>

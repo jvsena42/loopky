@@ -57,6 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.github.jvsena42.loopky.R
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
+import com.github.jvsena42.loopky.domain.model.StudyFeature
 import com.github.jvsena42.loopky.presentation.decks.CardPreviewModel
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailEffect
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailUiState
@@ -152,6 +153,11 @@ fun DeckDetailRoute(
         onToggleFollow = viewModel::onToggleFollow,
         onConfirmClone = viewModel::onConfirmClone,
         onDismissClone = viewModel::onDismissClone,
+        onStudyOptionChange = viewModel::onStudyOptionChange,
+        onResetStudyOptions = viewModel::onResetStudyOptions,
+        onSaveStudyOptions = viewModel::onSaveStudyOptions,
+        onCopyFromStudyOptions = viewModel::onCopyFromStudyOptions,
+        onDismissStudyOptions = viewModel::onDismissStudyOptions,
         onDismissError = viewModel::onDismissError,
         onRetry = viewModel::onRefresh,
     )
@@ -200,6 +206,11 @@ fun DeckDetailScreen(
     onToggleFollow: () -> Unit,
     onConfirmClone: (String) -> Unit,
     onDismissClone: () -> Unit,
+    onStudyOptionChange: (StudyFeature, Boolean) -> Unit,
+    onResetStudyOptions: () -> Unit,
+    onSaveStudyOptions: () -> Unit,
+    onCopyFromStudyOptions: () -> Unit,
+    onDismissStudyOptions: () -> Unit,
     onDismissError: () -> Unit,
     onRetry: () -> Unit,
 ) {
@@ -288,6 +299,16 @@ fun DeckDetailScreen(
                     deckTitle = state.title,
                     onConfirm = onConfirmDelete,
                     onDismiss = onDismissDelete,
+                )
+            }
+            state.studyOptions?.let { options ->
+                StudyOptionsSheet(
+                    options = options,
+                    onChange = onStudyOptionChange,
+                    onReset = onResetStudyOptions,
+                    onSave = onSaveStudyOptions,
+                    onCopy = onCopyFromStudyOptions,
+                    onDismiss = onDismissStudyOptions,
                 )
             }
             if (state.showCloneConfirm) {
@@ -721,6 +742,11 @@ private fun DeckDetailScreenPreview() {
             onToggleFollow = {},
             onConfirmClone = {},
             onDismissClone = {},
+            onStudyOptionChange = { _, _ -> },
+            onResetStudyOptions = {},
+            onSaveStudyOptions = {},
+            onCopyFromStudyOptions = {},
+            onDismissStudyOptions = {},
             onDismissError = {},
             onRetry = {},
         )
@@ -767,6 +793,11 @@ private fun DeckDetailEmptyCardsPreview() {
             onToggleFollow = {},
             onConfirmClone = {},
             onDismissClone = {},
+            onStudyOptionChange = { _, _ -> },
+            onResetStudyOptions = {},
+            onSaveStudyOptions = {},
+            onCopyFromStudyOptions = {},
+            onDismissStudyOptions = {},
             onDismissError = {},
             onRetry = {},
         )

@@ -68,6 +68,14 @@
     <string name="deck_detail_delete_cancel">Abbrechen</string>
     <string name="deck_detail_in_your_library">IN DEINER BIBLIOTHEK</string>
     <string name="deck_detail_study_modes_label">LERNMODI</string>
+    <string name="deck_detail_study_modes_label_yours">DEINE LERNMODI</string>
+    <string name="deck_detail_study_modes_none">Alle ausgeschaltet</string>
+    <string name="study_options_title">So lernst du diesen Stapel</string>
+    <string name="study_options_subtitle">Nur für dich. Der Stapel des Autors bleibt unverändert, und du erhältst weiterhin dessen Updates.</string>
+    <string name="study_options_speech_unavailable">Anhören und Sprechen bleiben aus, bis der Autor die Sprachen dieses Stapels festlegt.</string>
+    <string name="study_options_reset">Einstellungen des Autors verwenden</string>
+    <string name="study_options_copy_title">Karten oder Details bearbeiten</string>
+    <string name="study_options_copy_subtitle">Erstelle deine eigene Kopie dieses Stapels</string>
     <string name="deck_detail_follow">Stapel folgen</string>
     <string name="deck_detail_following">Folge ich</string>
     <string name="deck_detail_cloning">Stapel wird kopiert…</string>

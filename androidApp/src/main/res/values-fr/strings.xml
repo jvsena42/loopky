@@ -68,6 +68,14 @@
     <string name="deck_detail_delete_cancel">Annuler</string>
     <string name="deck_detail_in_your_library">DANS TA BIBLIOTHÈQUE</string>
     <string name="deck_detail_study_modes_label">MODES D\'ÉTUDE</string>
+    <string name="deck_detail_study_modes_label_yours">TES MODES D\'ÉTUDE</string>
+    <string name="deck_detail_study_modes_none">Tous désactivés</string>
+    <string name="study_options_title">Comment tu étudies ce paquet</string>
+    <string name="study_options_subtitle">Rien que pour toi. Le paquet de l\'auteur reste tel quel, et tu continues de recevoir ses mises à jour.</string>
+    <string name="study_options_speech_unavailable">Écouter et Parler restent désactivés tant que l\'auteur n\'a pas défini les langues de ce paquet.</string>
+    <string name="study_options_reset">Utiliser les réglages de l\'auteur</string>
+    <string name="study_options_copy_title">Modifier les cartes ou les détails</string>
+    <string name="study_options_copy_subtitle">Fais ta propre copie de ce paquet</string>
     <string name="deck_detail_follow">Suivre le paquet</string>
     <string name="deck_detail_following">Suivi</string>
     <string name="deck_detail_cloning">Copie du paquet…</string>
