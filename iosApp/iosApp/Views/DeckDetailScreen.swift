@@ -43,11 +43,21 @@ struct DeckDetailScreen: View {
             Text(deleteMessage)
         }
         .sheet(item: $shareTarget) { ShareLinkSheet(target: $0) }
-        // Raised by Edit on a deck you follow, the only route to a copy (#254). A sheet rather than
-        // an alert because an alert snapshots its message: the "pick a different name" line could
-        // never appear as the reader typed. See CopyDeckSheet.
-        .sheet(isPresented: cloneConfirmBinding) {
-            if let content {
+        // Raised by Edit on a deck you follow: your study options, then — one step in — the copy
+        // (#254). **One** sheet whose content changes, not two: a second `.sheet` presented in the
+        // update that dismisses the first is dropped, and the copy prompt would never appear. The
+        // copy is a sheet rather than an alert because an alert snapshots its message. See
+        // CopyDeckSheet.
+        .sheet(isPresented: editSheetBinding) {
+            if let content, let options = content.studyOptions {
+                StudyOptionsSheet(
+                    options: options,
+                    onChange: { viewModel?.onStudyOptionChange(feature: $0, enabled: $1) },
+                    onReset: { viewModel?.onResetStudyOptions() },
+                    onSave: { viewModel?.onSaveStudyOptions() },
+                    onCopy: { viewModel?.onCopyFromStudyOptions() }
+                )
+            } else if let content {
                 CopyDeckSheet(
                     sourceTitle: content.title,
                     cardCount: Int(content.totalCards),
@@ -133,7 +143,8 @@ struct DeckDetailScreen: View {
                 listenEnabled: content.listenEnabled,
                 speakEnabled: content.speakEnabled,
                 typeEnabled: content.typeEnabled,
-                reverseEnabled: content.reverseEnabled
+                reverseEnabled: content.reverseEnabled,
+                isStudyCustomized: content.isStudyCustomized
             ))
         case let error as DeckDetailUiStateError:
             return .error(ErrorCopy.message(for: error.reason))
@@ -175,10 +186,17 @@ struct DeckDetailScreen: View {
         }
     }
 
-    private var cloneConfirmBinding: Binding<Bool> {
+    private var editSheetBinding: Binding<Bool> {
         Binding(
-            get: { content?.showCloneConfirm == true },
-            set: { if !$0 { viewModel?.onDismissClone() } }
+            get: { content?.studyOptions != nil || content?.showCloneConfirm == true },
+            set: {
+                guard !$0 else { return }
+                if content?.studyOptions != nil {
+                    viewModel?.onDismissStudyOptions()
+                } else {
+                    viewModel?.onDismissClone()
+                }
+            }
         )
     }
 

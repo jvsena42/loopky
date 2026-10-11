@@ -7,20 +7,32 @@ import SwiftUI
 /// Labels are the editor's own (`DeckStudyOptions`), so the row a reader sees names the switches
 /// its author actually flipped. Mirrors Android's `ui/components/DeckFeatureChips.kt`.
 ///
-/// Read-only: these are the author's decisions, not the reader's, and a control here would be
-/// editing someone else's deck.
+/// Read-only. On a deck the reader follows these may be their own choice rather than the author's
+/// (`isCustomized`) — the caption says which, and they are changed from the sheet behind Edit.
 struct DeckFeatureBadges: View {
     var listenEnabled: Bool
     var speakEnabled: Bool
     var typeEnabled: Bool
     var reverseEnabled: Bool
+    var isCustomized: Bool = false
+
+    private var hasAny: Bool { listenEnabled || speakEnabled || typeEnabled || reverseEnabled }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("deck_detail_study_modes_label")
+            Text(isCustomized ? "deck_detail_study_modes_label_yours" : "deck_detail_study_modes_label")
+                .accessibilityIdentifier("deck_detail_features_label")
                 .font(.system(size: 10, weight: .bold))
                 .kerning(0.8)
                 .foregroundStyle(LoopkyColor.foregroundMuted)
+
+            // Only reachable customized: an author's deck with nothing on draws no row at all.
+            if !hasAny {
+                Text("deck_detail_study_modes_none")
+                    .font(.system(size: 13))
+                    .foregroundStyle(LoopkyColor.foregroundSecondary)
+                    .accessibilityIdentifier("deck_detail_features_none")
+            }
 
             // Scrolls sideways, like the tag row above it: four labels do not fit a phone's width,
             // and this is the pattern the screen already uses for a row of pills.
