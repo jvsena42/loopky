@@ -66,9 +66,13 @@ import com.github.jvsena42.loopky.domain.model.Separator
 import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.SrsState
+import com.github.jvsena42.loopky.domain.model.StudyFeatures
+import com.github.jvsena42.loopky.domain.model.StudyOverrides
 import com.github.jvsena42.loopky.domain.model.StudySettings
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.TriageDecision
+import com.github.jvsena42.loopky.domain.model.asAuthored
+import com.github.jvsena42.loopky.domain.model.authoredStudy
 import com.github.jvsena42.loopky.domain.model.inStudyOrder
 import com.github.jvsena42.loopky.domain.model.isFullyMastered
 import com.github.jvsena42.loopky.domain.model.masteryShare
@@ -76,6 +80,7 @@ import com.github.jvsena42.loopky.domain.model.maturityThresholdDays
 import com.github.jvsena42.loopky.domain.model.ordForIndex
 import com.github.jvsena42.loopky.domain.model.previewIntervals
 import com.github.jvsena42.loopky.domain.model.review
+import com.github.jvsena42.loopky.domain.model.studiedWith
 import com.github.jvsena42.loopky.platform.BackgroundTasks
 import com.github.jvsena42.loopky.platform.MediaProcessor
 import com.github.jvsena42.loopky.platform.ProcessedImage
@@ -356,7 +361,9 @@ class FakeDeckRepository : DeckRepository {
     /** When set, [publish] blocks on it, so a test can act while the upload is still in flight. */
     var publishGate: CompletableDeferred<Unit>? = null
 
-    override suspend fun getLocal(id: String): Deck? = decks[id] ?: followedDecks[id]
+    private val unfollowedDecks = mutableMapOf<String, Deck>()
+
+    override suspend fun getLocal(id: String): Deck? = decks[id] ?: followedDecks[id] ?: unfollowedDecks[id]
 
     override suspend fun fetchRemote(authorPubky: String, deckId: String): Result<Deck> =
         getLocal(deckId)?.let { Result.success(it) }
@@ -499,7 +506,8 @@ class FakeDeckRepository : DeckRepository {
 
     override suspend fun unfollowDeck(authorPubky: String, deckId: String): Result<Unit> {
         followError?.let { return Result.failure(it) }
-        followedDecks.remove(deckId)
+        // The real repository keeps the manifest it fetched, as the author published it.
+        followedDecks.remove(deckId)?.let { unfollowedDecks[deckId] = it.asAuthored() }
         _changes.tryEmit(Unit)
         return Result.success(Unit)
     }
@@ -554,6 +562,19 @@ class FakeDeckRepository : DeckRepository {
         updatedDecks.remove(deck.id)
     }
 
+    /** `deckId to features`, as handed to [customizeStudy]. */
+    val customizedStudy = mutableListOf<Pair<String, StudyFeatures>>()
+    var customizeStudyError: Throwable? = null
+
+    override suspend fun customizeStudy(deckId: String, features: StudyFeatures): Result<Deck> {
+        customizeStudyError?.let { return Result.failure(it) }
+        val followed = followedDecks[deckId] ?: return Result.failure(IllegalArgumentException("not followed"))
+        customizedStudy.add(deckId to features)
+        val deck = followed.studiedWith(StudyOverrides.between(followed.authoredStudy, features))
+        followedDecks[deckId] = deck
+        return Result.success(deck)
+    }
+
     val cloned = mutableListOf<Deck>()
     var cloneError: Throwable? = null
 
@@ -572,6 +593,9 @@ class FakeDeckRepository : DeckRepository {
             id = "clone-of-${source.id}",
             title = title,
             authorPubky = TEST_PUBKY,
+            coverEmoji = null,
+            coverImageRef = null,
+            authorStudy = null,
             source = DeckSource(kind = DeckSource.Kind.Clone, uri = source.pubkyUri.value),
         )
         decks[copy.id] = copy

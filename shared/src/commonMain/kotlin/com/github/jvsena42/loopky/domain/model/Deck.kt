@@ -72,6 +72,13 @@ data class Deck(
      * whose cache was filled mid-rewrite would never be told to read the finished records.
      */
     val reorderPending: Boolean = false,
+    /**
+     * The author's study opt-ins, set only on a followed deck whose reader changed them. The four
+     * `…Enabled` fields above are then the **reader's**, so everything that studies or draws the
+     * deck gets their choice without asking; this is what is left to say what the author chose.
+     * Never written to a manifest — it lives on the reader's subscription record.
+     */
+    val authorStudy: StudyFeatures? = null,
 ) {
     /**
      * Whether the deck has declared what language each side is in.

@@ -114,11 +114,27 @@ class DeckRepositorySweepTest {
         val outcome = repo.rehostPendingMedia(clone.id).getOrThrow()
 
         assertTrue(outcome.complete)
-        assertEquals(4, outcome.rehosted, "3 card blobs + the cover")
+        assertEquals(3, outcome.rehosted, "the 3 card blobs; a copy takes no cover to re-host")
         val deck = repo.fetchRemote(TEST_PUBKY, clone.id).getOrThrow()
         assertTrue(deck.mediaRehosted)
-        assertEquals(null, deck.coverImageRef?.uri)
+        assertEquals(null, deck.coverImageRef)
         assertTrue(storedCards(deck).all { it.back.imageRef.isRehostedNotDropped() })
+    }
+
+    /** Copies made before a clone stopped taking the cover still carry one pinned to the author. */
+    @Test
+    fun sweepReHostsThePinnedCoverOfAnOlderClone() = runTest {
+        val (repo, clone) = clonedDeck(listOf(cardWith("c1", pinnedImage("sha1"))))
+        val manifestUrl = "pubky://$TEST_PUBKY/pub/loopky/decks/${clone.id}/manifest.json"
+        pubky.store[manifestUrl] = loopkyJson.encodeToString(
+            repo.fetchRemote(TEST_PUBKY, clone.id).getOrThrow().copy(coverImageRef = pinnedImage("cover")).toDto(),
+        )
+        repo.fetchRemote(TEST_PUBKY, clone.id).getOrThrow()
+
+        val outcome = repo.rehostPendingMedia(clone.id).getOrThrow()
+
+        assertEquals(2, outcome.rehosted, "1 card blob + the cover")
+        assertEquals(null, repo.fetchRemote(TEST_PUBKY, clone.id).getOrThrow().coverImageRef?.uri)
     }
 
     @Test

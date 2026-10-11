@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.data.pubky
 
+import com.github.jvsena42.loopky.domain.model.StudyOverrides
 import kotlinx.serialization.Serializable
 
 /**
@@ -26,4 +27,24 @@ internal data class SubscriptionDto(
      * open, so a deck followed and never opened reads as up to date rather than perpetually new.
      */
     val last_seen_updated_at: Long = 0L,
+    /**
+     * The follower's own study opt-ins for this deck. On this record rather than one of its own so
+     * unfollowing removes them in the same delete — there is no second record to be left behind.
+     */
+    val study: StudyOverridesDto? = null,
 )
+
+/** A null field is "as the author set it"; `explicitNulls = false` keeps those off the wire. */
+@Serializable
+internal data class StudyOverridesDto(
+    val listen_enabled: Boolean? = null,
+    val speak_enabled: Boolean? = null,
+    val type_enabled: Boolean? = null,
+    val reverse_enabled: Boolean? = null,
+)
+
+internal fun StudyOverrides.toDto(): StudyOverridesDto? =
+    if (isEmpty) null else StudyOverridesDto(listen, speak, type, reverse)
+
+internal fun StudyOverridesDto?.toDomain(): StudyOverrides =
+    if (this == null) StudyOverrides() else StudyOverrides(listen_enabled, speak_enabled, type_enabled, reverse_enabled)
