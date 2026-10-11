@@ -21,6 +21,10 @@ import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.ReservedTags
+import com.github.jvsena42.loopky.domain.model.StudyFeature
+import com.github.jvsena42.loopky.domain.model.StudyFeatures
+import com.github.jvsena42.loopky.domain.model.authoredStudy
+import com.github.jvsena42.loopky.domain.model.study
 import com.github.jvsena42.loopky.presentation.auth.SignInReason
 import com.github.jvsena42.loopky.presentation.share.DeckSharePrompt
 import com.github.jvsena42.loopky.util.Log
@@ -87,6 +91,9 @@ class DeckDetailViewModel(
             deckRepository.changes.collect {
                 val current = _state.value as? DeckDetailUiState.Content ?: return@collect
                 if (current.isOwned || current.isFollowPending) return@collect
+                // A copy unfollows its source, and reloading for that rebuilds this state from
+                // scratch: the share prompt goes, and with it the only path to the copy.
+                if (current.isCloning || pendingCloneDeckId != null) return@collect
                 val following = runSuspendCatching { deckRepository.isFollowingDeck(deckId) }.getOrNull()
                 if (following != null && following != current.isFollowing) load(silent = true)
             }
@@ -184,12 +191,12 @@ class DeckDetailViewModel(
     }
 
     /**
-     * Edit, and the one place a copy is offered (#254).
+     * Edit, and the way to a copy (#254).
      *
-     * A followed deck is the author's: it is read-only, and it keeps receiving their changes. So
-     * "edit this" is the moment — and the only moment — that owning a copy is the answer, which is
-     * why Clone is no longer a second pill competing with Follow. Nothing is copied here; the
-     * confirm names what a copy costs and collects the title it needs.
+     * A followed deck is the author's: it is read-only, and it keeps receiving their changes. What
+     * a follower *can* change is how they study it, so that is offered first — it costs nothing,
+     * where a copy costs the author's updates and the reader's progress. The copy is one step
+     * further in, from [onCopyFromStudyOptions].
      */
     fun onEditClick() {
         val current = _state.value as? DeckDetailUiState.Content ?: return
@@ -204,7 +211,74 @@ class DeckDetailViewModel(
             _state.update { current.copy(signInPrompt = SignInReason.CloneDeck) }
             return
         }
-        _state.update { current.copy(showCloneConfirm = true) }
+        if (!current.isFollowing) {
+            _state.update { current.copy(showCloneConfirm = true) }
+            return
+        }
+        viewModelScope.launch {
+            val deck = deckRepository.getLocal(deckId) ?: return@launch
+            _state.update { s ->
+                (s as? DeckDetailUiState.Content)?.copy(
+                    studyOptions = StudyOptionsModel(
+                        chosen = deck.study,
+                        author = deck.authoredStudy,
+                        speechReady = deck.speechReady,
+                    ),
+                ) ?: s
+            }
+        }
+    }
+
+    fun onStudyOptionChange(feature: StudyFeature, enabled: Boolean) = updateStudyOptions {
+        it.copy(chosen = it.chosen.with(feature, enabled))
+    }
+
+    fun onResetStudyOptions() = updateStudyOptions { it.copy(chosen = it.author) }
+
+    fun onDismissStudyOptions() {
+        _state.update { s ->
+            (s as? DeckDetailUiState.Content)?.takeIf { it.studyOptions?.isSaving != true }
+                ?.copy(studyOptions = null) ?: s
+        }
+    }
+
+    /** The second step: the reader wants to change the deck itself, which only a copy allows. */
+    fun onCopyFromStudyOptions() {
+        _state.update { s ->
+            (s as? DeckDetailUiState.Content)?.takeIf { it.studyOptions?.isSaving == false }
+                ?.copy(studyOptions = null, showCloneConfirm = true) ?: s
+        }
+    }
+
+    fun onSaveStudyOptions() {
+        val options = (_state.value as? DeckDetailUiState.Content)?.studyOptions ?: return
+        if (options.isSaving) return
+        updateStudyOptions { it.copy(isSaving = true) }
+        viewModelScope.launch {
+            deckRepository.customizeStudy(deckId, options.chosen)
+                .onSuccess { deck ->
+                    _state.update { s ->
+                        (s as? DeckDetailUiState.Content)?.withStudy(deck)?.copy(studyOptions = null) ?: s
+                    }
+                }
+                .onFailure { err ->
+                    Log.e(TAG, "onSaveStudyOptions: FAILED — ${err.message}", err)
+                    _state.update { s ->
+                        (s as? DeckDetailUiState.Content)?.copy(
+                            studyOptions = null,
+                            errorReason = err.toErrorReason(),
+                        ) ?: s
+                    }
+                }
+        }
+    }
+
+    private fun updateStudyOptions(change: (StudyOptionsModel) -> StudyOptionsModel) {
+        _state.update { s ->
+            val content = s as? DeckDetailUiState.Content ?: return@update s
+            val options = content.studyOptions?.takeIf { !it.isSaving } ?: return@update s
+            content.copy(studyOptions = change(options))
+        }
     }
 
     fun onDeleteDeck() {
@@ -284,8 +358,11 @@ class DeckDetailViewModel(
             }
             result
                 .onSuccess {
+                    // Re-read rather than kept: an unfollow takes the reader's own study opt-ins
+                    // with it, and the row must go back to naming the author's.
+                    val studied = deckRepository.getLocal(deckId) ?: deck
                     _state.update { s ->
-                        (s as? DeckDetailUiState.Content)?.copy(isFollowPending = false) ?: s
+                        (s as? DeckDetailUiState.Content)?.withStudy(studied)?.copy(isFollowPending = false) ?: s
                     }
                     // Only a follow is worth announcing. Unfollowing is not news, and posting it
                     // would tell someone's followers what they stopped reading.
@@ -613,16 +690,22 @@ class DeckDetailViewModel(
             // them a way to try it before following is the point of the button.
             canPreview = !isOwned && !isFollowing && cards.isNotEmpty(),
             masteredPercent = mastered,
-            // Folded through speechReady like the study screen and the editor do: a deck with no
-            // declared language pair offers neither button, so advertising them here would name
-            // two features the session withholds. Type and Both directions are ungated.
-            listenEnabled = listenEnabled && speechReady,
-            speakEnabled = speakEnabled && speechReady,
-            typeEnabled = typeEnabled,
-            reverseEnabled = reverseEnabled,
             cardPreviews = cards.map { it.toPreview() },
-        )
+        ).withStudy(this)
     }
+
+    /**
+     * Folded through speechReady like the study screen and the editor do: a deck with no declared
+     * language pair offers neither button, so advertising them here would name two features the
+     * session withholds. Type and Both directions are ungated.
+     */
+    private fun DeckDetailUiState.Content.withStudy(deck: Deck) = copy(
+        listenEnabled = deck.listenEnabled && deck.speechReady,
+        speakEnabled = deck.speakEnabled && deck.speechReady,
+        typeEnabled = deck.typeEnabled,
+        reverseEnabled = deck.reverseEnabled,
+        isStudyCustomized = deck.authorStudy != null,
+    )
 
     private fun Card.toPreview(): CardPreviewModel = CardPreviewModel(
         id = id,
@@ -723,6 +806,10 @@ sealed interface DeckDetailUiState {
         val speakEnabled: Boolean = false,
         val typeEnabled: Boolean = false,
         val reverseEnabled: Boolean = false,
+        /** The four above are the reader's own choice for a deck they follow, not the author's. */
+        val isStudyCustomized: Boolean = false,
+        /** The "how you study this deck" sheet, raised by Edit on a followed deck. */
+        val studyOptions: StudyOptionsModel? = null,
         val cardPreviews: List<CardPreviewModel>,
         val showDeleteConfirm: Boolean = false,
         val isDeleting: Boolean = false,
@@ -757,6 +844,20 @@ sealed interface DeckDetailUiState {
         /** False when retrying cannot possibly succeed (e.g. the deck no longer exists). */
         val canRetry: Boolean = true,
     ) : DeckDetailUiState
+}
+
+/**
+ * A follower's draft of their own study opt-ins. [chosen] is unfolded — a Listen left on for a
+ * deck with no language pair stays on here and is simply inert, which is why [speechReady] travels
+ * with it: the sheet has to say why those two switches do nothing.
+ */
+data class StudyOptionsModel(
+    val chosen: StudyFeatures,
+    val author: StudyFeatures,
+    val speechReady: Boolean,
+    val isSaving: Boolean = false,
+) {
+    val differsFromAuthor: Boolean get() = chosen != author
 }
 
 data class CardPreviewModel(
