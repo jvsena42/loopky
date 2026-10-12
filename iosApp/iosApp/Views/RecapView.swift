@@ -132,6 +132,7 @@ struct RecapView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 18, height: 18)
+                                .foregroundStyle(RecapCopy.targetBrandColor(target) ?? LoopkyColor.accentPrimary)
                                 .accessibilityHidden(true)
                             Text(LocalizedStringKey(RecapCopy.targetLabelKey(target)))
                                 .font(.system(size: 15, weight: .bold))
