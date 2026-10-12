@@ -67,29 +67,37 @@ struct RecapView: View {
         return lines.isEmpty ? nil : lines.joined(separator: "\n")
     }
 
+    /// Scrolls when the pills outgrow the page, and is centred like the other pages when they do
+    /// not: a bare ScrollView pins its content to the top.
     private var personaPage: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                Text(verbatim: RecapCopy.personaEmoji(recap.persona)).font(.system(size: 64))
-                Text(LocalizedStringKey(RecapCopy.personaTitleKey(recap.persona)))
-                    .font(.system(size: 38, weight: .heavy))
-                    .foregroundStyle(LoopkyColor.foregroundOnAccent)
-                    .multilineTextAlignment(.center)
-                Text(LocalizedStringKey(RecapCopy.personaTitleKey(recap.persona) + "_body"))
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(LoopkyColor.foregroundOnAccentMuted)
-                    .multilineTextAlignment(.center)
-                if !recap.languages.isEmpty {
-                    RecapPillGroup(title: "recap_languages_title", labels: recap.languages.map(RecapCopy.languageName))
-                }
-                if !recap.topics.isEmpty {
-                    RecapPillGroup(title: "recap_topics_title", labels: recap.topics)
-                }
+        GeometryReader { geometry in
+            ScrollView {
+                personaContent.frame(minHeight: geometry.size.height)
             }
-            .padding(.horizontal, 28)
-            .padding(.vertical, 24)
-            .contentPane(PaneWidth.focused)
         }
+    }
+
+    private var personaContent: some View {
+        VStack(spacing: 16) {
+            Text(verbatim: RecapCopy.personaEmoji(recap.persona)).font(.system(size: 64))
+            Text(LocalizedStringKey(RecapCopy.personaTitleKey(recap.persona)))
+                .font(.system(size: 38, weight: .heavy))
+                .foregroundStyle(LoopkyColor.foregroundOnAccent)
+                .multilineTextAlignment(.center)
+            Text(LocalizedStringKey(RecapCopy.personaTitleKey(recap.persona) + "_body"))
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(LoopkyColor.foregroundOnAccentMuted)
+                .multilineTextAlignment(.center)
+            if !recap.languages.isEmpty {
+                RecapPillGroup(title: "recap_languages_title", labels: recap.languages.map(RecapCopy.languageName))
+            }
+            if !recap.topics.isEmpty {
+                RecapPillGroup(title: "recap_topics_title", labels: recap.topics)
+            }
+        }
+        .padding(.horizontal, 28)
+        .padding(.vertical, 24)
+        .contentPane(PaneWidth.focused)
     }
 
     /// The picture that will be shared, and where it can go. Side by side at expanded width:
