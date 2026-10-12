@@ -31,6 +31,7 @@ import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.NO_BACKUP_REMINDER_DAY
+import com.github.jvsena42.loopky.data.storage.NO_RECAP_DISMISSED_YEAR
 import com.github.jvsena42.loopky.data.storage.NO_UPDATE_PROMPT_DAY
 import com.github.jvsena42.loopky.data.storage.PendingReview
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
@@ -956,6 +957,16 @@ class FakeDiscoveryRepository : DiscoveryRepository {
         return Result.success(PubkyUri("pubky://author/pub/pubky.app/posts/0032TESTPOST0"))
     }
 
+    /** Recap posts written, as `content to url`. */
+    val recapPosts = mutableListOf<Pair<String, String>>()
+    var recapPostError: Throwable? = null
+
+    override suspend fun postRecap(content: String, url: String): Result<PubkyUri> {
+        recapPostError?.let { return Result.failure(it) }
+        recapPosts.add(content to url)
+        return Result.success(PubkyUri("pubky://author/pub/pubky.app/posts/0032TESTPOST1"))
+    }
+
     /** The Loopky accounts each follow list resolves to, keyed by whose list it is. */
     var followingByUser: Map<String, List<PubkyIdentity>> = emptyMap()
     var followersByUser: Map<String, List<PubkyIdentity>> = emptyMap()
@@ -1440,6 +1451,7 @@ class FakeAppPreferences(
     avatarNudgeDismissed: Boolean = false,
     pendingDeckFollow: String = "",
     backupReminderDay: Int = NO_BACKUP_REMINDER_DAY,
+    recapDismissedYear: Int = NO_RECAP_DISMISSED_YEAR,
     updatePromptDay: Int = NO_UPDATE_PROMPT_DAY,
 ) : AppPreferences {
     private val _shareOnPubky = MutableStateFlow(shareOnPubky)
@@ -1517,6 +1529,15 @@ class FakeAppPreferences(
 
     override suspend fun setBackupReminderDay(day: Int) {
         _backupReminderDay.update { day }
+    }
+
+    private val _recapDismissedYear = MutableStateFlow(recapDismissedYear)
+    override val recapDismissedYear: Flow<Int> = _recapDismissedYear.asStateFlow()
+
+    val recapDismissedYearValue: Int get() = _recapDismissedYear.value
+
+    override suspend fun setRecapDismissedYear(year: Int) {
+        _recapDismissedYear.update { year }
     }
 
     private val _updatePromptDay = MutableStateFlow(updatePromptDay)

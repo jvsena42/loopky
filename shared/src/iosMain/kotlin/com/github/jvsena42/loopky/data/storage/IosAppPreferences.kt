@@ -107,6 +107,17 @@ class IosAppPreferences : AppPreferences {
         _backupReminderDay.update { day }
     }
 
+    // No objectForKey probe: a missing key reads 0, which is NO_RECAP_DISMISSED_YEAR.
+    private val _recapDismissedYear = MutableStateFlow(
+        defaults.integerForKey(KEY_RECAP_DISMISSED_YEAR).toInt(),
+    )
+    override val recapDismissedYear: Flow<Int> = _recapDismissedYear.asStateFlow()
+
+    override suspend fun setRecapDismissedYear(year: Int) {
+        defaults.setInteger(year.toLong(), KEY_RECAP_DISMISSED_YEAR)
+        _recapDismissedYear.update { year }
+    }
+
     private val _updatePromptDay = MutableStateFlow(
         if (defaults.objectForKey(KEY_UPDATE_PROMPT_DAY) == null) {
             NO_UPDATE_PROMPT_DAY

@@ -128,6 +128,14 @@ interface AppPreferences {
     suspend fun setBackupReminderDay(day: Int)
 
     /**
+     * The recap year whose Home banner was dismissed, or [NO_RECAP_DISMISSED_YEAR]. A year rather
+     * than a flag so next December's banner is not silenced by this one's.
+     */
+    val recapDismissedYear: Flow<Int>
+
+    suspend fun setRecapDismissedYear(year: Int)
+
+    /**
      * The local day the "update available" prompt last appeared on, or [NO_UPDATE_PROMPT_DAY].
      * Read and written through [UpdatePromptGate].
      */
@@ -155,3 +163,5 @@ internal const val KEY_BACKUP_REMINDER_DAY = "backup_reminder_day"
 const val NO_BACKUP_REMINDER_DAY = Int.MIN_VALUE
 internal const val KEY_UPDATE_PROMPT_DAY = "update_prompt_day"
 const val NO_UPDATE_PROMPT_DAY = Int.MIN_VALUE
+internal const val KEY_RECAP_DISMISSED_YEAR = "recap_dismissed_year"
+const val NO_RECAP_DISMISSED_YEAR = 0

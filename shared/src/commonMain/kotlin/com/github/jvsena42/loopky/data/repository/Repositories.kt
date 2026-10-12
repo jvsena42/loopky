@@ -906,6 +906,15 @@ interface DiscoveryRepository {
     suspend fun announceDeck(announcement: DeckAnnouncement): Result<PubkyUri>
 
     /**
+     * Post the user's yearly recap to their pubky.app feed: [content] as written, linking [url].
+     *
+     * **Not gated by [AppPreferences.shareOnPubky]**, unlike [announceDeck]. That preference
+     * silences an offer the app makes unprompted; this is only ever reached from a "Post on Pubky"
+     * button, behind a preview of exactly what will be written.
+     */
+    suspend fun postRecap(content: String, url: String): Result<PubkyUri>
+
+    /**
      * The Loopky accounts [pubky] follows, as resolved profiles — filtered to accounts that
      * announced themselves with [ReservedTags.USER], since the follow graph is shared with the whole
      * network and most of it has never opened Loopky.
