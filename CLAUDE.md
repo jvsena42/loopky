@@ -544,11 +544,16 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   keep the two equal.** "Loopky Recap" (never "year in review": *review* means grading a card) is
   offered 16–31 December and built only from data the account already holds, so it has no review
   total and no streak; do not add a stat that needs history without first recording some.
-  `YearRecap.from` and the site's `assets/js/recap.js` must agree, so: the recap counts **review
+  `YearRecap.from` and the site's `assets/js/recap-core.js` must agree (`recap.js` beside it is
+  only the page's loader), so: the recap counts **review
   states** of decks currently owned or followed, never cards (the page cannot fetch card chunks);
   year bounds and the window are **UTC** (`RecapWindow`), the one place the app does not use the
   local day; and ties sort by code unit, not locale. `recap-fixture.json` is asserted by both
-  suites — change it, and the rule, in both repos together. Two more: everything on the recap
+  suites — change it, and the rule, in both repos together. The fixture only proves the two agree
+  on identical inputs; the two *loaders* must also agree (one state per card, a blank language
+  tag is no language), and nothing tests that. A recap is never shown from review state that did
+  not load whole: `SrsRepository.isStateLoaded` gates it, because a partial read is a smaller
+  year with nothing saying so. Two more: everything on the recap
   screen and the Home banner sits on an accent, so it takes the **on-accent tokens** (the shared
   loading and error blocks are drawn in the surface family, which is why those two states keep
   the ordinary ground); and `postRecap` is deliberately **not** gated by `shareOnPubky`.

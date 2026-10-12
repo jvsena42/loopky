@@ -1263,8 +1263,10 @@ reviewed once are the same card to it.
 is why a card last touched in the previous year does not count however often it was studied before.
 
 **It is computed twice, and the two must agree.** `YearRecap.from` in `commonMain`, and
-`assets/js/recap.js` in `loopky.github.io`, which draws the same recap in a browser from the same
-public records (`/pub/loopky/` is world-readable). Three rules exist only to keep them equal:
+`assets/js/recap-core.js` in `loopky.github.io`, which works out the same recap in a browser from
+the same public records (`/pub/loopky/` is world-readable). `assets/js/recap.js` beside it is the
+page's *loader*: what it fetches and how it hands it to the arithmetic. Three rules exist only to
+keep the arithmetic equal:
 
 - The recap is defined over **review states of decks currently owned or followed**, not over
   cards. Telling a live card from a deleted one needs every card chunk, which the page cannot
@@ -1274,6 +1276,17 @@ public records (`/pub/loopky/` is world-readable). Three rules exist only to kee
   have the app and the page disagree about a card graded on New Year's Eve.
 - Sorting is by code unit (`compareBy` / JavaScript `<`), never locale-aware, or a tie between two
   deck titles breaks differently in two places.
+
+**A fourth rule is about the inputs, and the fixture cannot see it.** The fixture proves the two
+functions agree when handed the same decks and states. They are handed them by two loaders, and
+that is where they can still differ with every test green:
+
+- **One state per card.** The app keeps review state in a map keyed by card id, so a card whose
+  state sits in two chunk records counts once. The page's loader has to drop the repeat itself.
+- **A blank language is no language.** A manifest can carry `"front_lang": ""`. Both sides trim
+  and discard it; before that the app drew an empty language pill and counted it toward Polyglot.
+
+A change to how either side *reads* a manifest or a chunk needs the other side checked by hand.
 
 `recap-fixture.json` (`shared/src/jvmTest/resources/`, copied byte for byte to the site's `tools/`)
 is asserted by `YearRecapFixtureJvmTest` and by the site's `tools/recap.test.mjs`. A rule changed
@@ -1290,9 +1303,14 @@ shortening the caption rather than the link. The pubky.app post goes through
 reasons in §7.7 — and is **not** gated by `shareOnPubky`: that preference silences an offer the app
 makes unprompted, and this is a button the user pressed, behind a preview of the exact text.
 
-**Known weakness, inherited.** `SrsRepositoryImpl.loadChunksFor` logs and skips a chunk it cannot
-read, then marks the deck loaded. A transient failure therefore makes the recap *smaller* with
-nothing saying so — seen on an emulator as 34 cards on one launch and 54 on the next.
+**A read that did not arrive whole is an error here, never a smaller year.**
+`SrsRepositoryImpl.loadChunksFor` used to log and skip a chunk it could not read and then mark the
+deck loaded for the life of the process; a failed *listing* did the same with no states at all.
+On this screen that was a recap of 34 cards on one launch and 54 on the next, or "Nothing to recap
+yet" stated as fact, with a Retry that re-ran a no-op. It now marks a deck loaded only when the
+listing and every chunk arrived, `SrsRepository.isStateLoaded` says which decks did not, and
+`RecapViewModel` shows an error with a working Retry instead. The rest of #494 is still open: a
+review graded on a card whose chunk was never read can still write over that chunk.
 
 **Driving it out of season.** `RecapClock` is the clock the window is read from. A debug build
 moves it (`--el recap_now <millis>` on Android, `-recapNow <millis>` on iOS); the device clock is
