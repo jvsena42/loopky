@@ -1245,6 +1245,59 @@ An `.apkg` whose dominant note type has two or more templates arrives with the o
 suggestion at the commit screen, like the title and tags, not a schema change. See §7.4 for how
 the collection is read.
 
+### 8.8 The yearly recap
+
+"Loopky Recap": a Wrapped-style summary offered from 16 to 31 December. Not "year in review" —
+*review* already means grading a card here.
+
+**It is built only from what the account already holds, and that decides what it can say.** Nothing
+records history: no review log, no streak, no per-day count beyond today's on one device. What
+exists is each card's current `SrsState` and the dated deck manifests. So the recap reports cards
+studied, cards mastered, decks studied, the most-studied deck, decks and cards created, languages
+and topics — and has no review total and no streak. A card reviewed forty times this year and one
+reviewed once are the same card to it.
+
+**"Studied this year" is recovered, not stored.** `SrsState?.review` writes
+`dueAt = now + intervalDays × 24h` (or `now + 10 min` for Again, with `intervalDays = 0`), so
+`SrsState.lastReviewedAt` reads the review time back out. Only the *latest* review survives, which
+is why a card last touched in the previous year does not count however often it was studied before.
+
+**It is computed twice, and the two must agree.** `YearRecap.from` in `commonMain`, and
+`assets/js/recap.js` in `loopky.github.io`, which draws the same recap in a browser from the same
+public records (`/pub/loopky/` is world-readable). Three rules exist only to keep them equal:
+
+- The recap is defined over **review states of decks currently owned or followed**, not over
+  cards. Telling a live card from a deleted one needs every card chunk, which the page cannot
+  afford; so a state whose card is gone still counts, on both sides.
+- Year bounds and the December window are **UTC**, computed by `RecapWindow` with plain civil-date
+  arithmetic — the one place the app does not use the reader's local day. A local boundary would
+  have the app and the page disagree about a card graded on New Year's Eve.
+- Sorting is by code unit (`compareBy` / JavaScript `<`), never locale-aware, or a tie between two
+  deck titles breaks differently in two places.
+
+`recap-fixture.json` (`shared/src/jvmTest/resources/`, copied byte for byte to the site's `tools/`)
+is asserted by `YearRecapFixtureJvmTest` and by the site's `tools/recap.test.mjs`. A rule changed
+on one side fails the other's suite only if the fixture is updated in both — change them together.
+
+**The page reads only `homeserver.pubky.app`**, like the site's deck and profile pages, so a recap
+link for an account on another homeserver (staging included) shows the page's own "not found"
+state rather than numbers.
+
+**Sharing gives each network what it can take.** `RecapShareTarget` names the image format and
+character budget; the caption is the platform's localized string and `compose` appends the link,
+shortening the caption rather than the link. The pubky.app post goes through
+`DiscoveryRepository.postRecap` — a `link` post with a `link` embed and no attachments, for the
+reasons in §7.7 — and is **not** gated by `shareOnPubky`: that preference silences an offer the app
+makes unprompted, and this is a button the user pressed, behind a preview of the exact text.
+
+**Known weakness, inherited.** `SrsRepositoryImpl.loadChunksFor` logs and skips a chunk it cannot
+read, then marks the deck loaded. A transient failure therefore makes the recap *smaller* with
+nothing saying so — seen on an emulator as 34 cards on one launch and 54 on the next.
+
+**Driving it out of season.** `RecapClock` is the clock the window is read from. A debug build
+moves it (`--el recap_now <millis>` on Android, `-recapNow <millis>` on iOS); the device clock is
+not an alternative, because the homeserver refuses a session dated two months out. Journey 29.
+
 ## 9. Cross-cutting concerns
 
 ### 9.1 Dependency injection

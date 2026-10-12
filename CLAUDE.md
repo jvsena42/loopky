@@ -540,6 +540,19 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   gap **shrinks to the daily goal** (`reverseGapFor`) — that is placement, not the capping §8.6
   forbids, because the queue is still every card. Read Architecture.md §8.7 before touching any of
   it.
+- **The yearly recap is computed twice — here and on the site — and three rules exist only to
+  keep the two equal.** "Loopky Recap" (never "year in review": *review* means grading a card) is
+  offered 16–31 December and built only from data the account already holds, so it has no review
+  total and no streak; do not add a stat that needs history without first recording some.
+  `YearRecap.from` and the site's `assets/js/recap.js` must agree, so: the recap counts **review
+  states** of decks currently owned or followed, never cards (the page cannot fetch card chunks);
+  year bounds and the window are **UTC** (`RecapWindow`), the one place the app does not use the
+  local day; and ties sort by code unit, not locale. `recap-fixture.json` is asserted by both
+  suites — change it, and the rule, in both repos together. Two more: everything on the recap
+  screen and the Home banner sits on an accent, so it takes the **on-accent tokens** (the shared
+  loading and error blocks are drawn in the surface family, which is why those two states keep
+  the ordinary ground); and `postRecap` is deliberately **not** gated by `shareOnPubky`.
+  Architecture.md §8.8.
 - **The landing site states some of this repo's facts, and AI assistants quote them.** `llms.txt`,
   `llms-full.txt` and the guide pages in `jvsena42/loopky.github.io` (and the README and
   `fastlane/` listing here) say: fixed 1/3/7-day intervals, configurable 1–365; a 20-card new-card
