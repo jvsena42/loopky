@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 import Shared
 
 /// Everything the share image says, already localized — the drawing code holds no words.
@@ -83,6 +83,16 @@ enum RecapCopy {
         if target == RecapShareTarget.instagram { return "recap_share_instagram" }
         if target == RecapShareTarget.whatsapp { return "recap_share_whatsapp" }
         return "recap_share_more"
+    }
+
+    /// Each network's own mark, as a template image so the button's colour tints it.
+    static func targetIcon(_ target: RecapShareTarget) -> Image {
+        if target == RecapShareTarget.pubky { return Image("PubkyMark") }
+        if target == RecapShareTarget.x { return Image("ShareX") }
+        if target == RecapShareTarget.threads { return Image("ShareThreads") }
+        if target == RecapShareTarget.instagram { return Image("ShareInstagram") }
+        if target == RecapShareTarget.whatsapp { return Image("ShareWhatsApp") }
+        return Image(systemName: "square.and.arrow.up")
     }
 
     // One overload per arity rather than a variadic helper: Swift cannot forward `CVarArg...`,

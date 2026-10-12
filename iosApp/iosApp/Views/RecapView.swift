@@ -126,12 +126,20 @@ struct RecapView: View {
             RecapFlowLayout(spacing: 8) {
                 ForEach(Self.targets, id: \.name) { target in
                     Button { onShare(target) } label: {
-                        Text(LocalizedStringKey(RecapCopy.targetLabelKey(target)))
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(LoopkyColor.accentPrimary)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 10)
-                            .background(LoopkyColor.foregroundOnAccent, in: Capsule())
+                        HStack(spacing: 8) {
+                            // Decorative: the label beside it already names the network.
+                            RecapCopy.targetIcon(target)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 18, height: 18)
+                                .accessibilityHidden(true)
+                            Text(LocalizedStringKey(RecapCopy.targetLabelKey(target)))
+                                .font(.system(size: 15, weight: .bold))
+                        }
+                        .foregroundStyle(LoopkyColor.accentPrimary)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(LoopkyColor.foregroundOnAccent, in: Capsule())
                     }
                     .accessibilityIdentifier("recap_share_\(target.name.lowercased())")
                 }
