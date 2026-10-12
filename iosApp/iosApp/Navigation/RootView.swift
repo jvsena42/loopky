@@ -36,8 +36,6 @@ enum DeckRoute: Hashable, Identifiable {
         case .studyPreview(let id, let author): return "preview-\(id)-\(author ?? "self")"
         case .settings: return "settings"
         case .friendProfile(let pubky): return "friend-\(pubky)"
-        case .recap(let year):
-            RecapScreen(year: year)
         case .followList(let pubky, let source): return "follows-\(pubky)-\(source.name)"
         case .tagBrowse(let tag): return "tag-\(tag)"
         case .recap(let year): return "recap-\(year)"
@@ -222,6 +220,8 @@ struct RootView: View {
                 onOpenDeck: { id, author in deckPath.append(.detail(id, author)) },
                 onOpenProfile: { deckPath.append(.friendProfile($0)) }
             )
+        case .recap(let year):
+            RecapScreen(year: year)
         case .followList(let pubky, let source):
             FollowListScreen(
                 pubky: pubky,

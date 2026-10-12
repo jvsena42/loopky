@@ -241,19 +241,23 @@ private struct RecapPillGroup: View {
     }
 }
 
-/// The share picture, shown at whatever width the page gives it. Rendered once per text rather
-/// than drawn in SwiftUI, so what is on screen is the picture that gets sent.
+/// The share picture, shown at whatever width the page gives it. Drawn with the share renderer
+/// rather than in SwiftUI, so what is on screen is the picture that gets sent — and kept in
+/// state, because `body` runs on every page turn and a megapixel render there would stutter.
 private struct RecapCardPreview: View {
     let text: RecapCardText
 
+    @State private var image: UIImage?
+
     var body: some View {
         Group {
-            if let image = RecapShareImage.render(text, format: RecapImageFormat.square) {
+            if let image {
                 Image(uiImage: image).resizable().aspectRatio(1, contentMode: .fit)
             } else {
                 Color.clear.aspectRatio(1, contentMode: .fit)
             }
         }
+        .task(id: text) { image = RecapShareImage.render(text, format: RecapImageFormat.square) }
         .clipShape(RoundedRectangle(cornerRadius: 26))
         .accessibilityLabel(Text(verbatim: text.headline))
         .accessibilityIdentifier("recap_card")
@@ -265,9 +269,10 @@ private struct RecapFlowLayout: Layout {
     var spacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let rows = rows(for: subviews, width: proposal.width ?? .infinity)
-        let height = rows.map(\.height).reduce(0, +) + spacing * CGFloat(max(rows.count - 1, 0))
-        return CGSize(width: rows.map(\.width).max() ?? 0, height: height)
+        // Not named `rows`: a local of that name shadows the method inside its own initializer.
+        let laidOut = rows(for: subviews, width: proposal.width ?? .infinity)
+        let height = laidOut.map(\.height).reduce(0, +) + spacing * CGFloat(max(laidOut.count - 1, 0))
+        return CGSize(width: laidOut.map(\.width).max() ?? 0, height: height)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {

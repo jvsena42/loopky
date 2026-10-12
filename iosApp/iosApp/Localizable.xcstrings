@@ -59925,67 +59925,67 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dein Rückblick %1$lld ist da"
+            "value": "Dein Rückblick %1$@ ist da"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your %1$lld Recap is ready"
+            "value": "Your %1$@ Recap is ready"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu Resumen %1$lld ya está aquí"
+            "value": "Tu Resumen %1$@ ya está aquí"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ta Rétrospective %1$lld est prête"
+            "value": "Ta Rétrospective %1$@ est prête"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il tuo Recap %1$lld è pronto"
+            "value": "Il tuo Recap %1$@ è pronto"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld年のまとめができました"
+            "value": "%1$@年のまとめができました"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld년 리캡이 준비됐어요"
+            "value": "%1$@년 리캡이 준비됐어요"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sua Retrospectiva %1$lld chegou"
+            "value": "Sua Retrospectiva %1$@ chegou"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tổng kết %1$lld của bạn đã sẵn sàng"
+            "value": "Tổng kết %1$@ của bạn đã sẵn sàng"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的 %1$lld 年度回顾来了"
+            "value": "你的 %1$@ 年度回顾来了"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的 %1$lld 年度回顧來了"
+            "value": "你的 %1$@ 年度回顧來了"
           }
         }
       }
@@ -60138,67 +60138,67 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dein Rückblick %1$lld"
+            "value": "Dein Rückblick %1$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your %1$lld Recap"
+            "value": "Your %1$@ Recap"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu Resumen %1$lld"
+            "value": "Tu Resumen %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ta Rétrospective %1$lld"
+            "value": "Ta Rétrospective %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il tuo Recap %1$lld"
+            "value": "Il tuo Recap %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld年のまとめ"
+            "value": "%1$@年のまとめ"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld년 리캡"
+            "value": "%1$@년 리캡"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sua Retrospectiva %1$lld"
+            "value": "Sua Retrospectiva %1$@"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tổng kết %1$lld của bạn"
+            "value": "Tổng kết %1$@ của bạn"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的 %1$lld 年度回顾"
+            "value": "你的 %1$@ 年度回顾"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的 %1$lld 年度回顧"
+            "value": "你的 %1$@ 年度回顧"
           }
         }
       }
@@ -60209,67 +60209,67 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mein Rückblick %1$lld"
+            "value": "Mein Rückblick %1$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "My %1$lld Recap"
+            "value": "My %1$@ Recap"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mi Resumen %1$lld"
+            "value": "Mi Resumen %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ma Rétrospective %1$lld"
+            "value": "Ma Rétrospective %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il mio Recap %1$lld"
+            "value": "Il mio Recap %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "わたしの%1$lld年まとめ"
+            "value": "わたしの%1$@年まとめ"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나의 %1$lld년 리캡"
+            "value": "나의 %1$@년 리캡"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Minha Retrospectiva %1$lld"
+            "value": "Minha Retrospectiva %1$@"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tổng kết %1$lld của tôi"
+            "value": "Tổng kết %1$@ của tôi"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我的 %1$lld 年度回顾"
+            "value": "我的 %1$@ 年度回顾"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "我的 %1$lld 年度回顧"
+            "value": "我的 %1$@ 年度回顧"
           }
         }
       }
@@ -60422,67 +60422,67 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lerne ein paar Karten, dann hat dein Rückblick %1$lld etwas zu erzählen."
+            "value": "Lerne ein paar Karten, dann hat dein Rückblick %1$@ etwas zu erzählen."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Study a few cards and your %1$lld Recap will have a story to tell."
+            "value": "Study a few cards and your %1$@ Recap will have a story to tell."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estudia algunas tarjetas y tu Resumen %1$lld tendrá una historia que contar."
+            "value": "Estudia algunas tarjetas y tu Resumen %1$@ tendrá una historia que contar."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Étudie quelques cartes et ta Rétrospective %1$lld aura une histoire à raconter."
+            "value": "Étudie quelques cartes et ta Rétrospective %1$@ aura une histoire à raconter."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Studia qualche carta e il tuo Recap %1$lld avrà una storia da raccontare."
+            "value": "Studia qualche carta e il tuo Recap %1$@ avrà una storia da raccontare."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "カードを何枚か学習すると、%1$lld年のまとめができます。"
+            "value": "カードを何枚か学習すると、%1$@年のまとめができます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "카드를 몇 장 학습하면 %1$lld년 리캡에 담을 이야기가 생겨요."
+            "value": "카드를 몇 장 학습하면 %1$@년 리캡에 담을 이야기가 생겨요."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estude algumas cartas e sua Retrospectiva %1$lld terá uma história para contar."
+            "value": "Estude algumas cartas e sua Retrospectiva %1$@ terá uma história para contar."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hãy học vài thẻ, rồi Tổng kết %1$lld của bạn sẽ có chuyện để kể."
+            "value": "Hãy học vài thẻ, rồi Tổng kết %1$@ của bạn sẽ có chuyện để kể."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "学几张卡片，你的 %1$lld 年度回顾就有故事可讲了。"
+            "value": "学几张卡片，你的 %1$@ 年度回顾就有故事可讲了。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "學幾張卡片，你的 %1$lld 年度回顧就有故事可說了。"
+            "value": "學幾張卡片，你的 %1$@ 年度回顧就有故事可說了。"
           }
         }
       }
@@ -61629,138 +61629,67 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mein Loopky-Rückblick %1$lld 🦊 %2$@. #Loopky"
+            "value": "Mein Loopky-Rückblick %1$@ 🦊 %2$@. #Loopky"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "My %1$lld Loopky Recap 🦊 %2$@. #Loopky"
+            "value": "My %1$@ Loopky Recap 🦊 %2$@. #Loopky"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mi Resumen Loopky %1$lld 🦊 %2$@. #Loopky"
+            "value": "Mi Resumen Loopky %1$@ 🦊 %2$@. #Loopky"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ma Rétrospective Loopky %1$lld 🦊 %2$@. #Loopky"
+            "value": "Ma Rétrospective Loopky %1$@ 🦊 %2$@. #Loopky"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il mio Recap Loopky %1$lld 🦊 %2$@. #Loopky"
+            "value": "Il mio Recap Loopky %1$@ 🦊 %2$@. #Loopky"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld年のLoopkyまとめ 🦊 %2$@。#Loopky"
+            "value": "%1$@年のLoopkyまとめ 🦊 %2$@。#Loopky"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나의 %1$lld년 Loopky 리캡 🦊 %2$@. #Loopky"
+            "value": "나의 %1$@년 Loopky 리캡 🦊 %2$@. #Loopky"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Minha Retrospectiva Loopky %1$lld 🦊 %2$@. #Loopky"
+            "value": "Minha Retrospectiva Loopky %1$@ 🦊 %2$@. #Loopky"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tổng kết Loopky %1$lld của tôi 🦊 %2$@. #Loopky"
+            "value": "Tổng kết Loopky %1$@ của tôi 🦊 %2$@. #Loopky"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我的 %1$lld Loopky 年度回顾 🦊 %2$@。#Loopky"
+            "value": "我的 %1$@ Loopky 年度回顾 🦊 %2$@。#Loopky"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "我的 %1$lld Loopky 年度回顧 🦊 %2$@。#Loopky"
-          }
-        }
-      }
-    },
-    "recap_share_text_long": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mein Loopky-Rückblick %1$lld 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\nSieh ihn dir an und mach deinen eigenen:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "My %1$lld Loopky Recap 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\nSee it and make your own:"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mi Resumen Loopky %1$lld 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\nMíralo y crea el tuyo:"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ma Rétrospective Loopky %1$lld 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\nVois-la et crée la tienne :"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il mio Recap Loopky %1$lld 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\nGuardalo e crea il tuo:"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld年のLoopkyまとめ 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\nこちらから見て、あなたも作ってみよう:"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "나의 %1$lld년 Loopky 리캡 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\n구경하고 나만의 리캡도 만들어 보세요:"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Minha Retrospectiva Loopky %1$lld 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\nVeja e faça a sua:"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tổng kết Loopky %1$lld của tôi 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\nXem và tạo của riêng bạn:"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "我的 %1$lld Loopky 年度回顾 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\n来看看，也做一份你的："
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "我的 %1$lld Loopky 年度回顧 🦊\n\n📚 %2$@\n🏆 %3$@\n🗂️ %4$@\n\n來看看，也做一份你的："
+            "value": "我的 %1$@ Loopky 年度回顧 🦊 %2$@。#Loopky"
           }
         }
       }
@@ -61771,67 +61700,67 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Schau dir mein %1$lld bei Loopky an 🦊 %2$@, %3$@. Hier ansehen:"
+            "value": "Schau dir mein %1$@ bei Loopky an 🦊 %2$@. Hier ansehen:"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Look at my %1$lld on Loopky 🦊 %2$@, %3$@. Take a look:"
+            "value": "Look at my %1$@ on Loopky 🦊 %2$@. Take a look:"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mira mi %1$lld en Loopky 🦊 %2$@, %3$@. Échale un vistazo:"
+            "value": "Mira mi %1$@ en Loopky 🦊 %2$@. Échale un vistazo:"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Regarde mon année %1$lld sur Loopky 🦊 %2$@, %3$@. Jette un œil :"
+            "value": "Regarde mon année %1$@ sur Loopky 🦊 %2$@. Jette un œil :"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guarda il mio %1$lld su Loopky 🦊 %2$@, %3$@. Dai un'occhiata:"
+            "value": "Guarda il mio %1$@ su Loopky 🦊 %2$@. Dai un'occhiata:"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "わたしの%1$lld年のLoopky 🦊 %2$@、%3$@。見てみて:"
+            "value": "わたしの%1$@年のLoopky 🦊 %2$@。見てみて:"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나의 %1$lld년 Loopky 🦊 %2$@, %3$@. 한번 보세요:"
+            "value": "나의 %1$@년 Loopky 🦊 %2$@. 한번 보세요:"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Olha o meu %1$lld no Loopky 🦊 %2$@, %3$@. Dá uma olhada:"
+            "value": "Olha o meu %1$@ no Loopky 🦊 %2$@. Dá uma olhada:"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Xem năm %1$lld của tôi trên Loopky 🦊 %2$@, %3$@. Xem thử nhé:"
+            "value": "Xem năm %1$@ của tôi trên Loopky 🦊 %2$@. Xem thử nhé:"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "看看我在 Loopky 的 %1$lld 年 🦊 %2$@，%3$@。来看看："
+            "value": "看看我在 Loopky 的 %1$@ 年 🦊 %2$@。来看看："
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "看看我在 Loopky 的 %1$lld 年 🦊 %2$@，%3$@。來看看："
+            "value": "看看我在 Loopky 的 %1$@ 年 🦊 %2$@。來看看："
           }
         }
       }
@@ -63000,6 +62929,148 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "recap_share_header": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mein Loopky-Rückblick %1$@ 🦊"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My %1$@ Loopky Recap 🦊"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi Resumen Loopky %1$@ 🦊"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ma Rétrospective Loopky %1$@ 🦊"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il mio Recap Loopky %1$@ 🦊"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@年のLoopkyまとめ 🦊"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나의 %1$@년 Loopky 리캡 🦊"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minha Retrospectiva Loopky %1$@ 🦊"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng kết Loopky %1$@ của tôi 🦊"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的 %1$@ Loopky 年度回顾 🦊"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的 %1$@ Loopky 年度回顧 🦊"
+          }
+        }
+      }
+    },
+    "recap_share_footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sieh ihn dir an und mach deinen eigenen:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See it and make your own:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Míralo y crea el tuyo:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vois-la et crée la tienne :"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardalo e crea il tuo:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "こちらから見て、あなたも作ってみよう:"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구경하고 나만의 리캡도 만들어 보세요:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veja e faça a sua:"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem và tạo của riêng bạn:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来看看，也做一份你的："
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "來看看，也做一份你的："
           }
         }
       }

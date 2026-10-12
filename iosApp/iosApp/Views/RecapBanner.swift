@@ -15,8 +15,9 @@ struct RecapBanner: View {
                 HStack(spacing: 12) {
                     Text(verbatim: "🎁").font(.system(size: 28))
                     VStack(alignment: .leading, spacing: 2) {
+                        // The year as text: as a number it is grouped, "2,026".
                         Text(verbatim: String.localizedStringWithFormat(
-                            NSLocalizedString("recap_banner_title", comment: ""), year
+                            NSLocalizedString("recap_banner_title", comment: ""), String(year)
                         ))
                         .font(.system(size: 16, weight: .heavy))
                         .foregroundStyle(LoopkyColor.foregroundOnAccent)

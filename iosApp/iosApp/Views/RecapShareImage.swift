@@ -44,9 +44,9 @@ enum RecapShareImage {
         let heights = blocks.map { height(of: $0.0, width: width) }
         let brandHeight = 96 * unit
         let pillHeight = 84 * unit
-        let contentHeight = brandHeight + 56 * unit
-            + zip(heights, blocks).map { $0 + $1.1 }.reduce(0, +)
-            + 26 * unit + pillHeight
+        // On its own line: folded into the sum below, the type-checker gives up on the expression.
+        let blocksHeight: CGFloat = zip(heights, blocks).map { $0 + $1.1 }.reduce(0, +)
+        let contentHeight: CGFloat = brandHeight + 56 * unit + blocksHeight + 26 * unit + pillHeight
         // Centred in whatever room the format has: a story is nearly twice as tall as the content.
         var y = max((size.height - contentHeight - 120 * unit) / 2, margin)
 
@@ -67,8 +67,15 @@ enum RecapShareImage {
         let tagline = footerStyle(text.tagline)
         let site = footerStyle("loopky.app")
         let baseline = size.height - margin - tagline.size().height
-        tagline.draw(at: CGPoint(x: margin, y: baseline))
-        site.draw(at: CGPoint(x: size.width - margin - site.size().width, y: baseline))
+        // One line when both fit with air between them, two when they do not: at story scale the
+        // tagline alone is most of the width, and Android drew the pair over each other.
+        if tagline.size().width + site.size().width + 48 * unit <= width {
+            tagline.draw(at: CGPoint(x: margin, y: baseline))
+            site.draw(at: CGPoint(x: size.width - margin - site.size().width, y: baseline))
+        } else {
+            tagline.draw(at: CGPoint(x: margin, y: baseline - tagline.size().height * 1.3))
+            site.draw(at: CGPoint(x: margin, y: baseline))
+        }
     }
 
     private static func drawBrand(at origin: CGPoint, side: CGFloat, unit: CGFloat) {
@@ -107,26 +114,5 @@ enum RecapShareImage {
 
     private static func circle(x: CGFloat, y: CGFloat, radius: CGFloat) -> CGRect {
         CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)
-    }
-
-    /// Hands [image] to Instagram as a story background. False when Instagram is not installed
-    /// (or the scheme is missing from `LSApplicationQueriesSchemes`), so the caller can fall back
-    /// to the share sheet.
-    ///
-    /// Stories read the picture from the pasteboard, not from the URL, and Meta's documented
-    /// contract asks for the calling app's identifier as `source_application`.
-    static func openInstagramStory(_ image: UIImage?) -> Bool {
-        guard
-            let data = image?.pngData(),
-            let bundleId = Bundle.main.bundleIdentifier,
-            let url = URL(string: "instagram-stories://share?source_application=\(bundleId)"),
-            UIApplication.shared.canOpenURL(url)
-        else { return false }
-        UIPasteboard.general.setItems(
-            [["com.instagram.sharedSticker.backgroundImage": data]],
-            options: [.expirationDate: Date().addingTimeInterval(300)]
-        )
-        UIApplication.shared.open(url)
-        return true
     }
 }

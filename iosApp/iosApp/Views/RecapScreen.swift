@@ -14,11 +14,31 @@ struct RecapScreen: View {
     @State private var notice: LocalizedStringKey?
 
     @Environment(\.openURL) private var openURL
+    @Environment(\.dismiss) private var dismiss
+
+    /// Content and Empty sit on the accent ground; Loading and Error keep the ordinary one.
+    private var isOnAccent: Bool {
+        uiState is RecapUiStateContent || uiState is RecapUiStateEmpty
+    }
 
     var body: some View {
         content
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
+            // Its own close control rather than the system chevron: that one takes the app's
+            // accent, which is the colour of the ground it would sit on here.
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(isOnAccent ? LoopkyColor.foregroundOnAccent : LoopkyColor.foregroundPrimary)
+                    }
+                    .accessibilityLabel(Text("recap_close"))
+                    .accessibilityIdentifier("recap_close")
+                }
+            }
             .sheet(item: $sharePayload) { payload in
                 ShareSheet(items: payload.items)
             }
@@ -55,8 +75,9 @@ struct RecapScreen: View {
             RecapMessagePage(
                 emoji: "🌱",
                 title: NSLocalizedString("recap_empty_title", comment: ""),
+                // The year as text: as a number it is grouped, "2,026".
                 message: String.localizedStringWithFormat(
-                    NSLocalizedString("recap_empty_body", comment: ""), Int(empty.year)
+                    NSLocalizedString("recap_empty_body", comment: ""), String(empty.year)
                 )
             )
             .recapGround()
@@ -117,15 +138,12 @@ struct RecapScreen: View {
         effectSink = nil
     }
 
-    /// Instagram is the one network with a way in that carries the picture: a story, through the
-    /// pasteboard. Everything else goes through the system share sheet with that network's own
-    /// image size and caption, because a URL scheme can carry a caption but never an image, and
-    /// the picture is the point.
+    /// Every target goes through the system share sheet, with that network's own image size and
+    /// caption: a URL scheme can carry a caption but never a picture, and the picture is the
+    /// point. Instagram included — its direct Stories hand-off (`instagram-stories://`) requires a
+    /// Facebook App ID as `source_application`, and without one it opens an empty story.
     private func deliver(_ share: RecapEffectShare) {
         let image = RecapShareImage.render(RecapCopy.cardText(share.recap), format: share.target.imageFormat)
-        if share.target == RecapShareTarget.instagram, RecapShareImage.openInstagramStory(image) {
-            return
-        }
         var items: [Any] = []
         if let image { items.append(image) }
         if share.target.takesText { items.append(share.text) }

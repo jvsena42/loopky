@@ -2,7 +2,7 @@ import SwiftUI
 import Shared
 
 /// Everything the share image says, already localized — the drawing code holds no words.
-struct RecapCardText {
+struct RecapCardText: Hashable {
     let title: String
     let headline: String
     let stats: [String]
@@ -10,10 +10,14 @@ struct RecapCardText {
     let tagline: String
 }
 
-/// The recap's sentences. Every count goes through `localizedStringWithFormat`: these keys are
-/// plural entries, and `String(format:)` renders the "other" form at every count.
+/// The recap's sentences.
+///
+/// Two kinds of number, formatted two ways. A **count** goes through
+/// `localizedStringWithFormat`, because those keys are plural entries and `String(format:)`
+/// renders the "other" form at every count. The **year** goes in as text (`%@`): the same call
+/// groups an integer by locale, and the year came out as "2,026".
 enum RecapCopy {
-    static func title(_ year: Int32) -> String { format("recap_title", Int(year)) }
+    static func title(_ year: Int32) -> String { format("recap_title", String(year)) }
     static func cardsStudied(_ recap: YearRecap) -> String { format("recap_stat_cards_studied", Int(recap.cardsStudied)) }
     static func cardsMastered(_ recap: YearRecap) -> String { format("recap_stat_cards_mastered", Int(recap.cardsMastered)) }
     static func decksStudied(_ recap: YearRecap) -> String { format("recap_stat_decks_studied", Int(recap.decksStudied)) }
@@ -30,30 +34,46 @@ enum RecapCopy {
         return format("recap_top_deck", deck.title)
     }
 
+    /// The year's stats that have something to say, each with the emoji its line wears in a
+    /// caption. Zeroes are left out here, once, for the picture and every caption alike:
+    /// "0 cards mastered" is not a line anyone wants posted under their name, and a year of only
+    /// creating decks has no cards studied to lead with. Never empty for a recap that is not empty.
+    static func stats(_ recap: YearRecap) -> [(emoji: String, line: String)] {
+        var lines: [(emoji: String, line: String)] = []
+        if recap.cardsStudied > 0 { lines.append(("📚", cardsStudied(recap))) }
+        if recap.cardsMastered > 0 { lines.append(("🏆", cardsMastered(recap))) }
+        if recap.decksStudied > 0 { lines.append(("🗂️", decksStudied(recap))) }
+        if let made = created(recap) { lines.append(("✨", made)) }
+        return lines
+    }
+
     static func cardText(_ recap: YearRecap) -> RecapCardText {
-        RecapCardText(
-            title: format("recap_image_title", Int(recap.year)),
-            headline: cardsStudied(recap),
-            stats: [recap.cardsMastered > 0 ? cardsMastered(recap) : nil, decksStudied(recap), created(recap)]
-                .compactMap { $0 },
+        let lines = stats(recap).map(\.line)
+        return RecapCardText(
+            title: format("recap_image_title", String(recap.year)),
+            headline: lines.first ?? "",
+            stats: Array(lines.dropFirst()),
             persona: "\(personaEmoji(recap.persona)) \(NSLocalizedString(personaTitleKey(recap.persona), comment: ""))",
             tagline: NSLocalizedString("brand_tagline", comment: "").replacingOccurrences(of: "\n", with: " ")
         )
     }
 
     /// One caption per network, each written for how that network reads: short, a list, or a chat
-    /// line. Instagram discards a caption; the story image carries everything.
+    /// line. Instagram discards a caption; the image carries everything.
     static func caption(for target: RecapShareTarget, recap: YearRecap) -> String {
-        let year = Int(recap.year)
-        let studied = cardsStudied(recap)
-        let mastered = cardsMastered(recap)
+        let year = String(recap.year)
+        let lines = stats(recap)
         if target == RecapShareTarget.x || target == RecapShareTarget.instagram {
-            return format("recap_share_text_short", year, studied)
+            return format("recap_share_text_short", year, lines.first?.line ?? "")
         }
         if target == RecapShareTarget.pubky || target == RecapShareTarget.threads {
-            return format("recap_share_text_long", year, studied, mastered, decksStudied(recap))
+            return [
+                format("recap_share_header", year),
+                lines.map { "\($0.emoji) \($0.line)" }.joined(separator: "\n"),
+                NSLocalizedString("recap_share_footer", comment: ""),
+            ].joined(separator: "\n\n")
         }
-        return format("recap_share_text_chat", year, studied, mastered)
+        return format("recap_share_text_chat", year, lines.prefix(2).map(\.line).joined(separator: " · "))
     }
 
     static func languageName(_ code: String) -> String {
@@ -113,15 +133,5 @@ enum RecapCopy {
 
     private static func format(_ key: String, _ first: CVarArg, _ second: CVarArg) -> String {
         String.localizedStringWithFormat(NSLocalizedString(key, comment: ""), first, second)
-    }
-
-    private static func format(_ key: String, _ first: CVarArg, _ second: CVarArg, _ third: CVarArg) -> String {
-        String.localizedStringWithFormat(NSLocalizedString(key, comment: ""), first, second, third)
-    }
-
-    private static func format(
-        _ key: String, _ first: CVarArg, _ second: CVarArg, _ third: CVarArg, _ fourth: CVarArg
-    ) -> String {
-        String.localizedStringWithFormat(NSLocalizedString(key, comment: ""), first, second, third, fourth)
     }
 }
