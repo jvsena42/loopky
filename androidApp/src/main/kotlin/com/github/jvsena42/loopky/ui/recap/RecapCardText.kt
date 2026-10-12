@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.ui.recap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
@@ -100,10 +101,7 @@ internal fun RecapShareTarget.labelRes(): Int = when (this) {
     RecapShareTarget.More -> R.string.recap_share_more
 }
 
-/**
- * Each network's own mark, drawn in black so the button's content colour tints it — the brand
- * colours would be six different inks on one white pill row.
- */
+/** Each network's own mark. Drawn in black; [brandColor] is what tints it. */
 @Composable
 internal fun RecapShareTarget.icon(): Painter = when (this) {
     RecapShareTarget.Pubky -> painterResource(R.drawable.ic_pubky)
@@ -113,3 +111,21 @@ internal fun RecapShareTarget.icon(): Painter = when (this) {
     RecapShareTarget.WhatsApp -> painterResource(R.drawable.ic_share_whatsapp)
     RecapShareTarget.More -> rememberVectorPainter(Icons.Filled.Share)
 }
+
+/**
+ * The network's own colour for its mark, or null to take the button's.
+ *
+ * Fixed rather than themed: the pill under it is white in both themes. Pubky is null on purpose —
+ * its brand lime on white is the faintest thing on the screen, the same reason `ic_pubky` is
+ * tinted wherever else the app draws it. Instagram's mark is a gradient in the wild; a vector
+ * tint is one colour, so it takes the gradient's magenta.
+ */
+internal fun RecapShareTarget.brandColor(): Color? = when (this) {
+    RecapShareTarget.X, RecapShareTarget.Threads -> Color.Black
+    RecapShareTarget.Instagram -> Color(INSTAGRAM_MAGENTA)
+    RecapShareTarget.WhatsApp -> Color(WHATSAPP_GREEN)
+    RecapShareTarget.Pubky, RecapShareTarget.More -> null
+}
+
+private const val INSTAGRAM_MAGENTA = 0xFFE4405F
+private const val WHATSAPP_GREEN = 0xFF25D366
