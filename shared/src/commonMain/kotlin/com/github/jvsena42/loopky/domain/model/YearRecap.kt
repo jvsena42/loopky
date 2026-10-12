@@ -68,9 +68,7 @@ data class YearRecap(
                 decksCreated = created.size,
                 cardsCreated = cardsCreated,
                 languages = languages,
-                topics = ranked(
-                    studied.flatMap { it.deck.tags.filterNot(ReservedTags::isReserved).map(Tag::value).distinct() },
-                ).take(MAX_TOPICS),
+                topics = ranked(studied.flatMap { topicsOf(it.deck) }).take(MAX_TOPICS),
                 persona = when {
                     languages.size >= POLYGLOT_LANGUAGES -> RecapPersona.Polyglot
                     created.isNotEmpty() && cardsCreated >= cardsStudied -> RecapPersona.Creator
@@ -78,6 +76,15 @@ data class YearRecap(
                     else -> RecapPersona.Explorer
                 },
             )
+        }
+
+        /**
+         * A deck's own labels: not the reserved ones, and not the ones declaring a language pair
+         * put there (`LanguageTags`), which [languages] already reports.
+         */
+        private fun topicsOf(deck: Deck): List<String> {
+            val derived = LanguageTags.forPair(deck.frontLang, deck.backLang).toSet()
+            return deck.tags.filterNot { ReservedTags.isReserved(it) || it in derived }.map(Tag::value).distinct()
         }
 
         private fun ranked(values: List<String>): List<String> =

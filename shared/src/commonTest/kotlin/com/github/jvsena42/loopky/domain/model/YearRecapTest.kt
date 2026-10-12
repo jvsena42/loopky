@@ -148,6 +148,18 @@ class YearRecapTest {
     }
 
     @Test
+    fun `topics leave out the labels a language pair adds, which languages already report`() {
+        val tags = listOf("language", "spanish", "english", "verbs").map(::Tag)
+        val result = recap(
+            owned = listOf(testDeck(id = "d1", tags = tags, frontLang = "es-ES", backLang = "en-US")),
+            states = mapOf("d1" to listOf(state("a", midYear))),
+        )
+
+        assertEquals(listOf("verbs"), result.topics)
+        assertEquals(listOf("en", "es"), result.languages)
+    }
+
+    @Test
     fun `persona follows what the year was mostly about`() {
         fun studied(count: Int, interval: Int) = List(count) { state("c$it", midYear, interval) }
         val plain = testDeck(id = "d1", createdAt = y2026 - 1)
