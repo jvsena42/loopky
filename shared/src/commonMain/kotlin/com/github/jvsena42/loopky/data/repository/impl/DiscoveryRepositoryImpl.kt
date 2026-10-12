@@ -170,7 +170,12 @@ class DiscoveryRepositoryImpl(
             )
             val path = PubkyPaths.post(owner, postId)
             this.pubky.putWithSessionRetry(path, body, session, revalidator).getOrThrow()
-            PubkyUri(path)
+            val uri = PubkyUri(path)
+            // Best-effort, after the post so the subject exists: a failed label must not turn a
+            // post that was written into a failure the reader retries into a second post.
+            tagRepository.putReservedTag(uri, ReservedTags.RECAP)
+                .onFailure { Log.w(TAG, "postRecap: tag FAILED — ${it.message}") }
+            uri
         }.onFailure { Log.w(TAG, "postRecap: FAILED — ${it.message}", it) }
 
     /**

@@ -1302,6 +1302,10 @@ shortening the caption rather than the link. The pubky.app post goes through
 `DiscoveryRepository.postRecap` — a `link` post with a `link` embed and no attachments, for the
 reasons in §7.7 — and is **not** gated by `shareOnPubky`: that preference silences an offer the app
 makes unprompted, and this is a button the user pressed, behind a preview of the exact text.
+The post is then labelled `loopky-recap` (`ReservedTags.RECAP`), which is what makes the shared
+recaps one list an indexer can answer for: `/v0/search/posts/by_tag/loopky-recap`. Best-effort and
+after the post, like every reserved label — a label that fails must not fail a post that was
+written, or the retry posts it twice.
 
 **A read that did not arrive whole is an error here, never a smaller year.**
 `SrsRepositoryImpl.loadChunksFor` used to log and skip a chunk it could not read and then mark the
