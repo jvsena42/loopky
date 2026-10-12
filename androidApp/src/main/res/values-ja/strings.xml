@@ -986,8 +986,9 @@
     <string name="recap_share_title">まとめを共有</string>
     <string name="recap_share_more">その他</string>
     <string name="recap_share_text_short">%1$d年のLoopkyまとめ 🦊 %2$s。#Loopky</string>
-    <string name="recap_share_text_long">%1$d年のLoopkyまとめ 🦊\n\n📚 %2$s\n🏆 %3$s\n🗂️ %4$s\n\nこちらから見て、あなたも作ってみよう:</string>
-    <string name="recap_share_text_chat">わたしの%1$d年のLoopky 🦊 %2$s、%3$s。見てみて:</string>
+    <string name="recap_share_header">%1$d年のLoopkyまとめ 🦊</string>
+    <string name="recap_share_footer">こちらから見て、あなたも作ってみよう:</string>
+    <string name="recap_share_text_chat">わたしの%1$d年のLoopky 🦊 %2$s。見てみて:</string>
     <string name="recap_web_link">ウェブ版を開く</string>
     <string name="recap_post_title">まとめをPubkyに投稿しますか？</string>
     <string name="recap_post_failed">投稿できませんでした。もう一度お試しください。</string>

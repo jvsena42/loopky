@@ -83,7 +83,6 @@ import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.toast
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.viewmodel.koinViewModel
@@ -98,16 +97,22 @@ fun RecapRoute(year: Int, onBack: () -> Unit = {}) {
     val chooserTitle = stringResource(R.string.recap_share_title)
 
     LaunchedEffect(viewModel, cardText) {
-        viewModel.effects.collectLatest { effect ->
+        // collect, not collectLatest: a second tap must wait for the first picture to finish
+        // writing, since both go to the same file and drawing has no point at which to cancel.
+        viewModel.effects.collect { effect ->
             when (effect) {
                 is RecapEffect.Share -> {
-                    val text = cardText ?: return@collectLatest
-                    // Off the main thread: a story is two million pixels to draw and compress.
-                    val image = withContext(Dispatchers.Default) {
-                        val format = effect.target.imageFormat
-                        context.recapShareUri(renderRecapImage(context, text, format), format)
+                    val text = cardText ?: return@collect
+                    val format = effect.target.imageFormat
+                    // Off the main thread: a story is two million pixels to draw, then a file write.
+                    val picture = withContext(Dispatchers.Default) { renderRecapImage(context, text, format) }
+                    val image = withContext(Dispatchers.IO) { context.recapShareUri(picture, format) }
+                    if (image == null && !effect.target.takesText) {
+                        // Nothing to hand over: Instagram takes only the picture.
+                        context.toast(R.string.error_generic_message)
+                    } else {
+                        context.shareRecap(effect.target, effect.text, image, chooserTitle)
                     }
-                    context.shareRecap(effect.target, effect.text, image, chooserTitle)
                 }
                 RecapEffect.Posted -> context.toast(R.string.share_prompt_posted)
                 is RecapEffect.PostFailed -> context.toast(R.string.recap_post_failed)
@@ -262,6 +267,8 @@ private fun RecapPager(
     if (pagerState.currentPage == PAGE_COUNT - 1) {
         Confetti(
             colors = listOf(colors.foregroundOnAccent, colors.srsGood, colors.srsEasy, colors.srsHard),
+            // A size of its own: the pieces are placed as fractions of it, and a bare Canvas is 0×0.
+            modifier = Modifier.fillMaxSize(),
             reduceMotion = reduceMotion,
         )
     }
@@ -427,6 +434,8 @@ private fun SummaryPage(
         Row(
             modifier = Modifier
                 .fillMaxSize()
+                // A phone on its side is expanded too, with barely 300dp of height.
+                .verticalScroll(rememberScrollState())
                 .contentPane(PaneWidth.Wide)
                 .padding(horizontal = 32.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(40.dp, Alignment.CenterHorizontally),

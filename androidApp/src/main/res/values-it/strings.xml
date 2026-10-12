@@ -931,8 +931,9 @@
     <string name="recap_share_title">Condividi il tuo recap</string>
     <string name="recap_share_more">Altro</string>
     <string name="recap_share_text_short">Il mio Recap Loopky %1$d 🦊 %2$s. #Loopky</string>
-    <string name="recap_share_text_long">Il mio Recap Loopky %1$d 🦊\n\n📚 %2$s\n🏆 %3$s\n🗂️ %4$s\n\nGuardalo e crea il tuo:</string>
-    <string name="recap_share_text_chat">Guarda il mio %1$d su Loopky 🦊 %2$s, %3$s. Dai un\'occhiata:</string>
+    <string name="recap_share_header">Il mio Recap Loopky %1$d 🦊</string>
+    <string name="recap_share_footer">Guardalo e crea il tuo:</string>
+    <string name="recap_share_text_chat">Guarda il mio %1$d su Loopky 🦊 %2$s. Dai un\'occhiata:</string>
     <string name="recap_web_link">Apri la versione web</string>
     <string name="recap_post_title">Pubblicare il tuo recap su Pubky?</string>
     <string name="recap_post_failed">Impossibile pubblicare. Riprova.</string>

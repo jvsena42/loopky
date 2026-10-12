@@ -13,7 +13,10 @@ import com.github.jvsena42.loopky.domain.model.RecapShareTarget
  * Three steps down, each tried only when the one above cannot start: the app itself with the
  * image and caption, that network's web composer with the caption alone (a URL cannot carry a
  * picture), and the system chooser. Instagram has no web composer and discards any caption, so it
- * goes straight from its app to the chooser.
+ * goes straight from its app to the chooser. It is a plain `ACTION_SEND` to Instagram's package,
+ * which opens Instagram's own picker (Story, Feed, Reels): the dedicated
+ * `com.instagram.share.ADD_TO_STORY` intent requires a Facebook App ID as `source_application`,
+ * and Loopky does not have one.
  *
  * No `<queries>` entry is needed for this: package visibility limits what an app can *ask* about,
  * not what it can start, and a missing app surfaces as [ActivityNotFoundException] either way.

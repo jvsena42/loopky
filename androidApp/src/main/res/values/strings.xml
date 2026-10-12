@@ -1012,8 +1012,9 @@
     <string name="recap_share_title">Share your recap</string>
     <string name="recap_share_more">More</string>
     <string name="recap_share_text_short">My %1$d Loopky Recap 🦊 %2$s. #Loopky</string>
-    <string name="recap_share_text_long">My %1$d Loopky Recap 🦊\n\n📚 %2$s\n🏆 %3$s\n🗂️ %4$s\n\nSee it and make your own:</string>
-    <string name="recap_share_text_chat">Look at my %1$d on Loopky 🦊 %2$s, %3$s. Take a look:</string>
+    <string name="recap_share_header">My %1$d Loopky Recap 🦊</string>
+    <string name="recap_share_footer">See it and make your own:</string>
+    <string name="recap_share_text_chat">Look at my %1$d on Loopky 🦊 %2$s. Take a look:</string>
     <string name="recap_web_link">Open the web version</string>
     <string name="recap_post_title">Post your recap on Pubky?</string>
     <string name="recap_post_failed">Couldn\'t post your recap. Try again.</string>

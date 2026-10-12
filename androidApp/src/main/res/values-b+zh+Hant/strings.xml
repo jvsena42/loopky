@@ -1006,8 +1006,9 @@
     <string name="recap_share_title">分享你的年度回顧</string>
     <string name="recap_share_more">更多</string>
     <string name="recap_share_text_short">我的 %1$d Loopky 年度回顧 🦊 %2$s。#Loopky</string>
-    <string name="recap_share_text_long">我的 %1$d Loopky 年度回顧 🦊\n\n📚 %2$s\n🏆 %3$s\n🗂️ %4$s\n\n來看看，也做一份你的：</string>
-    <string name="recap_share_text_chat">看看我在 Loopky 的 %1$d 年 🦊 %2$s，%3$s。來看看：</string>
+    <string name="recap_share_header">我的 %1$d Loopky 年度回顧 🦊</string>
+    <string name="recap_share_footer">來看看，也做一份你的：</string>
+    <string name="recap_share_text_chat">看看我在 Loopky 的 %1$d 年 🦊 %2$s。來看看：</string>
     <string name="recap_web_link">開啟網頁版</string>
     <string name="recap_post_title">把年度回顧發佈到 Pubky？</string>
     <string name="recap_post_failed">發佈失敗，請再試一次。</string>

@@ -1006,8 +1006,9 @@
     <string name="recap_share_title">Chia sẻ tổng kết của bạn</string>
     <string name="recap_share_more">Khác</string>
     <string name="recap_share_text_short">Tổng kết Loopky %1$d của tôi 🦊 %2$s. #Loopky</string>
-    <string name="recap_share_text_long">Tổng kết Loopky %1$d của tôi 🦊\n\n📚 %2$s\n🏆 %3$s\n🗂️ %4$s\n\nXem và tạo của riêng bạn:</string>
-    <string name="recap_share_text_chat">Xem năm %1$d của tôi trên Loopky 🦊 %2$s, %3$s. Xem thử nhé:</string>
+    <string name="recap_share_header">Tổng kết Loopky %1$d của tôi 🦊</string>
+    <string name="recap_share_footer">Xem và tạo của riêng bạn:</string>
+    <string name="recap_share_text_chat">Xem năm %1$d của tôi trên Loopky 🦊 %2$s. Xem thử nhé:</string>
     <string name="recap_web_link">Mở bản web</string>
     <string name="recap_post_title">Đăng tổng kết của bạn lên Pubky?</string>
     <string name="recap_post_failed">Không đăng được. Hãy thử lại.</string>

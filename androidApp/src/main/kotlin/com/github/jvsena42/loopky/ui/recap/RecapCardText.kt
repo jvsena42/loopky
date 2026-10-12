@@ -32,39 +32,64 @@ internal fun createdLine(recap: YearRecap): String? {
     return "$decks · $cards"
 }
 
+/**
+ * The year's stats that have something to say, each with the emoji its line wears in a caption.
+ *
+ * Zeroes are left out here, once, for the picture and every caption alike: "0 cards mastered" is
+ * not a line anyone wants posted under their name, and a year of only creating decks has no cards
+ * studied to lead with. Never empty for a recap that is not [YearRecap.isEmpty].
+ */
 @Composable
-internal fun recapCardText(recap: YearRecap): RecapCardText = RecapCardText(
-    title = stringResource(R.string.recap_image_title, recap.year),
-    headline = pluralStringResource(R.plurals.recap_stat_cards_studied, recap.cardsStudied, recap.cardsStudied),
-    stats = listOfNotNull(
-        pluralStringResource(R.plurals.recap_stat_cards_mastered, recap.cardsMastered, recap.cardsMastered)
-            .takeIf { recap.cardsMastered > 0 },
-        pluralStringResource(R.plurals.recap_stat_decks_studied, recap.decksStudied, recap.decksStudied),
-        createdLine(recap),
-    ),
-    persona = "${recap.persona.emoji()} ${stringResource(recap.persona.titleRes())}",
-    tagline = stringResource(R.string.brand_tagline).replace("\n", " "),
+internal fun recapStats(recap: YearRecap): List<Pair<String, String>> = listOfNotNull(
+    ("📚" to pluralStringResource(R.plurals.recap_stat_cards_studied, recap.cardsStudied, recap.cardsStudied))
+        .takeIf { recap.cardsStudied > 0 },
+    ("🏆" to pluralStringResource(R.plurals.recap_stat_cards_mastered, recap.cardsMastered, recap.cardsMastered))
+        .takeIf { recap.cardsMastered > 0 },
+    ("🗂️" to pluralStringResource(R.plurals.recap_stat_decks_studied, recap.decksStudied, recap.decksStudied))
+        .takeIf { recap.decksStudied > 0 },
+    createdLine(recap)?.let { "✨" to it },
 )
+
+@Composable
+internal fun recapCardText(recap: YearRecap): RecapCardText {
+    val stats = recapStats(recap).map { it.second }
+    return RecapCardText(
+        title = stringResource(R.string.recap_image_title, recap.year),
+        headline = stats.firstOrNull().orEmpty(),
+        stats = stats.drop(1),
+        persona = "${recap.persona.emoji()} ${stringResource(recap.persona.titleRes())}",
+        tagline = stringResource(R.string.brand_tagline).replace("\n", " "),
+    )
+}
 
 /** One caption per network, each written for how that network reads: short, a list, or a chat line. */
 @Composable
 internal fun recapCaptions(recap: YearRecap): Map<RecapShareTarget, String> {
-    val studied = pluralStringResource(R.plurals.recap_stat_cards_studied, recap.cardsStudied, recap.cardsStudied)
-    val mastered = pluralStringResource(R.plurals.recap_stat_cards_mastered, recap.cardsMastered, recap.cardsMastered)
-    val decks = pluralStringResource(R.plurals.recap_stat_decks_studied, recap.decksStudied, recap.decksStudied)
-    val short = stringResource(R.string.recap_share_text_short, recap.year, studied)
-    val long = stringResource(R.string.recap_share_text_long, recap.year, studied, mastered, decks)
-    val chat = stringResource(R.string.recap_share_text_chat, recap.year, studied, mastered)
+    val stats = recapStats(recap)
+    val lead = stats.firstOrNull()?.second.orEmpty()
+    val short = stringResource(R.string.recap_share_text_short, recap.year, lead)
+    val long = listOf(
+        stringResource(R.string.recap_share_header, recap.year),
+        stats.joinToString("\n") { (emoji, line) -> "$emoji $line" },
+        stringResource(R.string.recap_share_footer),
+    ).joinToString("\n\n")
+    val chat = stringResource(
+        R.string.recap_share_text_chat,
+        recap.year,
+        stats.take(CHAT_STATS).joinToString(" · ") { it.second },
+    )
     return mapOf(
         RecapShareTarget.X to short,
         RecapShareTarget.Pubky to long,
         RecapShareTarget.Threads to long,
         RecapShareTarget.WhatsApp to chat,
         RecapShareTarget.More to chat,
-        // Instagram discards a caption; the story image carries everything.
+        // Instagram discards a caption; the image carries everything.
         RecapShareTarget.Instagram to short,
     )
 }
+
+private const val CHAT_STATS = 2
 
 internal fun languageName(code: String, locale: Locale): String =
     Locale.forLanguageTag(code).getDisplayLanguage(locale)

@@ -155,11 +155,8 @@ private fun HomeScreenContent(
     if (state is HomeUiState.Empty) {
         HomeEmptyScreen(
             greetingName = state.identity.labelOrFallback(),
-            recapYear = state.recapYear,
             onCreateDeckClick = onCreateDeckClick,
             onDiscoverClick = onDiscoverClick,
-            onRecapClick = onRecapClick,
-            onRecapDismiss = onRecapDismiss,
         )
         return
     }
@@ -251,11 +248,8 @@ private fun WideHomeContent(
 @Composable
 private fun HomeEmptyScreen(
     greetingName: String,
-    recapYear: Int?,
     onCreateDeckClick: () -> Unit,
     onDiscoverClick: () -> Unit,
-    onRecapClick: () -> Unit,
-    onRecapDismiss: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -264,14 +258,6 @@ private fun HomeEmptyScreen(
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         GreetingHeader(name = greetingName)
-        recapYear?.let {
-            RecapBanner(
-                year = it,
-                onClick = onRecapClick,
-                onDismiss = onRecapDismiss,
-                modifier = Modifier.contentPane(PaneWidth.Focused),
-            )
-        }
         Column(
             modifier = Modifier
                 .weight(1f)

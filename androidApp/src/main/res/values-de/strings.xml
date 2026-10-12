@@ -931,8 +931,9 @@
     <string name="recap_share_title">Teile deinen Rückblick</string>
     <string name="recap_share_more">Mehr</string>
     <string name="recap_share_text_short">Mein Loopky-Rückblick %1$d 🦊 %2$s. #Loopky</string>
-    <string name="recap_share_text_long">Mein Loopky-Rückblick %1$d 🦊\n\n📚 %2$s\n🏆 %3$s\n🗂️ %4$s\n\nSieh ihn dir an und mach deinen eigenen:</string>
-    <string name="recap_share_text_chat">Schau dir mein %1$d bei Loopky an 🦊 %2$s, %3$s. Hier ansehen:</string>
+    <string name="recap_share_header">Mein Loopky-Rückblick %1$d 🦊</string>
+    <string name="recap_share_footer">Sieh ihn dir an und mach deinen eigenen:</string>
+    <string name="recap_share_text_chat">Schau dir mein %1$d bei Loopky an 🦊 %2$s. Hier ansehen:</string>
     <string name="recap_web_link">Webversion öffnen</string>
     <string name="recap_post_title">Rückblick auf Pubky posten?</string>
     <string name="recap_post_failed">Posten fehlgeschlagen. Versuch es noch einmal.</string>

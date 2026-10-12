@@ -931,8 +931,9 @@
     <string name="recap_share_title">Comparte tu resumen</string>
     <string name="recap_share_more">Más</string>
     <string name="recap_share_text_short">Mi Resumen Loopky %1$d 🦊 %2$s. #Loopky</string>
-    <string name="recap_share_text_long">Mi Resumen Loopky %1$d 🦊\n\n📚 %2$s\n🏆 %3$s\n🗂️ %4$s\n\nMíralo y crea el tuyo:</string>
-    <string name="recap_share_text_chat">Mira mi %1$d en Loopky 🦊 %2$s, %3$s. Échale un vistazo:</string>
+    <string name="recap_share_header">Mi Resumen Loopky %1$d 🦊</string>
+    <string name="recap_share_footer">Míralo y crea el tuyo:</string>
+    <string name="recap_share_text_chat">Mira mi %1$d en Loopky 🦊 %2$s. Échale un vistazo:</string>
     <string name="recap_web_link">Abrir la versión web</string>
     <string name="recap_post_title">¿Publicar tu resumen en Pubky?</string>
     <string name="recap_post_failed">No se pudo publicar. Inténtalo de nuevo.</string>

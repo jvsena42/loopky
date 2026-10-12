@@ -943,8 +943,9 @@
     <string name="recap_share_title">리캡 공유하기</string>
     <string name="recap_share_more">더보기</string>
     <string name="recap_share_text_short">나의 %1$d년 Loopky 리캡 🦊 %2$s. #Loopky</string>
-    <string name="recap_share_text_long">나의 %1$d년 Loopky 리캡 🦊\n\n📚 %2$s\n🏆 %3$s\n🗂️ %4$s\n\n구경하고 나만의 리캡도 만들어 보세요:</string>
-    <string name="recap_share_text_chat">나의 %1$d년 Loopky 🦊 %2$s, %3$s. 한번 보세요:</string>
+    <string name="recap_share_header">나의 %1$d년 Loopky 리캡 🦊</string>
+    <string name="recap_share_footer">구경하고 나만의 리캡도 만들어 보세요:</string>
+    <string name="recap_share_text_chat">나의 %1$d년 Loopky 🦊 %2$s. 한번 보세요:</string>
     <string name="recap_web_link">웹 버전 열기</string>
     <string name="recap_post_title">리캡을 Pubky에 게시할까요?</string>
     <string name="recap_post_failed">게시하지 못했어요. 다시 시도해 주세요.</string>

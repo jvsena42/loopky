@@ -15,6 +15,7 @@ import android.net.Uri
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.text.TextUtils
 import androidx.core.content.FileProvider
 import com.github.jvsena42.loopky.domain.model.RecapImageFormat
 import com.github.jvsena42.loopky.ui.components.loopkyQrMark
@@ -74,15 +75,23 @@ fun renderRecapImage(context: Context, text: RecapCardText, format: RecapImageFo
         y += block.layout.height + block.gapAfter
     }
     y += 26 * unit
-    drawPill(canvas, text.persona, margin, y, pillHeight, unit)
+    drawPill(canvas, text.persona, margin, y, pillHeight, unit, maxWidth = textWidth.toFloat())
 
     val footer = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(MUTED_ALPHA, 255, 255, 255)
         textSize = 34 * unit
         typeface = Typeface.DEFAULT_BOLD
     }
-    canvas.drawText(text.tagline, margin, height - margin, footer)
-    canvas.drawText(SITE, width - margin - footer.measureText(SITE), height - margin, footer)
+    // One line when both fit with air between them, two when they do not: at story scale the
+    // tagline alone is most of the width, and the pair were drawn over each other.
+    val sideBySide = footer.measureText(text.tagline) + footer.measureText(SITE) + 48 * unit <= textWidth
+    if (sideBySide) {
+        canvas.drawText(text.tagline, margin, height - margin, footer)
+        canvas.drawText(SITE, width - margin - footer.measureText(SITE), height - margin, footer)
+    } else {
+        canvas.drawText(text.tagline, margin, height - margin - footer.textSize * 1.5f, footer)
+        canvas.drawText(SITE, margin, height - margin, footer)
+    }
     return bitmap
 }
 
@@ -106,6 +115,7 @@ private fun block(
         .setAlignment(Layout.Alignment.ALIGN_NORMAL)
         .setLineSpacing(0f, LINE_SPACING)
         .setMaxLines(MAX_LINES)
+        .setEllipsize(TextUtils.TruncateAt.END)
         .build()
     return TextBlock(layout, gapAfter)
 }
@@ -127,12 +137,22 @@ private fun drawBrand(canvas: Canvas, context: Context, x: Float, y: Float, size
 }
 
 @Suppress("LongParameterList")
-private fun drawPill(canvas: Canvas, label: String, x: Float, y: Float, height: Float, unit: Float) {
+private fun drawPill(
+    canvas: Canvas,
+    title: String,
+    x: Float,
+    y: Float,
+    height: Float,
+    unit: Float,
+    maxWidth: Float,
+) {
     val text = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ACCENT_ORANGE
         textSize = 40 * unit
         typeface = Typeface.DEFAULT_BOLD
     }
+    // A long translated title is shortened rather than run past the right margin.
+    val label = TextUtils.ellipsize(title, text, maxWidth - 72 * unit, TextUtils.TruncateAt.END).toString()
     val width = text.measureText(label) + 72 * unit
     val plate = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
     canvas.drawRoundRect(RectF(x, y, x + width, y + height), height / 2f, height / 2f, plate)
