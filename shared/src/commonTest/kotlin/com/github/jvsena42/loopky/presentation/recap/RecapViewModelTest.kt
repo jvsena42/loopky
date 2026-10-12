@@ -134,6 +134,22 @@ class RecapViewModelTest {
         assertIs<RecapUiState.Content>(vm.state.value)
     }
 
+    /** A failed read used to land here as "nothing studied", stated as fact (#494). */
+    @Test
+    fun `review state that did not load whole is an error - never an empty or smaller year`() = runTest {
+        seedStudiedDeck()
+        srs.unreadDecks += "d1"
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertIs<RecapUiState.Error>(vm.state.value)
+
+        srs.unreadDecks.clear()
+        vm.onRetry()
+        advanceUntilIdle()
+
+        assertEquals(3, assertIs<RecapUiState.Content>(vm.state.value).recap.cardsStudied)
+    }
+
     @Test
     fun `sharing to an app hands over the caption with the link appended`() = runTest {
         seedStudiedDeck()
@@ -209,6 +225,21 @@ class RecapViewModelTest {
 
         vm.onShare(RecapShareTarget.Pubky, "My year")
         vm.onPostConfirm()
+        vm.onPostConfirm()
+        advanceUntilIdle()
+
+        assertEquals(1, discovery.recapPosts.size)
+    }
+
+    @Test
+    fun `asking for the pubky prompt again while a post is in flight cannot post twice`() = runTest {
+        seedStudiedDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onShare(RecapShareTarget.Pubky, "My year")
+        vm.onPostConfirm()
+        vm.onShare(RecapShareTarget.Pubky, "My year")
         vm.onPostConfirm()
         advanceUntilIdle()
 

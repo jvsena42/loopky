@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
 import com.github.jvsena42.loopky.data.pubky.SrsChunkDto
+import com.github.jvsena42.loopky.data.pubky.isNotFound
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
 import com.github.jvsena42.loopky.data.pubky.putWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.requireSession
@@ -194,6 +195,8 @@ class SrsRepositoryImpl(
             isComplete = isFullyMastered(cardIds, states, threshold),
         )
     }
+
+    override suspend fun isStateLoaded(deckId: String): Boolean = isLoadedFor(deckId)
 
     private suspend fun isLoadedFor(deckId: String): Boolean {
         val author = withCaches { deckAuthors[deckId] } ?: return false
@@ -627,9 +630,12 @@ class SrsRepositoryImpl(
         // 10,000-card deck would have its later chunks silently omitted — which the discovery
         // contract above forbids, since an unread chunk both hides review state and lets a later
         // write clobber it.
-        val urls = pubky.listAllEntriesOrEmpty(root)
+        val listing = pubky.listAllEntriesPartial(root)
+        // A deck never studied has no directory at all, which is an answer rather than a failure.
+        val listed = listing.isComplete || listing.failure?.isNotFound() == true
+        if (!listed) Log.e(TAG, "loadChunksFor: $root not listed whole — ${listing.failure?.message}")
 
-        urls.mapConcurrently { url ->
+        val read = listing.entries.mapConcurrently { url ->
             pubky.get(url)
                 .mapCatching { loopkyJson.decodeFromString<SrsChunkDto>(it) }
                 .onSuccess { dto ->
@@ -643,8 +649,12 @@ class SrsRepositoryImpl(
                     }
                 }
                 .onFailure { Log.e(TAG, "loadChunksFor: $url unreadable — ${it.message}", it) }
+                .isSuccess
         }
-        withCaches { loadedDecks.add(author to deckId) }
+        // Loaded only when all of it arrived (#494). Marking a partial read as loaded made it
+        // permanent for the process: nothing asked again, and nothing could tell a caller that
+        // the states it was handed were some of them. Left unmarked, the next caller retries.
+        if (listed && read.all { it }) withCaches { loadedDecks.add(author to deckId) }
     }
 
     private val loadedDecks = mutableSetOf<Pair<String, String>>()

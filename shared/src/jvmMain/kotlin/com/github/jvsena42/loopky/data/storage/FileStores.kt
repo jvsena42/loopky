@@ -124,14 +124,14 @@ internal class FileAppPreferences(private val store: JsonFileStore) : AppPrefere
         _backupReminderDay.update { day }
     }
 
-    private val _recapDismissedYear = MutableStateFlow(
-        store.string(KEY_RECAP_DISMISSED_YEAR)?.toIntOrNull() ?: NO_RECAP_DISMISSED_YEAR,
+    private val _recapDismissal = MutableStateFlow(
+        store.string(KEY_RECAP_DISMISSAL) ?: DEFAULT_RECAP_DISMISSAL,
     )
-    override val recapDismissedYear: Flow<Int> = _recapDismissedYear.asStateFlow()
+    override val recapDismissal: Flow<String> = _recapDismissal.asStateFlow()
 
-    override suspend fun setRecapDismissedYear(year: Int) {
-        withContext(Dispatchers.IO) { store.set(KEY_RECAP_DISMISSED_YEAR, year.toString()) }
-        _recapDismissedYear.update { year }
+    override suspend fun setRecapDismissal(value: String) {
+        withContext(Dispatchers.IO) { store.set(KEY_RECAP_DISMISSAL, value) }
+        _recapDismissal.update { value }
     }
 
     private val _updatePromptDay = MutableStateFlow(

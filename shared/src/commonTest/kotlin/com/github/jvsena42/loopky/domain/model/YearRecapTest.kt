@@ -185,6 +185,23 @@ class YearRecapTest {
     }
 
     @Test
+    fun `an empty deck made this year does not make a Creator`() {
+        val result = recap(owned = listOf(testDeck(id = "d1", createdAt = midYear, cardCount = 0)))
+
+        assertEquals(RecapPersona.Explorer, result.persona)
+    }
+
+    @Test
+    fun `a blank language tag is no language`() {
+        val result = recap(
+            owned = listOf(testDeck(id = "d1", frontLang = "", backLang = " es-ES ")),
+            states = mapOf("d1" to listOf(state("a", midYear))),
+        )
+
+        assertEquals(listOf("es"), result.languages)
+    }
+
+    @Test
     fun `a year with nothing studied and nothing created is empty`() {
         val result = recap(owned = listOf(testDeck(id = "d1", createdAt = y2026 - 1)))
 
@@ -244,14 +261,48 @@ class RecapWindowTest {
 class RecapShareTargetTest {
     private val url = "https://loopky.app/recap/?pubky=${"y".repeat(52)}&year=2026"
 
+    private companion object {
+        const val X_LINK = 23
+    }
+
     @Test
     fun `every target's post fits its limit and still ends with the link`() {
         val long = "I studied a lot this year. ".repeat(200)
         RecapShareTarget.entries.forEach { target ->
             val post = target.compose(long, url)
-            target.maxChars?.let { assertTrue(post.length <= it, "$target: ${post.length}") }
+            // X weighs a link as 23 whatever its length, so its posts are measured the way X
+            // measures them: everything before the link, plus 23.
+            val measured = if (target == RecapShareTarget.X) post.length - url.length + X_LINK else post.length
+            target.maxChars?.let { assertTrue(measured <= it, "$target: $measured") }
             assertTrue(post.endsWith(url), target.name)
         }
+    }
+
+    @Test
+    fun `a cut never lands between the two halves of an emoji`() {
+        val url = "https://loopky.app/recap/"
+        RecapShareTarget.entries.filter { it.maxChars != null }.forEach { target ->
+            // Every offset, so whichever one the limit falls on is covered.
+            repeat(4) { pad ->
+                val post = target.compose("x".repeat(pad) + "🏆".repeat(2_000), url)
+                val body = post.substringBefore("…")
+                assertFalse(body.last().isHighSurrogate(), "$target pad=$pad")
+                assertTrue(post.endsWith(url), "$target pad=$pad")
+            }
+        }
+    }
+
+    @Test
+    fun `X counts a link as 23 and each CJK character as two`() {
+        val link = "https://loopky.app/recap/?pubky=${"y".repeat(52)}&year=2026"
+        // 280 - 23 for the link - 2 for the break = 255 left: 127 kana is 254, 128 is 256.
+        val fits = RecapShareTarget.X.compose("あ".repeat(127), link)
+        val over = RecapShareTarget.X.compose("あ".repeat(128), link)
+
+        assertEquals("あ".repeat(127) + "\n\n" + link, fits)
+        assertTrue(over.contains("…"), over)
+        // And Latin text is not cut short for the link's real length, which X does not count.
+        assertEquals("a".repeat(255) + "\n\n" + link, RecapShareTarget.X.compose("a".repeat(255), link))
     }
 
     @Test

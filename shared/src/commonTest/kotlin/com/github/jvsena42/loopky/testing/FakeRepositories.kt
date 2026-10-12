@@ -31,7 +31,6 @@ import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.NO_BACKUP_REMINDER_DAY
-import com.github.jvsena42.loopky.data.storage.NO_RECAP_DISMISSED_YEAR
 import com.github.jvsena42.loopky.data.storage.NO_UPDATE_PROMPT_DAY
 import com.github.jvsena42.loopky.data.storage.PendingReview
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
@@ -775,6 +774,11 @@ class FakeSrsRepository : SrsRepository {
     override suspend fun statesForDeck(deckId: String): Map<String, SrsState> =
         states.filterKeys { stateDecks[it] == deckId }
 
+    /** Deck ids whose review state "failed to load", as a homeserver hiccup leaves them. */
+    val unreadDecks = mutableSetOf<String>()
+
+    override suspend fun isStateLoaded(deckId: String): Boolean = deckId !in unreadDecks
+
     /**
      * Same rule the real repository uses: a queued card with review state is due, one without has
      * never been seen. Tests that want a *due* card therefore have to seed [states] for it — which
@@ -1451,7 +1455,7 @@ class FakeAppPreferences(
     avatarNudgeDismissed: Boolean = false,
     pendingDeckFollow: String = "",
     backupReminderDay: Int = NO_BACKUP_REMINDER_DAY,
-    recapDismissedYear: Int = NO_RECAP_DISMISSED_YEAR,
+    recapDismissal: String = "",
     updatePromptDay: Int = NO_UPDATE_PROMPT_DAY,
 ) : AppPreferences {
     private val _shareOnPubky = MutableStateFlow(shareOnPubky)
@@ -1531,13 +1535,17 @@ class FakeAppPreferences(
         _backupReminderDay.update { day }
     }
 
-    private val _recapDismissedYear = MutableStateFlow(recapDismissedYear)
-    override val recapDismissedYear: Flow<Int> = _recapDismissedYear.asStateFlow()
+    private val _recapDismissal = MutableStateFlow(recapDismissal)
+    override val recapDismissal: Flow<String> = _recapDismissal.asStateFlow()
 
-    val recapDismissedYearValue: Int get() = _recapDismissedYear.value
+    val recapDismissalValue: String get() = _recapDismissal.value
 
-    override suspend fun setRecapDismissedYear(year: Int) {
-        _recapDismissedYear.update { year }
+    /** Holds [setRecapDismissal] open, for the window in which the write has not landed yet. */
+    var recapDismissalGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun setRecapDismissal(value: String) {
+        recapDismissalGate?.await()
+        _recapDismissal.update { value }
     }
 
     private val _updatePromptDay = MutableStateFlow(updatePromptDay)

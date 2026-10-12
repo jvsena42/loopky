@@ -12,7 +12,6 @@ import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.DeckCacheStore
-import com.github.jvsena42.loopky.data.storage.NO_RECAP_DISMISSED_YEAR
 import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
@@ -195,7 +194,7 @@ class AccountEraser(
             // as its own.
             studyProgress.save(owner, DailyStudyProgress(dayIndex = 0, newCards = 0, reviews = 0))
             preferences.setCachedStudySettings("")
-            preferences.setRecapDismissedYear(NO_RECAP_DISMISSED_YEAR)
+            preferences.setRecapDismissal("")
             unsplashKeyStore.clear()
             // Cleared, not emptied: every deck title, description and tag of the deleted account
             // is in plaintext preferences, and writing an empty snapshot would still leave a record

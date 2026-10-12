@@ -5,7 +5,7 @@ package com.github.jvsena42.loopky.domain.model
  * and the dated deck manifests. Nothing records history, so there is no review total and no streak
  * — a card reviewed forty times this year and one reviewed once look the same.
  *
- * **The site computes this a second time** (`assets/js/recap.js` in `loopky.github.io`) from the
+ * **The site computes this a second time** (`assets/js/recap-core.js` in `loopky.github.io`) from the
  * same public records, so a rule changed here is a rule changed there. `recap-fixture.json` is
  * asserted by both suites. See Architecture.md §8.8.
  */
@@ -50,7 +50,7 @@ data class YearRecap(
             val cardsMastered = studied.sumOf { deck -> deck.states.count { it.intervalDays >= thresholdDays } }
             val cardsCreated = created.sumOf { it.cardCount }
             val languages = ranked(
-                studied.flatMap { listOfNotNull(it.deck.frontLang, it.deck.backLang).map(::baseSubtag).distinct() },
+                studied.flatMap { languagesOf(it.deck) },
             )
             return YearRecap(
                 year = year,
@@ -71,7 +71,7 @@ data class YearRecap(
                 topics = ranked(studied.flatMap { topicsOf(it.deck) }).take(MAX_TOPICS),
                 persona = when {
                     languages.size >= POLYGLOT_LANGUAGES -> RecapPersona.Polyglot
-                    created.isNotEmpty() && cardsCreated >= cardsStudied -> RecapPersona.Creator
+                    cardsCreated > 0 && cardsCreated >= cardsStudied -> RecapPersona.Creator
                     cardsStudied > 0 && cardsMastered * 2 >= cardsStudied -> RecapPersona.Master
                     else -> RecapPersona.Explorer
                 },
@@ -92,7 +92,12 @@ data class YearRecap(
                 .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
                 .map { it.key }
 
-        private fun baseSubtag(tag: String): String = tag.substringBefore('-').lowercase()
+        /** A blank tag is no language: a manifest can carry `"front_lang": ""`. */
+        private fun languagesOf(deck: Deck): List<String> =
+            listOfNotNull(deck.frontLang, deck.backLang)
+                .map { it.substringBefore('-').trim().lowercase() }
+                .filter { it.isNotBlank() }
+                .distinct()
 
         private const val MAX_TOPICS = 3
         private const val POLYGLOT_LANGUAGES = 3

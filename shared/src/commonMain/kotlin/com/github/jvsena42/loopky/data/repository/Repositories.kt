@@ -1191,6 +1191,14 @@ interface SrsRepository {
     suspend fun statesForDeck(deckId: String): Map<String, SrsState>
 
     /**
+     * Whether [deckId]'s review state has been read **whole** this session. False until it has
+     * been asked for, and false after a read that lost a listing page or a chunk — which is the
+     * case this exists for: [statesForDeck] then answers with what did arrive, and a caller that
+     * is about to state a total as fact has to know it is not one.
+     */
+    suspend fun isStateLoaded(deckId: String): Boolean
+
+    /**
      * Due counts per deck id from what is already in memory — **no homeserver read**. For a caller
      * reacting to a review it just made; [dueForDeck] re-syncs the manifest, which is right when
      * opening a screen and badly wrong once per graded card.

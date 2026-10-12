@@ -58,6 +58,9 @@ class RecapViewModel(
                 // Review state is loaded per deck as a side effect of counting it; statesForDeck
                 // below only reads what this leaves in memory.
                 srsRepository.countsToday(decks)
+                // A deck whose state did not arrive whole would make every total below smaller,
+                // down to "nothing studied" — stated as fact, and then shared. Say it failed.
+                check(decks.all { srsRepository.isStateLoaded(it.id) }) { "review state not read whole" }
                 settingsRepository.ensureLoaded()
                 val recap = YearRecap.from(
                     year = year,
@@ -93,9 +96,13 @@ class RecapViewModel(
      */
     fun onShare(target: RecapShareTarget, text: String) {
         val content = _state.value as? RecapUiState.Content ?: return
+        // A post already on its way must not be replaced by a fresh prompt that can be confirmed.
+        if (content.pubkyPrompt?.isPosting == true) return
         val post = target.compose(text, content.webUrl)
         if (target == RecapShareTarget.Pubky) {
-            _state.update { content.copy(pubkyPrompt = RecapPostPrompt(preview = post)) }
+            _state.update { current ->
+                (current as? RecapUiState.Content)?.copy(pubkyPrompt = RecapPostPrompt(preview = post)) ?: current
+            }
         } else {
             _effects.tryEmit(RecapEffect.Share(target, content.recap, text = post, url = content.webUrl))
         }
@@ -104,7 +111,9 @@ class RecapViewModel(
     fun onPostConfirm() {
         val content = _state.value as? RecapUiState.Content ?: return
         val prompt = content.pubkyPrompt?.takeUnless { it.isPosting } ?: return
-        _state.update { content.copy(pubkyPrompt = prompt.copy(isPosting = true)) }
+        _state.update { current ->
+            (current as? RecapUiState.Content)?.copy(pubkyPrompt = prompt.copy(isPosting = true)) ?: current
+        }
         viewModelScope.launch {
             discoveryRepository.postRecap(prompt.preview, content.webUrl)
                 .onSuccess { _effects.emit(RecapEffect.Posted) }

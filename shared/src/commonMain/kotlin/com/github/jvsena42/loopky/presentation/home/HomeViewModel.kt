@@ -107,13 +107,11 @@ class HomeViewModel(
                         .getOrDefault(emptyList())
                     val decks = (owned + followed).distinctBy { it.id }
 
+                    val next = if (decks.isEmpty()) HomeUiState.Empty(identity) else content(identity, decks)
+                    // Asked after the round trips above, not before them: a dismissal tapped
+                    // while this load was in flight must not be undone by an answer read earlier.
                     val recapYear = recapYearOffered(identity)
-                    val next = if (decks.isEmpty()) {
-                        HomeUiState.Empty(identity, recapYear)
-                    } else {
-                        content(identity, decks).copy(recapYear = recapYear)
-                    }
-                    _state.update { next }
+                    _state.update { (next as? HomeUiState.Content)?.copy(recapYear = recapYear) ?: next }
                     Log.d(TAG, "load: owned=${owned.size} followed=${followed.size}")
                     refreshIdentity(identity)
                 }
@@ -189,6 +187,9 @@ class HomeViewModel(
         // to shorten. This half is a disk read, so the goal shown is the user's own rather than the
         // built-in default. The real record still arrives with the load running behind this.
         runSuspendCatching { settingsRepository.restoreCachedSettings() }
+        // Not left for the load behind this to add: the banner would vanish on every refresh and
+        // pop in over a painted screen on a cold start.
+        val recapYear = recapYearOffered(session?.identity)
         _state.update {
             HomeUiState.Content(
                 identity = session?.identity,
@@ -198,6 +199,7 @@ class HomeViewModel(
                 newCardsGoal = settingsRepository.studySettings.value.settings.newCardsPerDayGoal,
                 decks = decks.map { deck -> deck.toSummary(DeckCounts()) },
                 countsKnown = false,
+                recapYear = recapYear,
             )
         }
     }
@@ -250,19 +252,30 @@ class HomeViewModel(
         _state.update { current ->
             when (current) {
                 is HomeUiState.Content -> current.copy(identity = fresh)
-                is HomeUiState.Empty -> current.copy(identity = fresh)
+                is HomeUiState.Empty -> HomeUiState.Empty(fresh)
                 is HomeUiState.Error -> current.copy(identity = fresh)
                 HomeUiState.Loading -> current
             }
         }
     }
 
-    /** The year whose recap Home should offer right now, or null. Never offered signed out. */
+    /**
+     * The year whose recap Home should offer right now, or null. Never offered signed out, and
+     * never to an account with no decks — its recap could only say there is nothing in it.
+     */
     private suspend fun recapYearOffered(identity: PubkyIdentity?): Int? {
         val now = recapClock.now()
         if (identity == null || !RecapWindow.isOpenAt(now)) return null
-        return RecapWindow.yearAt(now).takeIf { it != appPreferences.recapDismissedYear.first() }
+        val dismissal = recapDismissalKey(RecapWindow.yearAt(now), identity)
+        // Both the stored answer and this instance's own: the write is launched, so for a moment
+        // after the tap only [dismissedHere] knows.
+        if (dismissal == dismissedHere || dismissal == appPreferences.recapDismissal.first()) return null
+        return RecapWindow.yearAt(now)
     }
+
+    private var dismissedHere: String? = null
+
+    private fun recapDismissalKey(year: Int, identity: PubkyIdentity) = "$year:${identity.pubky}"
 
     fun onRecapClick() {
         val year = _state.value.recapYear ?: return
@@ -270,15 +283,13 @@ class HomeViewModel(
     }
 
     fun onRecapDismiss() {
-        val year = _state.value.recapYear ?: return
-        _state.update { current ->
-            when (current) {
-                is HomeUiState.Content -> current.copy(recapYear = null)
-                is HomeUiState.Empty -> current.copy(recapYear = null)
-                else -> current
-            }
-        }
-        viewModelScope.launch { appPreferences.setRecapDismissedYear(year) }
+        val content = _state.value as? HomeUiState.Content ?: return
+        val year = content.recapYear ?: return
+        val identity = content.identity ?: return
+        val dismissal = recapDismissalKey(year, identity)
+        dismissedHere = dismissal
+        _state.update { current -> (current as? HomeUiState.Content)?.copy(recapYear = null) ?: current }
+        viewModelScope.launch { appPreferences.setRecapDismissal(dismissal) }
     }
 
     fun onStartStudyClick() {
@@ -328,7 +339,7 @@ sealed interface HomeUiState {
     data object Loading : HomeUiState
 
     /** [identity] is null only while signed out — the screen greets a nameless user then. */
-    data class Empty(val identity: PubkyIdentity?, override val recapYear: Int? = null) : HomeUiState
+    data class Empty(val identity: PubkyIdentity?) : HomeUiState
     data class Content(
         val identity: PubkyIdentity?,
         /** Cards previously graded whose review has come up. Never-seen cards are [newToday]. */

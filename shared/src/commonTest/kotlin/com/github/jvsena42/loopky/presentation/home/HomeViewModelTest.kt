@@ -13,6 +13,7 @@ import com.github.jvsena42.loopky.testing.FakeDeckRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
 import com.github.jvsena42.loopky.testing.FakeSettingsRepository
 import com.github.jvsena42.loopky.testing.FakeSrsRepository
+import com.github.jvsena42.loopky.testing.TEST_PUBKY
 import com.github.jvsena42.loopky.testing.fakeSession
 import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testCoverImage
@@ -544,13 +545,13 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `a user with no decks is still offered the banner`() = runTest {
+    fun `an account with no decks is not offered a recap it could only find empty`() = runTest {
         now = DEC_20_2026
         val vm = viewModel()
 
         advanceUntilIdle()
 
-        assertEquals(2026, assertIs<HomeUiState.Empty>(vm.state.value).recapYear)
+        assertNull(assertIs<HomeUiState.Empty>(vm.state.value).recapYear)
     }
 
     @Test
@@ -576,7 +577,7 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertNull(vm.state.value.recapYear)
-        assertEquals(2026, preferences.recapDismissedYearValue)
+        assertEquals("2026:$TEST_PUBKY", preferences.recapDismissalValue)
         val reopened = viewModel()
         advanceUntilIdle()
         assertNull(reopened.state.value.recapYear)
@@ -585,6 +586,65 @@ class HomeViewModelTest {
         val nextYear = viewModel()
         advanceUntilIdle()
         assertEquals(2027, nextYear.state.value.recapYear)
+    }
+
+    /** The banner was read before the load's round trips and written after them (#489 review). */
+    @Test
+    fun `a dismissal tapped while a reload is in flight is not undone when it lands`() = runTest {
+        now = DEC_20_2026
+        val deck = testDeck(id = "deck1")
+        deckRepo.decks["deck1"] = deck
+        // A refresh repaints from the cache first; without one there is no banner left to dismiss.
+        deckRepo.cached = CachedDecks(owned = listOf(deck), followed = emptyList())
+        val vm = viewModel()
+        advanceUntilIdle()
+        // The preference write is held, so the reload below can only learn of the dismissal from
+        // the ViewModel itself — which is the window the bug lived in.
+        preferences.recapDismissalGate = CompletableDeferred()
+        val gate = CompletableDeferred<Unit>()
+        deckRepo.listOwnedGate = gate
+
+        vm.onRefresh()
+        advanceUntilIdle()
+        vm.onRecapDismiss()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertNull(vm.state.value.recapYear)
+    }
+
+    @Test
+    fun `a refresh keeps the banner on screen while it loads`() = runTest {
+        now = DEC_20_2026
+        val deck = testDeck(id = "deck1")
+        deckRepo.decks["deck1"] = deck
+        deckRepo.cached = CachedDecks(owned = listOf(deck), followed = emptyList())
+        val vm = viewModel()
+        advanceUntilIdle()
+        deckRepo.listOwnedGate = CompletableDeferred()
+
+        vm.onRefresh()
+        advanceUntilIdle()
+
+        val painted = assertIs<HomeUiState.Content>(vm.state.value)
+        assertFalse(painted.countsKnown)
+        assertEquals(2026, painted.recapYear)
+    }
+
+    @Test
+    fun `one account dismissing does not silence the banner for the next one on this device`() = runTest {
+        now = DEC_20_2026
+        deckRepo.decks["deck1"] = testDeck(id = "deck1")
+        val first = viewModel()
+        advanceUntilIdle()
+        first.onRecapDismiss()
+        advanceUntilIdle()
+
+        identityRepo.session = fakeSession(pubky = "someoneelse")
+        val second = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(2026, second.state.value.recapYear)
     }
 
     @Test
