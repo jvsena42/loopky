@@ -52,6 +52,8 @@ object PubkyLinks {
     private val WEB_HOSTS = listOf("loopky.app", "www.loopky.app")
     private const val WEB_DECK_PATH = "deck"
     private const val WEB_PROFILE_PATH = "profile"
+    private const val WEB_RECAP_PATH = "recap"
+    private const val PARAM_YEAR = "year"
     private const val PARAM_AUTHOR = "author"
     private const val PARAM_DECK = "id"
     private const val PARAM_PUBKY = "pubky"
@@ -157,4 +159,11 @@ object PubkyLinks {
     /** The link Loopky shares for someone's profile. The deck equivalent is `Deck.webUrl`. */
     fun profileWebUrl(pubky: String): String =
         "$WEB_ORIGIN/$WEB_PROFILE_PATH/?$PARAM_PUBKY=${encodeUriComponent(pubky)}"
+
+    /**
+     * The page that draws [pubky]'s recap for [year] from their public records. Deliberately not a
+     * path [parse] recognises: it is for people who do not have the app.
+     */
+    fun recapWebUrl(pubky: String, year: Int): String =
+        "$WEB_ORIGIN/$WEB_RECAP_PATH/?$PARAM_PUBKY=${encodeUriComponent(pubky)}&$PARAM_YEAR=$year"
 }
