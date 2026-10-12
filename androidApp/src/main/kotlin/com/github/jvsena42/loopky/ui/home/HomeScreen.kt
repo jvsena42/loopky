@@ -54,6 +54,7 @@ fun HomeRoute(
     onStartStudy: () -> Unit = {},
     onOpenDeck: (String, String?) -> Unit = { _, _ -> },
     onSignedOut: () -> Unit = {},
+    onOpenRecap: (Int) -> Unit = {},
 ) {
     val viewModel = koinViewModel<HomeViewModel>()
 
@@ -63,6 +64,7 @@ fun HomeRoute(
     val currentStart by rememberUpdatedState(onStartStudy)
     val currentOpen by rememberUpdatedState(onOpenDeck)
     val currentSignedOut by rememberUpdatedState(onSignedOut)
+    val currentRecap by rememberUpdatedState(onOpenRecap)
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
@@ -73,6 +75,7 @@ fun HomeRoute(
                 HomeEffect.NavigateStartStudy -> currentStart()
                 is HomeEffect.NavigateDeck -> currentOpen(effect.deckId, effect.authorPubky)
                 HomeEffect.NavigateToOnboarding -> currentSignedOut()
+                is HomeEffect.NavigateRecap -> currentRecap(effect.year)
             }
         }
     }

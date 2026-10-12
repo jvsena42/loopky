@@ -8,12 +8,15 @@ import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.data.repository.SettingsRepository
 import com.github.jvsena42.loopky.data.repository.SrsRepository
+import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.domain.model.DEFAULT_NEW_CARDS_PER_DAY
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckCounts
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
+import com.github.jvsena42.loopky.domain.model.RecapClock
+import com.github.jvsena42.loopky.domain.model.RecapWindow
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.Job
@@ -23,14 +26,18 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+@Suppress("TooManyFunctions")
 class HomeViewModel(
     private val identityRepository: IdentityRepository,
     private val deckRepository: DeckRepository,
     private val srsRepository: SrsRepository,
     private val settingsRepository: SettingsRepository,
+    private val appPreferences: AppPreferences,
+    private val recapClock: RecapClock,
 ) : ViewModel() {
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
@@ -100,7 +107,12 @@ class HomeViewModel(
                         .getOrDefault(emptyList())
                     val decks = (owned + followed).distinctBy { it.id }
 
-                    val next = if (decks.isEmpty()) HomeUiState.Empty(identity) else content(identity, decks)
+                    val recapYear = recapYearOffered(identity)
+                    val next = if (decks.isEmpty()) {
+                        HomeUiState.Empty(identity, recapYear)
+                    } else {
+                        content(identity, decks).copy(recapYear = recapYear)
+                    }
                     _state.update { next }
                     Log.d(TAG, "load: owned=${owned.size} followed=${followed.size}")
                     refreshIdentity(identity)
@@ -238,11 +250,35 @@ class HomeViewModel(
         _state.update { current ->
             when (current) {
                 is HomeUiState.Content -> current.copy(identity = fresh)
-                is HomeUiState.Empty -> HomeUiState.Empty(fresh)
+                is HomeUiState.Empty -> current.copy(identity = fresh)
                 is HomeUiState.Error -> current.copy(identity = fresh)
                 HomeUiState.Loading -> current
             }
         }
+    }
+
+    /** The year whose recap Home should offer right now, or null. Never offered signed out. */
+    private suspend fun recapYearOffered(identity: PubkyIdentity?): Int? {
+        val now = recapClock.now()
+        if (identity == null || !RecapWindow.isOpenAt(now)) return null
+        return RecapWindow.yearAt(now).takeIf { it != appPreferences.recapDismissedYear.first() }
+    }
+
+    fun onRecapClick() {
+        val year = _state.value.recapYear ?: return
+        viewModelScope.launch { _effects.emit(HomeEffect.NavigateRecap(year)) }
+    }
+
+    fun onRecapDismiss() {
+        val year = _state.value.recapYear ?: return
+        _state.update { current ->
+            when (current) {
+                is HomeUiState.Content -> current.copy(recapYear = null)
+                is HomeUiState.Empty -> current.copy(recapYear = null)
+                else -> current
+            }
+        }
+        viewModelScope.launch { appPreferences.setRecapDismissedYear(year) }
     }
 
     fun onStartStudyClick() {
@@ -286,10 +322,13 @@ class HomeViewModel(
 }
 
 sealed interface HomeUiState {
+    /** The year whose recap banner is showing, or null. Set only inside `RecapWindow`. */
+    val recapYear: Int? get() = null
+
     data object Loading : HomeUiState
 
     /** [identity] is null only while signed out — the screen greets a nameless user then. */
-    data class Empty(val identity: PubkyIdentity?) : HomeUiState
+    data class Empty(val identity: PubkyIdentity?, override val recapYear: Int? = null) : HomeUiState
     data class Content(
         val identity: PubkyIdentity?,
         /** Cards previously graded whose review has come up. Never-seen cards are [newToday]. */
@@ -316,6 +355,7 @@ sealed interface HomeUiState {
          * which told users who owned decks to "create or import a deck".
          */
         val nextDueAtMillis: Long? = null,
+        override val recapYear: Int? = null,
     ) : HomeUiState {
         /**
          * Nothing left to study at all — reviews *and* new cards.
@@ -376,6 +416,8 @@ sealed interface HomeEffect {
 
     /** [authorPubky] is null only when the row could not name an author. */
     data class NavigateDeck(val deckId: String, val authorPubky: String? = null) : HomeEffect
+
+    data class NavigateRecap(val year: Int) : HomeEffect
 
     /** The stored session can no longer be used — the user must sign in again. */
     data object NavigateToOnboarding : HomeEffect

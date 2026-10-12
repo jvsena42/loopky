@@ -34,6 +34,7 @@ import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
+import com.github.jvsena42.loopky.domain.model.RecapClock
 import com.github.jvsena42.loopky.domain.model.avatarDisplayUrl
 import com.github.jvsena42.loopky.domain.model.frontBackOf
 import com.github.jvsena42.loopky.platform.BackgroundTasks
@@ -71,6 +72,7 @@ import com.github.jvsena42.loopky.presentation.profile.FollowListViewModel
 import com.github.jvsena42.loopky.presentation.profile.FollowSource
 import com.github.jvsena42.loopky.presentation.profile.FriendProfileViewModel
 import com.github.jvsena42.loopky.presentation.profile.ProfileViewModel
+import com.github.jvsena42.loopky.presentation.recap.RecapViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
 import com.github.jvsena42.loopky.presentation.settings.SettingsViewModel
@@ -286,6 +288,11 @@ object IosDependencies {
      */
     fun followListViewModel(pubky: String, source: FollowSource): FollowListViewModel =
         koin.get { parametersOf(pubky, source) }
+
+    fun recapViewModel(year: Int): RecapViewModel = koin.get { parametersOf(year) }
+
+    /** For a debug launch argument only — see [RecapClock]. */
+    fun recapClock(): RecapClock = koin.get()
 
     // ---- Identity: signup, backup, restore (#149) ----
 

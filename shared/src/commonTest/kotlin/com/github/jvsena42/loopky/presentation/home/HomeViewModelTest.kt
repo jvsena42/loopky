@@ -5,8 +5,10 @@ import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.SettingsOrigin
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
+import com.github.jvsena42.loopky.domain.model.RecapClock
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.StudySettings
+import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
 import com.github.jvsena42.loopky.testing.FakeSettingsRepository
@@ -61,7 +63,14 @@ class HomeViewModelTest {
         deckRepository = deckRepo,
         srsRepository = srsRepo,
         settingsRepository = settingsRepo,
+        appPreferences = preferences,
+        recapClock = RecapClock(systemNow = { now }),
     )
+
+    private val preferences = FakeAppPreferences()
+
+    /** 20 October 2026 unless a test moves it: outside the recap window. */
+    private var now = 1_792_454_400_000L
 
     /** Subscribes eagerly so effects emitted by the init-launched load are not dropped. */
     private fun TestScope.collectEffects(vm: HomeViewModel): List<HomeEffect> {
@@ -518,5 +527,81 @@ class HomeViewModelTest {
         // Today's deck rows drew the title initial only; the ref never reached them.
         val summary = assertIs<HomeUiState.Content>(vm.state.value).decks.single()
         assertEquals(cover, summary.coverImage)
+    }
+
+    @Test
+    fun `the recap banner shows only in the second half of December`() = runTest {
+        deckRepo.decks["deck1"] = testDeck(id = "deck1")
+        val outside = viewModel()
+        advanceUntilIdle()
+        assertNull(outside.state.value.recapYear)
+
+        now = DEC_20_2026
+        val inside = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(2026, inside.state.value.recapYear)
+    }
+
+    @Test
+    fun `a user with no decks is still offered the banner`() = runTest {
+        now = DEC_20_2026
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        assertEquals(2026, assertIs<HomeUiState.Empty>(vm.state.value).recapYear)
+    }
+
+    @Test
+    fun `nobody signed out is offered a recap`() = runTest {
+        now = DEC_20_2026
+        identityRepo.session = null
+        deckRepo.decks["deck1"] = testDeck(id = "deck1")
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        assertNull(vm.state.value.recapYear)
+    }
+
+    @Test
+    fun `dismissing the banner silences this year and not the next`() = runTest {
+        now = DEC_20_2026
+        deckRepo.decks["deck1"] = testDeck(id = "deck1")
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onRecapDismiss()
+        advanceUntilIdle()
+
+        assertNull(vm.state.value.recapYear)
+        assertEquals(2026, preferences.recapDismissedYearValue)
+        val reopened = viewModel()
+        advanceUntilIdle()
+        assertNull(reopened.state.value.recapYear)
+
+        now = DEC_20_2026 + 365L * 86_400_000L
+        val nextYear = viewModel()
+        advanceUntilIdle()
+        assertEquals(2027, nextYear.state.value.recapYear)
+    }
+
+    @Test
+    fun `tapping the banner opens that year's recap`() = runTest {
+        now = DEC_20_2026
+        deckRepo.decks["deck1"] = testDeck(id = "deck1")
+        val vm = viewModel()
+        val effects = collectEffects(vm)
+        advanceUntilIdle()
+
+        vm.onRecapClick()
+        advanceUntilIdle()
+
+        assertEquals(listOf<HomeEffect>(HomeEffect.NavigateRecap(2026)), effects)
+    }
+
+    private companion object {
+        const val DEC_20_2026 = 1_797_724_800_000L
     }
 }
