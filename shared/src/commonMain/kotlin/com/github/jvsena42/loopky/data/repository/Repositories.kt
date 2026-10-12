@@ -911,6 +911,8 @@ interface DiscoveryRepository {
      * **Not gated by [AppPreferences.shareOnPubky]**, unlike [announceDeck]. That preference
      * silences an offer the app makes unprompted; this is only ever reached from a "Post on Pubky"
      * button, behind a preview of exactly what will be written.
+     *
+     * The post is labelled [ReservedTags.RECAP], best-effort: a failed label never fails the post.
      */
     suspend fun postRecap(content: String, url: String): Result<PubkyUri>
 

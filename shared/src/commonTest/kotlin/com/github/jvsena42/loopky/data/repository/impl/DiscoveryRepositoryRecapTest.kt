@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.data.repository.impl
 import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.pubky.PostDto
 import com.github.jvsena42.loopky.data.pubky.PostKinds
+import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeHttpFetcher
@@ -57,6 +58,24 @@ class DiscoveryRepositoryRecapTest {
         assertEquals(url, post.embed?.uri)
         assertNull(post.attachments)
         assertTrue(post.content.endsWith(url), post.content)
+    }
+
+    @Test
+    fun `a recap post carries the reserved recap label`() = runTest {
+        val uri = repo.postRecap("My year", "https://loopky.app/recap/").getOrThrow()
+
+        assertEquals(listOf(uri to ReservedTags.RECAP), tagRepo.putReservedTags)
+        assertEquals("loopky-recap", ReservedTags.RECAP.value)
+        assertTrue(ReservedTags.RECAP in ReservedTags.ALL)
+    }
+
+    @Test
+    fun `a recap post survives its label failing to write`() = runTest {
+        tagRepo.failWith = IllegalStateException("tags are down")
+
+        val result = repo.postRecap("My year", "https://loopky.app/recap/")
+
+        assertTrue(result.isSuccess)
     }
 
     @Test

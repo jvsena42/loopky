@@ -2,7 +2,7 @@ package com.github.jvsena42.loopky.domain.model
 
 /**
  * Labels Loopky writes on its own behalf. With no backend, tag records are the only thing Loopky
- * publishes that a network-wide index can answer questions about, so these four labels *are* the
+ * publishes that a network-wide index can answer questions about, so these labels *are* the
  * app's global index: they make users and decks findable by strangers with no follow relationship
  * (issue #40).
  *
@@ -43,7 +43,10 @@ object ReservedTags {
      */
     val CLONED = Tag("${PREFIX}cloned")
 
-    val ALL: Set<Tag> = setOf(USER, DECK, FOLLOWED, CLONED)
+    /** On a recap's pubky.app post, so every shared recap is one indexed list. */
+    val RECAP = Tag("${PREFIX}recap")
+
+    val ALL: Set<Tag> = setOf(USER, DECK, FOLLOWED, CLONED, RECAP)
 
     /**
      * True for anything in the reserved namespace, not just [ALL] — a label a future version
