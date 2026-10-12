@@ -108,4 +108,24 @@
         <item quantity="one">You tried %1$d card.</item>
         <item quantity="other">You tried %1$d cards.</item>
     </plurals>
+    <plurals name="recap_stat_cards_studied">
+        <item quantity="one">%1$d card studied</item>
+        <item quantity="other">%1$d cards studied</item>
+    </plurals>
+    <plurals name="recap_stat_cards_mastered">
+        <item quantity="one">%1$d card mastered</item>
+        <item quantity="other">%1$d cards mastered</item>
+    </plurals>
+    <plurals name="recap_stat_decks_studied">
+        <item quantity="one">%1$d deck studied</item>
+        <item quantity="other">%1$d decks studied</item>
+    </plurals>
+    <plurals name="recap_stat_decks_created">
+        <item quantity="one">%1$d deck created</item>
+        <item quantity="other">%1$d decks created</item>
+    </plurals>
+    <plurals name="recap_stat_cards_created">
+        <item quantity="one">%1$d card written</item>
+        <item quantity="other">%1$d cards written</item>
+    </plurals>
 </resources>

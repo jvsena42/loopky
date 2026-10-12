@@ -128,4 +128,29 @@
         <item quantity="many">Probaste %1$d de tarjetas.</item>
         <item quantity="other">Probaste %1$d tarjetas.</item>
     </plurals>
+    <plurals name="recap_stat_cards_studied">
+        <item quantity="one">%1$d tarjeta estudiada</item>
+        <item quantity="many">%1$d de tarjetas estudiadas</item>
+        <item quantity="other">%1$d tarjetas estudiadas</item>
+    </plurals>
+    <plurals name="recap_stat_cards_mastered">
+        <item quantity="one">%1$d tarjeta dominada</item>
+        <item quantity="many">%1$d de tarjetas dominadas</item>
+        <item quantity="other">%1$d tarjetas dominadas</item>
+    </plurals>
+    <plurals name="recap_stat_decks_studied">
+        <item quantity="one">%1$d mazo estudiado</item>
+        <item quantity="many">%1$d de mazos estudiados</item>
+        <item quantity="other">%1$d mazos estudiados</item>
+    </plurals>
+    <plurals name="recap_stat_decks_created">
+        <item quantity="one">%1$d mazo creado</item>
+        <item quantity="many">%1$d de mazos creados</item>
+        <item quantity="other">%1$d mazos creados</item>
+    </plurals>
+    <plurals name="recap_stat_cards_created">
+        <item quantity="one">%1$d tarjeta escrita</item>
+        <item quantity="many">%1$d de tarjetas escritas</item>
+        <item quantity="other">%1$d tarjetas escritas</item>
+    </plurals>
 </resources>

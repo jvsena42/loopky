@@ -30,6 +30,7 @@ import com.github.jvsena42.loopky.data.repository.impl.SignupRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SrsRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.TagRepositoryImpl
 import com.github.jvsena42.loopky.data.storage.UpdatePromptGate
+import com.github.jvsena42.loopky.domain.model.RecapClock
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.presentation.backup.BackupFileViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupPhraseViewModel
@@ -55,6 +56,7 @@ import com.github.jvsena42.loopky.presentation.onboarding.OnboardingViewModel
 import com.github.jvsena42.loopky.presentation.profile.FollowListViewModel
 import com.github.jvsena42.loopky.presentation.profile.FriendProfileViewModel
 import com.github.jvsena42.loopky.presentation.profile.ProfileViewModel
+import com.github.jvsena42.loopky.presentation.recap.RecapViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
 import com.github.jvsena42.loopky.presentation.settings.SettingsViewModel
@@ -78,6 +80,7 @@ import org.koin.dsl.module
 val sharedModule = module {
     single { MutableSessionProvider() }
     single { UpdatePromptGate(appPreferences = get()) }
+    single { RecapClock(systemNow = ::epochMillis) }
     single<SessionProvider> { get<MutableSessionProvider>() }
 
     single {
@@ -185,6 +188,18 @@ val sharedModule = module {
             deckRepository = get(),
             srsRepository = get(),
             settingsRepository = get(),
+            appPreferences = get(),
+            recapClock = get(),
+        )
+    }
+    viewModel { params ->
+        RecapViewModel(
+            year = params.get(),
+            identityRepository = get(),
+            deckRepository = get(),
+            srsRepository = get(),
+            settingsRepository = get(),
+            discoveryRepository = get(),
         )
     }
     viewModel { DecksLibraryViewModel(deckRepository = get(), identityRepository = get()) }

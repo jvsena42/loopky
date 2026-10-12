@@ -194,6 +194,7 @@ class AccountEraser(
             // as its own.
             studyProgress.save(owner, DailyStudyProgress(dayIndex = 0, newCards = 0, reviews = 0))
             preferences.setCachedStudySettings("")
+            preferences.setRecapDismissal("")
             unsplashKeyStore.clear()
             // Cleared, not emptied: every deck title, description and tag of the deleted account
             // is in plaintext preferences, and writing an empty snapshot would still leave a record

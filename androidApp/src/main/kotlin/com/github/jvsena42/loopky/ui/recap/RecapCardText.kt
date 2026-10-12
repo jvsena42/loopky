@@ -1,0 +1,157 @@
+package com.github.jvsena42.loopky.ui.recap
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.github.jvsena42.loopky.R
+import com.github.jvsena42.loopky.domain.model.RecapPersona
+import com.github.jvsena42.loopky.domain.model.RecapShareTarget
+import com.github.jvsena42.loopky.domain.model.YearRecap
+import java.util.Locale
+
+/** Everything the share image says, already localized — the drawing code holds no words. */
+data class RecapCardText(
+    val title: String,
+    val headline: String,
+    val stats: List<String>,
+    val persona: String,
+    val tagline: String,
+)
+
+@Composable
+internal fun createdLine(recap: YearRecap): String? {
+    if (recap.decksCreated == 0) return null
+    val decks = pluralStringResource(R.plurals.recap_stat_decks_created, recap.decksCreated, recap.decksCreated)
+    val cards = pluralStringResource(R.plurals.recap_stat_cards_created, recap.cardsCreated, recap.cardsCreated)
+    return "$decks · $cards"
+}
+
+/**
+ * The year's stats that have something to say, each with the emoji its line wears in a caption.
+ *
+ * Zeroes are left out here, once, for the picture and every caption alike: "0 cards mastered" is
+ * not a line anyone wants posted under their name, and a year of only creating decks has no cards
+ * studied to lead with. Never empty for a recap that is not [YearRecap.isEmpty].
+ */
+@Composable
+internal fun recapStats(recap: YearRecap): List<Pair<String, String>> = listOfNotNull(
+    ("📚" to pluralStringResource(R.plurals.recap_stat_cards_studied, recap.cardsStudied, recap.cardsStudied))
+        .takeIf { recap.cardsStudied > 0 },
+    ("🏆" to pluralStringResource(R.plurals.recap_stat_cards_mastered, recap.cardsMastered, recap.cardsMastered))
+        .takeIf { recap.cardsMastered > 0 },
+    ("🗂️" to pluralStringResource(R.plurals.recap_stat_decks_studied, recap.decksStudied, recap.decksStudied))
+        .takeIf { recap.decksStudied > 0 },
+    createdLine(recap)?.let { "✨" to it },
+)
+
+@Composable
+internal fun recapCardText(recap: YearRecap): RecapCardText {
+    val stats = recapStats(recap).map { it.second }
+    return RecapCardText(
+        title = stringResource(R.string.recap_image_title, recap.year),
+        headline = stats.firstOrNull().orEmpty(),
+        stats = stats.drop(1),
+        persona = "${recap.persona.emoji()} ${stringResource(recap.persona.titleRes())}",
+        tagline = stringResource(R.string.brand_tagline).replace("\n", " "),
+    )
+}
+
+/** One caption per network, each written for how that network reads: short, a list, or a chat line. */
+@Composable
+internal fun recapCaptions(recap: YearRecap): Map<RecapShareTarget, String> {
+    val stats = recapStats(recap)
+    val lead = stats.firstOrNull()?.second.orEmpty()
+    val short = stringResource(R.string.recap_share_text_short, recap.year, lead)
+    val long = listOf(
+        stringResource(R.string.recap_share_header, recap.year),
+        stats.joinToString("\n") { (emoji, line) -> "$emoji $line" },
+        stringResource(R.string.recap_share_footer),
+    ).joinToString("\n\n")
+    val chat = stringResource(
+        R.string.recap_share_text_chat,
+        recap.year,
+        stats.take(CHAT_STATS).joinToString(" · ") { it.second },
+    )
+    return mapOf(
+        RecapShareTarget.X to short,
+        RecapShareTarget.Pubky to long,
+        RecapShareTarget.Threads to long,
+        RecapShareTarget.WhatsApp to chat,
+        RecapShareTarget.More to chat,
+        // Instagram discards a caption; the image carries everything.
+        RecapShareTarget.Instagram to short,
+    )
+}
+
+private const val CHAT_STATS = 2
+
+internal fun languageName(code: String, locale: Locale): String =
+    Locale.forLanguageTag(code).getDisplayLanguage(locale)
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+        .ifEmpty { code }
+
+internal fun RecapPersona.emoji(): String = when (this) {
+    RecapPersona.Polyglot -> "🌍"
+    RecapPersona.Creator -> "✍️"
+    RecapPersona.Master -> "🏆"
+    RecapPersona.Explorer -> "🧭"
+}
+
+internal fun RecapPersona.titleRes(): Int = when (this) {
+    RecapPersona.Polyglot -> R.string.recap_persona_polyglot
+    RecapPersona.Creator -> R.string.recap_persona_creator
+    RecapPersona.Master -> R.string.recap_persona_master
+    RecapPersona.Explorer -> R.string.recap_persona_explorer
+}
+
+internal fun RecapPersona.bodyRes(): Int = when (this) {
+    RecapPersona.Polyglot -> R.string.recap_persona_polyglot_body
+    RecapPersona.Creator -> R.string.recap_persona_creator_body
+    RecapPersona.Master -> R.string.recap_persona_master_body
+    RecapPersona.Explorer -> R.string.recap_persona_explorer_body
+}
+
+internal fun RecapShareTarget.labelRes(): Int = when (this) {
+    RecapShareTarget.Pubky -> R.string.recap_share_pubky
+    RecapShareTarget.X -> R.string.recap_share_x
+    RecapShareTarget.Threads -> R.string.recap_share_threads
+    RecapShareTarget.Instagram -> R.string.recap_share_instagram
+    RecapShareTarget.WhatsApp -> R.string.recap_share_whatsapp
+    RecapShareTarget.More -> R.string.recap_share_more
+}
+
+/** Each network's own mark. Drawn in black; [brandColor] is what tints it. */
+@Composable
+internal fun RecapShareTarget.icon(): Painter = when (this) {
+    RecapShareTarget.Pubky -> painterResource(R.drawable.ic_pubky)
+    RecapShareTarget.X -> painterResource(R.drawable.ic_share_x)
+    RecapShareTarget.Threads -> painterResource(R.drawable.ic_share_threads)
+    RecapShareTarget.Instagram -> painterResource(R.drawable.ic_share_instagram)
+    RecapShareTarget.WhatsApp -> painterResource(R.drawable.ic_share_whatsapp)
+    RecapShareTarget.More -> rememberVectorPainter(Icons.Filled.Share)
+}
+
+/**
+ * The network's own colour for its mark, or null to take the button's.
+ *
+ * Fixed rather than themed: the pill under it is white in both themes. Pubky is not here: its
+ * lime needs the black plate the share row draws under it ([PUBKY_LIME]). Instagram's mark is a
+ * gradient in the wild; a vector tint is one colour, so it takes the gradient's magenta.
+ */
+internal fun RecapShareTarget.brandColor(): Color? = when (this) {
+    RecapShareTarget.X, RecapShareTarget.Threads -> Color.Black
+    RecapShareTarget.Instagram -> Color(INSTAGRAM_MAGENTA)
+    RecapShareTarget.WhatsApp -> Color(WHATSAPP_GREEN)
+    RecapShareTarget.Pubky, RecapShareTarget.More -> null
+}
+
+/** pubky.app's `--brand`. Legible only on black. */
+internal const val PUBKY_LIME = 0xFFC8FF00
+private const val INSTAGRAM_MAGENTA = 0xFFE4405F
+private const val WHATSAPP_GREEN = 0xFF25D366

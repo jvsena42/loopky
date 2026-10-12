@@ -155,6 +155,24 @@ class DiscoveryRepositoryImpl(
             uri
         }.onFailure { Log.w(TAG, "announceDeck: FAILED — ${it.message}", it) }
 
+    override suspend fun postRecap(content: String, url: String): Result<PubkyUri> =
+        runSuspendCatching {
+            require(content.length <= PostKinds.MAX_CONTENT_LENGTH) { "Recap post is too long" }
+            val owner = session.requireSession().identity.pubky
+            val postId = PostIds.create(epochMillis() * MICROS_PER_MILLI)
+            val body = loopkyJson.encodeToString(
+                // The same two constraints as announceDeck: a `link` embed, and no attachments.
+                PostDto(
+                    content = content,
+                    kind = PostKinds.LINK,
+                    embed = PostEmbedDto(kind = PostKinds.LINK, uri = url),
+                ),
+            )
+            val path = PubkyPaths.post(owner, postId)
+            this.pubky.putWithSessionRetry(path, body, session, revalidator).getOrThrow()
+            PubkyUri(path)
+        }.onFailure { Log.w(TAG, "postRecap: FAILED — ${it.message}", it) }
+
     /**
      * Label the announcement post with the deck's topics and [ReservedTags.DECK].
      *

@@ -54,6 +54,7 @@ fun HomeRoute(
     onStartStudy: () -> Unit = {},
     onOpenDeck: (String, String?) -> Unit = { _, _ -> },
     onSignedOut: () -> Unit = {},
+    onOpenRecap: (Int) -> Unit = {},
 ) {
     val viewModel = koinViewModel<HomeViewModel>()
 
@@ -63,6 +64,7 @@ fun HomeRoute(
     val currentStart by rememberUpdatedState(onStartStudy)
     val currentOpen by rememberUpdatedState(onOpenDeck)
     val currentSignedOut by rememberUpdatedState(onSignedOut)
+    val currentRecap by rememberUpdatedState(onOpenRecap)
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
@@ -73,6 +75,7 @@ fun HomeRoute(
                 HomeEffect.NavigateStartStudy -> currentStart()
                 is HomeEffect.NavigateDeck -> currentOpen(effect.deckId, effect.authorPubky)
                 HomeEffect.NavigateToOnboarding -> currentSignedOut()
+                is HomeEffect.NavigateRecap -> currentRecap(effect.year)
             }
         }
     }
@@ -86,6 +89,8 @@ fun HomeRoute(
         onSeeAllDecksClick = viewModel::onSeeAllDecksClick,
         onDeckClick = viewModel::onDeckClick,
         onRetry = viewModel::onRefresh,
+        onRecapClick = viewModel::onRecapClick,
+        onRecapDismiss = viewModel::onRecapDismiss,
     )
 }
 
@@ -99,6 +104,8 @@ fun HomeScreen(
     onSeeAllDecksClick: () -> Unit,
     onDeckClick: (String) -> Unit,
     onRetry: () -> Unit,
+    onRecapClick: () -> Unit = {},
+    onRecapDismiss: () -> Unit = {},
 ) {
     val colors = LoopkyTheme.colors
     Box(
@@ -123,6 +130,8 @@ fun HomeScreen(
                     onSeeAllDecksClick = onSeeAllDecksClick,
                     onDeckClick = onDeckClick,
                     onRetry = onRetry,
+                    onRecapClick = onRecapClick,
+                    onRecapDismiss = onRecapDismiss,
                 )
             }
         }
@@ -138,6 +147,8 @@ private fun HomeScreenContent(
     onSeeAllDecksClick: () -> Unit,
     onDeckClick: (String) -> Unit,
     onRetry: () -> Unit,
+    onRecapClick: () -> Unit,
+    onRecapDismiss: () -> Unit,
 ) {
     // The empty state centers its card + actions in the space below the greeting,
     // so it gets a non-scrolling full-height layout instead of the shared scroll column.
@@ -165,6 +176,8 @@ private fun HomeScreenContent(
         when (state) {
             is HomeUiState.Content -> {
                 GreetingHeader(name = state.identity.labelOrFallback())
+                // Above both layouts rather than inside either, so the wide one cannot miss it.
+                state.recapYear?.let { RecapBanner(year = it, onClick = onRecapClick, onDismiss = onRecapDismiss) }
                 if (wide) {
                     WideHomeContent(
                         state = state,

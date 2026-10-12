@@ -77,4 +77,19 @@
     <plurals name="cards_tried">
         <item quantity="other">카드 %1$d장을 체험했어요.</item>
     </plurals>
+    <plurals name="recap_stat_cards_studied">
+        <item quantity="other">카드 %1$d장 학습</item>
+    </plurals>
+    <plurals name="recap_stat_cards_mastered">
+        <item quantity="other">카드 %1$d장 숙달</item>
+    </plurals>
+    <plurals name="recap_stat_decks_studied">
+        <item quantity="other">덱 %1$d개 학습</item>
+    </plurals>
+    <plurals name="recap_stat_decks_created">
+        <item quantity="other">덱 %1$d개 생성</item>
+    </plurals>
+    <plurals name="recap_stat_cards_created">
+        <item quantity="other">카드 %1$d장 작성</item>
+    </plurals>
 </resources>

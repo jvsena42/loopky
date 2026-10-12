@@ -774,6 +774,11 @@ class FakeSrsRepository : SrsRepository {
     override suspend fun statesForDeck(deckId: String): Map<String, SrsState> =
         states.filterKeys { stateDecks[it] == deckId }
 
+    /** Deck ids whose review state "failed to load", as a homeserver hiccup leaves them. */
+    val unreadDecks = mutableSetOf<String>()
+
+    override suspend fun isStateLoaded(deckId: String): Boolean = deckId !in unreadDecks
+
     /**
      * Same rule the real repository uses: a queued card with review state is due, one without has
      * never been seen. Tests that want a *due* card therefore have to seed [states] for it — which
@@ -954,6 +959,16 @@ class FakeDiscoveryRepository : DiscoveryRepository {
         announceError?.let { return Result.failure(it) }
         announcements.add(announcement)
         return Result.success(PubkyUri("pubky://author/pub/pubky.app/posts/0032TESTPOST0"))
+    }
+
+    /** Recap posts written, as `content to url`. */
+    val recapPosts = mutableListOf<Pair<String, String>>()
+    var recapPostError: Throwable? = null
+
+    override suspend fun postRecap(content: String, url: String): Result<PubkyUri> {
+        recapPostError?.let { return Result.failure(it) }
+        recapPosts.add(content to url)
+        return Result.success(PubkyUri("pubky://author/pub/pubky.app/posts/0032TESTPOST1"))
     }
 
     /** The Loopky accounts each follow list resolves to, keyed by whose list it is. */
@@ -1440,6 +1455,7 @@ class FakeAppPreferences(
     avatarNudgeDismissed: Boolean = false,
     pendingDeckFollow: String = "",
     backupReminderDay: Int = NO_BACKUP_REMINDER_DAY,
+    recapDismissal: String = "",
     updatePromptDay: Int = NO_UPDATE_PROMPT_DAY,
 ) : AppPreferences {
     private val _shareOnPubky = MutableStateFlow(shareOnPubky)
@@ -1517,6 +1533,19 @@ class FakeAppPreferences(
 
     override suspend fun setBackupReminderDay(day: Int) {
         _backupReminderDay.update { day }
+    }
+
+    private val _recapDismissal = MutableStateFlow(recapDismissal)
+    override val recapDismissal: Flow<String> = _recapDismissal.asStateFlow()
+
+    val recapDismissalValue: String get() = _recapDismissal.value
+
+    /** Holds [setRecapDismissal] open, for the window in which the write has not landed yet. */
+    var recapDismissalGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun setRecapDismissal(value: String) {
+        recapDismissalGate?.await()
+        _recapDismissal.update { value }
     }
 
     private val _updatePromptDay = MutableStateFlow(updatePromptDay)

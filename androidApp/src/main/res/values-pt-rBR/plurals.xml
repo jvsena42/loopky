@@ -103,4 +103,24 @@
         <item quantity="one">Você tentou %1$d carta.</item>
         <item quantity="other">Você tentou %1$d cartas.</item>
     </plurals>
+    <plurals name="recap_stat_cards_studied">
+        <item quantity="one">%1$d carta estudada</item>
+        <item quantity="other">%1$d cartas estudadas</item>
+    </plurals>
+    <plurals name="recap_stat_cards_mastered">
+        <item quantity="one">%1$d carta dominada</item>
+        <item quantity="other">%1$d cartas dominadas</item>
+    </plurals>
+    <plurals name="recap_stat_decks_studied">
+        <item quantity="one">%1$d baralho estudado</item>
+        <item quantity="other">%1$d baralhos estudados</item>
+    </plurals>
+    <plurals name="recap_stat_decks_created">
+        <item quantity="one">%1$d baralho criado</item>
+        <item quantity="other">%1$d baralhos criados</item>
+    </plurals>
+    <plurals name="recap_stat_cards_created">
+        <item quantity="one">%1$d carta escrita</item>
+        <item quantity="other">%1$d cartas escritas</item>
+    </plurals>
 </resources>

@@ -118,6 +118,18 @@ class AndroidAppPreferences(context: Context) : AppPreferences {
         _backupReminderDay.update { day }
     }
 
+    private val _recapDismissal = MutableStateFlow(
+        prefs.getString(KEY_RECAP_DISMISSAL, DEFAULT_RECAP_DISMISSAL) ?: DEFAULT_RECAP_DISMISSAL,
+    )
+    override val recapDismissal: Flow<String> = _recapDismissal.asStateFlow()
+
+    override suspend fun setRecapDismissal(value: String) {
+        withContext(Dispatchers.IO) {
+            prefs.edit().putString(KEY_RECAP_DISMISSAL, value).apply()
+        }
+        _recapDismissal.update { value }
+    }
+
     private val _updatePromptDay = MutableStateFlow(
         prefs.getInt(KEY_UPDATE_PROMPT_DAY, NO_UPDATE_PROMPT_DAY),
     )

@@ -77,4 +77,19 @@
     <plurals name="cards_tried">
         <item quantity="other">%1$d 枚のカードを試しました。</item>
     </plurals>
+    <plurals name="recap_stat_cards_studied">
+        <item quantity="other">%1$d 枚のカードを学習</item>
+    </plurals>
+    <plurals name="recap_stat_cards_mastered">
+        <item quantity="other">%1$d 枚のカードを習得</item>
+    </plurals>
+    <plurals name="recap_stat_decks_studied">
+        <item quantity="other">%1$d 個のデッキを学習</item>
+    </plurals>
+    <plurals name="recap_stat_decks_created">
+        <item quantity="other">%1$d 個のデッキを作成</item>
+    </plurals>
+    <plurals name="recap_stat_cards_created">
+        <item quantity="other">%1$d 枚のカードを作成</item>
+    </plurals>
 </resources>

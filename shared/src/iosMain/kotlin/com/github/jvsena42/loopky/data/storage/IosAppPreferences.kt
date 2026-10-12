@@ -107,6 +107,16 @@ class IosAppPreferences : AppPreferences {
         _backupReminderDay.update { day }
     }
 
+    private val _recapDismissal = MutableStateFlow(
+        defaults.stringForKey(KEY_RECAP_DISMISSAL) ?: DEFAULT_RECAP_DISMISSAL,
+    )
+    override val recapDismissal: Flow<String> = _recapDismissal.asStateFlow()
+
+    override suspend fun setRecapDismissal(value: String) {
+        defaults.setObject(value, KEY_RECAP_DISMISSAL)
+        _recapDismissal.update { value }
+    }
+
     private val _updatePromptDay = MutableStateFlow(
         if (defaults.objectForKey(KEY_UPDATE_PROMPT_DAY) == null) {
             NO_UPDATE_PROMPT_DAY

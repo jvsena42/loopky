@@ -46,6 +46,7 @@ fun MainScreen(
     onNavigateProfile: (String) -> Unit = {},
     onNavigateSettings: () -> Unit = {},
     onNavigateFollows: (pubky: String, source: FollowSource) -> Unit = { _, _ -> },
+    onNavigateRecap: (year: Int) -> Unit = {},
     /** Opens the backup menu, from Profile's card or the daily reminder sheet. */
     onBackUpNow: () -> Unit = {},
     onSignOut: () -> Unit = {},
@@ -128,6 +129,7 @@ fun MainScreen(
                             scope.launch { pagerState.animateScrollToPage(LoopkyTab.DECKS.ordinal) }
                         },
                         onStartStudy = { onNavigateStudy(null) },
+                        onOpenRecap = onNavigateRecap,
                         onSignedOut = onSignOut,
                     )
                     LoopkyTab.DECKS -> DecksRoute(

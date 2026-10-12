@@ -1,0 +1,168 @@
+{
+  "_comment": "Asserted by YearRecapFixtureJvmTest (loopky) and tools/recap.test.mjs (loopky.github.io). Keep the two copies byte-identical.",
+  "year": 2026,
+  "thresholdDays": 7,
+  "decks": [
+    {
+      "id": "d1",
+      "owned": true,
+      "title": "Spanish verbs",
+      "coverEmoji": "🇪🇸",
+      "createdAt": 1773100800000,
+      "cardCount": 40,
+      "frontLang": "es-ES",
+      "backLang": "en-US",
+      "tags": [
+        "spanish",
+        "language",
+        "verbs"
+      ],
+      "states": [
+        {
+          "dueAt": 1767830400000,
+          "intervalDays": 7
+        },
+        {
+          "dueAt": 1780876800000,
+          "intervalDays": 7
+        },
+        {
+          "dueAt": 1798329600000,
+          "intervalDays": 7
+        },
+        {
+          "dueAt": 1798589400000,
+          "intervalDays": 0
+        },
+        {
+          "dueAt": 1793836800000,
+          "intervalDays": 3
+        },
+        {
+          "dueAt": 1767830399000,
+          "intervalDays": 7
+        }
+      ]
+    },
+    {
+      "id": "d2",
+      "owned": true,
+      "title": "Old deck",
+      "coverEmoji": null,
+      "createdAt": 1714521600000,
+      "cardCount": 10,
+      "frontLang": null,
+      "backLang": null,
+      "tags": [
+        "biology"
+      ],
+      "states": [
+        {
+          "dueAt": 1770595200000,
+          "intervalDays": 7
+        },
+        {
+          "dueAt": 1770163200000,
+          "intervalDays": 1
+        },
+        {
+          "dueAt": 1799366400000,
+          "intervalDays": 7
+        }
+      ]
+    },
+    {
+      "id": "d3",
+      "owned": false,
+      "title": "Kanji",
+      "coverEmoji": "🈶",
+      "createdAt": 1775001600000,
+      "cardCount": 500,
+      "frontLang": "ja-JP",
+      "backLang": "en-US",
+      "tags": [
+        "japanese",
+        "language",
+        "loopky-deck"
+      ],
+      "states": [
+        {
+          "dueAt": 1782950400000,
+          "intervalDays": 1
+        },
+        {
+          "dueAt": 1783036800000,
+          "intervalDays": 1
+        },
+        {
+          "dueAt": 1783296000000,
+          "intervalDays": 3
+        },
+        {
+          "dueAt": 1783728000000,
+          "intervalDays": 7
+        },
+        {
+          "dueAt": 1783210200000,
+          "intervalDays": 0
+        }
+      ]
+    },
+    {
+      "id": "d4",
+      "owned": false,
+      "title": "Left behind",
+      "coverEmoji": null,
+      "createdAt": 1767571200000,
+      "cardCount": 20,
+      "frontLang": "fr-FR",
+      "backLang": "en-US",
+      "tags": [
+        "french"
+      ],
+      "states": [
+        {
+          "dueAt": 1747008000000,
+          "intervalDays": 7
+        }
+      ]
+    },
+    {
+      "id": "d5",
+      "owned": true,
+      "title": "Fresh and unstudied",
+      "coverEmoji": null,
+      "createdAt": 1796083200000,
+      "cardCount": 15,
+      "frontLang": null,
+      "backLang": null,
+      "tags": [
+        "chemistry"
+      ],
+      "states": []
+    }
+  ],
+  "expected": {
+    "cardsStudied": 12,
+    "cardsMastered": 5,
+    "decksStudied": 3,
+    "topDeck": {
+      "title": "Kanji",
+      "coverEmoji": "🈶",
+      "cardsStudied": 5
+    },
+    "decksCreated": 2,
+    "cardsCreated": 55,
+    "languages": [
+      "en",
+      "es",
+      "ja"
+    ],
+    "topics": [
+      "biology",
+      "verbs"
+    ],
+    "persona": "Polyglot",
+    "isEmpty": false
+  }
+}
