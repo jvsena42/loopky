@@ -15,6 +15,10 @@ struct HomeView: View {
     var onOpenDeck: (String) -> Void = { _ in }
     /// "See all" over today's decks — the full library, i.e. the Decks tab.
     var onSeeAllDecks: () -> Void = {}
+    /// The year whose recap is on offer, or nil outside the December window.
+    var recapYear: Int?
+    var onOpenRecap: () -> Void = {}
+    var onDismissRecap: () -> Void = {}
 
     @Environment(\.loopkyWidthClass) private var widthClass
 
@@ -24,6 +28,11 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     GreetingHeader(name: greetingName)
+                    // Above the switch rather than inside a case, so neither the wide layout nor
+                    // the empty state can miss it.
+                    if let recapYear {
+                        RecapBanner(year: recapYear, onOpen: onOpenRecap, onDismiss: onDismissRecap)
+                    }
                     switch state {
                     case .loading:
                         ProgressView().frame(maxWidth: .infinity)

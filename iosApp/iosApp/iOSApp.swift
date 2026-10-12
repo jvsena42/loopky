@@ -26,6 +26,13 @@ struct iOSApp: App {
             unsplashFallbackKey: "",
             pubkyEnvironmentName: PubkyEnv.name
         )
+        #if DEBUG
+        // `-recapNow <epoch millis>` moves the recap's clock, so December can be driven in any
+        // month (journey 29). The device clock is not an alternative: the homeserver refuses a
+        // session whose timestamps are two months out.
+        let recapNow = UserDefaults.standard.string(forKey: "recapNow").flatMap { Int64($0) }
+        if let recapNow { IosDependencies.shared.recapClock().setOverride(millis: recapNow) }
+        #endif
     }
 
     @StateObject private var theme = ThemePreference()

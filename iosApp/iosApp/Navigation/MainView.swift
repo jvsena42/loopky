@@ -14,6 +14,7 @@ struct MainView: View {
     var onOpenSettings: () -> Void = {}
     var onOpenProfile: (String) -> Void = { _ in }
     var onOpenFollows: (String, FollowSource) -> Void = { _, _ in }
+    var onOpenRecap: (Int) -> Void = { _ in }
     var onBackUpNow: () -> Void = {}
     /// Browsing without an account.
     ///
@@ -78,7 +79,8 @@ struct MainView: View {
                     onSignedOut: onSignedOut,
                     // The library is a tab, not a push: "See all" over today's decks selects it,
                     // the way Android's does.
-                    onSeeAllDecks: { selectedTab = .decks }
+                    onSeeAllDecks: { selectedTab = .decks },
+                    onOpenRecap: onOpenRecap
                 )
             }
 
