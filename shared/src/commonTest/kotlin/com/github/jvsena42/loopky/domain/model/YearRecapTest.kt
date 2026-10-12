@@ -42,7 +42,7 @@ class YearRecapTest {
     }
 
     @Test
-    fun `a card counts in the year its last review fell in, bounds in UTC`() {
+    fun `a card counts in the year its last review fell in - bounds in UTC`() {
         val deck = testDeck(id = "d1")
         val result = recap(
             owned = listOf(deck),
@@ -80,7 +80,7 @@ class YearRecapTest {
     }
 
     @Test
-    fun `the top deck is the most studied, ties broken by title`() {
+    fun `the top deck is the most studied - ties broken by title`() {
         val result = recap(
             owned = listOf(testDeck(id = "d1", title = "Zoology"), testDeck(id = "d2", title = "Algebra")),
             followed = listOf(testDeck(id = "d3", title = "Minor", authorPubky = "other")),
@@ -108,7 +108,7 @@ class YearRecapTest {
     }
 
     @Test
-    fun `created counts owned decks made this year, never followed ones`() {
+    fun `created counts owned decks made this year - never followed ones`() {
         val result = recap(
             owned = listOf(
                 testDeck(id = "new", createdAt = midYear, cardCount = 12),
@@ -123,7 +123,7 @@ class YearRecapTest {
     }
 
     @Test
-    fun `languages are base subtags of studied decks, commonest first`() {
+    fun `languages are base subtags of studied decks - commonest first`() {
         val result = recap(
             owned = listOf(
                 testDeck(id = "d1", frontLang = "es-ES", backLang = "en-US"),
@@ -148,7 +148,7 @@ class YearRecapTest {
     }
 
     @Test
-    fun `topics leave out the labels a language pair adds, which languages already report`() {
+    fun `topics leave out the labels a language pair adds - which languages already report`() {
         val tags = listOf("language", "spanish", "english", "verbs").map(::Tag)
         val result = recap(
             owned = listOf(testDeck(id = "d1", tags = tags, frontLang = "es-ES", backLang = "en-US")),
@@ -221,7 +221,7 @@ class RecapWindowTest {
     }
 
     @Test
-    fun `year starts land on midnight, leap years included`() {
+    fun `year starts land on midnight - leap years included`() {
         assertEquals(1_767_225_600_000L, RecapWindow.yearStart(2026))
         assertEquals(jan1Next, RecapWindow.yearStart(2027))
         // 2024 is a leap year: 29 February exists and 31 December is its 366th day.
@@ -260,7 +260,7 @@ class RecapShareTargetTest {
     }
 
     @Test
-    fun `instagram is the one target that takes no text, and gets the story format`() {
+    fun `instagram is the one target that takes no text - and gets the story format`() {
         assertEquals(listOf(RecapShareTarget.Instagram), RecapShareTarget.entries.filterNot { it.takesText })
         assertEquals(RecapImageFormat.Story, RecapShareTarget.Instagram.imageFormat)
     }

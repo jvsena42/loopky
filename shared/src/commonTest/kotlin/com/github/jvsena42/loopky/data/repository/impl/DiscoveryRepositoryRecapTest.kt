@@ -43,7 +43,7 @@ class DiscoveryRepositoryRecapTest {
     )
 
     @Test
-    fun `a recap post is a link post to its page, with nothing attached`() = runTest {
+    fun `a recap post is a link post to its page - with nothing attached`() = runTest {
         val url = "https://loopky.app/recap/?pubky=$TEST_PUBKY&year=2026"
 
         val uri = repo.postRecap("My 2026 on Loopky\n\n$url", url).getOrThrow()
