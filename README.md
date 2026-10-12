@@ -19,6 +19,8 @@ shares decks with your class through one link.
 - **Two-pane tablet layouts**, not a stretched phone screen.
 - **Share decks by link.** Publish a deck, follow and copy other people's, and find new ones in
   Discover.
+- **Loopky Recap.** Each December, a summary of your year — cards studied and mastered, your
+  most-studied deck, the languages you worked on — to keep or to share.
 - **A desktop command line tool** to manage decks and cards in bulk, or to let an AI agent build
   them for you — see [`cli/README.md`](./cli/README.md).
 - **No ads and no analytics.**
