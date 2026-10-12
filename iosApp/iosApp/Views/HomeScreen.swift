@@ -13,6 +13,7 @@ struct HomeScreen: View {
     var onStartStudy: () -> Void = {}
     var onSignedOut: () -> Void = {}
     var onSeeAllDecks: () -> Void = {}
+    var onOpenRecap: (Int) -> Void = { _ in }
 
     @State private var viewModel: HomeViewModel?
     @State private var uiState: HomeUiState?
@@ -27,7 +28,10 @@ struct HomeScreen: View {
             onDiscover: { viewModel?.onDiscoverClick() },
             onStartStudy: { viewModel?.onStartStudyClick() },
             onOpenDeck: { viewModel?.onDeckClick(deckId: $0) },
-            onSeeAllDecks: { viewModel?.onSeeAllDecksClick() }
+            onSeeAllDecks: { viewModel?.onSeeAllDecksClick() },
+            recapYear: uiState?.recapYear?.intValue,
+            onOpenRecap: { viewModel?.onRecapClick() },
+            onDismissRecap: { viewModel?.onRecapDismiss() }
         )
         .onAppear { attach() }
         .onDisappear { detach() }
@@ -103,6 +107,8 @@ struct HomeScreen: View {
                 onSignedOut()
             case is HomeEffectNavigateAllDecks:
                 onSeeAllDecks()
+            case let recap as HomeEffectNavigateRecap:
+                onOpenRecap(Int(recap.year))
             default:
                 break
             }

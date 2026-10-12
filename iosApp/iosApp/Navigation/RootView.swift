@@ -19,6 +19,7 @@ enum DeckRoute: Hashable, Identifiable {
     case friendProfile(String)
     case followList(String, FollowSource)
     case tagBrowse(String)
+    case recap(Int)
 
     var id: String {
         switch self {
@@ -35,8 +36,11 @@ enum DeckRoute: Hashable, Identifiable {
         case .studyPreview(let id, let author): return "preview-\(id)-\(author ?? "self")"
         case .settings: return "settings"
         case .friendProfile(let pubky): return "friend-\(pubky)"
+        case .recap(let year):
+            RecapScreen(year: year)
         case .followList(let pubky, let source): return "follows-\(pubky)-\(source.name)"
         case .tagBrowse(let tag): return "tag-\(tag)"
+        case .recap(let year): return "recap-\(year)"
         }
     }
 }
@@ -124,6 +128,7 @@ struct RootView: View {
                 onOpenSettings: { deckPath.append(.settings) },
                 onOpenProfile: { deckPath.append(.friendProfile($0)) },
                 onOpenFollows: { pubky, source in deckPath.append(.followList(pubky, source)) },
+                onOpenRecap: { deckPath.append(.recap($0)) },
                 onBackUpNow: { isBackingUp = true },
                 isGuest: isGuest,
                 onSignIn: { leaveGuestShell() }

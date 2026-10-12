@@ -53,6 +53,7 @@
 	<array>
 		<string>pubkyring</string>
 		<string>pubkyauth</string>
+		<string>instagram-stories</string>
 	</array>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
