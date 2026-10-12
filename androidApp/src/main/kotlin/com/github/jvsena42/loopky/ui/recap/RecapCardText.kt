@@ -115,10 +115,9 @@ internal fun RecapShareTarget.icon(): Painter = when (this) {
 /**
  * The network's own colour for its mark, or null to take the button's.
  *
- * Fixed rather than themed: the pill under it is white in both themes. Pubky is null on purpose —
- * its brand lime on white is the faintest thing on the screen, the same reason `ic_pubky` is
- * tinted wherever else the app draws it. Instagram's mark is a gradient in the wild; a vector
- * tint is one colour, so it takes the gradient's magenta.
+ * Fixed rather than themed: the pill under it is white in both themes. Pubky is not here: its
+ * lime needs the black plate the share row draws under it ([PUBKY_LIME]). Instagram's mark is a
+ * gradient in the wild; a vector tint is one colour, so it takes the gradient's magenta.
  */
 internal fun RecapShareTarget.brandColor(): Color? = when (this) {
     RecapShareTarget.X, RecapShareTarget.Threads -> Color.Black
@@ -127,5 +126,7 @@ internal fun RecapShareTarget.brandColor(): Color? = when (this) {
     RecapShareTarget.Pubky, RecapShareTarget.More -> null
 }
 
+/** pubky.app's `--brand`. Legible only on black. */
+internal const val PUBKY_LIME = 0xFFC8FF00
 private const val INSTAGRAM_MAGENTA = 0xFFE4405F
 private const val WHATSAPP_GREEN = 0xFF25D366

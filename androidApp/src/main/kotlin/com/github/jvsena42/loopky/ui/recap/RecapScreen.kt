@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
@@ -484,12 +485,7 @@ private fun ShareColumn(
                     modifier = Modifier.testTag("recap_share_${target.name.lowercase()}"),
                 ) {
                     // Decorative: the label beside it already names the network.
-                    Icon(
-                        painter = target.icon(),
-                        contentDescription = null,
-                        tint = target.brandColor() ?: LocalContentColor.current,
-                        modifier = Modifier.size(18.dp),
-                    )
+                    ShareTargetMark(target)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(target.labelRes()), fontWeight = FontWeight.Bold)
                 }
@@ -503,6 +499,39 @@ private fun ShareColumn(
                 textDecoration = TextDecoration.Underline,
             )
         }
+    }
+}
+
+/**
+ * The network's mark in the network's own colour. Decorative: the label beside it names it.
+ *
+ * Pubky is the one drawn on a plate. Its brand is lime on black, and the lime as bare ink on this
+ * white pill is 1.3:1 — so it gets the black disc pubky.app itself sets it on.
+ */
+@Composable
+private fun ShareTargetMark(target: RecapShareTarget) {
+    if (target == RecapShareTarget.Pubky) {
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(Color.Black),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = target.icon(),
+                contentDescription = null,
+                tint = Color(PUBKY_LIME),
+                modifier = Modifier.size(13.dp),
+            )
+        }
+    } else {
+        Icon(
+            painter = target.icon(),
+            contentDescription = null,
+            tint = target.brandColor() ?: LocalContentColor.current,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 
