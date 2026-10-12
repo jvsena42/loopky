@@ -128,12 +128,7 @@ struct RecapView: View {
                     Button { onShare(target) } label: {
                         HStack(spacing: 8) {
                             // Decorative: the label beside it already names the network.
-                            RecapCopy.targetIcon(target)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 18, height: 18)
-                                .foregroundStyle(RecapCopy.targetBrandColor(target) ?? LoopkyColor.accentPrimary)
-                                .accessibilityHidden(true)
+                            RecapTargetMark(target: target)
                             Text(LocalizedStringKey(RecapCopy.targetLabelKey(target)))
                                 .font(.system(size: 15, weight: .bold))
                         }
@@ -158,6 +153,37 @@ struct RecapView: View {
                     .foregroundStyle(LoopkyColor.foregroundOnAccentMuted)
             }
         }
+    }
+}
+
+/// The network's mark in the network's own colour. Decorative: the label beside it names it.
+///
+/// Pubky is the one drawn on a plate. Its brand is lime on black, and the lime as bare ink on the
+/// white pill is 1.3:1, so it gets the black disc pubky.app itself sets it on.
+private struct RecapTargetMark: View {
+    let target: RecapShareTarget
+
+    private static let pubkyLime = Color(red: 0xC8 / 255, green: 1, blue: 0)
+
+    var body: some View {
+        Group {
+            if target == RecapShareTarget.pubky {
+                RecapCopy.targetIcon(target)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 13, height: 13)
+                    .foregroundStyle(Self.pubkyLime)
+                    .frame(width: 22, height: 22)
+                    .background(Color.black, in: Circle())
+            } else {
+                RecapCopy.targetIcon(target)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
+                    .foregroundStyle(RecapCopy.targetBrandColor(target) ?? LoopkyColor.accentPrimary)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

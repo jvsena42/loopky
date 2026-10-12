@@ -96,8 +96,8 @@ enum RecapCopy {
     }
 
     /// The network's own colour for its mark, or nil to take the button's. Fixed rather than
-    /// themed: the pill under it is white in both themes. Pubky is nil on purpose — its brand lime
-    /// on white is unreadable — and Instagram, a gradient in the wild, takes that gradient's magenta.
+    /// themed: the pill under it is white in both themes. Pubky is not here: its lime needs the
+    /// black plate `RecapTargetMark` draws. Instagram, a gradient in the wild, takes its magenta.
     static func targetBrandColor(_ target: RecapShareTarget) -> Color? {
         if target == RecapShareTarget.x || target == RecapShareTarget.threads { return .black }
         if target == RecapShareTarget.instagram { return Color(red: 0xE4 / 255, green: 0x40 / 255, blue: 0x5F / 255) }
