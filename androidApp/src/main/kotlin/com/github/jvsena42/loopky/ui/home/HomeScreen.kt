@@ -89,6 +89,8 @@ fun HomeRoute(
         onSeeAllDecksClick = viewModel::onSeeAllDecksClick,
         onDeckClick = viewModel::onDeckClick,
         onRetry = viewModel::onRefresh,
+        onRecapClick = viewModel::onRecapClick,
+        onRecapDismiss = viewModel::onRecapDismiss,
     )
 }
 
@@ -102,6 +104,8 @@ fun HomeScreen(
     onSeeAllDecksClick: () -> Unit,
     onDeckClick: (String) -> Unit,
     onRetry: () -> Unit,
+    onRecapClick: () -> Unit = {},
+    onRecapDismiss: () -> Unit = {},
 ) {
     val colors = LoopkyTheme.colors
     Box(
@@ -126,6 +130,8 @@ fun HomeScreen(
                     onSeeAllDecksClick = onSeeAllDecksClick,
                     onDeckClick = onDeckClick,
                     onRetry = onRetry,
+                    onRecapClick = onRecapClick,
+                    onRecapDismiss = onRecapDismiss,
                 )
             }
         }
@@ -141,14 +147,19 @@ private fun HomeScreenContent(
     onSeeAllDecksClick: () -> Unit,
     onDeckClick: (String) -> Unit,
     onRetry: () -> Unit,
+    onRecapClick: () -> Unit,
+    onRecapDismiss: () -> Unit,
 ) {
     // The empty state centers its card + actions in the space below the greeting,
     // so it gets a non-scrolling full-height layout instead of the shared scroll column.
     if (state is HomeUiState.Empty) {
         HomeEmptyScreen(
             greetingName = state.identity.labelOrFallback(),
+            recapYear = state.recapYear,
             onCreateDeckClick = onCreateDeckClick,
             onDiscoverClick = onDiscoverClick,
+            onRecapClick = onRecapClick,
+            onRecapDismiss = onRecapDismiss,
         )
         return
     }
@@ -168,6 +179,8 @@ private fun HomeScreenContent(
         when (state) {
             is HomeUiState.Content -> {
                 GreetingHeader(name = state.identity.labelOrFallback())
+                // Above both layouts rather than inside either, so the wide one cannot miss it.
+                state.recapYear?.let { RecapBanner(year = it, onClick = onRecapClick, onDismiss = onRecapDismiss) }
                 if (wide) {
                     WideHomeContent(
                         state = state,
@@ -238,8 +251,11 @@ private fun WideHomeContent(
 @Composable
 private fun HomeEmptyScreen(
     greetingName: String,
+    recapYear: Int?,
     onCreateDeckClick: () -> Unit,
     onDiscoverClick: () -> Unit,
+    onRecapClick: () -> Unit,
+    onRecapDismiss: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -248,6 +264,14 @@ private fun HomeEmptyScreen(
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         GreetingHeader(name = greetingName)
+        recapYear?.let {
+            RecapBanner(
+                year = it,
+                onClick = onRecapClick,
+                onDismiss = onRecapDismiss,
+                modifier = Modifier.contentPane(PaneWidth.Focused),
+            )
+        }
         Column(
             modifier = Modifier
                 .weight(1f)

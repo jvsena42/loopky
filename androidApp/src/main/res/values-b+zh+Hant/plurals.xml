@@ -77,4 +77,19 @@
     <plurals name="cards_tried">
         <item quantity="other">你試了 %1$d 張卡片。</item>
     </plurals>
+    <plurals name="recap_stat_cards_studied">
+        <item quantity="other">學了 %1$d 張卡片</item>
+    </plurals>
+    <plurals name="recap_stat_cards_mastered">
+        <item quantity="other">熟記了 %1$d 張卡片</item>
+    </plurals>
+    <plurals name="recap_stat_decks_studied">
+        <item quantity="other">學了 %1$d 個牌組</item>
+    </plurals>
+    <plurals name="recap_stat_decks_created">
+        <item quantity="other">建立了 %1$d 個牌組</item>
+    </plurals>
+    <plurals name="recap_stat_cards_created">
+        <item quantity="other">寫了 %1$d 張卡片</item>
+    </plurals>
 </resources>

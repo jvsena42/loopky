@@ -77,4 +77,19 @@
     <plurals name="cards_tried">
         <item quantity="other">Bạn đã thử %1$d thẻ.</item>
     </plurals>
+    <plurals name="recap_stat_cards_studied">
+        <item quantity="other">Đã học %1$d thẻ</item>
+    </plurals>
+    <plurals name="recap_stat_cards_mastered">
+        <item quantity="other">Thành thạo %1$d thẻ</item>
+    </plurals>
+    <plurals name="recap_stat_decks_studied">
+        <item quantity="other">Đã học %1$d bộ thẻ</item>
+    </plurals>
+    <plurals name="recap_stat_decks_created">
+        <item quantity="other">Đã tạo %1$d bộ thẻ</item>
+    </plurals>
+    <plurals name="recap_stat_cards_created">
+        <item quantity="other">Đã viết %1$d thẻ</item>
+    </plurals>
 </resources>

@@ -104,4 +104,24 @@
         <item quantity="one">Du hast %1$d Karte ausprobiert.</item>
         <item quantity="other">Du hast %1$d Karten ausprobiert.</item>
     </plurals>
+    <plurals name="recap_stat_cards_studied">
+        <item quantity="one">%1$d Karte gelernt</item>
+        <item quantity="other">%1$d Karten gelernt</item>
+    </plurals>
+    <plurals name="recap_stat_cards_mastered">
+        <item quantity="one">%1$d Karte gemeistert</item>
+        <item quantity="other">%1$d Karten gemeistert</item>
+    </plurals>
+    <plurals name="recap_stat_decks_studied">
+        <item quantity="one">%1$d Stapel gelernt</item>
+        <item quantity="other">%1$d Stapel gelernt</item>
+    </plurals>
+    <plurals name="recap_stat_decks_created">
+        <item quantity="one">%1$d Stapel erstellt</item>
+        <item quantity="other">%1$d Stapel erstellt</item>
+    </plurals>
+    <plurals name="recap_stat_cards_created">
+        <item quantity="one">%1$d Karte geschrieben</item>
+        <item quantity="other">%1$d Karten geschrieben</item>
+    </plurals>
 </resources>

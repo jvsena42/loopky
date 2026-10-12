@@ -1,6 +1,6 @@
 # Journeys
 
-28 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
+29 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
 on iOS. The CLI has none — it has no screen — and its equivalent is the `cli-linux` and `cli-binary`
 jobs in `.github/workflows/ci.yml`.
 

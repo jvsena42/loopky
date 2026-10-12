@@ -982,4 +982,39 @@
     <string name="srs_grade_hard">Hard</string>
     <string name="srs_grade_good">Good</string>
     <string name="srs_grade_easy">Easy</string>
+    <string name="recap_share_pubky" translatable="false">Pubky</string>
+    <string name="recap_share_x" translatable="false">X</string>
+    <string name="recap_share_threads" translatable="false">Threads</string>
+    <string name="recap_share_instagram" translatable="false">Instagram</string>
+    <string name="recap_share_whatsapp" translatable="false">WhatsApp</string>
+    <string name="recap_banner_title">Your %1$d Recap is ready</string>
+    <string name="recap_banner_body">See what you learned this year.</string>
+    <string name="recap_banner_dismiss">Dismiss</string>
+    <string name="recap_title">Your %1$d Recap</string>
+    <string name="recap_image_title">My %1$d Recap</string>
+    <string name="recap_loading">Putting your year together…</string>
+    <string name="recap_empty_title">Nothing to recap yet</string>
+    <string name="recap_empty_body">Study a few cards and your %1$d Recap will have a story to tell.</string>
+    <string name="recap_close">Close</string>
+    <string name="recap_next">Next</string>
+    <string name="recap_intro_body">A year of remembering, one card at a time.</string>
+    <string name="recap_top_deck">Most studied: %1$s</string>
+    <string name="recap_languages_title">Languages</string>
+    <string name="recap_topics_title">Topics</string>
+    <string name="recap_persona_polyglot">The Polyglot</string>
+    <string name="recap_persona_polyglot_body">Your decks span several languages.</string>
+    <string name="recap_persona_creator">The Creator</string>
+    <string name="recap_persona_creator_body">You wrote more cards than you studied.</string>
+    <string name="recap_persona_master">The Master</string>
+    <string name="recap_persona_master_body">At least half of what you studied is mastered.</string>
+    <string name="recap_persona_explorer">The Explorer</string>
+    <string name="recap_persona_explorer_body">Always something new on your list.</string>
+    <string name="recap_share_title">Share your recap</string>
+    <string name="recap_share_more">More</string>
+    <string name="recap_share_text_short">My %1$d Loopky Recap 🦊 %2$s. #Loopky</string>
+    <string name="recap_share_text_long">My %1$d Loopky Recap 🦊\n\n📚 %2$s\n🏆 %3$s\n🗂️ %4$s\n\nSee it and make your own:</string>
+    <string name="recap_share_text_chat">Look at my %1$d on Loopky 🦊 %2$s, %3$s. Take a look:</string>
+    <string name="recap_web_link">Open the web version</string>
+    <string name="recap_post_title">Post your recap on Pubky?</string>
+    <string name="recap_post_failed">Couldn\'t post your recap. Try again.</string>
 </resources>

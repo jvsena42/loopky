@@ -128,4 +128,29 @@
         <item quantity="many">Tu as essayé %1$d de cartes.</item>
         <item quantity="other">Tu as essayé %1$d cartes.</item>
     </plurals>
+    <plurals name="recap_stat_cards_studied">
+        <item quantity="one">%1$d carte étudiée</item>
+        <item quantity="many">%1$d de cartes étudiées</item>
+        <item quantity="other">%1$d cartes étudiées</item>
+    </plurals>
+    <plurals name="recap_stat_cards_mastered">
+        <item quantity="one">%1$d carte maîtrisée</item>
+        <item quantity="many">%1$d de cartes maîtrisées</item>
+        <item quantity="other">%1$d cartes maîtrisées</item>
+    </plurals>
+    <plurals name="recap_stat_decks_studied">
+        <item quantity="one">%1$d paquet étudié</item>
+        <item quantity="many">%1$d de paquets étudiés</item>
+        <item quantity="other">%1$d paquets étudiés</item>
+    </plurals>
+    <plurals name="recap_stat_decks_created">
+        <item quantity="one">%1$d paquet créé</item>
+        <item quantity="many">%1$d de paquets créés</item>
+        <item quantity="other">%1$d paquets créés</item>
+    </plurals>
+    <plurals name="recap_stat_cards_created">
+        <item quantity="one">%1$d carte écrite</item>
+        <item quantity="many">%1$d de cartes écrites</item>
+        <item quantity="other">%1$d cartes écrites</item>
+    </plurals>
 </resources>

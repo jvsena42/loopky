@@ -23,6 +23,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.github.jvsena42.loopky.data.storage.AppPreferences
+import com.github.jvsena42.loopky.domain.model.RecapClock
 import com.github.jvsena42.loopky.locale.AppLocale
 import com.github.jvsena42.loopky.presentation.importflow.BulkImportError
 import com.github.jvsena42.loopky.ui.importflow.FileReadException
@@ -40,6 +41,7 @@ import com.github.jvsena42.loopky.ui.util.pubkyLink
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.get
 import org.koin.compose.koinInject
 
 class MainActivity : ComponentActivity() {
@@ -70,6 +72,7 @@ class MainActivity : ComponentActivity() {
         // it would re-open a link the user has already navigated away from, or re-spool a file
         // whose one-shot uri grant may no longer be good.
         if (savedInstanceState == null) intent?.let(::consume)
+        applyDebugRecapDate(intent)
         setContent {
             val pending by pendingOpen.asStateFlow().collectAsStateWithLifecycle()
             // Collected straight from the preference rather than through a ViewModel: this is the
@@ -129,6 +132,17 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         consume(intent)
+        applyDebugRecapDate(intent)
+    }
+
+    /**
+     * Debug builds only: `am start … --el recap_now <epoch millis>` moves the recap's clock, so
+     * December can be driven in any month. The device clock is not an alternative — the
+     * homeserver refuses a session whose timestamps are two months out.
+     */
+    private fun applyDebugRecapDate(intent: Intent?) {
+        if (!BuildConfig.DEBUG || intent?.hasExtra(EXTRA_RECAP_NOW) != true) return
+        get<RecapClock>().setOverride(intent.getLongExtra(EXTRA_RECAP_NOW, 0L))
     }
 
     /**
@@ -177,3 +191,5 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+private const val EXTRA_RECAP_NOW = "recap_now"

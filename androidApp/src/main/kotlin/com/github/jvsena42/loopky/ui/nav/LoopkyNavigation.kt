@@ -35,6 +35,7 @@ import com.github.jvsena42.loopky.ui.importflow.TriageRoute
 import com.github.jvsena42.loopky.ui.onboarding.OnboardingRoute
 import com.github.jvsena42.loopky.ui.profile.FollowListRoute
 import com.github.jvsena42.loopky.ui.profile.FriendProfileRoute
+import com.github.jvsena42.loopky.ui.recap.RecapRoute
 import com.github.jvsena42.loopky.ui.restore.RestoreFileRoute
 import com.github.jvsena42.loopky.ui.restore.RestorePhraseRoute
 import com.github.jvsena42.loopky.ui.restore.RestoreStartRoute
@@ -173,6 +174,7 @@ internal fun LoopkyNavHost(
                 onNavigateFollows = { pubky, source ->
                     navController.navigateTo(Routes.followList(pubky, source))
                 },
+                onNavigateRecap = { year -> navController.navigateTo(Routes.recap(year)) },
                 onBackUpNow = { navController.navigateTo(Routes.BACKUP_START) },
                 onSignOut = {
                     navController.navigateTo(Routes.ONBOARDING) {
@@ -393,6 +395,7 @@ internal fun LoopkyNavHost(
                 onOpenProfile = { person -> navController.navigateTo(Routes.friendProfile(person)) },
             )
         }
+        recapDestination(navController)
     }
 }
 
@@ -678,6 +681,18 @@ private fun NavGraphBuilder.cardEditorDestinations(navController: NavHostControl
             cardId = "",
             onBack = { navController.popBackStack() },
             onOpenSettings = { navController.navigateTo(Routes.settings(Routes.SETTINGS_FOCUS_UNSPLASH)) },
+        )
+    }
+}
+
+private fun NavGraphBuilder.recapDestination(navController: NavHostController) {
+    composable(
+        route = Routes.RECAP,
+        arguments = listOf(navArgument("year") { type = NavType.IntType }),
+    ) { backStackEntry ->
+        RecapRoute(
+            year = backStackEntry.arguments?.getInt("year") ?: 0,
+            onBack = { navController.popBackStack() },
         )
     }
 }

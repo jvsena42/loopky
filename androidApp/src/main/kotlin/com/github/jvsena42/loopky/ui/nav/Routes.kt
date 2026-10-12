@@ -95,6 +95,8 @@ object Routes {
     /** One side of someone's follow graph. `source` is a [FollowSource] name, lowercased. */
     const val FOLLOW_LIST = "follows/{pubky}/{source}"
 
+    const val RECAP = "recap/{year}"
+
     /** [Routes.SETTINGS]'s `focus` value for the Unsplash access key row. */
     const val SETTINGS_FOCUS_UNSPLASH = "unsplash"
 
@@ -112,6 +114,8 @@ object Routes {
     /** Encoded for the same reason [friendProfile] is — the pubky can come from typed text. */
     fun followList(pubky: String, source: FollowSource) =
         "follows/" + Uri.encode(pubky) + "/" + source.name.lowercase()
+
+    fun recap(year: Int) = "recap/$year"
 
     /** Labels are sanitized to lowercase with no whitespace, but encode anyway — they are free text. */
     fun tagBrowse(tag: String) = "tag/" + Uri.encode(tag)

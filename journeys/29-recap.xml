@@ -1,0 +1,38 @@
+<journey name="Recap — the December banner, the five pages, and where each share target lands">
+  <description>
+    The yearly recap (Architecture.md §8.8) is offered on Home from 16 to 31 December UTC and is
+    built from what the account already holds. Nothing here can be reached by waiting for
+    December, so the date is moved instead: a DEBUG build reads a `recap_now` long extra (epoch
+    millis) on launch. Do not set the device clock — the homeserver refuses the session.
+
+    Needs a signed-in session (journey 01 or 20) with at least one card studied this year.
+    20 December 2026 is 1797724800000.
+
+    Android: `adb shell am force-stop com.github.jvsena42.loopky` then
+    `adb shell am start -n com.github.jvsena42.loopky/.MainActivity --el recap_now 1797724800000`.
+    iOS: launch with `-recapNow 1797724800000`.
+
+    The share legs differ by platform and by what is installed. On an emulator none of X, Threads,
+    WhatsApp or Instagram exists, so what is checked there is the fallback, not the app.
+  </description>
+  <actions>
+    <action>Launch normally, with no extra, and verify Home shows NO element with resource-id "recap_banner"</action>
+    <action>Relaunch with recap_now set to 20 December and verify "recap_banner" is present above the daily-goal hero and reads "Your 2026 Recap is ready"</action>
+    <action>Tap "recap_banner" and verify the first page reads "Your 2026 Recap" with "recap_next" and "recap_close" present</action>
+    <action>Tap "recap_next" and verify the page states the cards studied, and the cards mastered beneath it only when that is above zero</action>
+    <action>Tap "recap_next" and verify the decks studied, "Most studied: <title>", and the decks created line only when one was created this year</action>
+    <action>Tap "recap_next" and verify a persona title, its one-line reason, and the Languages and Topics pills — topics must NOT contain "language" or a language's own name</action>
+    <action>Tap "recap_next" and verify "recap_card" shows the share picture, "recap_next" is gone, and the six targets "recap_share_pubky", "_x", "_threads", "_instagram", "_whatsapp" and "_more" are present</action>
+    <action>Tap "recap_share_pubky" and verify a dialog whose "recap_post_preview" ends with a https://loopky.app/recap/?pubky=…&amp;year=2026 link. Tap "recap_post_dismiss" and verify nothing was posted</action>
+    <action>Tap "recap_share_pubky" again, then "recap_post_confirm", and verify a "Posted" toast and the post on the account's pubky.app feed</action>
+    <action>Tap "recap_share_more" and verify the system share sheet opens with a square image and a caption ending in the recap link</action>
+    <action>Tap "recap_share_x", "recap_share_threads" and "recap_share_whatsapp" in turn. With the app installed, verify it opens with the image and caption; without it, verify the browser opens that network's composer with the caption (no image — a URL cannot carry one)</action>
+    <action>Tap "recap_share_instagram". With Instagram installed verify it opens with the 1080x1920 story image; without it verify the system share sheet opens</action>
+    <action>Tap "recap_web_link" and verify the browser opens the recap page for this pubky and year</action>
+    <action>TABLET. At expanded width (landscape tablet, or `wm density 240` and landscape on a phone AVD) verify the banner sits above BOTH panes of Home, and the last recap page puts the picture and the share targets side by side</action>
+    <action>DARK. With the dark theme, verify every text on the recap pages and on the banner is legible — they sit on the accent and must use the on-accent tokens</action>
+    <action>Tap "recap_close", then "recap_banner_dismiss", and verify the banner is gone. Relaunch with the same recap_now and verify it stays gone</action>
+    <action>Relaunch with recap_now set to 20 December of the NEXT year (1829260800000) and verify the banner is back, for that year</action>
+    <action>EMPTY. On an account with nothing studied and no deck created this year, open the recap and verify "recap_empty" reads "Nothing to recap yet" rather than a page of zeroes</action>
+  </actions>
+</journey>
