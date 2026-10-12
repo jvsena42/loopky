@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The X mark, from Simple Icons (CC0). Black, so an Icon tint decides the colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M18.901 1.153 h3.68 l-8.04 9.19 L24 22.846 h-7.406 l-5.8 -7.584 l-6.638 7.584 H.474 l8.6 -9.83 L0 1.154 h7.594 l5.243 6.932 Z M17.61 20.644 h2.039 L6.486 3.24 H4.298 Z" />
+</vector>

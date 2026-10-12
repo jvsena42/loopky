@@ -1,6 +1,11 @@
 package com.github.jvsena42.loopky.ui.recap
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.github.jvsena42.loopky.R
@@ -93,4 +98,18 @@ internal fun RecapShareTarget.labelRes(): Int = when (this) {
     RecapShareTarget.Instagram -> R.string.recap_share_instagram
     RecapShareTarget.WhatsApp -> R.string.recap_share_whatsapp
     RecapShareTarget.More -> R.string.recap_share_more
+}
+
+/**
+ * Each network's own mark, drawn in black so the button's content colour tints it — the brand
+ * colours would be six different inks on one white pill row.
+ */
+@Composable
+internal fun RecapShareTarget.icon(): Painter = when (this) {
+    RecapShareTarget.Pubky -> painterResource(R.drawable.ic_pubky)
+    RecapShareTarget.X -> painterResource(R.drawable.ic_share_x)
+    RecapShareTarget.Threads -> painterResource(R.drawable.ic_share_threads)
+    RecapShareTarget.Instagram -> painterResource(R.drawable.ic_share_instagram)
+    RecapShareTarget.WhatsApp -> painterResource(R.drawable.ic_share_whatsapp)
+    RecapShareTarget.More -> rememberVectorPainter(Icons.Filled.Share)
 }
