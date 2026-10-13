@@ -2,8 +2,8 @@ package com.github.jvsena42.loopky.domain.model
 
 import kotlin.math.max
 
-/** Anki's default, and ours: the number of never-seen cards a day of study aims at. */
-const val DEFAULT_NEW_CARDS_PER_DAY = 20
+/** The number of never-seen cards a day of study aims at, until the user picks their own. */
+const val DEFAULT_NEW_CARDS_PER_DAY = 10
 
 private const val MIN_GOAL = 1
 private const val MAX_GOAL = 999

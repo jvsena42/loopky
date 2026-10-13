@@ -289,7 +289,7 @@ private let sampleHomeDecks = [
     ScrollView {
         VStack(spacing: 16) {
             GreetingHeader(name: "Maria")
-            DailyGoalHeroCard(cardsToReview: 24, newCardsToday: 8, newCardsGoal: 20, onStartStudy: {})
+            DailyGoalHeroCard(cardsToReview: 24, newCardsToday: 8, newCardsGoal: 10, onStartStudy: {})
             TodaysDecksSection(decks: sampleHomeDecks, onOpenDeck: { _ in })
         }
         .padding()

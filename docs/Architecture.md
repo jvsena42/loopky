@@ -1146,7 +1146,7 @@ Changing a setting is **not retroactive**. An already-scheduled card keeps the `
 and picks the new number up at its next grade; nothing rewrites stored state.
 
 **Study settings are a synced record, not a preference.** `/pub/loopky/settings.json` holds the
-new-cards-per-day goal (default 20) and the Hard/Good/Easy intervals (1/3/7). They are on the
+new-cards-per-day goal (default 10) and the Hard/Good/Easy intervals (1/3/7). They are on the
 homeserver because they decide `dueAt` values, and review state already syncs. The record's keys are
 still spelled `first_hard_days` / `first_good_days` / `first_easy_days` — a historical spelling from
 when they were first-review-only, kept because renaming them would silently reset every existing

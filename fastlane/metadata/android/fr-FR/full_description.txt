@@ -4,7 +4,7 @@ Loopky est une app de flashcards gratuite et open source, avec répétition espa
 Ouvrez vos fichiers .apkg, images comprises, et commencez à réviser. Les fichiers .txt et .csv fonctionnent aussi, ou collez une liste de mots : chaque ligne devient une carte.
 
 <b>La répétition espacée à votre rythme</b>
-Difficile, Correct et Facile ramènent une carte dans 1, 3 et 7 jours. Changez ces valeurs dans les réglages et chaque révision les suit. Les nouvelles cartes ont un objectif de 20 par jour, et les révisions ne sont jamais plafonnées.
+Difficile, Correct et Facile ramènent une carte dans 1, 3 et 7 jours. Changez ces valeurs dans les réglages et chaque révision les suit. Les nouvelles cartes ont un objectif de 10 par jour, et les révisions ne sont jamais plafonnées.
 
 <b>Plusieurs façons de réviser</b>
 • Retourner : touchez pour voir la réponse

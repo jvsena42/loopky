@@ -241,8 +241,8 @@ class SrsSchedulerTest {
     }
 
     @Test
-    fun theDefaultGoalIsTwenty() {
-        assertEquals(20, StudySettings.Default.newCardsPerDayGoal)
+    fun theDefaultGoalIsTen() {
+        assertEquals(10, StudySettings.Default.newCardsPerDayGoal)
     }
 
     // --- daily progress --------------------------------------------------------------------

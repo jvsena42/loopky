@@ -4,7 +4,7 @@ Loopky é um app de flashcards grátis e de código aberto, com repetição espa
 Abra arquivos .apkg, com imagens, e comece a estudar. Arquivos .txt e .csv também funcionam, ou cole uma lista de palavras e cada linha vira um card.
 
 <b>Repetição espaçada do seu jeito</b>
-Difícil, Bom e Fácil trazem o card de volta em 1, 3 e 7 dias. Mude esses números nas configurações e toda revisão passa a usá-los. Cards novos têm uma meta diária de 20, e as revisões nunca têm limite.
+Difícil, Bom e Fácil trazem o card de volta em 1, 3 e 7 dias. Mude esses números nas configurações e toda revisão passa a usá-los. Cards novos têm uma meta diária de 10, e as revisões nunca têm limite.
 
 <b>Formas de estudar</b>
 • Virar: toque para ver a resposta

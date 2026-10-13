@@ -178,7 +178,7 @@ class HomeViewModel(
         val session = runSuspendCatching { identityRepository.currentSession() }.getOrNull()
         // Today's tally is the one number here that is *not* a guess: it lives in the device-local
         // StudyProgressStore, so restoring it costs a disk read and no round trip. Left out, the
-        // goal line under the dash read "0 of 20 new cards today" to someone who had already done
+        // goal line under the dash read "0 of 10 new cards today" to someone who had already done
         // fifteen — the same false claim [countsKnown] exists to remove, one line lower.
         runSuspendCatching { srsRepository.refreshDailyProgress() }
         val progress = srsRepository.dailyProgress.value

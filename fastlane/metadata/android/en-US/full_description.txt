@@ -4,7 +4,7 @@ Loopky is a free, open source flashcard app with spaced repetition. Import your 
 Open .apkg files, images included, and start studying. .txt and .csv files work too, or paste a word list and each line becomes a card.
 
 <b>Spaced repetition you control</b>
-Hard, Good and Easy bring a card back in 1, 3 and 7 days. Change those numbers in settings and every review uses them. New cards have a daily goal of 20, and reviews are never capped.
+Hard, Good and Easy bring a card back in 1, 3 and 7 days. Change those numbers in settings and every review uses them. New cards have a daily goal of 10, and reviews are never capped.
 
 <b>Ways to study</b>
 • Flip: tap to see the answer
