@@ -868,7 +868,7 @@ class StudySessionViewModel(
          * How many cards a preview serves. A sample, not a session: the offer to keep going lives
          * at the end of it, so it has to be reachable in a couple of minutes.
          */
-        internal const val PREVIEW_CARDS = 10
+        internal const val PREVIEW_CARDS = 5
 
         /** Normal speed, then two slower steps for repeat Listen taps; it stays at the last one. */
         internal val LISTEN_RATES = listOf(1f, 0.75f, 0.5f)
