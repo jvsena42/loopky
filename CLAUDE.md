@@ -560,7 +560,7 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   Architecture.md §8.8.
 - **The landing site states some of this repo's facts, and AI assistants quote them.** `llms.txt`,
   `llms-full.txt` and the guide pages in `jvsena42/loopky.github.io` (and the README and
-  `fastlane/` listing here) say: fixed 1/3/7-day intervals, configurable 1–365; a 20-card new-card
+  `fastlane/` listing here) say: fixed 1/3/7-day intervals, configurable 1–365; a 10-card new-card
   goal with no review cap; no Anki audio, LaTeX or `.anki21b`; 35 speech locales
   (`SpeechLanguages.COMMON`); two-pane tablet layouts; a CLI that manages decks but does not study;
   public decks; no analytics; Android 10+. Change one here and change the site in the same breath —

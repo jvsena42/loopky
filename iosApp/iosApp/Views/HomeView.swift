@@ -185,7 +185,7 @@ struct HomeView_Previews: PreviewProvider {
                 state: .content(HomeContentData(
                     dueToday: 24,
                     newCardsToday: 8,
-                    newCardsGoal: 20,
+                    newCardsGoal: 10,
                     decks: [
                         HomeDeckSummary(id: "1", title: "Spanish Basics", cardCount: 42, dueCount: 12, coverEmoji: "🇪🇸"),
                         HomeDeckSummary(id: "2", title: "Bio 101: Cells", cardCount: 28, dueCount: 7, coverEmoji: "B"),

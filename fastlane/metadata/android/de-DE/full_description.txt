@@ -4,7 +4,7 @@ Loopky ist eine kostenlose, quelloffene Karteikarten-App mit verteilter Wiederho
 Öffne .apkg-Dateien samt Bildern und fang an zu lernen. .txt- und .csv-Dateien gehen auch, oder füge eine Vokabelliste ein: Jede Zeile wird zu einer Karte.
 
 <b>Verteilte Wiederholung nach deinen Regeln</b>
-Schwer, Gut und Einfach zeigen eine Karte nach 1, 3 und 7 Tagen wieder. Ändere die Werte in den Einstellungen, und jede Wiederholung hält sich daran. Für neue Karten gibt es ein Tagesziel von 20, Wiederholungen sind nie begrenzt.
+Schwer, Gut und Einfach zeigen eine Karte nach 1, 3 und 7 Tagen wieder. Ändere die Werte in den Einstellungen, und jede Wiederholung hält sich daran. Für neue Karten gibt es ein Tagesziel von 10, Wiederholungen sind nie begrenzt.
 
 <b>So lernst du</b>
 • Umdrehen: tippen, um die Antwort zu sehen

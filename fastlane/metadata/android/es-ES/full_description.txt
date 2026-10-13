@@ -4,7 +4,7 @@ Loopky es una app de flashcards gratuita y de código abierto, con repetición e
 Abre archivos .apkg, con imágenes, y empieza a estudiar. También sirven los archivos .txt y .csv, o pega una lista de palabras y cada línea se convierte en una tarjeta.
 
 <b>Repetición espaciada a tu medida</b>
-Difícil, Bien y Fácil vuelven a mostrar la tarjeta en 1, 3 y 7 días. Cambia esos números en los ajustes y cada repaso los usa. Las tarjetas nuevas tienen un objetivo diario de 20, y los repasos no tienen límite.
+Difícil, Bien y Fácil vuelven a mostrar la tarjeta en 1, 3 y 7 días. Cambia esos números en los ajustes y cada repaso los usa. Las tarjetas nuevas tienen un objetivo diario de 10, y los repasos no tienen límite.
 
 <b>Formas de estudiar</b>
 • Girar: toca para ver la respuesta

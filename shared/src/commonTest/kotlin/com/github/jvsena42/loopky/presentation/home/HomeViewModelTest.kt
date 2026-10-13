@@ -168,7 +168,7 @@ class HomeViewModelTest {
     /**
      * The goal is the one number on the cached paint that comes from a *setting* rather than a
      * count, and reading it off an unloaded repository yields the built-in 20 — so the hero told a
-     * reader whose goal is 50 "0 of 20 new cards today", which is a number nobody chose.
+     * reader whose goal is 50 "0 of 10 new cards today", which is a number nobody chose.
      */
     @Test
     fun theCachedPaintShowsTheUsersOwnGoalNotTheBuiltInDefault() = runTest {
