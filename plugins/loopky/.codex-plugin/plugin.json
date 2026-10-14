@@ -1,6 +1,6 @@
 {
   "name": "loopky",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Anki-style spaced-repetition flashcards from Codex: build a deck from any topic, import an Anki .apkg or a TSV, add pictures and a language pair for listening and speaking practice, then study it in the free Loopky app on Android and iOS.",
   "author": {
     "name": "Joao Victor Sena",
@@ -19,7 +19,8 @@
     "category": "Productivity",
     "capabilities": [],
     "websiteURL": "https://loopky.app",
-    "privacyPolicyURL": "https://github.com/jvsena42/loopky/blob/main/PRIVACY.md",
+    "privacyPolicyURL": "https://loopky.app/privacy/",
+    "termsOfServiceURL": "https://loopky.app/terms/",
     "defaultPrompt": [
       "Make me 20 Spanish flashcards for ordering food, with Listen and Speak",
       "Import my Anki deck deck.apkg into Loopky",

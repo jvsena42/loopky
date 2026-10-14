@@ -49,7 +49,8 @@ setup script, and add the hosts `loopky doctor` lists to the environment's allow
 
 The plugin declares no connectors. What leaves your machine goes through the `loopky` CLI the skill
 runs, and only to the services below. The Loopky project runs no server of its own and receives
-none of it, apart from an issue you choose to file. The full policy is [PRIVACY.md](https://github.com/jvsena42/loopky/blob/main/PRIVACY.md).
+none of it, apart from an issue you choose to file. The full policy is at [loopky.app/privacy](https://loopky.app/privacy/), the terms at
+[loopky.app/terms](https://loopky.app/terms/), and help at [loopky.app/support](https://loopky.app/support/).
 
 | Service | When | What reaches it |
 | --- | --- | --- |
