@@ -76,8 +76,8 @@ read_key() { /usr/libexec/PlistBuddy -c "Print :$1" "$plist" 2>/dev/null || true
 [ "$(read_key CFBundleShortVersionString)" = "$marketing" ] || fail "ipa version is not $marketing"
 [ "$(read_key CFBundleVersion)" = "$build" ] || fail "ipa build number is not $build"
 [ "$(read_key CFBundleIdentifier)" = "com.github.jvsena42.loopky" ] || fail "unexpected bundle identifier"
-# true without ITSEncryptionExportComplianceCode is rejected at upload with 90592.
-[ -z "$(read_key ITSAppUsesNonExemptEncryption)" ] || fail "ITSAppUsesNonExemptEncryption is set; see the comment in Info.plist"
+# Absent stalls every build behind the questionnaire; true without a compliance code is 90592.
+[ "$(read_key ITSAppUsesNonExemptEncryption)" = "false" ] || fail "ITSAppUsesNonExemptEncryption is not false; see the comment in Info.plist"
 [ -f "$app/PrivacyInfo.xcprivacy" ] || fail "PrivacyInfo.xcprivacy is missing from the bundle"
 codesign --verify --deep --strict "$app" || fail "signature does not verify"
 signing="$(codesign -dvv "$app" 2>&1)"
