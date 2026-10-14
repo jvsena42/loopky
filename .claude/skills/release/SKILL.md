@@ -2,7 +2,7 @@
 name: release
 description: Bump the four version numbers on a release branch, merge, and tag — the tag workflow builds, signs and publishes everything
 disable-model-invocation: true
-argument-hint: "<version> (e.g. v0.2.0)"
+argument-hint: "[version] (e.g. v0.2.0; suggested from the commits when omitted)"
 ---
 
 Release process for Loopky. Version: $ARGUMENTS
@@ -22,9 +22,25 @@ merge commit.
 
 ## Steps
 
-1. **Validate the version argument**: it must start with `v` followed by semver (e.g. `v0.2.0`).
-   Abort if missing or malformed. Derive the numeric version by stripping the `v`. Abort if the tag
-   already exists (`git tag -l`).
+1. **Settle the version, and ask which version Play is serving.** Both answers are the user's, so
+   ask them together, in one question round, before any slow check runs.
+
+   - **Version given**: it must start with `v` followed by semver (e.g. `v0.2.0`). Abort if
+     malformed. Abort if the tag already exists (`git tag -l`).
+   - **Version omitted**: suggest one rather than aborting. The last release is
+     `git tag --sort=-v:refname | head -1`; read what has landed since with
+     `git log <last-tag>..origin/main --no-merges --format=%s` and bump by the strongest commit:
+     a `!:` subject or a `BREAKING CHANGE` footer → major; any `feat` → minor; otherwise (only
+     `fix`/`perf`/chores) → patch. Offer that as the recommended option, the other two bumps as
+     alternatives, and state the reason in one line ("3 feat, 5 fix since v1.5.0 → v1.6.0"). If
+     nothing at all landed since the last tag, say so and stop — there is nothing to release.
+   - **The version live on Google Play** (production track), e.g. `v1.4.0`. Not every tag reaches
+     Play, so the Play "What's new" text has to cover everything since *that* version, not since
+     the previous tag — someone updating from Play skipped whatever was never uploaded. Offer the
+     previous tag as the likely answer, but ask; there is no way to read it from here. It must
+     name an existing tag (normalise a missing `v`); ask again if it does not.
+
+   Derive the numeric version by stripping the `v`.
 
 2. **Pre-flight checks**:
    - Working tree clean (`git status`), on `main`, in sync with `origin/main` (`git fetch origin`).
@@ -131,6 +147,36 @@ merge commit.
    - **Rewrite the notes if step 7 said they needed it**:
      `gh release edit <version> --notes-file <file>`. A workflow re-run leaves edited notes alone.
 
+   - **Write the Play Store "What's new" text in every store language.** Read the range from the
+     Play version step 1 recorded: `.github/scripts/changelog.sh <version> <play-version>`. It is
+     a source, not the text — rewrite it for someone who only has the Android app:
+     - Keep only what an Android user can notice. Drop CLI, agent-plugin, iOS-only, release and
+       tooling entries, and fold related commits into one line. Plain words, no scopes, no issue
+       numbers, no commit-speak; a short bulleted list (`• `) or two or three sentences.
+     - **500 characters per language, hard** — Play rejects the whole release form over it. Count
+       each translation, not only the English; German and French run longest.
+     - One block per directory in `fastlane/metadata/android/` (today `en-US`, `pt-BR`, `de-DE`,
+       `es-ES`, `fr-FR`, `it-IT`, `vi`, `ja-JP`, `ko-KR`, `zh-CN`, `zh-TW`), which are the Play
+       listing's locales. `zh-CN` is Simplified and `zh-TW` Traditional — two translations, not
+       one converted. Use the same names for features the app's own strings use
+       (`androidApp/src/main/res/values-*/strings.xml`), so the note and the screen agree. Never
+       translate "Loopky".
+     - Emit it in the Play Console's paste format, which fills every language at once:
+
+       ```
+       <en-US>
+       • …
+       </en-US>
+       <pt-BR>
+       • …
+       </pt-BR>
+       ```
+
+     Write it to `build/play-release-notes-<numeric_version>.txt` (gitignored) and also print it,
+     so it can be pasted into the release form beside the `.aab`. If the range holds nothing an
+     Android user would notice, say so and offer the generic "Bug fixes and improvements" in each
+     language rather than inventing a feature.
+
    If the run is red, `docs/releasing.md` has the recovery per failure. The short version: nothing
    is published until every build job is green, so a failed run leaves the previous release
    installable and `latest` where it was.
@@ -138,7 +184,8 @@ merge commit.
 10. **Summarize**: delete the merged release branch (`git branch -d chore/version-<numeric_version>`)
     and print the release URL, the new Android `versionCode`/`versionName`, the iOS
     `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION`, `loopkyCliVersion`, the path to the `.aab`
-    waiting for the Play Console, and the install one-liner from `cli/README.md`.
+    waiting for the Play Console and to its translated "What's new" file (and the Play version the
+    notes were written from), and the install one-liner from `cli/README.md`.
 
     Say out loud whether the `plugin` branch moved: the *Plugin branch* job copies
     `plugins/loopky/` there and checks it against the tag. It is what Anthropic's plugin directory
