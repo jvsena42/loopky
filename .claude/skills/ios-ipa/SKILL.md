@@ -26,11 +26,13 @@ the version bump from the `release` skill has merged, so the build number matche
 
    The script calls `xcodebuild` directly, an exception to the repo's xcodebuildmcp-only rule:
    xcodebuildmcp has no archive or export. Its last step checks the bundle (version, bundle ID,
-   no `ITSAppUsesNonExemptEncryption`, privacy manifest, Apple Distribution signature) and fails
+   `ITSAppUsesNonExemptEncryption` false, privacy manifest, Apple Distribution signature) and fails
    if any of them is wrong.
 
 3. **Report.** Give the path of the `.ipa`, the version and build number, and the signing
    identity the script printed. Do not upload it; the user uploads it with Transporter.
 
-After the upload the build shows "Missing Compliance" in TestFlight until the encryption questions
-are answered (standard encryption algorithms).
+Export compliance is declared in `Info.plist` (standard algorithms, not offered in France), so the
+build goes to TestFlight without the encryption questions. If France is ever added to the app's
+availability, that declaration stops being true: France needs a filed declaration, and the key
+becomes `true` with an `ITSEncryptionExportComplianceCode`.

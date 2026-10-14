@@ -44,11 +44,13 @@
 		</dict>
 	</array>
 	<!--
-	  ITSAppUsesNonExemptEncryption is left out on purpose. `true` asserts that Apple has already
-	  approved export documentation and requires its ITSEncryptionExportComplianceCode, or the upload
-	  fails with 90592. `false` declares the app exempt, which the Argon2id recovery file does not
-	  obviously qualify for. Absent, App Store Connect asks the encryption questions for each build.
+	  Every algorithm Loopky uses is standard (TLS, Ed25519, Argon2id and the recovery file's cipher),
+	  and the app is not offered in France, so App Store Connect requires no export documentation.
+	  Offering it in France voids this: that market needs a filed declaration and `true` with an
+	  ITSEncryptionExportComplianceCode, or the upload fails with 90592.
 	-->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>pubkyring</string>
