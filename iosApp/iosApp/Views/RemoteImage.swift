@@ -25,12 +25,15 @@ struct RemoteImage<Content: View, Placeholder: View>: View {
     @ViewBuilder let content: (Image) -> Content
     @ViewBuilder let placeholder: () -> Placeholder
 
-    @State private var image: UIImage?
+    /// Keyed by the URL it came from. `.task(id:)` re-runs on every appear, so an unchanged URL
+    /// must not reset or refetch; and an image is drawn only for the URL it belongs to, so a load
+    /// that finishes after the URL changed can never show the previous picture.
+    @State private var loaded: (url: URL, image: UIImage)?
 
     var body: some View {
         Group {
-            if let image {
-                content(Image(uiImage: image))
+            if let loaded, loaded.url == url {
+                content(Image(uiImage: loaded.image))
             } else {
                 placeholder()
             }
@@ -39,11 +42,10 @@ struct RemoteImage<Content: View, Placeholder: View>: View {
     }
 
     private func load() async {
-        image = nil
-        guard let url,
+        guard let url, loaded?.url != url,
               let (data, _) = try? await AppURLSession.shared.data(from: url),
               let decoded = UIImage(data: data)
         else { return }
-        image = decoded
+        loaded = (url, decoded)
     }
 }
