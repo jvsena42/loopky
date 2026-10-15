@@ -71,6 +71,19 @@ class ExpirablePassTest {
     }
 
     @Test
+    fun throwingWorkCompletesOnceAsFailedWithoutRescheduling() = runTest {
+        val recorder = Recorder()
+        val pass = pass(this, recorder) { error("boom") }
+        pass.start()
+        runCurrent()
+
+        pass.expire()
+
+        assertEquals(listOf(false), recorder.completions)
+        assertEquals(0, recorder.reschedules)
+    }
+
+    @Test
     fun workDoesNotStartBeforeStart() = runTest {
         val recorder = Recorder()
         var ran = false

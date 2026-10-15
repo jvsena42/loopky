@@ -189,6 +189,9 @@ class IosBackgroundTasks(
  * reschedules (when asked) and completes; the other does nothing. The job is lazy so the caller
  * can install the expiration handler before any work starts.
  *
+ * A [work] that throws finishes the pass as failed without rescheduling: an exception escaping
+ * to the scope would terminate the process on Kotlin/Native.
+ *
  * Expiring cancels the job but cannot interrupt a blocking FFI call already in flight, so the
  * task is reported complete without waiting for it — the handler has to return promptly.
  */
@@ -201,10 +204,14 @@ internal class ExpirablePass(
 ) {
     private val finished = AtomicBoolean(false)
 
-    // A cancelled [work] ends by throwing, so an expired pass is finished by [expire] alone —
-    // provided [work] uses runSuspendCatching rather than swallowing the cancellation.
+    // runSuspendCatching rethrows cancellation, so an expired pass is finished by [expire] alone.
     private val job = scope.launch(start = CoroutineStart.LAZY) {
-        finish(again = work(), success = true)
+        runSuspendCatching { work() }
+            .onSuccess { again -> finish(again = again, success = true) }
+            .onFailure {
+                Log.e(PASS_TAG, "pass: FAILED — ${it.message}", it)
+                finish(again = false, success = false)
+            }
     }
 
     fun start() {
@@ -220,5 +227,9 @@ internal class ExpirablePass(
         if (!finished.compareAndSet(expectedValue = false, newValue = true)) return
         if (again) reschedule()
         complete(success)
+    }
+
+    private companion object {
+        const val PASS_TAG = "Loopky/BgTasks"
     }
 }
