@@ -15,7 +15,7 @@ struct IdentityData {
         self.avatarUrl = avatarUrl
     }
 
-    /// **Resolved, not raw.** `identity.avatarUrl` is a `pubky://` file URI that `AsyncImage`
+    /// **Resolved, not raw.** `identity.avatarUrl` is a `pubky://` file URI that `RemoteImage`
     /// cannot fetch and fails silently on, which is why avatars appeared nowhere. Everything on
     /// screen goes through here, so the translation happens once.
     init(_ identity: PubkyIdentity) {

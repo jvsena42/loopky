@@ -421,7 +421,7 @@ struct DeckDetailView: View {
     @ViewBuilder
     private func coverView(_ content: DeckDetailContent) -> some View {
         if let urlString = content.coverImageUrl, let url = URL(string: urlString) {
-            AsyncImage(url: url) { image in
+            RemoteImage(url: url) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
                 coverFallback(content)
