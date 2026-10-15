@@ -206,7 +206,7 @@ object IosDependencies {
     fun tagBrowseViewModel(tag: String): TagBrowseViewModel = koin.get { parametersOf(tag) }
 
     /**
-     * A person's picture as something `AsyncImage` can actually fetch.
+     * A person's picture as something `RemoteImage` can actually fetch.
      *
      * A pubky.app profile stores its avatar as a `pubky://` URI pointing at a *file record*, and
      * handing that to an image loader fails silently — which is why no avatar appeared anywhere on
