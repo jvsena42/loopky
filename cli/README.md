@@ -147,8 +147,8 @@ row comes from the fork's `desktop-windows.yml` and nowhere else.
 **Your key lives in Pubky Ring, so install it before the first login.** `loopky login` has no
 password to take and no key of its own: it prints a QR, and the phone app on the other end of that
 scan is what approves the session. So the order is Ring first, then this — install [Pubky
-Ring](https://pubkyring.app), put your recovery phrase into it, and keep that phrase somewhere the
-phone is not. Losing it loses the account, and there is nobody to ask for it back.
+Ring](https://pubkyring.app) **v2.0 or newer** (older releases cannot read the login QR), put your
+recovery phrase into it, and keep that phrase somewhere the phone is not. Losing it loses the account, and there is nobody to ask for it back.
 
 ```shell
 loopky login                        # QR for Pubky Ring, then waits for approval
