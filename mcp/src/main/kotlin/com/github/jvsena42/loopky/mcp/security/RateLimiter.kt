@@ -19,8 +19,11 @@ data class RateLimitPolicy(val burst: Int, val perSecond: Double) {
 }
 
 /**
- * A token bucket per key. Keys are pruned once the map grows past [maxKeys], starting with the
- * buckets that have refilled completely — a full bucket and a missing one behave the same.
+ * A token bucket per key. Keys are pruned once the map grows past [maxKeys]: first the buckets
+ * that have refilled completely — a full bucket and a missing one behave the same — and then,
+ * if the table is still full, the half refilled longest ago. Never the whole table: clearing it
+ * reset every limit at once, the attacker's included, and a /64 of IPv6 addresses fills a table
+ * of ten thousand at will.
  */
 class TokenBucketLimiter(
     private val policy: RateLimitPolicy,
@@ -63,7 +66,9 @@ class TokenBucketLimiter(
     private fun prune(now: Long) {
         val fullAfter = policy.burst / policy.perSecond * MILLIS_PER_SECOND
         buckets.values.removeIf { now - it.lastRefillMillis >= fullAfter }
-        if (buckets.size >= maxKeys) buckets.clear()
+        if (buckets.size < maxKeys) return
+        val stalest = buckets.entries.sortedBy { it.value.lastRefillMillis }.take(buckets.size / 2).map { it.key }
+        stalest.forEach { buckets.remove(it) }
     }
 
     private companion object {
@@ -77,14 +82,14 @@ class RateLimitConfig {
 }
 
 /**
- * Route-scoped: `install(RateLimitByIp) { limiter = … }`. Keyed on `request.origin.remoteHost`,
- * which is the proxy's address unless `XForwardedHeaders` is installed ahead of it — behind Caddy
- * that plugin is what makes the key the client and not `127.0.0.1` for everyone.
+ * Route-scoped: `install(RateLimitByIp) { limiter = … }`. Keyed on `request.origin.remoteHost`
+ * through [ClientKey] — the proxy's address unless `XForwardedHeaders` is installed ahead of it;
+ * behind Caddy that plugin is what makes the key the client and not `127.0.0.1` for everyone.
  */
 val RateLimitByIp = createRouteScopedPlugin("RateLimitByIp", ::RateLimitConfig) {
     val limiter = pluginConfig.limiter
     onCall { call ->
-        val key = call.request.origin.remoteHost
+        val key = ClientKey.of(call.request.origin.remoteHost)
         if (!limiter.tryAcquire(key)) {
             call.response.header(HttpHeaders.RetryAfter, limiter.retryAfterSeconds(key).toString())
             call.respondText("Too many requests", status = HttpStatusCode.TooManyRequests)

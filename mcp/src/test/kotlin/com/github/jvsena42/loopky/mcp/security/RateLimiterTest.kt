@@ -47,6 +47,30 @@ class RateLimiterTest {
     }
 
     @Test
+    fun `a full table evicts the stalest buckets and never resets the busy ones`() {
+        val limiter = TokenBucketLimiter(RateLimitPolicy(burst = 1, perSecond = 0.001), clock, maxKeys = 4)
+        repeat(3) { assertTrue(limiter.tryAcquire("old-$it")) }
+        clock.advance(Duration.ofSeconds(1))
+        assertTrue(limiter.tryAcquire("attacker"))
+        assertFalse(limiter.tryAcquire("attacker"))
+        clock.advance(Duration.ofSeconds(1))
+        assertTrue(limiter.tryAcquire("one-more"), "the table was full and nothing had refilled")
+        assertFalse(limiter.tryAcquire("attacker"), "the most recently refilled bucket survived the prune")
+    }
+
+    @Test
+    fun `an IPv6 client is keyed by its 64, an IPv4 one by its address`() {
+        assertEquals("203.0.113.7", ClientKey.of("203.0.113.7"))
+        assertEquals("2001:db8:1:2::/64", ClientKey.of("2001:db8:1:2:3:4:5:6"))
+        assertEquals(ClientKey.of("2001:db8:1:2:3:4:5:6"), ClientKey.of("[2001:db8:1:2:ffff::1]"))
+        assertEquals("2001:db8:1:3::/64", ClientKey.of("2001:db8:1:3::1"))
+        assertEquals("not an address", ClientKey.of("not an address"))
+        val limiter = TokenBucketLimiter(RateLimitPolicy(burst = 1, perSecond = 0.0), clock)
+        assertTrue(limiter.tryAcquire(ClientKey.of("2001:db8:1:2::1")))
+        assertFalse(limiter.tryAcquire(ClientKey.of("2001:db8:1:2::2")), "a rotated address inside the /64 shares the bucket")
+    }
+
+    @Test
     fun `the user limiter gates writes, one operation at a time and a daily byte budget`() = runTest {
         val limiter = UserLimiter(
             UserLimits(writes = RateLimitPolicy(burst = 1, perSecond = 0.0), maxConcurrentOperations = 1, dailyByteBudget = 100),
