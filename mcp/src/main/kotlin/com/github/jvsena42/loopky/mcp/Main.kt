@@ -97,8 +97,12 @@ class ServerParts(
 class Upkeep(
     val sweepEvery: Duration = 5.minutes,
     val watchdogEvery: Duration = 30.seconds,
-    /** What the watchdog does about a store that stopped answering: exit, so the container restarts. */
-    val onWedged: () -> Unit = { exitProcess(1) },
+    /**
+     * What the watchdog does about a store that stopped answering: exit, so the container restarts.
+     * `halt`, not `exitProcess`: the shutdown hooks close the store, and that close blocks on the
+     * very SQLite call that is stuck, so a clean exit would hang. The WAL is crash-safe.
+     */
+    val onWedged: () -> Unit = { Runtime.getRuntime().halt(1) },
 )
 
 fun Application.loopkyMcp(parts: ServerParts) {
