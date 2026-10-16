@@ -215,10 +215,11 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
      *
      * A bearer that verifies is never refused, whatever its address has done: Claude's users share
      * a handful of egress addresses, so refusing by address would lock all of them out together.
-     * What is bounded is the cost of bearers that *fail*. A token seen failing is answered from
-     * [failedTokens] without a lookup, and a failure charges the address, which is told to back
-     * off (429) once it has spent its bucket. A request with no token at all — RFC 9728
-     * discovery, every connector's first contact — costs nothing and is never charged.
+     * A *repeated* failing token is answered from [failedTokens] without a lookup; a fresh one is
+     * still looked up — about what a valid request costs, so nothing is amplified — and charges
+     * its address, which is told to back off (429) once it has spent its bucket. That bucket is a
+     * signal, not a shield: per-address request limiting belongs to the front proxy (#518). A
+     * request with no token at all — RFC 9728 discovery — costs nothing and is never charged.
      */
     private suspend fun authenticated(call: ApplicationCall): Principal? {
         if (!wellFormed(call)) return null
