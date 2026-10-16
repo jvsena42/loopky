@@ -184,7 +184,10 @@ class McpHttpTest {
     @Test
     fun `a disallowed origin is 403, an allowed or absent one passes`() = serving {
         assertEquals(HttpStatusCode.Forbidden, client.rpc(INITIALIZE, origin = "https://evil.example").status)
+        assertEquals(HttpStatusCode.Forbidden, client.rpc(INITIALIZE, origin = "https://claude.ai.evil.example").status)
         assertEquals(HttpStatusCode.OK, client.rpc(INITIALIZE, origin = "https://claude.ai").status)
+        val normalised = client.rpc(INITIALIZE, origin = "https://Claude.ai:443/")
+        assertEquals(HttpStatusCode.OK, normalised.status, "one normalisation, the validator's")
     }
 
     @Test

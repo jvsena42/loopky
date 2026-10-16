@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.mcp
 import com.github.jvsena42.loopky.cli.CLI_VERSION
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.mcp.security.ClientKey
+import com.github.jvsena42.loopky.mcp.security.OriginValidator
 import com.github.jvsena42.loopky.mcp.security.RateLimitPolicy
 import com.github.jvsena42.loopky.mcp.security.TokenBucketLimiter
 import com.github.jvsena42.loopky.mcp.security.UserLimiter
@@ -55,20 +56,15 @@ import kotlin.time.Duration.Companion.hours
 
 /**
  * Whether a request's `Origin` may reach the server — the Streamable HTTP spec's DNS-rebinding
- * defence. The OAuth half provides a policy too; this one is the shape they share.
+ * defence. The seam the HTTP layer takes; [OriginValidator] is the one implementation, so there
+ * is a single notion of what `https://claude.ai:443/` is equal to.
  */
 fun interface OriginPolicy {
     fun allows(origin: String?): Boolean
 
     companion object {
-        /**
-         * No `Origin` (a server-side client such as Claude's connector) or one of [origins],
-         * compared whole — scheme and host — never by hostname alone.
-         */
-        fun allowing(vararg origins: String): OriginPolicy {
-            val allowed = origins.map { it.trimEnd('/').lowercase() }.toSet()
-            return OriginPolicy { origin -> origin == null || origin.trimEnd('/').lowercase() in allowed }
-        }
+        /** No `Origin` (a server-side client such as Claude's connector) or one of [origins], as [OriginValidator] compares them. */
+        fun allowing(vararg origins: String): OriginPolicy = OriginValidator(origins.toSet())::allows.let { OriginPolicy(it) }
     }
 }
 
@@ -197,32 +193,7 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
 
     /** The auth, revocation and origin gates. False means the call was answered. */
     suspend fun admit(call: ApplicationCall): Boolean {
-        if (!deps.originPolicy.allows(call.request.header(HttpHeaders.Origin))) {
-            call.reject(HttpStatusCode.Forbidden, "Origin not allowed.")
-            return false
-        }
-        // Checked before the body is read: an oversized body is refused by the SDK too, but with
-        // the whole thing already pulled through the gate.
-        val declared = call.request.header(HttpHeaders.ContentLength)?.toLongOrNull()
-        if (call.request.httpMethod == HttpMethod.Post && declared != null && declared > deps.limits.maxBodyBytes) {
-            call.reject(HttpStatusCode.PayloadTooLarge, "Request body exceeds ${deps.limits.maxBodyBytes} bytes.")
-            return false
-        }
-        val address = ClientKey.of(call.request.origin.remoteHost)
-        if (failedAuth.retryAfterSeconds(address) > 0) {
-            call.response.header(HttpHeaders.RetryAfter, failedAuth.retryAfterSeconds(address).toString())
-            call.reject(HttpStatusCode.TooManyRequests, "Too many failed authentications from this address.")
-            return false
-        }
-        val principal = principalOf(call) ?: run {
-            failedAuth.tryAcquire(address)
-            call.unauthorized(null)
-            return false
-        }
-        if (deps.tenants.isRevoked(principal.pubky)) {
-            call.unauthorized("The Loopky session was revoked; connect again.")
-            return false
-        }
+        val principal = authenticated(call) ?: return false
         call.attributes.put(PrincipalKey, principal)
         // A request naming a session — every GET and DELETE, and a POST after initialize — is
         // checked here and not in its handler: Ktor's `sse {}` runs the handler inside the
@@ -233,6 +204,44 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
         if (sessionId == null && call.request.httpMethod == HttpMethod.Post) return true
         val session = owned(call, principal, sessionId) ?: return false
         call.attributes.put(TransportKey, session.transport)
+        return true
+    }
+
+    /** The principal the bearer speaks for, or null once the call is answered. */
+    private suspend fun authenticated(call: ApplicationCall): Principal? {
+        if (!wellFormed(call)) return null
+        val address = ClientKey.of(call.request.origin.remoteHost)
+        if (failedAuth.retryAfterSeconds(address) > 0) {
+            call.response.header(HttpHeaders.RetryAfter, failedAuth.retryAfterSeconds(address).toString())
+            call.reject(HttpStatusCode.TooManyRequests, "Too many failed authentications from this address.")
+            return null
+        }
+        val principal = principalOf(call)
+        when {
+            principal == null -> {
+                failedAuth.tryAcquire(address)
+                call.unauthorized(null)
+            }
+            deps.tenants.isRevoked(principal.pubky) -> call.unauthorized("The Loopky session was revoked; connect again.")
+            else -> return principal
+        }
+        return null
+    }
+
+    /**
+     * The origin and the declared body size, checked before the body is read: an oversized body
+     * is refused by the SDK too, but with the whole thing already pulled through the gate.
+     */
+    private suspend fun wellFormed(call: ApplicationCall): Boolean {
+        if (!deps.originPolicy.allows(call.request.header(HttpHeaders.Origin))) {
+            call.reject(HttpStatusCode.Forbidden, "Origin not allowed.")
+            return false
+        }
+        val declared = call.request.header(HttpHeaders.ContentLength)?.toLongOrNull()
+        if (call.request.httpMethod == HttpMethod.Post && declared != null && declared > deps.limits.maxBodyBytes) {
+            call.reject(HttpStatusCode.PayloadTooLarge, "Request body exceeds ${deps.limits.maxBodyBytes} bytes.")
+            return false
+        }
         return true
     }
 

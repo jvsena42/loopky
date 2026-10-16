@@ -186,8 +186,13 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   mounts `/mcp`; every request needs a bearer the `AccessTokenVerifier` accepts and an `Origin`
   the `OriginPolicy` allows, and an MCP session id is bound to the principal that initialized it
   (a foreign one is "not found"). The server `instructions` are the skill's card-writing sections,
-  copied from `plugins/loopky/skills/loopky/SKILL.md` at build time. The OAuth half (`Seams.kt`'s
-  verifier and secrets, the rate limiter, the DNS-resolving SSRF guard) is wired in `Main`.
+  copied from `plugins/loopky/skills/loopky/SKILL.md` at build time. The OAuth half reaches it
+  through `Seams.kt` (the verifier, the secrets), and `Main` wires the two together (#515). One
+  origin check: `OriginValidator` is the implementation behind `OriginPolicy`, so `/mcp` and the
+  OAuth routes agree on what `https://claude.ai:443/` equals. `SsrfGuard` — the DNS-resolving,
+  pinned-connect guard — has **no caller yet**: no tool fetches a caller's URL, and the syntactic
+  `UrlGuard` is what runs over every picture address. A future fetch path goes through
+  `SsrfGuard`, never around it.
 - `iosApp/iosApp/` — iOS app. SwiftUI screens in `Views/`, `NavigationStack` in `Navigation/`, Koin bootstrap in `DI/`. Compose Multiplatform UI is **not** used for iOS screens.
 
 ### Non-obvious rules
