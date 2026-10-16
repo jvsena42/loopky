@@ -12,6 +12,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import java.util.concurrent.ConcurrentHashMap
@@ -132,6 +134,86 @@ class TenantPoolTest {
         val alice = aliceCall.await()
         assertTrue(!(alice as FakeTenant).closed, "closed while its call was running")
         assertEquals("bob", bob.session.identity.pubky)
+    }
+
+    /**
+     * The hand-off: a call queued behind another for the same user takes over the entry when the
+     * first returns. Under the single-threaded test dispatcher, [runCurrent] stops each coroutine
+     * exactly at its next suspension, so "queued on the lock" is a state the test puts it in.
+     */
+    @Test
+    fun `a call queued behind another is still counted in use once it runs`() = runTest {
+        val pool = pool(TenantLimits(busyWait = 5.minutes))
+        val firstRelease = CompletableDeferred<Unit>()
+        val secondEntered = CompletableDeferred<Unit>()
+        val secondRelease = CompletableDeferred<Unit>()
+        val first = async { pool.withTenant("alice") { firstRelease.await() } }
+        runCurrent()
+        val second = async {
+            pool.withTenant("alice") { tenant ->
+                secondEntered.complete(Unit)
+                secondRelease.await()
+                tenant
+            }
+        }
+        runCurrent()
+        assertFalse(secondEntered.isCompleted, "the second call ran before the first returned")
+        firstRelease.complete(Unit)
+        runCurrent()
+        first.await()
+        assertTrue(secondEntered.isCompleted)
+
+        pool.evict("alice")
+        val held = factory.opened.single() as FakeTenant
+        assertFalse(held.closed, "evicted from under the call that took over the entry")
+        secondRelease.complete(Unit)
+        assertEquals(held, second.await())
+        runCurrent()
+        assertTrue(held.closed, "the deferred eviction ran once the last holder returned")
+        assertEquals(emptySet(), pool.openTenants())
+    }
+
+    @Test
+    fun `another user's trim spares a graph whose call took over the entry`() = runTest {
+        val pool = pool(TenantLimits(maxTenants = 1, busyWait = 5.minutes))
+        val firstRelease = CompletableDeferred<Unit>()
+        val secondRelease = CompletableDeferred<Unit>()
+        val first = async { pool.withTenant("alice") { firstRelease.await() } }
+        runCurrent()
+        val second = async { pool.withTenant("alice") { tenant -> secondRelease.await(); tenant } }
+        runCurrent()
+        firstRelease.complete(Unit)
+        runCurrent()
+        first.await()
+
+        assertEquals("bob", pool.pubkyOf("bob"))
+        val alice = factory.opened.first() as FakeTenant
+        assertFalse(alice.closed, "bob's call trimmed alice's graph while her queued call ran on it")
+        secondRelease.complete(Unit)
+        assertEquals("alice", second.await().session.identity.pubky)
+    }
+
+    @Test
+    fun `an eviction asked for while a call is queued lands after that call, on the same graph`() = runTest {
+        val pool = pool(TenantLimits(busyWait = 5.minutes))
+        val firstRelease = CompletableDeferred<Unit>()
+        val secondRelease = CompletableDeferred<Unit>()
+        val first = async { pool.withTenant("alice") { firstRelease.await() } }
+        runCurrent()
+        val second = async { pool.withTenant("alice") { tenant -> secondRelease.await(); tenant } }
+        runCurrent()
+        pool.evict("alice")
+        firstRelease.complete(Unit)
+        runCurrent()
+        first.await()
+
+        val held = factory.opened.single() as FakeTenant
+        assertFalse(held.closed, "the queued call was handed a closed graph")
+        secondRelease.complete(Unit)
+        assertEquals(held, second.await())
+        runCurrent()
+        assertTrue(held.closed)
+        assertEquals(1, factory.opens.get(), "one graph served both calls; nothing was opened twice")
     }
 
     @Test

@@ -73,7 +73,13 @@ class TenantPool(
         var tenant: Tenant? = null
         var secretHash: String? = null
         var lastUsed = 0L
-        var inUse = false
+
+        /**
+         * Calls holding or waiting for [lock]. A count and not a flag: the call that held the
+         * lock used to clear a flag on its way out, so the call queued behind it ran with the
+         * entry marked idle, and any other user's trim closed its graph under it.
+         */
+        var holders = 0
         var closeWhenReleased = false
     }
 
@@ -89,20 +95,29 @@ class TenantPool(
 
     /** Runs [block] on [pubky]'s graph, opening it first if need be. */
     suspend fun <T> withTenant(pubky: String, block: suspend (Tenant) -> T): T {
-        val entry = entryFor(pubky)
-        withTimeoutOrNull(limits.busyWait) { entry.lock.lock() } ?: throw TenantRefusal.UserBusy(pubky)
-        try {
-            // Inside the user's turn, so a user waiting for a global slot holds nothing another
-            // user needs; outside the call timeout, which is for the command and not the queue.
-            withTimeoutOrNull(limits.busyWait) { gate.acquire() } ?: throw TenantRefusal.ServerBusy()
+        while (true) {
+            val entry = entryFor(pubky)
             try {
-                return bounded(block, current(pubky, entry))
+                withTimeoutOrNull(limits.busyWait) { entry.lock.lock() } ?: throw TenantRefusal.UserBusy(pubky)
+                try {
+                    // The entry can leave the map while this call waited for its turn (the pool
+                    // closed); a call that went on with it would run on a graph nothing tracks.
+                    if (!poolLock.withLock { entries[pubky] === entry }) continue
+                    // Inside the user's turn, so a user waiting for a global slot holds nothing
+                    // another user needs; outside the call timeout, which is for the command and
+                    // not the queue.
+                    withTimeoutOrNull(limits.busyWait) { gate.acquire() } ?: throw TenantRefusal.ServerBusy()
+                    try {
+                        return bounded(block, current(pubky, entry))
+                    } finally {
+                        gate.release()
+                    }
+                } finally {
+                    entry.lock.unlock()
+                }
             } finally {
-                gate.release()
+                release(pubky, entry)
             }
-        } finally {
-            release(pubky, entry)
-            entry.lock.unlock()
         }
     }
 
@@ -145,7 +160,7 @@ class TenantPool(
     suspend fun evict(pubky: String) {
         val closing = poolLock.withLock {
             val entry = entries[pubky] ?: return
-            if (entry.inUse) {
+            if (entry.holders > 0) {
                 entry.closeWhenReleased = true
                 null
             } else {
@@ -180,7 +195,7 @@ class TenantPool(
             val existing = entries[pubky]
             val entry = existing ?: Entry().also { entries[pubky] = it }
             closing += trimLocked(keep = pubky)
-            entry.inUse = true
+            entry.holders++
             entry
         }
         closing.forEach { it.closeQuietly() }
@@ -236,9 +251,9 @@ class TenantPool(
 
     private suspend fun release(pubky: String, entry: Entry) {
         val closing = poolLock.withLock {
-            entry.inUse = false
+            entry.holders--
             entry.lastUsed = clock()
-            if (entry.closeWhenReleased) {
+            if (entry.holders == 0 && entry.closeWhenReleased) {
                 entries.remove(pubky, entry)
                 entry.tenant
             } else {
@@ -250,7 +265,7 @@ class TenantPool(
 
     /** The caller must hold [poolLock]. Returns what to close, outside the lock. */
     private fun sweepLocked(now: Long): List<Tenant> {
-        val idle = entries.filterValues { !it.inUse && now - it.lastUsed > limits.idleTtl.inWholeMilliseconds }
+        val idle = entries.filterValues { it.holders == 0 && now - it.lastUsed > limits.idleTtl.inWholeMilliseconds }
         idle.keys.forEach { entries.remove(it) }
         return idle.values.mapNotNull { it.tenant }
     }
@@ -261,7 +276,7 @@ class TenantPool(
         val iterator = entries.entries.iterator()
         while (entries.size > limits.maxTenants && iterator.hasNext()) {
             val (pubky, entry) = iterator.next()
-            if (entry.inUse || pubky == keep) continue
+            if (entry.holders > 0 || pubky == keep) continue
             iterator.remove()
             entry.tenant?.let { closing += it }
         }
