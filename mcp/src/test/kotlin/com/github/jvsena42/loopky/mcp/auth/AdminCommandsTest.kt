@@ -21,12 +21,23 @@ class AdminCommandsTest {
         exchange(codeFor(clientId, verifier = VERIFIER + "-b", pubky = other, secret = "other-secret"), clientId, VERIFIER + "-b")
 
         val out = mutableListOf<String>()
-        val exit = runAdminCommand(listOf("revoke-all"), harness.config, ring, out::add)
+        val exit = stopped { runAdminCommand(listOf("revoke-all"), harness.config, ring, out::add) }
         assertEquals(0, exit, out.toString())
         assertEquals(setOf(SESSION_SECRET, "other-secret"), ring.revoked.toSet())
         assertTrue(harness.store.links.listAll().isEmpty())
-        assertNull(server.verifier.verify(tokens.access))
+        assertNull(verifier().verify(tokens.access))
         assertEquals("Revoked 2 of 2 grants; every token is wiped.", out.first())
+    }
+
+    @Test
+    fun `an admin command refuses while the server holds the data directory`() = oauthTest {
+        val clientId = registerClient()
+        tokensFor(clientId)
+        val out = mutableListOf<String>()
+        assertEquals(ADMIN_EXIT_BUSY, runAdminCommand(listOf("revoke-all"), harness.config, ring, out::add))
+        assertTrue(out.single().contains("holds"), out.toString())
+        assertTrue(ring.revoked.isEmpty(), "a command ran against a live server")
+        assertNotNull(harness.store.links.find(PUBKY))
     }
 
     @Test
@@ -35,12 +46,12 @@ class AdminCommandsTest {
         tokensFor(clientId)
         ring.revokeResult = Result.failure(IllegalStateException("homeserver down"))
         val out = mutableListOf<String>()
-        assertEquals(1, runAdminCommand(listOf("revoke-all"), harness.config, ring, out::add))
+        assertEquals(1, stopped { runAdminCommand(listOf("revoke-all"), harness.config, ring, out::add) })
         assertNotNull(harness.store.links.find(PUBKY))
         assertTrue(out.any { PUBKY in it })
 
         ring.revokeResult = Result.success(Unit)
-        assertEquals(0, runAdminCommand(listOf("revoke-all"), harness.config, ring, out::add))
+        assertEquals(0, stopped { runAdminCommand(listOf("revoke-all"), harness.config, ring, out::add) })
         assertNull(harness.store.links.find(PUBKY))
     }
 
@@ -52,7 +63,7 @@ class AdminCommandsTest {
         val newKeyFile = harness.dir.resolve("new.key").also { OAuthHarness.writeKey(it, newKey) }
 
         val out = mutableListOf<String>()
-        assertEquals(0, runAdminCommand(listOf("rotate-key", newKeyFile.toString()), harness.config, ring, out::add))
+        assertEquals(0, stopped { runAdminCommand(listOf("rotate-key", newKeyFile.toString()), harness.config, ring, out::add) })
         assertTrue(out.first().startsWith("Re-wrapped 1 credentials under key version 2"), out.toString())
 
         assertFailsWith<MasterKeyException> { runBlocking { VaultBootstrap.open(harness.store, harness.key, harness.config.environment) } }
@@ -62,6 +73,18 @@ class AdminCommandsTest {
         assertEquals(2, link.keyVersion)
         assertEquals(SESSION_SECRET, rotated.open(PUBKY, link.credential))
     }
+
+    /** The admin commands open the store themselves, which the lock refuses while the "server" holds it. */
+    private suspend fun OAuthClient.stopped(block: suspend () -> Int): Int {
+        harness.stop()
+        return try {
+            block()
+        } finally {
+            harness.reopen()
+        }
+    }
+
+    private fun OAuthClient.verifier() = StoredTokenVerifier(harness.store, harness.config, clock)
 
     @Test
     fun `an unknown command prints usage and exits 2`() = oauthTest {

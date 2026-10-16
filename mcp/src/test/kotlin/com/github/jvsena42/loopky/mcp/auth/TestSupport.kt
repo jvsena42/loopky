@@ -107,11 +107,19 @@ class OAuthHarness(val dir: Path, val limits: OAuthLimits = OAuthLimits()) : Aut
     )
     val clock = MutableClock(Instant.parse("2026-10-16T12:00:00Z"))
     val ring = FakeRingLogin()
-    val store: McpStore = McpStore.open(config.dataDir)
+    var store: McpStore = McpStore.open(config.dataDir)
+        private set
     val vault: CredentialVault = runBlocking { VaultBootstrap.open(store, key, config.environment) }
     lateinit var server: OAuthServer
 
     fun deps() = OAuthDeps(config, store, vault, ring, clock, limits)
+
+    /** Stops the "server": releases the data directory for an admin command, and [reopen] picks it up again after. */
+    fun stop() = store.close()
+
+    fun reopen() {
+        store = McpStore.open(config.dataDir)
+    }
 
     override fun close() {
         store.close()

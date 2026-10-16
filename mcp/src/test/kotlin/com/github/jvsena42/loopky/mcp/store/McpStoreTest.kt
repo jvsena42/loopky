@@ -1,8 +1,10 @@
 package com.github.jvsena42.loopky.mcp.store
 
 import kotlinx.coroutines.runBlocking
+import java.nio.file.Files
 import java.time.Instant
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class McpStoreTest {
@@ -20,5 +22,18 @@ class McpStoreTest {
         assertNull(store.tokens.findAccess("ah"), "an access token survived the wipe")
         assertNull(store.tokens.findRefresh("rh"))
         store.close()
+    }
+
+    @Test
+    fun `a data directory is held by one store at a time, and freed when it closes`() {
+        val dir = Files.createTempDirectory("mcp-store-lock")
+        try {
+            val first = McpStore.open(dir)
+            assertFailsWith<DataDirBusyException> { McpStore.open(dir) }
+            first.close()
+            McpStore.open(dir).close()
+        } finally {
+            dir.toFile().deleteRecursively()
+        }
     }
 }

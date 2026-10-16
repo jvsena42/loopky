@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.mcp.auth
 
 import com.github.jvsena42.loopky.mcp.McpConfig
 import com.github.jvsena42.loopky.mcp.RingLogin
+import com.github.jvsena42.loopky.mcp.store.DataDirBusyException
 import com.github.jvsena42.loopky.mcp.store.McpStore
 import com.github.jvsena42.loopky.mcp.vault.MasterKey
 import com.github.jvsena42.loopky.mcp.vault.VaultBootstrap
@@ -14,16 +15,25 @@ const val ADMIN_USAGE = """usage: loopky-mcp admin <command>
 
 const val ADMIN_EXIT_USAGE = 2
 
+/** The server, or another admin command, holds the data directory. */
+const val ADMIN_EXIT_BUSY = 3
+
 /**
  * The mass-revocation runbook's entry point (#486): with the database and key leaked, every grant
  * is live for ~2 years unless something revokes it. Runs against the live database file while
- * the server is stopped, so [McpStore.open] is the same path the server takes.
+ * the server is stopped, so [McpStore.open] is the same path the server takes — and the lock it
+ * holds is what refuses a command while the server is up, rather than the runbook asking.
  */
 suspend fun runAdminCommand(args: List<String>, config: McpConfig, ringLogin: RingLogin, out: (String) -> Unit = ::println): Int =
-    when (args.firstOrNull()) {
-        "revoke-all" -> revokeAll(config, ringLogin, out)
-        "rotate-key" -> args.getOrNull(1)?.let { rotateKey(config, it, out) } ?: usage(out)
-        else -> usage(out)
+    try {
+        when (args.firstOrNull()) {
+            "revoke-all" -> revokeAll(config, ringLogin, out)
+            "rotate-key" -> args.getOrNull(1)?.let { rotateKey(config, it, out) } ?: usage(out)
+            else -> usage(out)
+        }
+    } catch (busy: DataDirBusyException) {
+        out(busy.message.orEmpty())
+        ADMIN_EXIT_BUSY
     }
 
 private fun usage(out: (String) -> Unit): Int {
