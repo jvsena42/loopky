@@ -38,7 +38,8 @@ class UnlinkTest {
     fun `a homeserver that never answers the revoke does not hold the unlink, or the sweep behind it`() = oauthTest {
         val clientId = registerClient()
         tokensFor(clientId)
-        val unlinker = Unlinker(harness.store, harness.vault, ring, clock, revokeTimeout = Duration.ofMillis(50))
+        val unlinker =
+            Unlinker(harness.store, harness.vault, ring, clock, UnlinkBounds(revokeTimeout = Duration.ofMillis(50)))
         ring.revokeGate = CompletableDeferred()
         assertTrue(unlinker.unlink(PUBKY))
         assertEquals(listOf(SESSION_SECRET), ring.revoked, "the revoke was attempted")
@@ -75,6 +76,23 @@ class UnlinkTest {
         assertEquals(1, server.unlinker.sweepExpired(), "only the link outside the grace window is swept")
         assertNull(harness.store.links.find(other))
         assertNotNull(harness.store.links.find(fresh), "a link inside the grace window is never swept")
+    }
+
+    @Test
+    fun `the sweep drops registrations that never started a flow, and keeps every one that did`() = oauthTest {
+        val used = registerClient("Claude")
+        tokensFor(used)
+        val idle = registerClient("Nobody")
+        server.sweep()
+        assertNotNull(harness.store.clients.find(idle), "a day-old registration may still be about to authorize")
+        clock.advance(Duration.ofDays(2))
+        server.sweep()
+        assertNull(harness.store.clients.find(idle))
+        assertNotNull(harness.store.clients.find(used))
+        revoke(tokensFor(used).refresh)
+        clock.advance(Duration.ofDays(2))
+        server.sweep()
+        assertNotNull(harness.store.clients.find(used), "a client whose families lapsed keeps its id for the next sign-in")
     }
 
     @Test
