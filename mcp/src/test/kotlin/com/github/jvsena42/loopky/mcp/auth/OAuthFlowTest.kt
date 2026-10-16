@@ -477,4 +477,19 @@ class OAuthFlowTest {
         assertEquals(SESSION_SECRET, server.sessionSecrets.sessionSecretFor(PUBKY))
         assertNotNull(server.verifier.verify(first.access), "the connection that worked still does")
     }
+
+    @Test
+    fun `a re-link with the secret already on record never revokes it, even when the code fails`() = oauthTest {
+        val clientId = registerClient()
+        val first = tokensFor(clientId)
+        val txn = authorizeTxn(clientId, verifier = VERIFIER + "-again")
+        harness.store.db.transaction { it.createStatement().use { s -> s.execute("DROP TABLE auth_codes") } }
+
+        ring.approve(secret = SESSION_SECRET)
+
+        assertEquals("failed", status(txn)["status"]?.jsonPrimitive?.content)
+        assertEquals(emptyList(), ring.revoked, "the one grant the link names was revoked")
+        assertEquals(SESSION_SECRET, server.sessionSecrets.sessionSecretFor(PUBKY))
+        assertNotNull(server.verifier.verify(first.access))
+    }
 }

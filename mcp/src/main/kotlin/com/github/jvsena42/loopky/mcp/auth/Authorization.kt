@@ -119,13 +119,15 @@ internal class Authorization(
             is LoginPoll.Approved -> {
                 pending.complete(txn)
                 val redirect = runSuspendCatching { approve(entry, poll) }.getOrElse { failure ->
-                    // The grant Ring just issued is live, and approve() has put back whatever row
-                    // named a grant before it, so none names this one: nothing could revoke it
-                    // later, so it is revoked now, and the page says "failed" rather
-                    // than Ktor saying 500 — which would also log the cause past the redaction.
-                    log.error("Storing the approval for ${poll.pubky} failed; revoking the grant", failure)
-                    runSuspendCatching { ringLogin.revoke(poll.sessionSecret).getOrThrow() }
-                        .onFailure { log.error("Revoking the unstored grant for ${poll.pubky} failed; only Ring can revoke it now", it) }
+                    // The page says "failed" rather than Ktor saying 500, which would also log the
+                    // cause past the redaction. Unless the link still names this grant
+                    // (LinkStillNamesGrant), no row does, so nothing could revoke it later: it is
+                    // revoked now.
+                    log.error("Storing the approval for ${poll.pubky} failed", failure)
+                    if (failure !is LinkStillNamesGrant) {
+                        runSuspendCatching { ringLogin.revoke(poll.sessionSecret).getOrThrow() }
+                            .onFailure { log.error("Revoking the unstored grant for ${poll.pubky} failed; only Ring can now", it) }
+                    }
                     call.respondJson(statusJson("failed"))
                     return
                 }
@@ -152,23 +154,33 @@ internal class Authorization(
                 lastUsedAt = now,
             ),
         )
+        val oldSecret = previous?.let { runCatching { vault.open(it.pubky, it.credential) }.getOrNull() }
+        val sameGrant = oldSecret == approved.sessionSecret
         // The code before the old grant goes: if issuing fails, the caller revokes the *new* grant,
         // and the previous link has to be back in place so a connector that worked keeps working.
+        // Where it cannot be — the restore fails too, or Ring re-issued the very secret on record —
+        // the row names the new grant, so it is kept and the old one (if any) is the one retired.
         val code = runSuspendCatching { tokens.issueCode(entry, approved.pubky) }.getOrElse { failure ->
-            runSuspendCatching { if (previous != null) store.links.upsert(previous) else store.links.delete(approved.pubky) }
-                .onFailure { log.error("Restoring the previous link for ${approved.pubky} failed", it) }
-            throw failure
+            val restored = !sameGrant && runSuspendCatching {
+                if (previous != null) store.links.upsert(previous) else store.links.delete(approved.pubky)
+            }.onFailure { log.error("Restoring the previous link for ${approved.pubky} failed", it) }.isSuccess
+            if (restored) throw failure
+            if (oldSecret != null && !sameGrant) revokeQuietly(approved.pubky, oldSecret)
+            throw LinkStillNamesGrant(failure)
         }
-        val oldSecret = previous?.let { runCatching { vault.open(it.pubky, it.credential) }.getOrNull() }
-        if (oldSecret != null && oldSecret != approved.sessionSecret) {
-            runSuspendCatching { ringLogin.revoke(oldSecret).getOrThrow() }
-                .onFailure { log.warn("Revoking the previous grant for ${approved.pubky} failed", it) }
+        if (oldSecret != null && !sameGrant) {
+            revokeQuietly(approved.pubky, oldSecret)
         }
         log.info("Linked ${approved.pubky} for client ${entry.request.clientId}")
         return URLBuilder(entry.request.redirectUri).apply {
             parameters.append("code", code)
             entry.request.state?.let { parameters.append("state", it) }
         }.buildString()
+    }
+
+    private suspend fun revokeQuietly(pubky: String, secret: String) {
+        runSuspendCatching { ringLogin.revoke(secret).getOrThrow() }
+            .onFailure { log.warn("Revoking the previous grant for $pubky failed", it) }
     }
 
     private fun ApplicationCall.isNavigation(): Boolean {
@@ -223,3 +235,6 @@ internal class Authorization(
         private const val NONCE_BYTES = 16
     }
 }
+
+/** The approval failed after a row naming the new grant was left in place; the caller must not revoke it. */
+private class LinkStillNamesGrant(cause: Throwable) : IllegalStateException("The link still names the new grant", cause)
