@@ -45,6 +45,8 @@ concurrency:
 permissions:
   contents: read
 
+# Actions pinned to commit SHAs, unlike ci.yml: this workflow pushes the image staging then runs,
+# so a moved tag on any action here would ship straight to a live environment. Bump them together.
 env:
   IMAGE: ghcr.io/jvsena42/loopky-mcp
 
@@ -58,19 +60,19 @@ jobs:
     outputs:
       digest: ${{ steps.pick.outputs.digest }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.digest == ''
 
       - name: Set up JDK 17
         if: inputs.digest == ''
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
         if: inputs.digest == ''
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           cache-provider: basic
 
@@ -80,10 +82,10 @@ jobs:
         if: inputs.digest == ''
         run: ./gradlew :mcp:test
 
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         if: inputs.digest == ''
 
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -97,7 +99,7 @@ jobs:
       - name: Build and push
         if: inputs.digest == ''
         id: build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: mcp/Dockerfile
@@ -135,7 +137,7 @@ jobs:
       name: staging
       url: ${{ vars.MCP_PUBLIC_URL }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: mcp/deploy
       - name: Roll staging
@@ -157,7 +159,7 @@ jobs:
       name: production
       url: ${{ vars.MCP_PUBLIC_URL }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: mcp/deploy
       - name: Roll production

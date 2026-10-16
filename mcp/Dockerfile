@@ -5,7 +5,9 @@
 # **Jammy, not bookworm or noble, for the same reason `cli/Dockerfile` is on 22.04:** the
 # `libpubkycore.so` JNA extracts at runtime needs GLIBC_2.34, and the base has to carry at least
 # that. Temurin's jammy images do (2.35); a musl/alpine base does not load it at all.
-FROM --platform=linux/amd64 eclipse-temurin:17-jdk-jammy AS builder
+# Base images by digest: CD ships this image to staging unattended, so a re-pushed tag must not
+# change what it runs. Bump both together, deliberately, for security updates.
+FROM --platform=linux/amd64 eclipse-temurin:17-jdk-jammy@sha256:43f4431cc895d37ceb115e2e1f160545ec45caee9c1cb4246fc6bb879d58aeda AS builder
 
 ENV GRADLE_USER_HOME=/gradle
 WORKDIR /src
@@ -14,7 +16,7 @@ COPY . /src
 # No Android SDK in the image and none needed: `:mcp` reaches only `:shared`'s jvm() target.
 RUN ./gradlew --no-daemon --stacktrace :mcp:installDist
 
-FROM --platform=linux/amd64 eclipse-temurin:17-jre-jammy AS runtime
+FROM --platform=linux/amd64 eclipse-temurin:17-jre-jammy@sha256:8993f1aed8b25fcea7a7047a7949c1866fa558fc6830d938c22c4f13b26be9d7 AS runtime
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y curl \
