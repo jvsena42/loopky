@@ -148,7 +148,7 @@ fun initKoinJvm(
     startKoin {
         appDeclaration()
         modules(
-            sharedModule,
+            sharedModule(),
             jvmPlatformModule(pubkyEnvironment, configHome, unsplashFallbackKey, mediaProcessor),
         )
     }

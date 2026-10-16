@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.di
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
@@ -15,12 +16,15 @@ import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.platform.PassThroughMediaProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.isActive
+import org.koin.core.Koin
 import org.koin.core.context.stopKoin
+import org.koin.dsl.koinApplication
 import org.koin.mp.KoinPlatform
 import kotlin.io.path.createTempDirectory
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertFalse
+import kotlin.test.assertNotSame
 import kotlin.test.assertTrue
 
 /**
@@ -72,6 +76,21 @@ class KoinGraphTest {
         assertFalse(scope.isActive)
     }
 
+    // Koin keeps a `single`'s instance in the module's own factory, so a module *object* loaded
+    // into two Koin instances hands both the same singletons — one session for two users (#214).
+    @Test
+    fun `two graphs built from sharedModule share no singleton`() {
+        val first = isolatedGraph()
+        val second = isolatedGraph()
+        try {
+            assertNotSame(first.get<MutableSessionProvider>(), second.get<MutableSessionProvider>())
+            assertNotSame(first.get<DeckRepository>(), second.get<DeckRepository>())
+        } finally {
+            first.close()
+            second.close()
+        }
+    }
+
     private fun startGraph() {
         initKoinJvm(
             pubkyEnvironment = PubkyEnvironment.Staging,
@@ -80,4 +99,15 @@ class KoinGraphTest {
             configHome = createTempDirectory("loopky-koin-test"),
         )
     }
+
+    private fun isolatedGraph(): Koin = koinApplication {
+        modules(
+            sharedModule(),
+            jvmPlatformModule(
+                pubkyEnvironment = PubkyEnvironment.Staging,
+                configHome = createTempDirectory("loopky-koin-test"),
+                mediaProcessor = PassThroughMediaProcessor(),
+            ),
+        )
+    }.koin
 }

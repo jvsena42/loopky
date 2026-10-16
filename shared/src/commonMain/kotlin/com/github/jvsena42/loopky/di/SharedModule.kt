@@ -70,6 +70,7 @@ import com.github.jvsena42.loopky.util.epochMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -91,8 +92,16 @@ internal val REPOSITORY_SCOPE = named("repositoryScope")
  * [com.github.jvsena42.loopky.data.storage.SecureSessionStore] and
  * [com.github.jvsena42.loopky.data.nexus.NexusClient] — the last because its base URL is
  * build-type dependent (staging for debug, production for release; #42).
+ *
+ * A function, never a `val`. Koin keeps a `single`'s instance inside the module's own factory,
+ * not inside the `Koin` that resolved it, so one module object loaded into two
+ * `koinApplication`s hands both the **same** session provider, repositories and caches — which
+ * is the one thing a per-user graph exists to prevent (#214). Each graph builds its own.
  */
-val sharedModule = module {
+// LongMethod: a declarative binding table, one line per binding — splitting it would only hide
+// which graph a binding belongs to.
+@Suppress("LongMethod")
+fun sharedModule(): Module = module {
     single(REPOSITORY_SCOPE) { CoroutineScope(SupervisorJob()) } onClose { it?.cancel() }
     single { MutableSessionProvider() }
     single { UpdatePromptGate(appPreferences = get()) }
