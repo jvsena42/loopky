@@ -21,9 +21,9 @@ found. Results up to 2026-10-06 were kept in `RESULTS.md`, which is in this dire
   after the chain, and on failure retry the whole chain.
 - **Signing out on the emulator can be a one-way door** when the relay is in that state, so do not
   sign a working account out to test something else.
-- **The sign-in deeplink is pinned to the cookie variant** (#321). Ring v1.19's APK ships a
-  pre-0.10 `libpubkycore.so` whose parser rejects `pubkyauth://signin_grant` as "Unknown input
-  format" (pubky/pubky-ring#375).
+- **The sign-in deeplink is `pubkyauth://signin_grant`, which needs Ring v2.0 or newer** (#321).
+  v1.19 rejects it as "Unknown input format" (pubky/pubky-ring#375). Install Ring from the v2.0
+  release APK, not an older one.
 - **Ring does not return to Loopky by itself** after approval: its success screen shows OK and never
   fires `x-success`. Switch back by hand. Bitkit as the signer does the same, and also drops a deep
   link that arrives during its cold start, so launch it and let it settle first.
