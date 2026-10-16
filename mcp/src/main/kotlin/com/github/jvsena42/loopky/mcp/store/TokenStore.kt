@@ -98,8 +98,11 @@ class TokenStore(private val db: McpDatabase) {
             .filterNot { c.hasLiveFamily(it, now) }
     }
 
+    /** Every token, family and code, each table named: revocation must not hinge on a per-connection pragma. */
     suspend fun wipeAll() {
         db.transaction { c ->
+            c.exec("DELETE FROM access_tokens")
+            c.exec("DELETE FROM refresh_tokens")
             c.exec("DELETE FROM token_families")
             c.exec("DELETE FROM auth_codes")
         }

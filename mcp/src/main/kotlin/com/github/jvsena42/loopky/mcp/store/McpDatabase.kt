@@ -47,22 +47,27 @@ class McpDatabase private constructor(private val connection: Connection) : Auto
             connection.createStatement().use { statement ->
                 statement.execute("PRAGMA journal_mode=WAL")
                 statement.execute("PRAGMA synchronous=NORMAL")
+            }
+            restrict(path, FILE_PERMISSIONS)
+            return prepared(connection)
+        }
+
+        fun inMemory(): McpDatabase = prepared(DriverManager.getConnection("jdbc:sqlite::memory:"))
+
+        /**
+         * The pragmas both kinds share, and the migrations. `foreign_keys` is per connection and
+         * off by default, and the cascades the token store relies on are silently plain columns
+         * without it — which the in-memory database used to be.
+         */
+        private fun prepared(connection: Connection): McpDatabase {
+            connection.createStatement().use { statement ->
                 statement.execute("PRAGMA foreign_keys=ON")
                 statement.execute("PRAGMA busy_timeout=$BUSY_TIMEOUT_MS")
             }
-            restrict(path, FILE_PERMISSIONS)
             connection.autoCommit = false
             val migrated = runCatching { Migrations.apply(connection) }
             migrated.onSuccess { connection.commit() }.onFailure { connection.rollback() }
             migrated.getOrThrow()
-            return McpDatabase(connection)
-        }
-
-        fun inMemory(): McpDatabase {
-            val connection = DriverManager.getConnection("jdbc:sqlite::memory:")
-            connection.autoCommit = false
-            Migrations.apply(connection)
-            connection.commit()
             return McpDatabase(connection)
         }
 
