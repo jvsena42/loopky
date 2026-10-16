@@ -93,11 +93,25 @@ internal class Authorization(
             call.respondJson(statusJson("expired"))
             return
         }
-        val poll = runSuspendCatching { ringLogin.poll(entry.flowId) }
-            .getOrElse { LoginPoll.Failed(it.message ?: "poll failed") }
+        // A poll that throws has learned nothing about the flow — a transport failure, or the FFI
+        // refusing a second poll that overlapped the first (a reload, a second tab, a proxy
+        // retry during the grant exchange). It used to count as Failed, which dropped the txn
+        // while the first poll went on to an approval nobody held. The page simply asks again.
+        val poll = runSuspendCatching { ringLogin.poll(entry.flowId) }.getOrElse { failure ->
+            log.warn("Polling the Ring flow for ${entry.request.clientName} failed; the page will retry", failure)
+            LoginPoll.Pending
+        }
         when (poll) {
             LoginPoll.Pending -> call.respondJson(statusJson("pending"))
+            LoginPoll.Expired -> {
+                pending.complete(txn)
+                call.respondJson(statusJson("expired"))
+            }
             is LoginPoll.Failed -> {
+                // Cancelled before the txn goes: the FFI still holds the flow and its key, and
+                // nothing else would release them until a later start swept it.
+                runSuspendCatching { ringLogin.cancel(entry.flowId) }
+                    .onFailure { log.warn("Cancelling a failed Ring flow failed", it) }
                 pending.complete(txn)
                 log.warn("Ring flow for ${entry.request.clientName} failed: ${poll.reason}")
                 call.respondJson(statusJson("failed"))

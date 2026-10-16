@@ -305,8 +305,32 @@ class OAuthFlowTest {
         val failed = status(txn)
         assertEquals("failed", failed["status"]?.jsonPrimitive?.content)
         assertFalse("pubkyauth" in failed.toString())
+        assertEquals(ring.started, ring.cancelled, "a failed flow was dropped without being cancelled")
         assertEquals("expired", status(txn)["status"]?.jsonPrimitive?.content)
         assertEquals(HttpStatusCode.BadRequest, http.get("/authorize/status").status)
+    }
+
+    /** The FFI refuses a poll that overlaps another; a reload or a proxy retry must not fail the login. */
+    @Test
+    fun `a poll that errors is pending, not failed, and the approval it overlapped still lands`() = oauthTest {
+        val clientId = registerClient()
+        val txn = authorizeTxn(clientId)
+        ring.nextPollFailure = IllegalStateException("Auth flow flow-1 is already being awaited")
+        assertEquals("pending", status(txn)["status"]?.jsonPrimitive?.content)
+        assertTrue(ring.cancelled.isEmpty())
+        ring.approve()
+        assertEquals("approved", status(txn)["status"]?.jsonPrimitive?.content)
+        assertNotNull(harness.store.links.find(PUBKY))
+    }
+
+    @Test
+    fun `a flow the FFI has expired is reported expired and not cancelled`() = oauthTest {
+        val clientId = registerClient()
+        val txn = authorizeTxn(clientId)
+        ring.expire()
+        assertEquals("expired", status(txn)["status"]?.jsonPrimitive?.content)
+        assertEquals("expired", status(txn)["status"]?.jsonPrimitive?.content, "the txn is gone")
+        assertTrue(ring.cancelled.isEmpty(), "there is nothing left in the FFI to cancel")
     }
 
     /** The one moment a live grant exists that no row names: it must not outlive the failure. */

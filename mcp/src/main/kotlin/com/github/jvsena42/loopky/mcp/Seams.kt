@@ -41,10 +41,19 @@ interface RingLogin {
 
 data class PendingLogin(val flowId: String, val authorizationUrl: String)
 
+/**
+ * What one status poll learned. A poll that *throws* is none of these: a transport failure, or
+ * the FFI refusing an overlapping poll, says nothing about the flow, and the page asks again.
+ */
 sealed interface LoginPoll {
     data object Pending : LoginPoll
     data class Approved(val pubky: String, val sessionSecret: String) : LoginPoll
+
+    /** Ring, or the relay, said no; the flow is still held and has to be cancelled. */
     data class Failed(val reason: String) : LoginPoll
+
+    /** The flow outlived its TTL and the FFI has already dropped it; there is nothing left to cancel. */
+    data object Expired : LoginPoll
 }
 
 /** The only capability the server ever asks Ring for — the CLI's scope, so it can never post or follow. */

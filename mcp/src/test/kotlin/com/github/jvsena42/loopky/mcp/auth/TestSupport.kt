@@ -57,6 +57,9 @@ class FakeRingLogin : RingLogin {
 
     /** When set, [revoke] waits on it after recording the attempt: a homeserver that never answers. */
     var revokeGate: CompletableDeferred<Unit>? = null
+
+    /** Thrown by the next [poll] only: the FFI refusing an overlapping poll, or a transport failure. */
+    var nextPollFailure: Throwable? = null
     private val answers = HashMap<String, LoginPoll>()
     private var counter = 0
 
@@ -71,7 +74,13 @@ class FakeRingLogin : RingLogin {
         return PendingLogin(id, authUrl(id))
     }
 
-    override suspend fun poll(flowId: String): LoginPoll = answers[flowId] ?: LoginPoll.Failed("unknown flow")
+    override suspend fun poll(flowId: String): LoginPoll {
+        nextPollFailure?.let {
+            nextPollFailure = null
+            throw it
+        }
+        return answers[flowId] ?: LoginPoll.Failed("unknown flow")
+    }
 
     override suspend fun cancel(flowId: String) {
         cancelled += flowId
@@ -89,6 +98,10 @@ class FakeRingLogin : RingLogin {
 
     fun fail(flowId: String = started.last()) {
         answers[flowId] = LoginPoll.Failed("denied")
+    }
+
+    fun expire(flowId: String = started.last()) {
+        answers[flowId] = LoginPoll.Expired
     }
 }
 
