@@ -1,11 +1,14 @@
 package com.github.jvsena42.loopky.mcp.auth
 
+import com.github.jvsena42.loopky.mcp.PendingLogin
 import com.github.jvsena42.loopky.mcp.RingLogin
 import com.github.jvsena42.loopky.mcp.security.ClientKey
 import com.github.jvsena42.loopky.mcp.security.RedactingLogger
 import com.github.jvsena42.loopky.util.runSuspendCatching
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.Instant
 
@@ -68,27 +71,49 @@ class PendingLogins(
     /** Flows being started right now, for the test that holds the relay round trip outside the lock. */
     suspend fun reservedSlots(): Int = mutex.withLock { reservedByIp.values.sum() }
 
+    /**
+     * The reservation is released exactly once on every exit, cancellation included: a leaked one
+     * lowers its address's cap for good, and enough of them block every sign-in until a restart.
+     * A flow that started but was never stored is cancelled for the same reason — nothing else
+     * would ever cancel it. (One that the FFI started while this call was being cancelled cannot
+     * be named here; the FFI's own TTL sweeps it.)
+     */
     suspend fun begin(request: AuthorizeRequest, ip: String): PendingStart {
         val key = ClientKey.of(ip)
         val refused = reserve(key)
         if (refused != null) return refused
-        val login = runSuspendCatching { ringLogin.start() }.getOrElse { failure ->
-            mutex.withLock { unreserveLocked(key) }
-            return PendingStart.RingFailed(failure)
+        var reserved = true
+        var started: PendingLogin? = null
+        try {
+            val login = runSuspendCatching { ringLogin.start() }.getOrElse { failure ->
+                return PendingStart.RingFailed(failure)
+            }
+            started = login
+            val pending = PendingAuthorization(
+                txn = minter.opaque(),
+                request = request,
+                flowId = login.flowId,
+                authorizationUrl = login.authorizationUrl,
+                ip = key,
+                startedAt = clock.instant(),
+            )
+            // The reservation becomes the entry in one step, so the caps never count it twice
+            // or not at all.
+            withContext(NonCancellable) {
+                mutex.withLock {
+                    unreserveLocked(key)
+                    byTxn[pending.txn] = pending
+                }
+            }
+            reserved = false
+            started = null
+            return PendingStart.Started(pending)
+        } finally {
+            withContext(NonCancellable) {
+                if (reserved) mutex.withLock { unreserveLocked(key) }
+                started?.let { runSuspendCatching { ringLogin.cancel(it.flowId) } }
+            }
         }
-        val pending = PendingAuthorization(
-            txn = minter.opaque(),
-            request = request,
-            flowId = login.flowId,
-            authorizationUrl = login.authorizationUrl,
-            ip = key,
-            startedAt = clock.instant(),
-        )
-        mutex.withLock {
-            unreserveLocked(key)
-            byTxn[pending.txn] = pending
-        }
-        return PendingStart.Started(pending)
     }
 
     /** Null once expired or abandoned, with the flow cancelled; the status endpoint then reports `expired`. */
