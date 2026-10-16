@@ -14,7 +14,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.ApplicationCallPipeline
+import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.application.install
 import io.ktor.server.application.pluginOrNull
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
@@ -120,9 +120,10 @@ fun Application.installMcp(deps: McpDeps) {
 
     routing {
         route(MCP_PATH) {
-            intercept(ApplicationCallPipeline.Plugins) {
-                if (!sessions.admit(context)) finish()
-            }
+            // Route-scoped, never `intercept(ApplicationCallPipeline.Plugins)`: that reached the
+            // sibling routes too and answered `/healthz` with a 401. And ahead of the handlers,
+            // because inside `sse {}` the response is already a 200 event stream.
+            install(McpGate) { this.sessions = sessions }
             sse {
                 val transport = sessions.existing(call) ?: return@sse
                 transport.handleRequest(this, call)
@@ -140,6 +141,16 @@ fun Application.installMcp(deps: McpDeps) {
 }
 
 const val MCP_PATH = "/mcp"
+
+private class McpGateConfig {
+    lateinit var sessions: McpSessions
+}
+
+/** The auth, revocation and origin gates for `/mcp`; a refused call is answered here. */
+private val McpGate = createRouteScopedPlugin("McpGate", ::McpGateConfig) {
+    val sessions = pluginConfig.sessions
+    onCall { call -> sessions.admit(call) }
+}
 
 /** The principal the bearer spoke for, attached by the gate for the handlers. */
 val PrincipalKey = AttributeKey<Principal>("loopky.principal")

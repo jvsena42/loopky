@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.mcp.tenant.TenantLimits
 import com.github.jvsena42.loopky.mcp.tenant.TenantPool
 import io.ktor.client.HttpClient
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -123,6 +124,13 @@ class McpHttpTest {
             response.headers[HttpHeaders.WWWAuthenticate],
         )
         assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = "token-mallory").status)
+    }
+
+    @Test
+    fun `an unauthenticated stream is 401 before any event stream starts`() = serving {
+        val response = client.get(MCP_PATH) { header(HttpHeaders.Accept, "text/event-stream") }
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertNotNull(response.headers[HttpHeaders.WWWAuthenticate])
     }
 
     @Test
