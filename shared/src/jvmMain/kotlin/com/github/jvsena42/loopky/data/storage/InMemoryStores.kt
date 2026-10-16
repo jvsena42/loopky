@@ -1,3 +1,7 @@
+// The stores of a per-user graph (#214): the contracts of `FileStores.kt`, backed by fields. The
+// point is isolation, not persistence — a file under a config home is readable by every graph in
+// the process, a field only through the graph that owns it, and it goes with the graph.
+
 package com.github.jvsena42.loopky.data.storage
 
 import com.github.jvsena42.loopky.data.repository.CachedDecks
@@ -13,21 +17,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 
-/**
- * The eight stores of a graph that must leave nothing behind — one user's slice of a server
- * that holds many (#214).
- *
- * Same contracts as the file stores in `FileStores.kt`, backed by fields instead of a
- * `JsonFileStore`, and for a reason that is about *isolation* rather than persistence: a file
- * under a config home is readable by every graph in the process, so two tenants over one would
- * read each other's session, deck cache and review journal. A field is reachable only through the
- * graph that owns it, and goes with it. Nothing here survives the graph on purpose — the server
- * keeps the one thing it must keep, the credential, in its own vault, and re-reads the rest from
- * the homeserver.
- *
- * Every mutable field is a [MutableStateFlow], which is what makes a tenant's graph safe to drive
- * from several request threads at once without a lock per store.
- */
 class InMemorySecureSessionStore : SecureSessionStore {
 
     override val location: String = "memory"

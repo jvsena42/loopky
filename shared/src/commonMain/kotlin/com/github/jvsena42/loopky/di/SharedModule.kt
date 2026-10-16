@@ -97,9 +97,9 @@ internal val REPOSITORY_SCOPE = named("repositoryScope")
  * not inside the `Koin` that resolved it, so one module object loaded into two
  * `koinApplication`s hands both the **same** session provider, repositories and caches — which
  * is the one thing a per-user graph exists to prevent (#214). Each graph builds its own.
+ *
+ * `LongMethod` is suppressed: this is a binding table, one line per binding.
  */
-// LongMethod: a declarative binding table, one line per binding — splitting it would only hide
-// which graph a binding belongs to.
 @Suppress("LongMethod")
 fun sharedModule(): Module = module {
     single(REPOSITORY_SCOPE) { CoroutineScope(SupervisorJob()) } onClose { it?.cancel() }
