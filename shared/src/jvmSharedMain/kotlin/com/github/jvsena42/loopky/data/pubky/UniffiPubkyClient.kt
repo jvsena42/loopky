@@ -78,8 +78,10 @@ private const val MAX_CLIENT_ID_LENGTH = 253
 class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : PubkyClient {
 
     init {
-        require(clientId.isNotBlank() && clientId.length <= MAX_CLIENT_ID_LENGTH) {
-            "clientId must be a non-empty domain name of at most $MAX_CLIENT_ID_LENGTH characters"
+        // pubky's `ClientId::new` checks exactly these two (empty, and > 253 UTF-8 bytes), no
+        // domain syntax; blank is refused here as well, since no real client id is whitespace.
+        require(clientId.isNotBlank() && clientId.encodeToByteArray().size <= MAX_CLIENT_ID_LENGTH) {
+            "clientId must be non-blank and at most $MAX_CLIENT_ID_LENGTH bytes"
         }
     }
 

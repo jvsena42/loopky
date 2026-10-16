@@ -61,6 +61,8 @@ class UniffiPubkyClientJvmTest {
     fun `refuses a client id pubky's ClientId would reject`() {
         assertFailsWith<IllegalArgumentException> { UniffiPubkyClient(clientId = " ") }
         assertFailsWith<IllegalArgumentException> { UniffiPubkyClient(clientId = "a".repeat(254)) }
+        // 127 characters, 254 bytes: pubky counts bytes.
+        assertFailsWith<IllegalArgumentException> { UniffiPubkyClient(clientId = "é".repeat(127)) }
         UniffiPubkyClient(clientId = "mcp.loopky.app")
     }
 
