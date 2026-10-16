@@ -156,10 +156,12 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   surface and Architecture.md §13 for the decisions.
 - `cli-core/` — the CLI's command layer as a library (#488): the deck, card, import and tag
   commands and the types they answer in (`CommandResult`, `CliError`/`ExitCode`, `Args`, the
-  views, `CliEnvironment`), so `:cli` and the MCP server (#214) are two front ends over one
-  implementation. Depends on `:shared` and kotlinx only — no Koin. Anything a hosted server would
-  call goes here; anything about being a terminal binary (`Main`, login, install/update,
-  completions, `CommandSurface`, the native-image metadata) stays in `cli/`. The packages are
+  views, `CliEnvironment`) and the command table (`CommandSurface.kt`: `cliCommands()`, which
+  `requireKnownOptions` validates against and the MCP derives its tool schemas from), so `:cli`
+  and the MCP server (#214) are two front ends over one implementation. Depends on `:shared` and
+  kotlinx only — no Koin. Anything a hosted server would call goes here; anything about being a
+  terminal binary (`Main`, login, install/update, completions and the near-miss hints over the
+  table, `commands --json`, the native-image metadata) stays in `cli/`. The packages are
   still `com.github.jvsena42.loopky.cli…` on purpose: the reachability metadata names classes,
   and a rename drops them silently. Architecture.md §13.15.
 - `iosApp/iosApp/` — iOS app. SwiftUI screens in `Views/`, `NavigationStack` in `Navigation/`, Koin bootstrap in `DI/`. Compose Multiplatform UI is **not** used for iOS screens.

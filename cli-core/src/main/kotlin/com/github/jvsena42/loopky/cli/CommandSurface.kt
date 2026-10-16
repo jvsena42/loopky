@@ -1,13 +1,18 @@
 package com.github.jvsena42.loopky.cli
 
 /**
- * The command surface as data, so a shell can be told about it.
+ * The command surface as data, so something that is not a person can be told about it.
  *
- * `loopky completion bash|zsh|fish` generates its script from this table and nothing else. That
- * is the whole reason the table exists rather than three checked-in scripts: a completion that
- * has drifted from the binary is worse than none — it offers a flag that is refused and hides one
- * that works, and nothing reports either. `CompletionTest` holds it against [Args] and the usage
- * block, so a new flag that is not described here fails the build.
+ * `loopky completion bash|zsh|fish` and `loopky commands --json` are generated from this table and
+ * nothing else, and the hosted MCP server derives its tool schemas from it (#214). That is the whole
+ * reason the table exists rather than three checked-in scripts and a hand-kept tool list: a
+ * description that has drifted from the binary is worse than none — it offers a flag that is
+ * refused and hides one that works, and nothing reports either. `CompletionTest` holds it against
+ * [Args] and the usage block, so a new flag that is not described here fails the build.
+ *
+ * It lives in `:cli-core` rather than beside the generators because it is **data about the
+ * commands**, read by two front ends; the generators, the near-miss hints and `commands --json`
+ * are about being a terminal binary and stay in `:cli`.
  *
  * **Nothing here reaches the network, and that is a constraint rather than an omission.** The
  * obvious next feature is completing a deck id after `deck show`, and it would mean a homeserver
@@ -15,7 +20,7 @@ package com.github.jvsena42.loopky.cli
  * one place a user cannot interrupt without losing the line they were typing. Deck ids are
  * [Operand.Opaque]: the shell says what the word *is* and offers nothing.
  */
-internal sealed interface OptionValue {
+sealed interface OptionValue {
 
     /**
      * Takes nothing.
@@ -37,14 +42,14 @@ internal sealed interface OptionValue {
 }
 
 /** A `--long` option. There is no short form anywhere in this CLI; see [Args]. */
-internal data class CliOption(
+data class CliOption(
     val name: String,
     val summary: String,
     val value: OptionValue = OptionValue.Text,
 )
 
 /** What the non-option words after a command are. */
-internal sealed interface Operand {
+sealed interface Operand {
 
     data object None : Operand
 
@@ -77,7 +82,7 @@ internal sealed interface Operand {
  * would — and useful, because "`tag trending` can never answer `session_expired`" is exactly the
  * kind of thing an agent otherwise learns by hitting it.
  */
-internal data class CliCommand(
+data class CliCommand(
     val path: String,
     val summary: String,
     val operand: Operand = Operand.None,
@@ -113,10 +118,10 @@ internal data class CliCommand(
 /**
  * Options accepted by every command, so they are offered on every command.
  *
- * `--version` is here because it genuinely is global: [Main] answers it before it looks at a verb,
+ * `--version` is here because it genuinely is global: `Main` answers it before it looks at a verb,
  * so `loopky deck list --version` prints the version.
  */
-internal val GLOBAL_OPTIONS = listOf(
+val GLOBAL_OPTIONS = listOf(
     CliOption("json", "machine-readable output on stdout", OptionValue.Switch),
     CliOption("env", "which network to talk to", OptionValue.OneOf(listOf("staging", "production"))),
     CliOption("no-update-check", "do not look for a newer release on this invocation", OptionValue.Switch),
@@ -134,7 +139,7 @@ internal val GLOBAL_OPTIONS = listOf(
  * like it overrides something. Listed rather than dropped from [Args] so the pair stays a decision
  * with a reason attached, and so `CompletionTest` can tell "not described yet" from "not offered".
  */
-internal val UNOFFERED_SWITCHES = setOf("yes", "force")
+val UNOFFERED_SWITCHES = setOf("yes", "force")
 
 private val LANGUAGE_OPTIONS = listOf(
     CliOption("front-lang", "BCP-47 tag for the front side, such as en-US"),
@@ -197,11 +202,11 @@ private val SEPARATORS = listOf(
     "auto", "tab", "comma", "semicolon", "pipe", "dash", "colon", "blank", "markdown",
 )
 
-/** The shells [completion] can generate for. */
-internal val COMPLETION_SHELLS = listOf("bash", "zsh", "fish")
+/** The shells `completion` can generate for. */
+val COMPLETION_SHELLS = listOf("bash", "zsh", "fish")
 
 @Suppress("LongMethod")
-internal fun cliCommands(): List<CliCommand> = listOf(
+fun cliCommands(): List<CliCommand> = listOf(
     CliCommand(
         path = "login",
         summary = "print a QR code for Pubky Ring and wait for approval",
@@ -411,11 +416,13 @@ internal fun cliCommands(): List<CliCommand> = listOf(
  *
  * Checked against [cliCommands] rather than a per-command list, which is what makes it free to
  * keep true: a flag a command reads has to be in the table anyway, or completion does not offer it
- * and `loopky commands` does not describe it.
+ * and `loopky commands` does not describe it. Here beside the table rather than in `:cli` because
+ * every front end has to run it before a command: validation that lives in one binding is
+ * validation the other can skip.
  *
  * A verb that is not in the table is left alone — `dispatch` has a better message for that.
  */
-internal fun Args.requireKnownOptions() {
+fun Args.requireKnownOptions() {
     val command = cliCommands().firstOrNull { it.path == verb } ?: return
     val known = (command.options + GLOBAL_OPTIONS).mapTo(mutableSetOf()) { it.name } + UNOFFERED_SWITCHES
     val unknown = givenOptions().filterNot { it in known }
@@ -446,84 +453,3 @@ private fun unknownOptionMessage(command: CliCommand, unknown: List<String>): St
     append((command.options + GLOBAL_OPTIONS).joinToString(", ") { "--${it.name}" })
     append(".")
 }
-
-/** `dispatch`'s refusal of a verb the table does not have: still one line, now naming the near miss. */
-internal fun Args.unknownCommandMessage(): String =
-    listOfNotNull("Unknown command '$verb'.", nearMissHint(), "Try `loopky --help`.").joinToString(" ")
-
-/** How many edits a mistyped command may be from a real one and still be named. */
-private const val NEAR_MISS_DISTANCE = 2
-
-/**
- * What to say about a verb the table does not have: the one command it is a near miss of, or
- * failing that the verbs of the group it names, or null (#293).
- *
- * **Only an unambiguous guess is offered.** Something acting on the text runs what it is told, so a
- * wrong guess costs more than none: `card ed` is as close to `card add` as to `card edit`, and gets
- * the group's verbs rather than either. The group fallback is also what catches a synonym —
- * `card delete` is nowhere near `card rm` by edits, and guessing `deck delete` would be the worst
- * answer available. Matched against full paths, and against the first two words as well as the
- * verb, so `dek list` reaches `deck list` although its verb parses as `dek`.
- */
-internal fun Args.nearMissHint(): String? {
-    val probes = listOfNotNull(verb, words.take(2).takeIf { it.size == 2 }?.joinToString(" "))
-        .map { it.lowercase() }
-    val near = cliCommands().map { it.path }
-        .filter { path -> probes.any { editDistance(it, path) <= NEAR_MISS_DISTANCE } }
-    near.singleOrNull()?.let { return "Did you mean `$it`?" }
-
-    val noun = words.firstOrNull()?.lowercase() ?: return null
-    val group = commandGroups()[noun] ?: return null
-    return "`$noun` takes one of: ${group.joinToString(", ") { it.path.substringAfter(' ') }}."
-}
-
-private fun editDistance(a: String, b: String): Int {
-    var previous = IntArray(b.length + 1) { it }
-    for (i in a.indices) {
-        val current = IntArray(b.length + 1)
-        current[0] = i + 1
-        for (j in b.indices) {
-            val substitution = previous[j] + if (a[i] == b[j]) 0 else 1
-            current[j + 1] = minOf(substitution, previous[j + 1] + 1, current[j] + 1)
-        }
-        previous = current
-    }
-    return previous[b.length]
-}
-
-/** The group nouns — `deck`, `card`, `tag` — mapped to the verbs that follow them. */
-internal fun commandGroups(): Map<String, List<CliCommand>> = cliCommands()
-    .filter { " " in it.path }
-    .groupBy { it.path.substringBefore(' ') }
-
-/** What a group noun on its own means, since it has no command of its own to describe it. */
-private val GROUP_SUMMARIES = mapOf(
-    "deck" to "create, read and edit decks",
-    "card" to "add, edit and remove cards",
-    "tag" to "read the public tag index",
-)
-
-/** The first word of every command, in the order they are listed: group nouns and one-word verbs. */
-internal fun topLevelWords(): List<Pair<String, String>> {
-    val groups = commandGroups()
-    return cliCommands()
-        .map { it.path.substringBefore(' ') }
-        .distinct()
-        .map { head ->
-            head to (
-                if (head in groups) {
-                    GROUP_SUMMARIES.getValue(head)
-                } else {
-                    cliCommands().first { it.path == head }.summary
-                }
-                )
-        }
-}
-
-/** Every option that consumes the token after it, which is what a completion has to know. */
-internal fun valueTakingOptions(): List<String> =
-    (cliCommands().flatMap { it.options } + GLOBAL_OPTIONS)
-        .filter { it.value != OptionValue.Switch }
-        .map { it.name }
-        .distinct()
-        .sorted()

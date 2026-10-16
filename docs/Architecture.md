@@ -2570,21 +2570,25 @@ binary on someone's machine stays in `:cli`*:
   `CardList`, `Import`, `ApkgImport`, `ImageProbe`, `Tags` …), and the types they answer in:
   `CommandResult`/`result`/`cliJson`, `CliError`/`asCliError`/`ExitCode`, `Args` and
   `requireUsableOperand`, the views, `DeckWriteLock` and `CliEnvironment`. Also
-  `generateCliVersion`, because the image prober sends `CLI_VERSION` as its User-Agent. It depends
-  on `:shared` and kotlinx only — **no Koin**: callers hand the commands their repositories.
+  `generateCliVersion`, because the image prober sends `CLI_VERSION` as its User-Agent, and the
+  command table (`CommandSurface.kt`) with `requireKnownOptions`, since #214: the table is data
+  about the commands that both front ends read, and the validation beside it is the one every
+  front end has to run. It depends on `:shared` and kotlinx only — **no Koin**: callers hand the
+  commands their repositories.
 - `:cli` — `Main`/`dispatch`, the Koin start-up and the session (`startCli`, `SessionCache`,
   `requireSession`), the envelopes and `StdoutGuard`, `login`/`logout`/`whoami` (sign-in by QR is
   the human-in-the-loop path; a server signs in another way), `doctor`, `update` and install
-  detection, `batch`, completions and `CommandSurface`.
+  detection, `batch`, completions, `commands --json` and the near-miss hints over the table
+  (`CommandLineHints.kt`).
 
 Three things not to undo. The packages did **not** move — `com.github.jvsena42.loopky.cli…` in
 both modules — because the reachability metadata under `cli/src/main/resources/META-INF/
 native-image/` names classes, and a renamed one drops out of it with nothing reporting it. The
 commands still take `Args` rather than plain values, so the "plain values" above is looser than it
 reads; narrowing the signatures is for when `:mcp` needs it, not part of the move. And
-`CommandSurface` stays in `:cli` for now as the authority `commands --json`, the completions,
-`batch` and `AgentPluginTest` read; the MCP tool list should be checked against it too, which may
-argue for moving it down once `:mcp` exists.
+`CommandSurface` moved down with `:mcp` (#214): it is the authority `commands --json`, the
+completions, `batch`, `AgentPluginTest` **and** the MCP tool list are checked against, and a
+table two front ends read belongs in the module both depend on.
 
 Whether such a server is hosted — and therefore holds users' session secrets, with everything that
 implies — or runs on the user's own machine over stdio is open. Finding 1 pushes the same way for
