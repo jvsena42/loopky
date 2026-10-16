@@ -36,7 +36,6 @@ import io.modelcontextprotocol.kotlin.sdk.server.StreamableHttpServerTransport
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.McpJson
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -71,12 +70,19 @@ data class HttpLimits(
     val maxBodyBytes: Long = DEFAULT_MAX_BODY_BYTES,
     /** MCP sessions kept at once; the least recently seen is closed when a new one is needed. */
     val maxSessions: Int = DEFAULT_MAX_SESSIONS,
+    /**
+     * Sessions one principal may hold; its own least recently seen goes first. A handful covers
+     * a connector and a reconnect or two, and it is what keeps one bearer churning `initialize`
+     * from pushing every other principal out of the global cap.
+     */
+    val maxSessionsPerPrincipal: Int = DEFAULT_MAX_SESSIONS_PER_PRINCIPAL,
     /** A session nobody has used for this long is closed on the next initialize. */
     val sessionIdleTtl: Duration = DEFAULT_SESSION_IDLE_TTL,
 ) {
     private companion object {
         const val DEFAULT_MAX_BODY_BYTES = 2L * 1024 * 1024
         const val DEFAULT_MAX_SESSIONS = 1_000
+        const val DEFAULT_MAX_SESSIONS_PER_PRINCIPAL = 8
         val DEFAULT_SESSION_IDLE_TTL = 1.hours
     }
 }
@@ -234,16 +240,16 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
     suspend fun forPost(call: ApplicationCall): StreamableHttpServerTransport {
         call.attributes.getOrNull(TransportKey)?.let { return it }
         val principal = call.attributes[PrincipalKey]
+        // Before the transport exists rather than in its initialized callback, which is not
+        // suspending: closing a session from there meant runBlocking inside the request.
+        trim(principal)
         val transport = StreamableHttpServerTransport(
             StreamableHttpServerTransport.Configuration(
                 enableJsonResponse = true,
                 maxRequestBodySize = deps.limits.maxBodyBytes,
             ),
         )
-        transport.setOnSessionInitialized { id ->
-            trim()
-            sessions[id] = McpSession(transport, principal.pubky, deps.clock())
-        }
+        transport.setOnSessionInitialized { id -> sessions[id] = McpSession(transport, principal.pubky, deps.clock()) }
         transport.setOnSessionClosed { id -> sessions.remove(id) }
         val server = serverFor(principal)
         server.onClose { transport.sessionId?.let { sessions.remove(it) } }
@@ -265,22 +271,25 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
         return server
     }
 
-    /** Drops idle sessions, and the oldest ones past the cap. Called as a session is being created. */
-    private fun trim() {
+    /**
+     * Makes room for a session of [principal]'s: idle ones go, then the principal's own oldest
+     * past its cap, and only then the oldest of anyone's past the global cap — in that order, so
+     * a client that churns `initialize` evicts its own sessions and not everybody else's.
+     */
+    private suspend fun trim(principal: Principal) {
         val now = deps.clock()
-        val stale = sessions.filterValues { now - it.lastSeen > deps.limits.sessionIdleTtl.inWholeMilliseconds }
-        stale.keys.forEach { close(it) }
-        val overflow = sessions.size - deps.limits.maxSessions + 1
-        if (overflow > 0) {
-            sessions.entries.sortedBy { it.value.lastSeen }.take(overflow).forEach { close(it.key) }
-        }
+        sessions.filterValues { now - it.lastSeen > deps.limits.sessionIdleTtl.inWholeMilliseconds }.keys.forEach { close(it) }
+        val own = sessions.filterValues { it.pubky == principal.pubky }
+        oldest(own, own.size - deps.limits.maxSessionsPerPrincipal + 1).forEach { close(it) }
+        oldest(sessions, sessions.size - deps.limits.maxSessions + 1).forEach { close(it) }
     }
 
-    private fun close(sessionId: String) {
+    private fun oldest(among: Map<String, McpSession>, count: Int): List<String> =
+        if (count <= 0) emptyList() else among.entries.sortedBy { it.value.lastSeen }.take(count).map { it.key }
+
+    private suspend fun close(sessionId: String) {
         val session = sessions.remove(sessionId) ?: return
-        // The SDK's close is suspending and never blocks on the network; this runs on a session
-        // being created, which is already inside a request.
-        runBlocking { session.transport.close() }
+        session.transport.close()
     }
 
     private suspend fun ApplicationCall.unauthorized(description: String?) {

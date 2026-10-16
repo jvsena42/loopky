@@ -223,6 +223,22 @@ class McpHttpTest {
     }
 
     @Test
+    fun `a principal churning initialize evicts its own sessions, never another's`() = serving(
+        HttpLimits(maxSessions = 4, maxSessionsPerPrincipal = 2),
+    ) {
+        val alice = listOf(client.initialize("token-alice"), client.initialize("token-alice"))
+        val bob = (1..5).map { client.initialize("token-bob") }
+        alice.forEach { assertEquals(HttpStatusCode.OK, client.rpc(call("deck_list", "{}"), session = it).status) }
+        bob.dropLast(2).forEach { assertEquals(HttpStatusCode.NotFound, client.rpc(call("deck_list", "{}"), "token-bob", it).status) }
+        bob.takeLast(2).forEach { assertEquals(HttpStatusCode.OK, client.rpc(call("deck_list", "{}"), "token-bob", it).status) }
+        // A third of alice's own pushes her oldest out and nothing of bob's.
+        val third = client.initialize("token-alice")
+        assertEquals(HttpStatusCode.NotFound, client.rpc(call("deck_list", "{}"), session = alice.first()).status)
+        assertEquals(HttpStatusCode.OK, client.rpc(call("deck_list", "{}"), session = third).status)
+        bob.takeLast(2).forEach { assertEquals(HttpStatusCode.OK, client.rpc(call("deck_list", "{}"), "token-bob", it).status) }
+    }
+
+    @Test
     fun `a body past the limit is 413`() = serving(HttpLimits(maxBodyBytes = 256)) {
         val response = client.rpc(call("deck_list", """{"x":"${"a".repeat(300)}"}"""))
         assertEquals(HttpStatusCode.PayloadTooLarge, response.status)
