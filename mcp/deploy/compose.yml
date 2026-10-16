@@ -14,7 +14,10 @@ services:
       - /tmp:rw,exec,nosuid,size=64m
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    # The JVM's own caps (Dockerfile) are sized to fit inside mem_limit, so the kernel never has
+    # to SIGKILL it past a clean shutdown.
     mem_limit: 512m
+    cpus: "1.0"
     pids_limit: 256
     # Loopback only: Caddy terminates TLS in front. Nothing but 443 and 22 is open on the box.
     ports:

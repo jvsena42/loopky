@@ -29,14 +29,20 @@ USER loopky
 
 # JNA and sqlite-jdbc unpack their native libraries into /tmp and load them from there, so the
 # read-only root needs a tmpfs at /tmp that allows exec — Docker's default tmpfs is noexec, and
-# the server then dies at the first database open. The heap cap keeps a shared VPS's other tenant
-# fed (#486). RUST_LOG=warn because libpubkycore logs relay channel URLs at INFO, and a pending
-# sign-in's channel is not something a log should hold.
+# the server then dies at the first database open. RUST_LOG=warn because libpubkycore logs relay
+# channel URLs at INFO, and a pending sign-in's channel is not something a log should hold.
+#
+# Memory is budgeted against compose's 512 MiB mem_limit, which a JVM does not see on its own:
+# 256 MiB heap, 64 MiB direct buffers (Netty's default is the heap size again), 128 MiB metaspace,
+# and two glibc malloc arenas rather than one per core. What is left covers thread stacks and the
+# FFI's own copies of each read (8 MiB × 8 calls). Crossing the cgroup limit is a SIGKILL with no
+# clean shutdown, which ExitOnOutOfMemoryError cannot turn into one.
 ENV LOOPKY_MCP_HOST=0.0.0.0 \
     LOOPKY_MCP_PORT=8080 \
     LOOPKY_MCP_DATA_DIR=/data \
     RUST_LOG=warn \
-    JAVA_OPTS="-Xmx384m -XX:+ExitOnOutOfMemoryError -Djna.tmpdir=/tmp"
+    MALLOC_ARENA_MAX=2 \
+    JAVA_OPTS="-Xmx256m -XX:MaxDirectMemorySize=64m -XX:MaxMetaspaceSize=128m -XX:+ExitOnOutOfMemoryError -Djna.tmpdir=/tmp"
 
 EXPOSE 8080
 VOLUME ["/data"]
