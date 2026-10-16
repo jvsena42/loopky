@@ -38,7 +38,7 @@ class OAuthServer(private val deps: OAuthDeps) {
 
     val unlinker = Unlinker(store, deps.vault, deps.ringLogin, deps.clock)
     val verifier: AccessTokenVerifier = StoredTokenVerifier(store, config, deps.clock)
-    val sessionSecrets: SessionSecrets = VaultSessionSecrets(store, deps.vault, deps.clock)
+    val sessionSecrets: SessionSecrets = VaultSessionSecrets(store, deps.vault, unlinker)
 
     internal val tokens = TokenService(store, config, deps.clock, deps.limits.lifetimes, minter, unlinker)
     internal val pending = PendingLogins(deps.ringLogin, minter, deps.clock, deps.limits)

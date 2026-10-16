@@ -46,14 +46,14 @@ class UnlinkTest {
     }
 
     @Test
-    fun `revoked(pubky) deletes the link and kills every token without calling Ring`() = oauthTest {
+    fun `revoked(pubky) deletes the link and kills every token, and still attempts the revoke`() = oauthTest {
         val clientId = registerClient()
         val tokens = tokensFor(clientId)
         server.sessionSecrets.revoked(PUBKY)
         assertNull(server.verifier.verify(tokens.access), "the next request is a 401")
         assertNull(server.sessionSecrets.sessionSecretFor(PUBKY))
         assertEquals(HttpStatusCode.BadRequest, refresh(tokens.refresh, clientId).status)
-        assertTrue(ring.revoked.isEmpty(), "Ring already revoked it; there is nothing to revoke")
+        assertEquals(listOf(SESSION_SECRET), ring.revoked, "a misclassified refusal would otherwise leave the grant live")
     }
 
     @Test
