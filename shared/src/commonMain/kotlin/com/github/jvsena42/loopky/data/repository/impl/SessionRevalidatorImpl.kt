@@ -3,7 +3,9 @@ package com.github.jvsena42.loopky.data.repository.impl
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.pubky.isSessionExpired
 import com.github.jvsena42.loopky.data.pubky.parseSessionPayload
+import com.github.jvsena42.loopky.data.storage.LocalKeyStore
 import com.github.jvsena42.loopky.data.storage.SecureSessionStore
 import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.util.Log
@@ -29,11 +31,19 @@ import kotlin.time.TimeSource
  * changed in between. The window is short on purpose: it exists to collapse one burst, never to
  * remember a verdict. A user tapping "try again" seconds later must get a real attempt, because a
  * cached "no" is indistinguishable to them from the app not trying at all.
+ *
+ * **A rejected session on a key Loopky holds and nobody has backed up is replaced by signing in
+ * again with that key.** That user has no other way back in — no Ring, no phrase written down —
+ * so a homeserver that stops honouring the session (cookie sessions are deprecated upstream) would
+ * otherwise lock them out with the key sitting in the keystore.
+ * Only a rejection triggers it — a network failure says nothing about the session — and only for
+ * the signed-in pubky's own registered key. A backed-up key is left alone; its owner can restore.
  */
-class SessionRevalidatorImpl(
+internal class SessionRevalidatorImpl(
     private val pubky: PubkyClient,
     private val sessionProvider: MutableSessionProvider,
     private val sessionStore: SecureSessionStore,
+    private val localKeyStore: LocalKeyStore,
 ) : SessionRevalidator {
 
     private val mutex = Mutex()
@@ -71,8 +81,12 @@ class SessionRevalidatorImpl(
             val current = sessionProvider.current()
                 ?: error("Cannot revalidate: no active session")
             Log.d(TAG, "revalidating session for ${current.identity.pubky.take(PUBKY_LOG_PREFIX_LEN)}…")
-            val json = pubky.revalidateSession(current.sessionSecret).getOrThrow()
+            val json = pubky.revalidateSession(current.sessionSecret)
+                .recoverRejection(current)
+                .getOrThrow()
+            // Neither payload names the homeserver, and the session did not move.
             val refreshed = parseSessionPayload(json, loopkyJson)
+                .let { if (it.homeserver.isBlank()) it.copy(homeserver = current.homeserver) else it }
             sessionStore.save(refreshed)
             sessionProvider.set(refreshed)
             Log.d(TAG, "session revalidated successfully")
@@ -82,6 +96,20 @@ class SessionRevalidatorImpl(
             lastFailure = Failure(staleSecret, it, TimeSource.Monotonic.markNow())
             Log.e(TAG, "session revalidation failed: ${it.message}", it)
         }
+
+    private suspend fun Result<String>.recoverRejection(current: Session): Result<String> {
+        val rejection = exceptionOrNull()?.takeIf { it.isSessionExpired() } ?: return this
+        val held = localKeyStore.current()
+            ?.takeIf { it.registered && it.backedUpBy.isEmpty() && it.pubky == current.identity.pubky }
+            ?: return this
+        Log.d(TAG, "session rejected; signing in again with the un-backed-up key Loopky holds")
+        val signedIn = pubky.signIn(held.secretKeyHex)
+        if (signedIn.isSuccess) return signedIn
+        // The class only: the FFI's message for a call handed a secret key is not loggable. The
+        // rejection stays the answer, so the caller sees an expiry rather than the second call's error.
+        Log.e(TAG, "re-sign-in with the held key failed — ${signedIn.exceptionOrNull()!!::class.simpleName}")
+        return Result.failure(rejection)
+    }
 
     companion object {
         private const val TAG = "Loopky/SessionRevalidator"
