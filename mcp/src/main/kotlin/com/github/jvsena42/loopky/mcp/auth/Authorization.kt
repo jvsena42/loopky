@@ -97,7 +97,16 @@ internal class Authorization(
             }
             is LoginPoll.Approved -> {
                 pending.complete(txn)
-                val redirect = approve(entry, poll)
+                val redirect = runSuspendCatching { approve(entry, poll) }.getOrElse { failure ->
+                    // The grant Ring just issued is live, and no row names it: nothing here could
+                    // ever revoke it later, so it is revoked now, and the page says "failed" rather
+                    // than Ktor saying 500 — which would also log the cause past the redaction.
+                    log.error("Storing the approval for ${poll.pubky} failed; revoking the grant", failure)
+                    runSuspendCatching { ringLogin.revoke(poll.sessionSecret).getOrThrow() }
+                        .onFailure { log.error("Revoking the unstored grant for ${poll.pubky} failed; only Ring can revoke it now", it) }
+                    call.respondJson(statusJson("failed"))
+                    return
+                }
                 call.respondJson(
                     buildJsonObject {
                         put("status", "approved")

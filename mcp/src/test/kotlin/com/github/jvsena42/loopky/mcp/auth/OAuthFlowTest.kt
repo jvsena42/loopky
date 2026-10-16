@@ -291,6 +291,19 @@ class OAuthFlowTest {
         assertEquals(HttpStatusCode.BadRequest, http.get("/authorize/status").status)
     }
 
+    /** The one moment a live grant exists that no row names: it must not outlive the failure. */
+    @Test
+    fun `an approval the server cannot store is revoked on the homeserver and reported failed`() = oauthTest {
+        val clientId = registerClient()
+        val txn = authorizeTxn(clientId)
+        ring.approve()
+        harness.store.db.transaction { it.createStatement().use { s -> s.execute("DROP TABLE links") } }
+        val reply = status(txn)
+        assertEquals("failed", reply["status"]?.jsonPrimitive?.content, reply.toString())
+        assertNull(reply["redirect"])
+        assertEquals(listOf(SESSION_SECRET), ring.revoked, "the grant nothing references was left live")
+    }
+
     @Test
     fun `a pending login expires with the relay window and is cancelled`() = oauthTest {
         val clientId = registerClient()
