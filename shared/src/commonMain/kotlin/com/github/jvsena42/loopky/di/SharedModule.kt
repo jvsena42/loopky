@@ -67,8 +67,23 @@ import com.github.jvsena42.loopky.presentation.signup.PhoneVerificationViewModel
 import com.github.jvsena42.loopky.presentation.signup.SignupStartViewModel
 import com.github.jvsena42.loopky.presentation.study.StudySessionViewModel
 import com.github.jvsena42.loopky.util.epochMillis
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import org.koin.dsl.onClose
+
+/**
+ * The scope the repositories run fire-and-forget work on — a media re-host, an async SRS flush,
+ * the cleanup after a discarded key. Owned by the graph rather than by each repository so that
+ * closing the graph cancels it: a per-user graph on a server (#214) is opened and closed many
+ * times per process, and a repository whose scope outlives its graph keeps writing with a session
+ * the tenant has already been handed back. The apps never close their graph, so nothing changes
+ * for them.
+ */
+internal val REPOSITORY_SCOPE = named("repositoryScope")
 
 /**
  * Shared commonMain Koin module. Platform modules must additionally provide bindings for
@@ -78,6 +93,7 @@ import org.koin.dsl.module
  * build-type dependent (staging for debug, production for release; #42).
  */
 val sharedModule = module {
+    single(REPOSITORY_SCOPE) { CoroutineScope(SupervisorJob()) } onClose { it?.cancel() }
     single { MutableSessionProvider() }
     single { UpdatePromptGate(appPreferences = get()) }
     single { RecapClock(systemNow = ::epochMillis) }
@@ -107,6 +123,7 @@ val sharedModule = module {
             eraser = get(),
             localKeyStore = get(),
             decks = get(),
+            scope = get(REPOSITORY_SCOPE),
         )
     }
     single<KeyBackupRepository> { KeyBackupRepositoryImpl(pubky = get(), keyStore = get()) }
@@ -115,7 +132,9 @@ val sharedModule = module {
     single<SessionRevalidator> { SessionRevalidatorImpl(get(), get(), get(), get()) }
 
     single<CardRepository> { CardRepositoryImpl(get(), get(), get()) }
-    single<DeckRepository> { DeckRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single<DeckRepository> {
+        DeckRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get(), get(), scope = get(REPOSITORY_SCOPE))
+    }
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ImportRepository> { ImportRepositoryImpl() }
     single<SignupRepository> {
@@ -144,6 +163,7 @@ val sharedModule = module {
             pendingReviews = get(),
             settingsRepository = get(),
             studyProgress = get(),
+            scope = get(REPOSITORY_SCOPE),
         )
     }
     single<DiscoveryRepository> {

@@ -13,11 +13,15 @@ import com.github.jvsena42.loopky.data.repository.SignupRepository
 import com.github.jvsena42.loopky.data.repository.SrsRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.platform.PassThroughMediaProcessor
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.isActive
 import org.koin.core.context.stopKoin
 import org.koin.mp.KoinPlatform
 import kotlin.io.path.createTempDirectory
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * The DI graph resolves.
@@ -53,6 +57,19 @@ class KoinGraphTest {
         koin.get<SrsRepository>()
         koin.get<MediaRepository>()
         koin.get<SettingsRepository>()
+    }
+
+    // A per-user graph on a server is closed many times per process; a repository scope that
+    // survived its graph would keep writing with a session that has been handed back (#214).
+    @Test
+    fun `stopping the graph cancels the repositories' scope`() {
+        startGraph()
+        val scope = KoinPlatform.getKoin().get<CoroutineScope>(REPOSITORY_SCOPE)
+        assertTrue(scope.isActive)
+
+        stopKoin()
+
+        assertFalse(scope.isActive)
     }
 
     private fun startGraph() {
