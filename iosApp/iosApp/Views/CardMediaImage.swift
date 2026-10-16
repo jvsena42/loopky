@@ -27,7 +27,7 @@ struct CardMediaImage: View {
             if let data = pendingBytes ?? blob, let image = UIImage(data: data) {
                 scaled(Image(uiImage: image))
             } else if let url = ref?.url, let link = URL(string: url) {
-                AsyncImage(url: link) { image in
+                RemoteImage(url: link) { image in
                     scaled(image)
                 } placeholder: {
                     placeholder

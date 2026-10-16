@@ -23,7 +23,7 @@ struct PubkyAvatarView: View {
                 .font(.system(size: size * 0.4, weight: .heavy))
                 .foregroundStyle(foreground)
             if let avatarUrl, let url = URL(string: avatarUrl) {
-                AsyncImage(url: url) { image in
+                RemoteImage(url: url) { image in
                     image.resizable().scaledToFill()
                 } placeholder: {
                     // Nothing: the initial underneath is already the placeholder.

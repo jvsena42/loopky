@@ -7,6 +7,7 @@ import platform.Foundation.NSMutableURLRequest
 import platform.Foundation.NSString
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLSession
+import platform.Foundation.NSURLSessionConfiguration
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
 import platform.Foundation.dataTaskWithRequest
@@ -21,6 +22,16 @@ import kotlin.coroutines.resume
  * dependency for Loopky's handful of plain REST calls.
  */
 class IosHttpFetcher : HttpFetcher {
+
+    /*
+     * Ephemeral, never `sharedSession`: the shared session holds its cache and cookie store open
+     * as locked SQLite files, and on a Mac a suspended app holding a lock outside the directories
+     * RunningBoard allows is killed with 0xdead10cc. `AppURLSession` in the iOS app is the Swift
+     * half of the same rule.
+     */
+    private val session = NSURLSession.sessionWithConfiguration(
+        NSURLSessionConfiguration.ephemeralSessionConfiguration,
+    )
 
     override suspend fun send(request: HttpRequest): Result<HttpResponse> {
         val nsUrl = NSURL.URLWithString(request.url)
@@ -40,7 +51,7 @@ class IosHttpFetcher : HttpFetcher {
         }
 
         return suspendCancellableCoroutine { continuation ->
-            val task = NSURLSession.sharedSession.dataTaskWithRequest(nsRequest) { data, response, error ->
+            val task = session.dataTaskWithRequest(nsRequest) { data, response, error ->
                 val result: Result<HttpResponse> = if (error != null) {
                     Result.failure(RuntimeException(error.localizedDescription))
                 } else {

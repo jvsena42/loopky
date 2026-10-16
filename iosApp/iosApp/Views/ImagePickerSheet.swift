@@ -162,7 +162,7 @@ struct ImagePickerSheet: View {
                 .foregroundStyle(LoopkyColor.foregroundMuted)
 
             if let remote = link as? ImageLinkRemote {
-                AsyncImage(url: URL(string: remote.url)) { image in
+                RemoteImage(url: URL(string: remote.url)) { image in
                     image.resizable().scaledToFit()
                 } placeholder: {
                     ProgressView()
@@ -202,7 +202,7 @@ struct ImagePickerSheet: View {
                     onSelected(.web(url: photo.fullUrl))
                     onClose()
                 } label: {
-                    AsyncImage(url: URL(string: photo.thumbUrl)) { image in
+                    RemoteImage(url: URL(string: photo.thumbUrl)) { image in
                         image.resizable().scaledToFill()
                     } placeholder: {
                         RoundedRectangle(cornerRadius: 10).fill(LoopkyColor.borderSubtle)

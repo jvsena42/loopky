@@ -14,6 +14,7 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -23,6 +24,8 @@ import platform.BackgroundTasks.BGTaskScheduler
 import platform.Foundation.NSDate
 import platform.Foundation.NSError
 import platform.Foundation.dateWithTimeIntervalSinceNow
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * [BackgroundTasks] over `BGTaskScheduler`.
@@ -134,25 +137,23 @@ class IosBackgroundTasks(
      * forever, signed out or with nothing to do. A full quota never reschedules (§8.5).
      */
     private fun run(task: BGTask, reschedule: () -> Unit, work: suspend () -> Boolean) {
-        val job = scope.launch {
-            // runSuspendCatching, not runCatching: the expiration handler cancels this job, and a
-            // plain runCatching would swallow that and go on to reschedule and report success —
-            // both of which the handler has already done.
-            val again = runSuspendCatching {
+        val pass = ExpirablePass(
+            scope = scope,
+            reschedule = reschedule,
+            complete = { success -> task.setTaskCompletedWithSuccess(success) },
+        ) {
+            runSuspendCatching {
                 identity.loadPersistedSession() != null && work()
             }.getOrElse {
                 Log.e(TAG, "run: FAILED — ${it.message}", it)
                 it.toErrorReason() != ErrorReason.StorageFull
             }
-            if (again) reschedule()
-            task.setTaskCompletedWithSuccess(true)
         }
         task.expirationHandler = {
             Log.w(TAG, "run: expired, cancelling")
-            job.cancel()
-            reschedule()
-            task.setTaskCompletedWithSuccess(false)
+            pass.expire()
         }
+        pass.start()
     }
 
     /** Whether any deck wants another pass. A 507 on one deck stops the whole pass without one. */
@@ -177,5 +178,58 @@ class IosBackgroundTasks(
 
         /** A few minutes out, so a clone's sweep is not competing with the clone itself. */
         const val EARLIEST_BEGIN_SECONDS = 300.0
+    }
+}
+
+/**
+ * One background pass that the system may expire, finished **exactly once**.
+ *
+ * The pass and the expiration handler race: a pass can return just as the system expires it, and
+ * `setTaskCompleted` twice on one `BGTask` is a contract violation. Whichever gets there first
+ * reschedules (when asked) and completes; the other does nothing. The job is lazy so the caller
+ * can install the expiration handler before any work starts.
+ *
+ * A [work] that throws finishes the pass as failed without rescheduling: an exception escaping
+ * to the scope would terminate the process on Kotlin/Native.
+ *
+ * Expiring cancels the job but cannot interrupt a blocking FFI call already in flight, so the
+ * task is reported complete without waiting for it — the handler has to return promptly.
+ */
+@OptIn(ExperimentalAtomicApi::class)
+internal class ExpirablePass(
+    scope: CoroutineScope,
+    private val reschedule: () -> Unit,
+    private val complete: (success: Boolean) -> Unit,
+    work: suspend () -> Boolean,
+) {
+    private val finished = AtomicBoolean(false)
+
+    // runSuspendCatching rethrows cancellation, so an expired pass is finished by [expire] alone.
+    private val job = scope.launch(start = CoroutineStart.LAZY) {
+        runSuspendCatching { work() }
+            .onSuccess { again -> finish(again = again, success = true) }
+            .onFailure {
+                Log.e(PASS_TAG, "pass: FAILED — ${it.message}", it)
+                finish(again = false, success = false)
+            }
+    }
+
+    fun start() {
+        job.start()
+    }
+
+    fun expire() {
+        job.cancel()
+        finish(again = true, success = false)
+    }
+
+    private fun finish(again: Boolean, success: Boolean) {
+        if (!finished.compareAndSet(expectedValue = false, newValue = true)) return
+        if (again) reschedule()
+        complete(success)
+    }
+
+    private companion object {
+        const val PASS_TAG = "Loopky/BgTasks"
     }
 }

@@ -182,7 +182,7 @@ private struct DraftImagePreview: View {
         if let data = image.bytes?.toData(), let picture = UIImage(data: data) {
             Image(uiImage: picture).resizable().aspectRatio(contentMode: .fit)
         } else if let url = image.url, let link = URL(string: url) {
-            AsyncImage(url: link) { loaded in
+            RemoteImage(url: link) { loaded in
                 loaded.resizable().aspectRatio(contentMode: .fit)
             } placeholder: {
                 RoundedRectangle(cornerRadius: 12).fill(LoopkyColor.surfaceCard)

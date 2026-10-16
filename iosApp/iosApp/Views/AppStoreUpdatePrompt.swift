@@ -111,7 +111,7 @@ private struct AppStoreListing: Decodable {
             URLQueryItem(name: "country", value: Locale.current.region?.identifier ?? "US"),
         ]
         guard let url = components.url,
-              let (data, _) = try? await URLSession.shared.data(from: url)
+              let (data, _) = try? await AppURLSession.shared.data(from: url)
         else { return nil }
         return (try? JSONDecoder().decode(AppStoreLookup.self, from: data))?.results.first
     }
