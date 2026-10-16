@@ -275,10 +275,14 @@ class TenantPool(
                 ?: throw TenantRefusal.TimedOut(limits.callTimeout.inWholeSeconds)
             return outcome.value
         } finally {
+            // NonCancellable: a cancelled caller's lock() throws if it has to wait, and skipping
+            // this would leave the entry mapped with a detached call still running on its graph.
             if (!call.isCompleted) {
-                poolLock.withLock {
-                    entries.remove(pubky, entry)
-                    entry.abandoned = true
+                withContext(NonCancellable) {
+                    poolLock.withLock {
+                        entries.remove(pubky, entry)
+                        entry.abandoned = true
+                    }
                 }
                 call.cancel()
                 call.invokeOnCompletion { detached.launch { entry.tenant?.closeQuietly() } }
@@ -286,8 +290,9 @@ class TenantPool(
         }
     }
 
+    /** NonCancellable for the same reason as [bounded]'s cleanup: a missed `holders--` pins the entry for good. */
     private suspend fun release(pubky: String, entry: Entry) {
-        val closing = poolLock.withLock {
+        val closing = withContext(NonCancellable) { poolLock.withLock {
             entry.holders--
             entry.lastUsed = clock()
             if (entry.holders == 0 && entry.closeWhenReleased && !entry.abandoned) {
@@ -296,7 +301,7 @@ class TenantPool(
             } else {
                 null
             }
-        }
+        } }
         closing?.closeQuietly()
     }
 
