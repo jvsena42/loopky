@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.mcp.tenant.TenantLimits
 import com.github.jvsena42.loopky.mcp.tenant.TenantPool
 import io.ktor.client.HttpClient
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -131,6 +132,27 @@ class McpHttpTest {
         val response = client.get(MCP_PATH) { header(HttpHeaders.Accept, "text/event-stream") }
         assertEquals(HttpStatusCode.Unauthorized, response.status)
         assertNotNull(response.headers[HttpHeaders.WWWAuthenticate])
+    }
+
+    /** Inside `sse {}` the 200 is already out; the refusal has to happen in the gate to be a refusal at all. */
+    @Test
+    fun `a stream for an unknown or foreign session is 404 before any event stream starts`() = serving {
+        val session = client.initialize("token-alice")
+        suspend fun stream(token: String, id: String?) = client.get(MCP_PATH) {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            id?.let { header("Mcp-Session-Id", it) }
+            header(HttpHeaders.Accept, "text/event-stream")
+        }
+        val foreign = stream("token-bob", session)
+        assertEquals(HttpStatusCode.NotFound, foreign.status)
+        assertEquals(ContentType.Application.Json.contentType, foreign.contentType()?.contentType)
+        assertEquals(ContentType.Application.Json.contentSubtype, foreign.contentType()?.contentSubtype)
+        assertEquals(HttpStatusCode.NotFound, stream("token-alice", "not-a-session").status)
+        assertEquals(HttpStatusCode.BadRequest, stream("token-alice", null).status)
+        assertEquals(HttpStatusCode.NotFound, client.delete(MCP_PATH) {
+            header(HttpHeaders.Authorization, "Bearer token-bob")
+            header("Mcp-Session-Id", session)
+        }.status)
     }
 
     @Test

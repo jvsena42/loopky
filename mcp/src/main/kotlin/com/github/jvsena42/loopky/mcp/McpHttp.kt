@@ -130,20 +130,12 @@ fun Application.installMcp(deps: McpDeps) {
         route(MCP_PATH) {
             // Route-scoped, never `intercept(ApplicationCallPipeline.Plugins)`: that reached the
             // sibling routes too and answered `/healthz` with a 401. And ahead of the handlers,
-            // because inside `sse {}` the response is already a 200 event stream.
+            // because inside `sse {}` the response is already a committed 200 event stream —
+            // which is also why the session a GET or DELETE names is checked in the gate.
             install(McpGate) { this.sessions = sessions }
-            sse {
-                val transport = sessions.existing(call) ?: return@sse
-                transport.handleRequest(this, call)
-            }
-            post {
-                val transport = sessions.forPost(call) ?: return@post
-                transport.handleRequest(null, call)
-            }
-            delete {
-                val transport = sessions.existing(call) ?: return@delete
-                transport.handleRequest(null, call)
-            }
+            sse { call.attributes[TransportKey].handleRequest(this, call) }
+            post { sessions.forPost(call).handleRequest(null, call) }
+            delete { call.attributes[TransportKey].handleRequest(null, call) }
         }
     }
 }
@@ -162,6 +154,9 @@ private val McpGate = createRouteScopedPlugin("McpGate", ::McpGateConfig) {
 
 /** The principal the bearer spoke for, attached by the gate for the handlers. */
 val PrincipalKey = AttributeKey<Principal>("loopky.principal")
+
+/** The transport of the session a request named, attached by the gate once it is known to be this principal's. */
+private val TransportKey = AttributeKey<StreamableHttpServerTransport>("loopky.transport")
 
 private class McpSession(
     val transport: StreamableHttpServerTransport,
@@ -199,6 +194,15 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
             return false
         }
         call.attributes.put(PrincipalKey, principal)
+        // A request naming a session — every GET and DELETE, and a POST after initialize — is
+        // checked here and not in its handler: Ktor's `sse {}` runs the handler inside the
+        // response body, after `200 text/event-stream` has gone out, so a refusal there raised
+        // ResponseAlreadySentException and a foreign session id got a stream that closed instead
+        // of the 404 that tells a client to initialize again.
+        val sessionId = call.request.header(MCP_SESSION_ID_HEADER)
+        if (sessionId == null && call.request.httpMethod == HttpMethod.Post) return true
+        val session = owned(call, principal, sessionId) ?: return false
+        call.attributes.put(TransportKey, session.transport)
         return true
     }
 
@@ -209,10 +213,8 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
         return deps.verifier.verify(token)
     }
 
-    /** The transport for the session the request names, owned by this principal, or null after answering. */
-    suspend fun existing(call: ApplicationCall): StreamableHttpServerTransport? {
-        val principal = call.attributes[PrincipalKey]
-        val sessionId = call.request.header(MCP_SESSION_ID_HEADER)
+    /** The session [sessionId] names if [principal] owns it, or null once the call is answered. */
+    private suspend fun owned(call: ApplicationCall, principal: Principal, sessionId: String?): McpSession? {
         if (sessionId.isNullOrEmpty()) {
             call.reject(HttpStatusCode.BadRequest, "Mcp-Session-Id header is required.")
             return null
@@ -225,12 +227,12 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
             return null
         }
         session.lastSeen = deps.clock()
-        return session.transport
+        return session
     }
 
     /** A POST without a session id is an `initialize`, and gets a server bound to this principal. */
-    suspend fun forPost(call: ApplicationCall): StreamableHttpServerTransport? {
-        if (call.request.header(MCP_SESSION_ID_HEADER) != null) return existing(call)
+    suspend fun forPost(call: ApplicationCall): StreamableHttpServerTransport {
+        call.attributes.getOrNull(TransportKey)?.let { return it }
         val principal = call.attributes[PrincipalKey]
         val transport = StreamableHttpServerTransport(
             StreamableHttpServerTransport.Configuration(
