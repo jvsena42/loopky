@@ -112,7 +112,7 @@ val sharedModule = module {
     single<KeyBackupRepository> { KeyBackupRepositoryImpl(pubky = get(), keyStore = get()) }
     single<PriceSource> { PriceClient(http = get(), nowMillis = ::epochMillis) }
 
-    single<SessionRevalidator> { SessionRevalidatorImpl(get(), get(), get()) }
+    single<SessionRevalidator> { SessionRevalidatorImpl(get(), get(), get(), get()) }
 
     single<CardRepository> { CardRepositoryImpl(get(), get(), get()) }
     single<DeckRepository> { DeckRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get(), get()) }

@@ -105,37 +105,41 @@ internal class IdentityRepositoryImpl(
             throw UnbackedUpLocalKey(held.pubky)
         }
 
-        val current = sessionProvider.current()
-        // The revoke can fail and the local clear happens either way, because a user asking to sign
-        // out should end up signed out here whatever the network is doing. What must *not* happen is
-        // reporting that as success while the bearer token is still live, so the outcome travels back.
-        val revokedRemotely = current != null &&
-            pubky.signOut(current.sessionSecret)
-                .onFailure { Log.w(TAG, "signOut: the homeserver did not confirm revocation", it) }
+        // Under the auth lock, so a revalidation that is re-signing in finishes first and its
+        // session is the one revoked and cleared here, rather than landing after the clears.
+        sessionProvider.authLock.withLock {
+            val current = sessionProvider.current()
+            // The revoke can fail and the local clear happens either way, because a user asking to sign
+            // out should end up signed out here whatever the network is doing. What must *not* happen is
+            // reporting that as success while the bearer token is still live, so the outcome travels back.
+            val revokedRemotely = current != null &&
+                pubky.signOut(current.sessionSecret)
+                    .onFailure { Log.w(TAG, "signOut: the homeserver did not confirm revocation", it) }
+                    .isSuccess
+            // Caught rather than propagated: the rest of this teardown must happen whether or not the
+            // store gave the credential up, and the caller needs to be *told* rather than left to
+            // infer it from an exception that also skipped everything below.
+            val clearedLocally = runSuspendCatching { sessionStore.clear() }
+                .onFailure { Log.w(TAG, "signOut: the session store would not give the credential up", it) }
                 .isSuccess
-        // Caught rather than propagated: the rest of this teardown must happen whether or not the
-        // store gave the credential up, and the caller needs to be *told* rather than left to
-        // infer it from an exception that also skipped everything below.
-        val clearedLocally = runSuspendCatching { sessionStore.clear() }
-            .onFailure { Log.w(TAG, "signOut: the session store would not give the credential up", it) }
-            .isSuccess
-        // The key goes with the session: a signed-out device holding a secret key is a credential
-        // nobody is watching. Safe unguarded *today* because the only keys that exist are restored
-        // ones, whose owner demonstrably holds the phrase or file. Minting here (#147 phase 3)
-        // introduces the first key nobody has a copy of — that is what the sign-out confirm is for.
-        localKeyStore.clear()
-        // A deck remembered from a guest preview belongs to whoever signs in next from that
-        // preview, never to the next account on this device.
-        runSuspendCatching { decks.forgetPendingFollow() }
-            .onFailure { Log.w(TAG, "signOut: could not forget the pending deck follow", it) }
-        sessionProvider.set(null)
-        selfTaggedThisProcess = false
-        profileCacheLock.withLock { profileCache.clear() }
-        SignOutOutcome(
-            revokedRemotely = revokedRemotely,
-            hadSession = current != null,
-            clearedLocally = clearedLocally,
-        )
+            // The key goes with the session: a signed-out device holding a secret key is a credential
+            // nobody is watching. Safe unguarded *today* because the only keys that exist are restored
+            // ones, whose owner demonstrably holds the phrase or file. Minting here (#147 phase 3)
+            // introduces the first key nobody has a copy of — that is what the sign-out confirm is for.
+            localKeyStore.clear()
+            // A deck remembered from a guest preview belongs to whoever signs in next from that
+            // preview, never to the next account on this device.
+            runSuspendCatching { decks.forgetPendingFollow() }
+                .onFailure { Log.w(TAG, "signOut: could not forget the pending deck follow", it) }
+            sessionProvider.set(null)
+            selfTaggedThisProcess = false
+            profileCacheLock.withLock { profileCache.clear() }
+            SignOutOutcome(
+                revokedRemotely = revokedRemotely,
+                hadSession = current != null,
+                clearedLocally = clearedLocally,
+            )
+        }
     }
 
     override suspend fun revokeSession(sessionSecret: String): Result<Unit> = runSuspendCatching {

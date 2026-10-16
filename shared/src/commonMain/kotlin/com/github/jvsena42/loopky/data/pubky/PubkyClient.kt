@@ -32,13 +32,11 @@ interface PubkyClient {
      * Sign up / sign in with a secret key Loopky holds — the local alternative to the Ring
      * deeplink (#147).
      *
-     * **Both still bind to the FFI's cookie variants**, where [startAuthFlow] has moved to grant
-     * (#130). The fork's plain `sign_in`/`sign_up` delegate to the grant flow, whose
-     * `POST /auth/grant/session` the homeserver refused in 2026-08 with
-     * `403 Forbidden - Writing to directories other than '/pub/' is forbidden`. Both homeservers
-     * route that endpoint as of 2026-09-10, so the blocker is gone — but nobody has driven these
-     * two down the grant path against a real account, and the cookie flow signs in cleanly and
-     * answers a pubky with no account with an honest 404.
+     * [signIn] is grant, verified against staging on 2026-10-16 (sign in, write, read, delete,
+     * revalidate, sign out). [signUp] still binds to the cookie variant on the JVM — iOS is already
+     * grant for both — because nobody has driven a grant signup against a real account yet. A
+     * pubky whose record names a homeserver it has no account on gets the same 404 from either
+     * flow (measured 2026-10-16), which is what routes restore to the unregistered-key screen.
      *
      * Mixing the two kinds is safe: `restore_session` sniffs which it was handed, so [signOut],
      * [revalidateSession] and `put_with_session` take either.
