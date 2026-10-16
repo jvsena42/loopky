@@ -95,8 +95,14 @@ class TokenService(
         return when (rotation) {
             is Rotation.Rotated -> requireNotNull(grant) { "rotation without a mint" }
             is Rotation.Reused -> {
+                // The family goes (OAuth 2.1 §4.3.1: the server cannot tell the thief from the
+                // owner), but not the link. The ordinary reuse is the owner's own retry after
+                // a lost response, and revoking the Ring grant on top of the family buys
+                // nothing: the owner has to sign in again either way, and that sign-in
+                // replaces the grant. A link with no live family is the sweep's within the
+                // hour. The plaintext of the pair the owner lost is not kept, so it cannot be
+                // handed back; that would be the grace window this does not have.
                 log.warn("Refresh token reuse for ${rotation.pubky}; family revoked")
-                unlinker.unlinkIfOrphaned(rotation.pubky)
                 invalidGrant("Refresh token was already used")
             }
             is Rotation.Expired -> {

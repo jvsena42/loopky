@@ -206,7 +206,11 @@ class OAuthFlowTest {
         assertEquals("invalid_grant", reuse.json()["error"]?.jsonPrimitive?.content)
         assertNull(server.verifier.verify(third.access), "the live token of the family dies with the reuse")
         assertEquals("invalid_grant", refresh(third.refresh, clientId).json()["error"]?.jsonPrimitive?.content)
-        assertNull(harness.store.links.find(PUBKY), "the only family was revoked, so the link went with it")
+        // A lost response and a retry look exactly like this; the grant is the sweep's, not the reuse's.
+        assertNotNull(harness.store.links.find(PUBKY), "a reuse revoked the grant outright")
+        assertTrue(ring.revoked.isEmpty())
+        clock.advance(Duration.ofMinutes(61))
+        assertEquals(1, server.unlinker.sweepExpired(), "a link with no live family is swept within the hour")
         assertEquals(listOf(SESSION_SECRET), ring.revoked)
     }
 

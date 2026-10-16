@@ -34,7 +34,8 @@ class LogHygieneTest {
             refresh(first.refresh, clientId)
             exchange(code, clientId)
             server.verifier.verify(second.access)
-            assertTrue(ring.revoked.isNotEmpty(), "the reuse unlinked, and the failed revoke was logged")
+            server.unlinker.unlink(PUBKY)
+            assertTrue(ring.revoked.isNotEmpty(), "the unlink attempted the revoke, and the failure was logged")
             RedactingLogger("hygiene").info(
                 "planted: $ringUrl $code ${first.access} ${first.refresh} $SESSION_SECRET txn=$txn Bearer ${second.access}",
             )
