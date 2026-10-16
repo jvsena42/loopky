@@ -46,6 +46,13 @@ internal class Authorization(
             call.plain(HttpStatusCode.BadRequest, "Unknown client or redirect_uri")
             return
         }
+        // A sign-in starts from a navigation. An `<img>` or a frame on any page used to start a
+        // flow from every visitor's address — every modern browser says which it was, and one
+        // that says nothing is let through.
+        if (!call.isNavigation()) {
+            call.plain(HttpStatusCode.BadRequest, "Sign-in starts from a navigation, not from an embedded request")
+            return
+        }
         val state = params["state"]
         val problem = validate(params)
         if (problem != null) {
@@ -143,6 +150,12 @@ internal class Authorization(
         }.buildString()
     }
 
+    private fun ApplicationCall.isNavigation(): Boolean {
+        val mode = request.header(SEC_FETCH_MODE)
+        val dest = request.header(SEC_FETCH_DEST)
+        return (mode == null || mode == "navigate") && (dest == null || dest == "document")
+    }
+
     private fun validate(params: Parameters): OAuthException? {
         val challenge = params["code_challenge"]
         val state = params["state"]
@@ -183,6 +196,8 @@ internal class Authorization(
 
     companion object {
         const val TXN_HEADER = "X-Loopky-Txn"
+        private const val SEC_FETCH_MODE = "Sec-Fetch-Mode"
+        private const val SEC_FETCH_DEST = "Sec-Fetch-Dest"
         private const val MAX_STATE_LENGTH = 512
         private const val NONCE_BYTES = 16
     }

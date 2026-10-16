@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.mcp.auth
 
 import com.github.jvsena42.loopky.mcp.RingLogin
+import com.github.jvsena42.loopky.mcp.security.ClientKey
 import com.github.jvsena42.loopky.mcp.security.RedactingLogger
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.sync.Mutex
@@ -14,9 +15,13 @@ class PendingAuthorization(
     val request: AuthorizeRequest,
     val flowId: String,
     val authorizationUrl: String,
+    /** The [ClientKey] of the address that started it, for the per-address cap. */
     val ip: String,
-    val expiresAt: Instant,
-)
+    val startedAt: Instant,
+) {
+    /** When the page last asked after it; a flow nobody polls is a tab that was closed, or never a tab at all. */
+    @Volatile var lastPolledAt: Instant = startedAt
+}
 
 /** The `/authorize` fields a pending login is built from, after validation. */
 class AuthorizeRequest(
@@ -39,6 +44,11 @@ sealed interface PendingStart {
  * In memory on purpose: a Ring flow is a handle inside this process's FFI, so a pending login
  * cannot outlive the process, and a persisted row would only ever describe a flow that is gone.
  * The txn the page polls with is random and keyed here, never stored anywhere else.
+ *
+ * The lock covers the maps and nothing that talks to the network. [RingLogin.start] is a relay
+ * round trip and [RingLogin.cancel] another; held across either, one slow relay stalled every
+ * other user's sign-in and every status poll server-wide. A slot is reserved under the lock,
+ * the flow started outside it, and the entry filled in under it again.
  */
 class PendingLogins(
     private val ringLogin: RingLogin,
@@ -48,35 +58,52 @@ class PendingLogins(
 ) {
     private val mutex = Mutex()
     private val byTxn = HashMap<String, PendingAuthorization>()
+
+    /** Slots handed out to flows still being started, counted against the caps like the started ones. */
+    private val reservedByIp = HashMap<String, Int>()
     private val log = RedactingLogger("loopky-mcp.pending")
 
     val size: Int get() = byTxn.size
 
-    /** Holds the lock across [RingLogin.start] so the caps are counted against flows that actually exist. */
-    suspend fun begin(request: AuthorizeRequest, ip: String): PendingStart = mutex.withLock {
-        sweepLocked()
-        if (byTxn.size >= limits.pending.global) return PendingStart.TooManyGlobally
-        if (byTxn.values.count { it.ip == ip } >= limits.pending.perIp) return PendingStart.TooManyForIp
-        val login = runSuspendCatching { ringLogin.start() }.getOrElse { return PendingStart.RingFailed(it) }
+    /** Flows being started right now, for the test that holds the relay round trip outside the lock. */
+    suspend fun reservedSlots(): Int = mutex.withLock { reservedByIp.values.sum() }
+
+    suspend fun begin(request: AuthorizeRequest, ip: String): PendingStart {
+        val key = ClientKey.of(ip)
+        val refused = reserve(key)
+        if (refused != null) return refused
+        val login = runSuspendCatching { ringLogin.start() }.getOrElse { failure ->
+            mutex.withLock { unreserveLocked(key) }
+            return PendingStart.RingFailed(failure)
+        }
         val pending = PendingAuthorization(
             txn = minter.opaque(),
             request = request,
             flowId = login.flowId,
             authorizationUrl = login.authorizationUrl,
-            ip = ip,
-            expiresAt = clock.instant().plus(limits.lifetimes.pendingLogin),
+            ip = key,
+            startedAt = clock.instant(),
         )
-        byTxn[pending.txn] = pending
-        PendingStart.Started(pending)
+        mutex.withLock {
+            unreserveLocked(key)
+            byTxn[pending.txn] = pending
+        }
+        return PendingStart.Started(pending)
     }
 
-    /** Null once expired, with the flow cancelled; the status endpoint then reports `expired`. */
-    suspend fun find(txn: String): PendingAuthorization? = mutex.withLock {
-        val pending = byTxn[txn] ?: return null
-        if (pending.expiresAt.isAfter(clock.instant())) return pending
-        byTxn.remove(txn)
-        cancelQuietly(pending)
-        null
+    /** Null once expired or abandoned, with the flow cancelled; the status endpoint then reports `expired`. */
+    suspend fun find(txn: String): PendingAuthorization? {
+        val expired = mutex.withLock {
+            val pending = byTxn[txn] ?: return null
+            if (isLive(pending, clock.instant())) {
+                pending.lastPolledAt = clock.instant()
+                return pending
+            }
+            byTxn.remove(txn)
+            pending
+        }
+        cancelQuietly(expired)
+        return null
     }
 
     /** Removes the entry without cancelling the flow — used once Ring has answered, so there is nothing to cancel. */
@@ -84,13 +111,50 @@ class PendingLogins(
         mutex.withLock { byTxn.remove(txn) }
     }
 
-    suspend fun sweep() = mutex.withLock { sweepLocked() }
-
-    private suspend fun sweepLocked() {
-        val now = clock.instant()
-        val expired = byTxn.values.filter { !it.expiresAt.isAfter(now) }
-        expired.forEach { byTxn.remove(it.txn) }
+    suspend fun sweep() {
+        val expired = mutex.withLock { sweepLocked() }
         expired.forEach { cancelQuietly(it) }
+    }
+
+    /** Takes a slot for [key] under the caps, or says which cap refused it. Expired flows are swept first, outside the lock. */
+    private suspend fun reserve(key: String): PendingStart? {
+        val (refusal, expired) = mutex.withLock {
+            val expired = sweepLocked()
+            val reserved = reservedByIp.values.sum()
+            val refusal = when {
+                byTxn.size + reserved >= limits.pending.global -> PendingStart.TooManyGlobally
+                byTxn.values.count { it.ip == key } + (reservedByIp[key] ?: 0) >= limits.pending.perIp -> PendingStart.TooManyForIp
+                else -> {
+                    reservedByIp[key] = (reservedByIp[key] ?: 0) + 1
+                    null
+                }
+            }
+            refusal to expired
+        }
+        expired.forEach { cancelQuietly(it) }
+        return refusal
+    }
+
+    private fun unreserveLocked(key: String) {
+        val left = (reservedByIp[key] ?: 1) - 1
+        if (left <= 0) reservedByIp.remove(key) else reservedByIp[key] = left
+    }
+
+    /**
+     * Still inside the relay window, and polled recently enough to be a page somebody has open.
+     * The second bound is what stops `<img src="…/authorize?…">` on any page, or a script that
+     * never polls, from holding every slot for the whole window from its visitors' addresses.
+     */
+    private fun isLive(pending: PendingAuthorization, now: Instant): Boolean =
+        pending.startedAt.plus(limits.lifetimes.pendingLogin).isAfter(now) &&
+            pending.lastPolledAt.plus(limits.lifetimes.unpolledLogin).isAfter(now)
+
+    /** The caller must hold [mutex]. Returns what to cancel, outside it. */
+    private fun sweepLocked(): List<PendingAuthorization> {
+        val now = clock.instant()
+        val expired = byTxn.values.filterNot { isLive(it, now) }
+        expired.forEach { byTxn.remove(it.txn) }
+        return expired
     }
 
     private suspend fun cancelQuietly(pending: PendingAuthorization) {

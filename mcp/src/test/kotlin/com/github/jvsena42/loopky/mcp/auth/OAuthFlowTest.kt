@@ -11,6 +11,11 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -327,6 +332,65 @@ class OAuthFlowTest {
         clock.advance(Duration.ofMinutes(6))
         assertEquals(HttpStatusCode.OK, authorize(clientId, ip = "203.0.113.3").status, "expired flows free their slots")
         assertEquals(2, ring.cancelled.size)
+    }
+
+    @Test
+    fun `an embedded request never starts a flow, a navigation does`() = oauthTest {
+        val clientId = registerClient()
+        val image = authorize(clientId, headers = mapOf("Sec-Fetch-Mode" to "no-cors", "Sec-Fetch-Dest" to "image"))
+        assertEquals(HttpStatusCode.BadRequest, image.status)
+        val frame = authorize(clientId, headers = mapOf("Sec-Fetch-Mode" to "navigate", "Sec-Fetch-Dest" to "iframe"))
+        assertEquals(HttpStatusCode.BadRequest, frame.status)
+        assertTrue(ring.started.isEmpty(), "a flow was started for something that was not a page")
+        val page = authorize(clientId, headers = mapOf("Sec-Fetch-Mode" to "navigate", "Sec-Fetch-Dest" to "document"))
+        assertEquals(HttpStatusCode.OK, page.status)
+    }
+
+    @Test
+    fun `a login nobody polls is dropped before the window, a polled one lives to it`() = oauthTest {
+        val clientId = registerClient()
+        authorizeTxn(clientId)
+        clock.advance(Duration.ofMinutes(3))
+        server.pending.sweep()
+        assertEquals(0, server.pending.size, "an unpolled flow held its slot")
+        assertEquals(ring.started, ring.cancelled)
+
+        val polled = authorizeTxn(clientId)
+        repeat(3) {
+            clock.advance(Duration.ofSeconds(90))
+            assertEquals("pending", status(polled)["status"]?.jsonPrimitive?.content, "polling keeps a flow alive")
+        }
+        clock.advance(Duration.ofSeconds(90))
+        assertEquals("expired", status(polled)["status"]?.jsonPrimitive?.content, "but never past the relay window")
+    }
+
+    @Test
+    fun `IPv6 clients are capped by their 64`() = oauthTest(OAuthLimits(pending = PendingLoginCaps(perIp = 1, global = 10))) {
+        val clientId = registerClient()
+        assertEquals(HttpStatusCode.OK, authorize(clientId, ip = "2001:db8:1:2::1").status)
+        assertEquals(HttpStatusCode.TooManyRequests, authorize(clientId, ip = "2001:db8:1:2:ffff::9").status)
+        assertEquals(HttpStatusCode.OK, authorize(clientId, ip = "2001:db8:1:3::1").status)
+    }
+
+    /** The relay round trip used to run under the one lock every poll takes. */
+    @Test
+    fun `a slow relay stalls nobody else's poll, and the slot it reserved is counted`() = oauthTest(
+        OAuthLimits(pending = PendingLoginCaps(perIp = 1, global = 10)),
+    ) {
+        val clientId = registerClient()
+        val gate = CompletableDeferred<Unit>()
+        ring.startGate = gate
+        coroutineScope {
+            val slow = async { authorize(clientId, ip = "203.0.113.1") }
+            while (server.pending.reservedSlots() == 0) yield()
+            ring.startGate = null
+            val poll = withTimeout(5_000) { status("no-such-txn") }
+            assertEquals("expired", poll["status"]?.jsonPrimitive?.content)
+            assertEquals(HttpStatusCode.TooManyRequests, authorize(clientId, ip = "203.0.113.1").status, "a reserved slot counts")
+            gate.complete(Unit)
+            assertEquals(HttpStatusCode.OK, slow.await().status)
+        }
+        assertEquals(1, server.pending.size)
     }
 
     @Test

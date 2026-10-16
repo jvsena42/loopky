@@ -25,6 +25,7 @@ import io.ktor.http.parameters
 import io.ktor.server.application.install
 import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
 import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -50,6 +51,9 @@ class FakeRingLogin : RingLogin {
     val revoked = mutableListOf<String>()
     var revokeResult: Result<Unit> = Result.success(Unit)
     var startFailure: Throwable? = null
+
+    /** When set, [start] waits on it: a relay that is slow to answer. */
+    var startGate: CompletableDeferred<Unit>? = null
     private val answers = HashMap<String, LoginPoll>()
     private var counter = 0
 
@@ -57,6 +61,7 @@ class FakeRingLogin : RingLogin {
 
     override suspend fun start(): PendingLogin {
         startFailure?.let { throw it }
+        startGate?.await()
         val id = "flow-${++counter}"
         started += id
         answers[id] = LoginPoll.Pending
@@ -141,6 +146,7 @@ class OAuthClient(val harness: OAuthHarness, val http: HttpClient) {
         resource: String? = harness.config.resourceUrl,
         ip: String = "203.0.113.7",
         overrides: Map<String, String?> = emptyMap(),
+        headers: Map<String, String> = emptyMap(),
     ): HttpResponse {
         val params = mutableMapOf(
             "client_id" to clientId,
@@ -153,7 +159,10 @@ class OAuthClient(val harness: OAuthHarness, val http: HttpClient) {
         )
         params.putAll(overrides)
         val query = params.filterValues { it != null }.entries.joinToString("&") { (k, v) -> "$k=${encode(v!!)}" }
-        return http.get("/authorize?$query") { header("X-Forwarded-For", ip) }
+        return http.get("/authorize?$query") {
+            header("X-Forwarded-For", ip)
+            headers.forEach { (name, value) -> header(name, value) }
+        }
     }
 
     suspend fun authorizeTxn(clientId: String, verifier: String = VERIFIER, state: String? = "xyz"): String {

@@ -26,15 +26,26 @@ data class Lifetimes(
     val refreshToken: Duration = Duration.ofDays(REFRESH_DAYS),
     /** The relay's window; a login not approved by then is cancelled so its FFI thread comes back. */
     val pendingLogin: Duration = Duration.ofMinutes(PENDING_MINUTES),
+    /**
+     * How long a login lives without the page polling for it. The page polls every two seconds,
+     * but a phone's browser suspends a background tab while the user is over in Ring, so this
+     * is minutes and not the seconds a poll interval would suggest.
+     */
+    val unpolledLogin: Duration = Duration.ofMinutes(UNPOLLED_MINUTES),
 ) {
     companion object {
         const val CODE_SECONDS = 60L
         const val REFRESH_DAYS = 90L
         const val PENDING_MINUTES = 5L
+        const val UNPOLLED_MINUTES = 2L
     }
 }
 
-/** Each pending login blocks an FFI thread for up to [Lifetimes.pendingLogin], so both bounds are small on purpose. */
+/**
+ * Each pending login blocks an FFI thread for up to [Lifetimes.pendingLogin], so both bounds are
+ * small on purpose. Per address means per [com.github.jvsena42.loopky.mcp.security.ClientKey]:
+ * an IPv6 client is counted by its /64.
+ */
 data class PendingLoginCaps(val perIp: Int = 3, val global: Int = 50)
 
 data class OAuthLimits(
