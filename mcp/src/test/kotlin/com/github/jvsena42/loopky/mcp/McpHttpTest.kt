@@ -52,7 +52,7 @@ class McpHttpTest {
     }
     private val pool = TenantPool(factory, secrets, TenantLimits())
 
-    private fun deps(limits: HttpLimits = HttpLimits()) = McpDeps(
+    private fun deps(limits: HttpLimits = HttpLimits(), verifier: AccessTokenVerifier = this.verifier) = McpDeps(
         environment = PubkyEnvironment.Staging,
         publicUrl = "https://mcp.staging.loopky.app",
         verifier = verifier,
@@ -134,23 +134,26 @@ class McpHttpTest {
     }
 
     @Test
-    fun `failed bearer checks are bounded per address, and valid traffic from elsewhere is not`() = serving(
+    fun `failed bearers are bounded per address, and a valid bearer from that address never is`() = serving(
         HttpLimits(failedAuthRate = RateLimitPolicy(burst = 2, perSecond = 0.0)),
     ) {
+        // Discovery carries no token: never charged, however often.
+        repeat(5) { assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = null).status) }
         assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = "token-mallory").status)
-        assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = null).status)
-        val limited = client.rpc(INITIALIZE, token = "token-mallory")
+        assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = "token-eve").status)
+        val limited = client.rpc(INITIALIZE, token = "token-trudy")
         assertEquals(HttpStatusCode.TooManyRequests, limited.status)
         assertNotNull(limited.headers[HttpHeaders.RetryAfter])
-        assertEquals(HttpStatusCode.TooManyRequests, client.rpc(INITIALIZE).status, "the address is refused before the lookup")
-        val elsewhere = client.post(MCP_PATH) {
-            header(HttpHeaders.Authorization, "Bearer token-alice")
-            header("X-Forwarded-For", "198.51.100.9")
-            header(HttpHeaders.Accept, "application/json, text/event-stream")
-            contentType(ContentType.Application.Json)
-            setBody(INITIALIZE)
-        }
-        assertEquals(HttpStatusCode.OK, elsewhere.status)
+        // Same address, spent bucket: a bearer that verifies still gets through.
+        assertEquals(HttpStatusCode.OK, client.rpc(INITIALIZE).status)
+    }
+
+    @Test
+    fun `a token seen failing is refused again without a lookup`() = testApplication {
+        val counting = CountingVerifier(verifier)
+        application { installMcp(deps(verifier = counting)) }
+        repeat(3) { assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = "token-mallory").status) }
+        assertEquals(1, counting.calls)
     }
 
     @Test
@@ -287,5 +290,14 @@ class McpHttpTest {
             """"capabilities":{},"clientInfo":{"name":"test","version":"1"}}}"""
         const val INITIALIZED = """{"jsonrpc":"2.0","method":"notifications/initialized"}"""
         const val LIST_TOOLS = """{"jsonrpc":"2.0","id":2,"method":"tools/list"}"""
+    }
+}
+
+private class CountingVerifier(private val delegate: AccessTokenVerifier) : AccessTokenVerifier {
+    @Volatile var calls = 0
+
+    override suspend fun verify(accessToken: String): Principal? {
+        calls++
+        return delegate.verify(accessToken)
     }
 }

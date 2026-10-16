@@ -46,6 +46,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.nio.file.Path
+import java.security.MessageDigest
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -83,14 +84,15 @@ data class HttpLimits(
     /** A session nobody has used for this long is closed on the next initialize. */
     val sessionIdleTtl: Duration = DEFAULT_SESSION_IDLE_TTL,
     /**
-     * Bearer checks that *failed*, per client address. Every request costs a token lookup, and
-     * nothing else stood in front of it; charging only the failures means an address that
-     * Claude's users share pays nothing for their valid traffic, and a flood of made-up tokens
-     * from one place is answered 429 before the store sees it.
+     * Bearer checks that *failed*, per client address; past it the address is told to back off.
+     * A valid bearer is never refused on its address's account (Claude's users share egress).
      */
     val failedAuthRate: RateLimitPolicy = RateLimitPolicy.perMinute(count = DEFAULT_FAILED_AUTH_PER_MINUTE),
+    /** How many failed tokens are remembered, by hash, so a repeated one costs no lookup. */
+    val failedTokenMemory: Int = DEFAULT_FAILED_TOKEN_MEMORY,
 ) {
     private companion object {
+        const val DEFAULT_FAILED_TOKEN_MEMORY = 10_000
         const val DEFAULT_MAX_BODY_BYTES = 2L * 1024 * 1024
         const val DEFAULT_MAX_SESSIONS = 1_000
         const val DEFAULT_MAX_SESSIONS_PER_PRINCIPAL = 8
@@ -190,6 +192,7 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
 
     private val sessions = ConcurrentHashMap<String, McpSession>()
     private val failedAuth = TokenBucketLimiter(deps.limits.failedAuthRate, FunctionClock(deps.clock))
+    private val failedTokens = FailedTokens(deps.limits.failedTokenMemory)
 
     /** The auth, revocation and origin gates. False means the call was answered. */
     suspend fun admit(call: ApplicationCall): Boolean {
@@ -207,20 +210,35 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
         return true
     }
 
-    /** The principal the bearer speaks for, or null once the call is answered. */
+    /**
+     * The principal the bearer speaks for, or null once the call is answered.
+     *
+     * A bearer that verifies is never refused, whatever its address has done: Claude's users share
+     * a handful of egress addresses, so refusing by address would lock all of them out together.
+     * What is bounded is the cost of bearers that *fail*. A token seen failing is answered from
+     * [failedTokens] without a lookup, and a failure charges the address, which is told to back
+     * off (429) once it has spent its bucket. A request with no token at all — RFC 9728
+     * discovery, every connector's first contact — costs nothing and is never charged.
+     */
     private suspend fun authenticated(call: ApplicationCall): Principal? {
         if (!wellFormed(call)) return null
-        val address = ClientKey.of(call.request.origin.remoteHost)
-        if (failedAuth.retryAfterSeconds(address) > 0) {
-            call.response.header(HttpHeaders.RetryAfter, failedAuth.retryAfterSeconds(address).toString())
-            call.reject(HttpStatusCode.TooManyRequests, "Too many failed authentications from this address.")
+        val token = bearerOf(call)
+        if (token == null) {
+            call.unauthorized(null)
             return null
         }
-        val principal = principalOf(call)
+        val digest = sha256Hex(token)
+        val principal = if (failedTokens.contains(digest)) null else deps.verifier.verify(token)
         when {
             principal == null -> {
-                failedAuth.tryAcquire(address)
-                call.unauthorized(null)
+                failedTokens.add(digest)
+                val address = ClientKey.of(call.request.origin.remoteHost)
+                if (failedAuth.tryAcquire(address)) {
+                    call.unauthorized(null)
+                } else {
+                    call.response.header(HttpHeaders.RetryAfter, failedAuth.retryAfterSeconds(address).toString())
+                    call.reject(HttpStatusCode.TooManyRequests, "Too many failed authentications from this address.")
+                }
             }
             deps.tenants.isRevoked(principal.pubky) -> call.unauthorized("The Loopky session was revoked; connect again.")
             else -> return principal
@@ -245,11 +263,9 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
         return true
     }
 
-    private suspend fun principalOf(call: ApplicationCall): Principal? {
+    private fun bearerOf(call: ApplicationCall): String? {
         val header = call.request.header(HttpHeaders.Authorization) ?: return null
-        val token = header.substringAfter("Bearer ", missingDelimiterValue = "").trim()
-        if (token.isEmpty()) return null
-        return deps.verifier.verify(token)
+        return header.substringAfter("Bearer ", missingDelimiterValue = "").trim().ifEmpty { null }
     }
 
     /** The session [sessionId] names if [principal] owns it, or null once the call is answered. */
@@ -365,3 +381,27 @@ private suspend fun ApplicationCall.reject(status: HttpStatusCode, message: Stri
 
 /** The SDK's `RPCError.ErrorCode.CONNECTION_CLOSED`. */
 private const val CONNECTION_CLOSED = -32_000
+
+/**
+ * Hashes of bearers that failed verification, least recently seen dropped first. A token that
+ * failed once never verifies later — tokens are minted random, and a revoked one stays revoked.
+ */
+private class FailedTokens(private val capacity: Int) {
+    private val digests = object : LinkedHashMap<String, Unit>(INITIAL_CAPACITY, LOAD_FACTOR, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Unit>?) = size > capacity
+    }
+
+    fun contains(digest: String): Boolean = synchronized(digests) { digests.containsKey(digest) }
+
+    fun add(digest: String) {
+        synchronized(digests) { digests[digest] = Unit }
+    }
+
+    private companion object {
+        const val INITIAL_CAPACITY = 64
+        const val LOAD_FACTOR = 0.75f
+    }
+}
+
+private fun sha256Hex(value: String): String =
+    MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }

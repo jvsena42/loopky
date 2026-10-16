@@ -243,8 +243,10 @@ class ToolDispatcherTest {
 
     @Test
     fun `a refused session on a batch write is still reported revoked`() = runBlocking {
-        val decks = FakeDeckRepository(testDeck("d1"), onAppend = { Result.failure(PubkyError("Session rejected: 401 Unauthorized")) })
-        val factory = FakeTenantFactory { pubky, secret -> FakeTenant(secret, sessionFor(pubky, secret), decks = decks) }
+        val decks =
+            FakeDeckRepository(testDeck("d1"), onAppend = { Result.failure(PubkyError("Session rejected: 401 Unauthorized")) })
+        val factory =
+            FakeTenantFactory { pubky, secret -> FakeTenant(secret, sessionFor(pubky, secret), decks = decks) }
         val dispatcher = ToolDispatcher(PubkyEnvironment.Staging, TenantPool(factory, secrets, TenantLimits()), scratch)
 
         val error = dispatcher.call(alice, "card_add", args(BATCH)).envelope()["error"]!!.jsonObject
@@ -258,7 +260,8 @@ class ToolDispatcherTest {
     fun `an unreachable homeserver on a batch write is a network failure, not a revoke`() = runBlocking {
         val unreachable = PubkyError("Failed to import session: Request failed: HTTP transport error")
         val decks = FakeDeckRepository(testDeck("d1"), onAppend = { Result.failure(unreachable) })
-        val factory = FakeTenantFactory { pubky, secret -> FakeTenant(secret, sessionFor(pubky, secret), decks = decks) }
+        val factory =
+            FakeTenantFactory { pubky, secret -> FakeTenant(secret, sessionFor(pubky, secret), decks = decks) }
         val dispatcher = ToolDispatcher(PubkyEnvironment.Staging, TenantPool(factory, secrets, TenantLimits()), scratch)
 
         val error = dispatcher.call(alice, "card_add", args(BATCH)).envelope()["error"]!!.jsonObject
