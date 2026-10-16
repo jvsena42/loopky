@@ -119,8 +119,9 @@ internal class Authorization(
             is LoginPoll.Approved -> {
                 pending.complete(txn)
                 val redirect = runSuspendCatching { approve(entry, poll) }.getOrElse { failure ->
-                    // The grant Ring just issued is live, and no row names it: nothing here could
-                    // ever revoke it later, so it is revoked now, and the page says "failed" rather
+                    // The grant Ring just issued is live, and approve() has put back whatever row
+                    // named a grant before it, so none names this one: nothing could revoke it
+                    // later, so it is revoked now, and the page says "failed" rather
                     // than Ktor saying 500 — which would also log the cause past the redaction.
                     log.error("Storing the approval for ${poll.pubky} failed; revoking the grant", failure)
                     runSuspendCatching { ringLogin.revoke(poll.sessionSecret).getOrThrow() }
@@ -151,12 +152,18 @@ internal class Authorization(
                 lastUsedAt = now,
             ),
         )
+        // The code before the old grant goes: if issuing fails, the caller revokes the *new* grant,
+        // and the previous link has to be back in place so a connector that worked keeps working.
+        val code = runSuspendCatching { tokens.issueCode(entry, approved.pubky) }.getOrElse { failure ->
+            runSuspendCatching { if (previous != null) store.links.upsert(previous) else store.links.delete(approved.pubky) }
+                .onFailure { log.error("Restoring the previous link for ${approved.pubky} failed", it) }
+            throw failure
+        }
         val oldSecret = previous?.let { runCatching { vault.open(it.pubky, it.credential) }.getOrNull() }
         if (oldSecret != null && oldSecret != approved.sessionSecret) {
             runSuspendCatching { ringLogin.revoke(oldSecret).getOrThrow() }
                 .onFailure { log.warn("Revoking the previous grant for ${approved.pubky} failed", it) }
         }
-        val code = tokens.issueCode(entry, approved.pubky)
         log.info("Linked ${approved.pubky} for client ${entry.request.clientId}")
         return URLBuilder(entry.request.redirectUri).apply {
             parameters.append("code", code)
