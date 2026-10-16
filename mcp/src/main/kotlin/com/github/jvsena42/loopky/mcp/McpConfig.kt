@@ -36,9 +36,10 @@ data class McpConfig(
                 "$name must be set"
             }
             val envName = required("LOOPKY_MCP_ENV")
-            val environment = requireNotNull(PubkyEnvironment.entries.find { it.name.equals(envName, ignoreCase = true) }) {
-                "LOOPKY_MCP_ENV must be one of ${PubkyEnvironment.entries.joinToString { it.name.lowercase() }}"
-            }
+            val environment =
+                requireNotNull(PubkyEnvironment.entries.find { it.name.equals(envName, ignoreCase = true) }) {
+                    "LOOPKY_MCP_ENV must be one of ${PubkyEnvironment.entries.joinToString { it.name.lowercase() }}"
+                }
             val publicUrl = required("LOOPKY_MCP_PUBLIC_URL").trimEnd('/')
             require(publicUrl.startsWith("https://") || env("LOOPKY_MCP_ALLOW_HTTP") == "1") {
                 "LOOPKY_MCP_PUBLIC_URL must be https://"
