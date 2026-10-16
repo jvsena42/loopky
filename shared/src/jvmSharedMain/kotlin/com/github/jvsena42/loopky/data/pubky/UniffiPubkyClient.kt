@@ -30,7 +30,7 @@ import uniffi.pubkycore.republishHomeserver as ffiRepublishHomeserver
 import uniffi.pubkycore.resolve as ffiResolve
 import uniffi.pubkycore.resolveHttps as ffiResolveHttps
 import uniffi.pubkycore.revalidateSession as ffiRevalidateSession
-import uniffi.pubkycore.signInCookie as ffiSignInCookie
+import uniffi.pubkycore.signIn as ffiSignIn
 import uniffi.pubkycore.signOut as ffiSignOut
 import uniffi.pubkycore.signUpCookie as ffiSignUpCookie
 import uniffi.pubkycore.startCookieAuthFlow as ffiStartCookieAuthFlow
@@ -105,7 +105,7 @@ class UniffiPubkyClient : PubkyClient {
         runFfiSuspend { ffiGetSignupToken(homeserverPubky, adminPassword) }
 
     override suspend fun signIn(secretKey: String) =
-        runFfiSuspend { ffiSignInCookie(secretKey) }
+        runFfiSuspend { ffiSignIn(secretKey, LOOPKY_CLIENT_ID) }
 
     override suspend fun signOut(sessionSecret: String) =
         runFfiSuspend { ffiSignOut(sessionSecret) }
