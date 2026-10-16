@@ -38,6 +38,15 @@ class TenantPoolTest {
     private suspend fun TenantPool.pubkyOf(caller: String): String = withTenant(caller) { it.session.identity.pubky }
 
     @Test
+    fun `a credential that opens someone else's session is refused and closed`() = runBlocking {
+        val swapped = FakeSecrets(mapOf("alice" to "secret-bob"))
+        val pool = TenantPool(factory, swapped) { now }
+        assertFailsWith<TenantRefusal.NotLinked> { pool.pubkyOf("alice") }
+        assertTrue((factory.opened.single() as FakeTenant).closed)
+        assertTrue(pool.openTenants().isEmpty())
+    }
+
+    @Test
     fun `each principal gets the graph opened from its own secret`() = runBlocking {
         val pool = pool()
         assertEquals("alice", pool.pubkyOf("alice"))
@@ -200,8 +209,8 @@ class TenantPoolTest {
         assertTrue(pool.isRevoked("alice"))
         secrets.secrets["alice"] = "secret-alice"
         assertTrue(pool.isRevoked("alice"), "the same secret is still the refused one")
-        secrets.secrets["alice"] = "secret-alice-2"
+        secrets.secrets["alice"] = "secret-alice#2"
         assertTrue(!pool.isRevoked("alice"))
-        assertEquals("secret-alice-2", (pool.withTenant("alice") { it } as FakeTenant).secret)
+        assertEquals("secret-alice#2", (pool.withTenant("alice") { it } as FakeTenant).secret)
     }
 }

@@ -66,7 +66,7 @@ class FakeTenant(
 }
 
 /**
- * Opens a [FakeTenant] per secret, the pubky read back out of the secret's `secret-<pubky>` shape
+ * Opens a [FakeTenant] per secret, the pubky read back out of the secret's `secret-<pubky>[#n]` shape
  * so a test can ask whose graph a call ran on. [build] lets a test hand in richer repositories.
  */
 class FakeTenantFactory(
@@ -79,7 +79,7 @@ class FakeTenantFactory(
 
     override suspend fun open(sessionSecret: String): Tenant {
         opens.incrementAndGet()
-        val pubky = sessionSecret.removePrefix("secret-")
+        val pubky = sessionSecret.removePrefix("secret-").substringBefore("#")
         return build(pubky, sessionSecret).also { synchronized(opened) { opened += it } }
     }
 }

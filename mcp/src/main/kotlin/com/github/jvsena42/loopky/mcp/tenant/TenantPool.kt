@@ -197,6 +197,7 @@ class TenantPool(
             }
             throw error
         }
+        requireOwnedBy(tenant, pubky)
         entry.tenant = tenant
         entry.secretHash = hash
         return tenant
@@ -264,6 +265,16 @@ class TenantPool(
             withContext(NonCancellable) {
                 runSuspendCatching { close() }
             }
+        }
+
+        /**
+         * Defence in depth over the vault: a credential stored under the wrong pubky must fail
+         * here, never serve one user's calls on another's graph.
+         */
+        suspend fun requireOwnedBy(tenant: Tenant, pubky: String) {
+            if (tenant.session.identity.pubky == pubky) return
+            tenant.closeQuietly()
+            throw TenantRefusal.NotLinked(pubky)
         }
     }
 }
