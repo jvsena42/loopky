@@ -2738,6 +2738,25 @@ server's LRU (#214), not the graph's concern.
 
 - **A TLS-intercepting proxy** (§13.17) needs the pubky SDK to trust a CA it was not built with.
   Upstream work; until then such a sandbox exempts Loopky's hosts from interception.
+- **Ring phishing goes around the MCP server's authorize page, and nothing in the server can
+  stop it.** The page shows who is asking — the registered client name and the callback's domain
+  — but an attacker never shows the victim the page: they open `/authorize` in *their own*
+  browser, with a client they registered for free, and put the `pubkyauth://` QR it renders on a
+  site they control, under any wording they like. The victim scans it, Ring shows a request for
+  `/pub/loopky/:rw` from the relay and nothing the server can put a name to, and the approval
+  lands in the attacker's flow. This is inherent to the relay model: the grant is decided between
+  Ring and the relay, and the server learns of it afterwards. What the server's pieces do and do
+  not buy against it, honestly. **Pinning registration to Claude's callback** means the code can
+  only be redeemed through `claude.ai`, so the attacker ends up with the victim's decks linked to
+  *their own Claude account* rather than with a raw bearer in a script — bounded by Claude's
+  connector behaviour and attributable to that account, but still the victim's decks. **The
+  scope** bounds what is reachable: `/pub/loopky/:rw`, never a post, a follow or the profile.
+  **Ring lists the grant** under `mcp.loopky.app`, apart from the phone's, so the victim can
+  revoke it there, and `admin revoke-all` ends every grant at once. What would close it is a
+  client name Ring shows and the server cannot forge — a signed request the relay carries through
+  to Ring's prompt — which is Ring's and the relay's to build, not this server's. The reverse
+  direction, an attacker's approval landing in a victim's flow, is not possible: the txn the page
+  polls with is random, header-borne and keyed in memory.
 - **Its own repo, and the `core` / `presentation` split.** Starting in-tree is cheaper while
   `shared` is moving; the trigger for extracting is the first *out-of-tree* consumer, which needs
   a published artifact — and that artifact is the module boundary. `:cli-core` (§13.15) is the
