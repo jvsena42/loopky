@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.mcp.store
 
 import java.sql.ResultSet
+import java.time.Duration
 import java.time.Instant
 
 sealed interface CodeConsumption {
@@ -45,8 +46,20 @@ class CodeStore(private val db: McpDatabase) {
         }
     }
 
+    /**
+     * Unspent codes go once expired; spent ones are kept for [SPENT_RETENTION] past that. A
+     * replay is detected only while the spent row exists, and a code outlives its sixty seconds
+     * in the callback URL — browser history, a proxy's access log — so a sweep that dropped it
+     * turned a replay from "family revoked" into "unknown code" after the first run.
+     */
     suspend fun deleteExpired(now: Instant) {
-        db.transaction { c -> c.exec("DELETE FROM auth_codes WHERE expires_at < ?", now) }
+        db.transaction { c ->
+            c.exec("DELETE FROM auth_codes WHERE expires_at < ? AND (used_at IS NULL OR used_at < ?)", now, now.minus(SPENT_RETENTION))
+        }
+    }
+
+    private companion object {
+        val SPENT_RETENTION: Duration = Duration.ofDays(1)
     }
 
     private fun toCode(row: ResultSet) = AuthorizationCode(

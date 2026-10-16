@@ -9,13 +9,13 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -183,14 +183,23 @@ class OAuthFlowTest {
     }
 
     @Test
-    fun `replaying a code revokes what it bought`() = oauthTest {
+    fun `replaying a code revokes what it bought, even after the sweep has run`() = oauthTest {
         val clientId = registerClient()
         val code = codeFor(clientId)
         val tokens = exchange(code, clientId).json().tokens()
         assertNotNull(server.verifier.verify(tokens.access))
+        // The code is a minute old and expired; a sweep in between must not forget it was spent.
+        clock.advance(Duration.ofMinutes(2))
+        server.sweep()
         assertEquals("invalid_grant", exchange(code, clientId).json()["error"]?.jsonPrimitive?.content)
-        assertNull(server.verifier.verify(tokens.access))
+        assertNull(server.verifier.verify(tokens.access), "the replay was read as an unknown code and revoked nothing")
         assertEquals("invalid_grant", refresh(tokens.refresh, clientId).json()["error"]?.jsonPrimitive?.content)
+        clock.advance(Duration.ofDays(2))
+        server.sweep()
+        val left = harness.store.db.transaction { c ->
+            c.createStatement().use { it.executeQuery("SELECT COUNT(*) FROM auth_codes").getInt(1) }
+        }
+        assertEquals(0, left)
     }
 
     @Test
