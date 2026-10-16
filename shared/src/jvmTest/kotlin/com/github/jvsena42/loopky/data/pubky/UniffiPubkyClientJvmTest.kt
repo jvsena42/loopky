@@ -56,18 +56,19 @@ class UniffiPubkyClientJvmTest {
         assertEquals("true", client.validateMnemonicPhrase(phrase).getOrThrow())
     }
 
-    // A client id reaches the homeserver on every sign-in and write, so a blank or oversized one
-    // is refused at construction rather than as a confusing FFI error on the first call.
     @Test
-    fun `the server-only flow and cache functions are bound in the shipped library`() = runBlocking {
+    fun `the server-only flow and cache functions are bound in the shipped library`() = runBlocking<Unit> {
         val client = UniffiPubkyClient(clientId = "mcp.loopky.app")
         assertTrue(client.configureSessionCache(capacity = 8).isSuccess)
         assertTrue(client.configureGrantAuthFlows(maxConcurrent = 4, ttlSeconds = 300).isSuccess)
         val unknown = client.cancelGrantAuthFlowHandle("0".repeat(32)).exceptionOrNull()
         assertTrue(unknown?.message.orEmpty().contains("No auth flow"), "got: $unknown")
         assertTrue(client.pollGrantAuthFlowHandle("0".repeat(32)).isFailure)
+        assertFailsWith<IllegalArgumentException> { client.configureSessionCache(capacity = -1) }
     }
 
+    // A client id reaches the homeserver on every sign-in and write, so a blank or oversized one
+    // is refused at construction rather than as a confusing FFI error on the first call.
     @Test
     fun `refuses a client id pubky's ClientId would reject`() {
         assertFailsWith<IllegalArgumentException> { UniffiPubkyClient(clientId = " ") }

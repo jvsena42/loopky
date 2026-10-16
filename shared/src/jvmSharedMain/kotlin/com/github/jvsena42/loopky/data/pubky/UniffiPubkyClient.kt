@@ -197,7 +197,6 @@ class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : Pubky
     // --- Network --------------------------------------------------------------
     override fun switchNetwork(useTestnet: Boolean) = runFfi { ffiSwitchNetwork(useTestnet) }
 
-    // --- Helpers --------------------------------------------------------------
     // --- Server-only: many users in one process (#214) -------------------------
     // Not on [PubkyClient]: the apps and the CLI hold one session, and the iOS client has no
     // binding for any of this.
@@ -214,11 +213,19 @@ class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : Pubky
     /** Revokes the grant behind a stored secret with a proof of possession; no live bearer needed. */
     suspend fun revokeOwnGrant(sessionSecret: String) = runFfiSuspend { ffiRevokeOwnGrant(sessionSecret) }
 
-    fun configureGrantAuthFlows(maxConcurrent: Int, ttlSeconds: Int) =
-        runFfi { ffiConfigureGrantAuthFlows(maxConcurrent.toUInt(), ttlSeconds.toUInt()) }
+    // `require` before `toUInt()`: a negative Int would otherwise wrap to a huge cap, silently.
+    fun configureGrantAuthFlows(maxConcurrent: Int, ttlSeconds: Int): Result<String> {
+        require(maxConcurrent > 0 && ttlSeconds > 0) { "maxConcurrent and ttlSeconds must be positive" }
+        return runFfi { ffiConfigureGrantAuthFlows(maxConcurrent.toUInt(), ttlSeconds.toUInt()) }
+    }
 
     /** How many grant sessions the FFI keeps minted; an LRU, so a busy server sizes it to its tenants. */
-    fun configureSessionCache(capacity: Int) = runFfi { ffiConfigureSessionCache(capacity.toUInt()) }
+    fun configureSessionCache(capacity: Int): Result<String> {
+        require(capacity > 0) { "capacity must be positive" }
+        return runFfi { ffiConfigureSessionCache(capacity.toUInt()) }
+    }
+
+    // --- Helpers --------------------------------------------------------------
 
     private inline fun runFfi(block: () -> List<String>): Result<String> =
         try {
