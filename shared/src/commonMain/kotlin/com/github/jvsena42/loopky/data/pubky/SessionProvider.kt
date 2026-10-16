@@ -30,7 +30,12 @@ class MutableSessionProvider : SessionProvider {
     @Volatile
     private var value: Session? = null
 
-    override fun current(): Session? = value
+    @Volatile
+    private var closed = false
+
+    // `closed` is read here rather than only in `set`: a set racing close() could otherwise land
+    // after it and bring a session back on a graph that has been handed back (#214).
+    override fun current(): Session? = if (closed) null else value
 
     /**
      * Held by revalidation and by sign-out, so neither runs inside the other. A revalidation can
@@ -41,5 +46,11 @@ class MutableSessionProvider : SessionProvider {
 
     fun set(session: Session?) {
         value = session
+    }
+
+    /** For good: [current] answers null from now on, whatever an in-flight sign-in sets later. */
+    fun close() {
+        closed = true
+        value = null
     }
 }

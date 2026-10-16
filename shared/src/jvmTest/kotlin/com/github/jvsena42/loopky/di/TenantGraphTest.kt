@@ -9,12 +9,14 @@ import com.github.jvsena42.loopky.testing.FakeHttpFetcher
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testDeck
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -99,6 +101,38 @@ class TenantGraphTest {
         assertNotNull(alice.srs.stateFor(DECK, "c1"))
         assertNull(bob.srs.stateFor(DECK, "c1"))
         assertTrue(bob.srs.statesForDeck(DECK).isEmpty())
+    }
+
+    @Test
+    fun aCloseDuringAdoptionLeavesNoSessionBehind() = runTest {
+        answerRevalidationFor("alicepk")
+        val gate = CompletableDeferred<Unit>()
+        pubky.revalidateGate = gate
+        val graph = TenantGraph.open(services).also(opened::add)
+        val adoption = async { graph.adoptSession("secret-alicepk") }
+        runCurrent()
+
+        graph.close()
+        gate.complete(Unit)
+
+        assertTrue(adoption.await().isFailure)
+        assertNull(graph.session)
+    }
+
+    @Test
+    fun aCancelledSignInClosesTheGraphItOpened() = runTest {
+        answerRevalidationFor("alicepk")
+        pubky.revalidateGate = CompletableDeferred()
+        lateinit var graph: TenantGraph
+        val signIn = async {
+            TenantGraph.forSession(services, "secret-alicepk") { TenantGraph.open(it).also { graph = it } }
+        }
+        runCurrent()
+
+        signIn.cancel()
+        runCurrent()
+
+        assertTrue(graph.isClosed)
     }
 
     @Test

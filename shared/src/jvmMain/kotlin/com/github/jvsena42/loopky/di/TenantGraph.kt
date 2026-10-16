@@ -90,7 +90,10 @@ class TenantServices(
  */
 class TenantGraph private constructor(private val koin: Koin) : AutoCloseable {
 
-    val identity: IdentityRepository = koin.get()
+    // Not public: signInWithKey, registerHeldKey and loadPersistedSession all set the session,
+    // and any of them would switch a graph's user under caches warm with the last one's data.
+    // adoptSession is the one way in, and it refuses a second.
+    internal val identity: IdentityRepository = koin.get()
     val decks: DeckRepository = koin.get()
     val cards: CardRepository = koin.get()
     val imports: ImportRepository = koin.get()
@@ -118,14 +121,20 @@ class TenantGraph private constructor(private val koin: Koin) : AutoCloseable {
         runSuspendCatching {
             check(!isClosed) { "This tenant graph is closed" }
             check(session == null) { "This tenant graph already holds a session; open another graph" }
-            identity.adoptSession(sessionSecret).getOrThrow()
+            identity.adoptSession(sessionSecret).getOrThrow().also {
+                check(!isClosed) { "This tenant graph was closed while its session was being adopted" }
+            }
         }
     }
 
+    /**
+     * Pending study grades are not flushed: they live in this graph's in-memory journal and go
+     * with it. The server serves no grading tool; a caller that grades calls `srs.flush()` first.
+     */
     override fun close() {
         if (isClosed) return
         isClosed = true
-        sessionProvider.set(null)
+        sessionProvider.close()
         koin.close()
     }
 
@@ -135,11 +144,23 @@ class TenantGraph private constructor(private val koin: Koin) : AutoCloseable {
         )
 
         /** [open] then [adoptSession], closing the graph again when the secret is not live. */
-        suspend fun forSession(services: TenantServices, sessionSecret: String): Result<TenantGraph> {
+        suspend fun forSession(services: TenantServices, sessionSecret: String): Result<TenantGraph> =
+            forSession(services, sessionSecret, ::open)
+
+        internal suspend fun forSession(
+            services: TenantServices,
+            sessionSecret: String,
+            open: (TenantServices) -> TenantGraph,
+        ): Result<TenantGraph> {
             val graph = open(services)
-            return graph.adoptSession(sessionSecret)
-                .map { graph }
-                .onFailure { graph.close() }
+            var adopted = false
+            // `finally`, not `onFailure`: a cancelled adoption throws past a Result, and the graph's
+            // scope (with DeckRepositoryImpl's collector on it) would never be closed.
+            try {
+                return graph.adoptSession(sessionSecret).map { graph }.also { adopted = it.isSuccess }
+            } finally {
+                if (!adopted) graph.close()
+            }
         }
     }
 }
