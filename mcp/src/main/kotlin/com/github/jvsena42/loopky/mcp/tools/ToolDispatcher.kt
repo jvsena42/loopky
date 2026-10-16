@@ -23,6 +23,7 @@ import com.github.jvsena42.loopky.cli.requireKnownOptions
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.mcp.LOOPKY_CAPABILITIES
 import com.github.jvsena42.loopky.mcp.Principal
+import com.github.jvsena42.loopky.mcp.security.UserLimiter
 import com.github.jvsena42.loopky.mcp.tenant.Tenant
 import com.github.jvsena42.loopky.mcp.tenant.TenantPool
 import com.github.jvsena42.loopky.mcp.tenant.TenantRefusal
@@ -31,6 +32,8 @@ import com.github.jvsena42.loopky.util.Log
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.Tool
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.coroutines.cancellation.CancellationException
@@ -51,6 +54,7 @@ class ToolDispatcher(
     private val scratch: InlineScratch,
     private val urlGuard: UrlGuard = UrlGuard.PUBLIC_HTTPS,
     private val tools: List<McpTool> = mcpTools(),
+    private val userLimiter: UserLimiter? = null,
 ) {
     private val byName = tools.associateBy { it.name }
 
@@ -70,6 +74,7 @@ class ToolDispatcher(
             invocation.imageUrls.forEach { url ->
                 urlGuard.refusal(url)?.let { throw CliError(ExitCode.BadInput, "$url $it.") }
             }
+            if (tool.command.writes && !arguments.isDryRun()) chargeWrite(principal.pubky, invocation)
             val data = if (tool.command.path == WHOAMI) whoami(principal) else run(principal, invocation, notes)
             ToolEnvelope.success(tool.command.path, environment, data, notes)
         } catch (error: CliError) {
@@ -85,6 +90,21 @@ class ToolDispatcher(
             failed(principal, tool, CliError(ExitCode.of(error), error.message ?: error::class.simpleName.orEmpty()), notes)
         }.asToolResult()
     }
+
+    /**
+     * The per-user write bucket and daily byte budget (#486): the homeserver's 1 GB quota is
+     * shared with the user's own app, and a 507 is terminal, so a runaway agent stops here first.
+     */
+    private fun chargeWrite(pubky: String, invocation: ToolInvocation) {
+        val limiter = userLimiter ?: return
+        if (!limiter.tryWrite(pubky)) throw TenantRefusal.RateLimited(limiter.writeRetryAfterSeconds(pubky))
+        val bytes = invocation.inline?.bytes?.size?.toLong() ?: 0L
+        if (bytes > 0 && !limiter.tryChargeBytes(pubky, bytes)) {
+            throw TenantRefusal.OverBudget(limiter.bytesRemainingToday(pubky))
+        }
+    }
+
+    private fun JsonObject.isDryRun(): Boolean = (this["dry_run"] as? JsonPrimitive)?.booleanOrNull == true
 
     /** From the principal alone: no graph opened, no homeserver asked. */
     private fun whoami(principal: Principal): JsonObject = buildJsonObject {
@@ -173,6 +193,7 @@ class ToolDispatcher(
             is TenantRefusal.TimedOut -> "call_timeout" to false
             is TenantRefusal.NotLinked -> ExitCode.NotSignedIn.json to true
             is TenantRefusal.Revoked -> ExitCode.SessionExpired.json to true
+            is TenantRefusal.RateLimited, is TenantRefusal.OverBudget -> "rate_limited" to false
         }
         val exit = ExitCode.entries.firstOrNull { it.json == code }?.code
         return ToolEnvelope.failure(tool.command.path, environment, code, exit, refusal.message.orEmpty(), null, notes, reconnect)

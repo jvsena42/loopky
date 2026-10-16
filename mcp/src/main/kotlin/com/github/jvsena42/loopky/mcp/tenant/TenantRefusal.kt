@@ -24,4 +24,12 @@ sealed class TenantRefusal(message: String) : RuntimeException(message) {
     /** The homeserver refused the credential outright; it has been reported revoked. */
     class Revoked(pubky: String) :
         TenantRefusal("The Loopky session for $pubky was revoked. Reconnect the connector; retrying cannot help.")
+
+    /** Writes for this account came faster than the per-user bucket refills. */
+    class RateLimited(retryAfterSeconds: Long) :
+        TenantRefusal("Too many writes for this account; retry in ${retryAfterSeconds}s.")
+
+    /** Today's inline-content budget for this account is spent; it resets at 00:00 UTC. */
+    class OverBudget(remainingBytes: Long) :
+        TenantRefusal("Today's upload budget for this account is spent ($remainingBytes bytes left); it resets at 00:00 UTC.")
 }

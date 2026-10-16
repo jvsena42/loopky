@@ -11,6 +11,9 @@ import com.github.jvsena42.loopky.mcp.FakeTenant
 import com.github.jvsena42.loopky.mcp.FakeTenantFactory
 import com.github.jvsena42.loopky.mcp.Principal
 import com.github.jvsena42.loopky.mcp.ownedDeck
+import com.github.jvsena42.loopky.mcp.security.RateLimitPolicy
+import com.github.jvsena42.loopky.mcp.security.UserLimiter
+import com.github.jvsena42.loopky.mcp.security.UserLimits
 import com.github.jvsena42.loopky.mcp.sessionFor
 import com.github.jvsena42.loopky.mcp.tenant.Tenant
 import com.github.jvsena42.loopky.mcp.tenant.TenantLimits
@@ -66,6 +69,32 @@ class ToolDispatcherTest {
         assertEquals(PubkyEnvironment.Staging.nexusBaseUrl, text["indexer"]!!.jsonPrimitive.content)
         assertTrue("update_available" in text)
         assertEquals("deck-alice", text["data"]!!.jsonObject["decks"]!!.jsonArray.single().jsonObject["id"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `writes are charged to the user's bucket and budget, dry runs and reads are not`() = runBlocking {
+        val limiter =
+            UserLimiter(UserLimits(writes = RateLimitPolicy.perMinute(count = 1, burst = 1), dailyByteBudget = 16))
+        val pool =
+            TenantPool(FakeTenantFactory(tenantWith(FakeDeckRepository(testDeck("d1")))), secrets, TenantLimits())
+        val dispatcher = ToolDispatcher(PubkyEnvironment.Staging, pool, scratch, userLimiter = limiter)
+        val add = """{"deck_id":"d1","front":"hola","back":"hello"}"""
+
+        assertEquals(false, dispatcher.call(alice, "card_add", args(add)).isError)
+        assertEquals(false, dispatcher.call(alice, "deck_list", args("{}")).isError)
+        assertEquals(false, dispatcher.call(alice, "card_add", args(add.dropLast(1) + ""","dry_run":true}""")).isError)
+
+        val limited = dispatcher.call(alice, "card_add", args(add)).envelope()
+        assertEquals("rate_limited", limited["error"]!!.jsonObject["code"]!!.jsonPrimitive.content)
+
+        val roomy = UserLimiter(UserLimits(dailyByteBudget = 16))
+        val budgeted = ToolDispatcher(PubkyEnvironment.Staging, pool, scratch, userLimiter = roomy)
+        val bulk = budgeted.call(
+            alice,
+            "card_add",
+            args("""{"deck_id":"d1","cards":[{"front":"a long enough front","back":"and a back"}]}"""),
+        ).envelope()
+        assertEquals("rate_limited", bulk["error"]!!.jsonObject["code"]!!.jsonPrimitive.content)
     }
 
     @Test

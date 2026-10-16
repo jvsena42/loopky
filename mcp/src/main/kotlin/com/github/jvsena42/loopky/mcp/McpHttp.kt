@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.mcp
 
 import com.github.jvsena42.loopky.cli.CLI_VERSION
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.mcp.security.UserLimiter
 import com.github.jvsena42.loopky.mcp.tenant.TenantPool
 import com.github.jvsena42.loopky.mcp.tools.InlineScratch
 import com.github.jvsena42.loopky.mcp.tools.McpInstructions
@@ -95,6 +96,7 @@ class McpDeps(
     val instructions: String = McpInstructions.load(),
     val limits: HttpLimits = HttpLimits(),
     val clock: () -> Long = System::currentTimeMillis,
+    val userLimiter: UserLimiter? = null,
 )
 
 /**
@@ -115,7 +117,13 @@ fun Application.installMcp(deps: McpDeps) {
     // The SDK answers a JSON-mode POST with `call.respond(message)`, which needs its own JSON
     // converter registered; without one Ktor has no transformation and answers 406 with no body.
     if (pluginOrNull(ContentNegotiation) == null) install(ContentNegotiation) { json(McpJson) }
-    val dispatcher = ToolDispatcher(deps.environment, deps.tenants, InlineScratch(deps.scratchDir), deps.urlGuard)
+    val dispatcher = ToolDispatcher(
+        deps.environment,
+        deps.tenants,
+        InlineScratch(deps.scratchDir),
+        deps.urlGuard,
+        userLimiter = deps.userLimiter,
+    )
     val sessions = McpSessions(deps, dispatcher)
 
     routing {
