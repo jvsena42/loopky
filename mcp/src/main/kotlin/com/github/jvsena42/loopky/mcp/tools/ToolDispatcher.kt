@@ -178,7 +178,9 @@ class ToolDispatcher(
         // time a command reports a refusal, so that one is Ring's doing (#486): report it, drop
         // the graph, say the user has to reconnect. The second is reported as the network
         // failure it is — unlinking on it would sign every user out for a 30-second outage.
-        val reason = error.cause?.toErrorReason()
+        // The first non-CliError in the chain is the homeserver's own error; a command that
+        // rewraps one CliError in another must not hide it.
+        val reason = generateSequence(error.cause) { it.cause }.firstOrNull { it !is CliError }?.toErrorReason()
         val revoked = error.exitCode == ExitCode.SessionExpired && reason == ErrorReason.SessionExpired
         val unreachable = reason == ErrorReason.SessionUnreachable
         if (revoked) tenants.revoke(principal.pubky)

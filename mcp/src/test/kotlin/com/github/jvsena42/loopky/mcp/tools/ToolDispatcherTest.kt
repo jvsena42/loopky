@@ -242,6 +242,33 @@ class ToolDispatcherTest {
     }
 
     @Test
+    fun `a refused session on a batch write is still reported revoked`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck("d1"), onAppend = { Result.failure(PubkyError("Session rejected: 401 Unauthorized")) })
+        val factory = FakeTenantFactory { pubky, secret -> FakeTenant(secret, sessionFor(pubky, secret), decks = decks) }
+        val dispatcher = ToolDispatcher(PubkyEnvironment.Staging, TenantPool(factory, secrets, TenantLimits()), scratch)
+
+        val error = dispatcher.call(alice, "card_add", args(BATCH)).envelope()["error"]!!.jsonObject
+
+        assertEquals("session_expired", error["code"]!!.jsonPrimitive.content)
+        assertEquals(true, error["reconnect"]!!.jsonPrimitive.boolean)
+        assertEquals(listOf("alice"), secrets.revoked)
+    }
+
+    @Test
+    fun `an unreachable homeserver on a batch write is a network failure, not a revoke`() = runBlocking {
+        val unreachable = PubkyError("Failed to import session: Request failed: HTTP transport error")
+        val decks = FakeDeckRepository(testDeck("d1"), onAppend = { Result.failure(unreachable) })
+        val factory = FakeTenantFactory { pubky, secret -> FakeTenant(secret, sessionFor(pubky, secret), decks = decks) }
+        val dispatcher = ToolDispatcher(PubkyEnvironment.Staging, TenantPool(factory, secrets, TenantLimits()), scratch)
+
+        val error = dispatcher.call(alice, "card_add", args(BATCH)).envelope()["error"]!!.jsonObject
+
+        assertEquals("network", error["code"]!!.jsonPrimitive.content)
+        assertEquals(false, error["reconnect"]!!.jsonPrimitive.boolean)
+        assertEquals(emptyList(), secrets.revoked)
+    }
+
+    @Test
     fun `notes the CLI would have put on stderr travel in the envelope`() = runBlocking {
         val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck("d1"))))
         val envelope = dispatcher.call(
@@ -270,3 +297,5 @@ class ToolDispatcherTest {
     private fun io.modelcontextprotocol.kotlin.sdk.types.CallToolResult.errorCode(): String =
         envelope()["error"]!!.jsonObject["code"]!!.jsonPrimitive.content
 }
+
+private const val BATCH = """{"deck_id":"d1","cards":[{"front":"hola","back":"hello"},{"front":"adiós","back":"bye"}]}"""
