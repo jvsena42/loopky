@@ -14,6 +14,7 @@ As root, on a Debian/Ubuntu box with Docker (with the compose plugin) and Caddy 
 install -d -m 0755 /opt/loopky-mcp
 install -m 0644 compose.yml /opt/loopky-mcp/compose.yml
 install -m 0755 deploy.sh   /opt/loopky-mcp/deploy.sh
+install -m 0700 admin.sh    /opt/loopky-mcp/admin.sh
 
 # A deploy user that can run docker and nothing else interactive.
 useradd --create-home --shell /bin/bash deploy
@@ -35,15 +36,26 @@ echo 'LOOPKY_MCP_PUBLIC_URL=https://mcp.loopky.app'         > /etc/loopky-mcp/pr
 ```
 
 Caddy terminates TLS: start from `Caddyfile.example`. Open only 443 and 22 (`ufw allow 22,443/tcp`).
+The example bounds a single request but is **not** a production edge: per-address request
+limiting, which the server leaves to the proxy, is #518 and should be in place before launch.
 
-### The deploy key
+### The deploy keys
 
-Generate a key pair for CD (`ssh-keygen -t ed25519 -f mcp-deploy -N ''`) and add the public half to
-`/home/deploy/.ssh/authorized_keys` as a **forced command**. The key CI holds can then do one thing,
-which is to roll an environment to a digest of the one image:
+**One key per environment, with the environment fixed in its forced command.** `deploy.sh` takes
+the environment from that command and only the digest from the caller, so a key can roll its own
+environment and nothing else. Sharing one key, or leaving the environment to the caller, would let
+any workflow that can read staging's secret roll production past its reviewers.
+
+```sh
+ssh-keygen -t ed25519 -f mcp-deploy-staging    -N ''
+ssh-keygen -t ed25519 -f mcp-deploy-production -N ''
+```
+
+Then in `/home/deploy/.ssh/authorized_keys`:
 
 ```
-command="/opt/loopky-mcp/deploy.sh",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA… mcp-deploy
+command="/opt/loopky-mcp/deploy.sh staging",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA… mcp-deploy-staging
+command="/opt/loopky-mcp/deploy.sh production",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA… mcp-deploy-production
 ```
 
 ### GitHub
@@ -54,10 +66,10 @@ In **Settings → Environments**, create `staging` and `production`:
 |---|---|---|
 | secret `VPS_HOST` | the box | the box |
 | secret `VPS_USER` | `deploy` | `deploy` |
-| secret `VPS_SSH_KEY` | the private half above | same, or a second key |
+| secret `VPS_SSH_KEY` | `mcp-deploy-staging` | `mcp-deploy-production` — never the same key |
 | secret `VPS_KNOWN_HOSTS` | `ssh-keyscan <host>` output, checked by hand | same |
 | var `MCP_PUBLIC_URL` | `https://mcp.staging.loopky.app` | `https://mcp.loopky.app` |
-| protection | — | **required reviewers**, branch `main` only |
+| protection | branch `main` only | **required reviewers**, branch `main` only |
 
 The image is `ghcr.io/jvsena42/loopky-mcp`. Make the package public, or `docker login ghcr.io` once
 as `deploy` with a read-only token.
@@ -68,6 +80,10 @@ as `deploy` with a read-only token.
 - **Roll back**: run *MCP deploy* from the Actions tab with the previous `digest`. `deploy.sh` also
   rolls back by itself when a new digest does not come up healthy.
 - **What is running**: `cat /srv/loopky-mcp/<env>/image`.
-- **Mass revocation** (a leaked database and key): `docker compose -p loopky-mcp-<env> exec mcp
-  /opt/loopky-mcp/bin/loopky-mcp admin revoke-all`, then rotate the master key with
-  `admin rotate-key`. Read the server's `--help` for the exact steps before you need them.
+- **Mass revocation** (a leaked database or master key): as root, `/opt/loopky-mcp/admin.sh <env>
+  revoke-all`, then `/opt/loopky-mcp/admin.sh <env> rotate-key`. Each stops the service (the
+  server holds the data directory, so no admin command can run beside it), runs the command in a
+  one-off container from the image that was running, and starts the service again. `rotate-key`
+  generates the new key on the box, re-wraps every credential under it and swaps the key file.
+  CI's smoke test runs these same steps against a stopped container on every PR; rehearse them
+  on staging once before launch.
