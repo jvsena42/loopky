@@ -1,0 +1,209 @@
+package com.github.jvsena42.loopky.mcp.tools
+
+import com.github.jvsena42.loopky.cli.FakeCardRepository
+import com.github.jvsena42.loopky.cli.FakeDeckRepository
+import com.github.jvsena42.loopky.cli.SCHEMA_VERSION
+import com.github.jvsena42.loopky.cli.testDeck
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.pubky.PubkyError
+import com.github.jvsena42.loopky.mcp.FakeSecrets
+import com.github.jvsena42.loopky.mcp.FakeTenant
+import com.github.jvsena42.loopky.mcp.FakeTenantFactory
+import com.github.jvsena42.loopky.mcp.Principal
+import com.github.jvsena42.loopky.mcp.ownedDeck
+import com.github.jvsena42.loopky.mcp.sessionFor
+import com.github.jvsena42.loopky.mcp.tenant.Tenant
+import com.github.jvsena42.loopky.mcp.tenant.TenantLimits
+import com.github.jvsena42.loopky.mcp.tenant.TenantPool
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.nio.file.Files
+import kotlin.io.path.listDirectoryEntries
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class ToolDispatcherTest {
+
+    private val alice = Principal(pubky = "alice", clientId = "claude")
+    private val secrets = FakeSecrets(mapOf("alice" to "secret-alice"))
+    private val scratch = InlineScratch(Files.createTempDirectory("dispatcher-test").resolve("inline"))
+
+    private fun dispatcher(build: (pubky: String, secret: String) -> Tenant): Pair<ToolDispatcher, FakeTenantFactory> {
+        val factory = FakeTenantFactory(build)
+        val pool = TenantPool(factory, secrets, TenantLimits())
+        return ToolDispatcher(PubkyEnvironment.Staging, pool, scratch) to factory
+    }
+
+    private fun args(json: String): JsonObject = Json.parseToJsonElement(json).jsonObject
+
+    private fun tenantWith(decks: FakeDeckRepository, cards: FakeCardRepository = FakeCardRepository()) =
+        { pubky: String, secret: String -> FakeTenant(secret, sessionFor(pubky, secret), decks = decks, cards = cards) }
+
+    @Test
+    fun `a result is the CLI's envelope, as text and as structured content`() = runBlocking {
+        val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck(), owned = listOf(ownedDeck("alice")))))
+        val result = dispatcher.call(alice, "deck_list", args("{}"))
+
+        assertEquals(false, result.isError)
+        val text = Json.parseToJsonElement((result.content.single() as TextContent).text).jsonObject
+        assertEquals(text, result.structuredContent)
+        assertEquals(SCHEMA_VERSION, text["schema"]!!.jsonPrimitive.int)
+        assertEquals(true, text["ok"]!!.jsonPrimitive.boolean)
+        assertEquals("deck list", text["command"]!!.jsonPrimitive.content)
+        assertEquals("staging", text["environment"]!!.jsonPrimitive.content)
+        assertEquals(PubkyEnvironment.Staging.nexusBaseUrl, text["indexer"]!!.jsonPrimitive.content)
+        assertTrue("update_available" in text)
+        assertEquals("deck-alice", text["data"]!!.jsonObject["decks"]!!.jsonArray.single().jsonObject["id"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `whoami answers from the principal without opening a graph`() = runBlocking {
+        val (dispatcher, factory) = dispatcher(tenantWith(FakeDeckRepository(testDeck())))
+        val data = dispatcher.call(alice, "whoami", args("{}")).envelope()["data"]!!.jsonObject
+        assertEquals("alice", data["pubky"]!!.jsonPrimitive.content)
+        assertEquals("staging", data["environment"]!!.jsonPrimitive.content)
+        assertEquals(PubkyEnvironment.Staging.nexusBaseUrl, data["indexer"]!!.jsonPrimitive.content)
+        assertEquals(0, factory.opens.get())
+    }
+
+    @Test
+    fun `inline cards reach the command as a file that is gone afterwards`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck("d1"))
+        val (dispatcher, _) = dispatcher(tenantWith(decks))
+        val envelope = dispatcher.call(
+            alice,
+            "card_add",
+            args("""{"deck_id":"d1","cards":[{"front":"hola","back":"hello"},{"front":"adiós","back":"bye"}]}"""),
+        ).envelope()
+
+        assertEquals(true, envelope["ok"]!!.jsonPrimitive.boolean, envelope.toString())
+        assertEquals(2, envelope["data"]!!.jsonObject["written"]!!.jsonPrimitive.int)
+        assertEquals(listOf("hola", "adiós"), decks.appended.map { it.front.text })
+        assertEquals(emptyList(), scratch.root.listDirectoryEntries(), "the call's directory was left behind")
+    }
+
+    /** The real parser, over text that never touched the caller's filesystem. */
+    @Test
+    fun `inline import goes through the app's own parser and publishes`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck())
+        val (dispatcher, _) = dispatcher(tenantWith(decks))
+        val envelope = dispatcher.call(
+            alice,
+            "import",
+            args("""{"title":"Greetings","text":"hola\thello\nadiós\tbye\n","tag":["Español"]}"""),
+        ).envelope()
+
+        assertEquals(true, envelope["ok"]!!.jsonPrimitive.boolean, envelope.toString())
+        val data = envelope["data"]!!.jsonObject
+        assertEquals(2, data["cards_written"]!!.jsonPrimitive.int)
+        assertEquals("tab", data["separator"]!!.jsonPrimitive.content)
+        assertEquals(listOf("hola", "adiós"), decks.published.map { it.front.text })
+        assertEquals("espanol", data["deck"]!!.jsonObject["tags"]!!.jsonArray.single().jsonPrimitive.content)
+        assertEquals(emptyList(), scratch.root.listDirectoryEntries())
+    }
+
+    @Test
+    fun `a dry run writes nothing and reports the preview`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck())
+        val (dispatcher, _) = dispatcher(tenantWith(decks))
+        val envelope = dispatcher.call(alice, "import", args("""{"text":"a\tb\nc\td\ne\tf","dry_run":true}""")).envelope()
+        assertEquals(true, envelope["ok"]!!.jsonPrimitive.boolean, envelope.toString())
+        assertEquals(3, envelope["data"]!!.jsonObject["cards"]!!.jsonPrimitive.int)
+        assertEquals(emptyList(), decks.published)
+    }
+
+    @Test
+    fun `a CLI refusal is the failure envelope with the exit code's name, and no stack trace`() = runBlocking {
+        val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck("d1"))))
+        val result = dispatcher.call(alice, "card_add", args("""{"deck_id":"d1","front":"only a front"}"""))
+        assertEquals(true, result.isError)
+        val error = result.envelope()["error"]!!.jsonObject
+        assertEquals("bad_input", error["code"]!!.jsonPrimitive.content)
+        assertEquals(9, error["exit"]!!.jsonPrimitive.int)
+        assertEquals(false, error["reconnect"]!!.jsonPrimitive.boolean)
+        assertFalse("\tat " in result.envelope().toString())
+    }
+
+    @Test
+    fun `an unknown tool and an unknown input are usage errors`() = runBlocking {
+        val (dispatcher, factory) = dispatcher(tenantWith(FakeDeckRepository(testDeck())))
+        assertEquals("usage", dispatcher.call(alice, "deck_delete", args("{}")).errorCode())
+        assertEquals("usage", dispatcher.call(alice, "deck_show", args("""{"deck_id":"d1","from_file":"/x"}""")).errorCode())
+        assertEquals(0, factory.opens.get(), "nothing was opened for a call that could not run")
+    }
+
+    @Test
+    fun `a private picture address is refused before the graph is touched`() = runBlocking {
+        val (dispatcher, factory) = dispatcher(tenantWith(FakeDeckRepository(testDeck("d1"))))
+        val result = dispatcher.call(
+            alice,
+            "card_add",
+            args("""{"deck_id":"d1","front":"a","back":"b","back_image":"https://10.0.0.5/x.png"}"""),
+        )
+        assertEquals("bad_input", result.errorCode())
+        assertContains(result.envelope()["error"]!!.jsonObject["message"]!!.jsonPrimitive.content, "10.0.0.5")
+        assertEquals(0, factory.opens.get())
+    }
+
+    @Test
+    fun `a refused session is reported revoked and the caller told to reconnect`() = runBlocking {
+        val refused = PubkyError("Session rejected: 401 Unauthorized")
+        val factory = FakeTenantFactory { pubky, secret ->
+            FakeTenant(secret, sessionFor(pubky, secret), decks = FakeDeckRepository(testDeck("d1"), readFails = refused))
+        }
+        val pool = TenantPool(factory, secrets, TenantLimits())
+        val dispatcher = ToolDispatcher(PubkyEnvironment.Staging, pool, scratch)
+
+        val result = dispatcher.call(alice, "deck_show", args("""{"deck_id":"d1"}"""))
+
+        assertEquals(true, result.isError)
+        val error = result.envelope()["error"]!!.jsonObject
+        assertEquals("session_expired", error["code"]!!.jsonPrimitive.content)
+        assertEquals(true, error["reconnect"]!!.jsonPrimitive.boolean)
+        assertContains(error["message"]!!.jsonPrimitive.content, "reconnect")
+        assertEquals(listOf("alice"), secrets.revoked)
+        assertTrue(pool.isRevoked("alice"))
+        assertTrue((factory.opened.single() as FakeTenant).closed)
+    }
+
+    @Test
+    fun `notes the CLI would have put on stderr travel in the envelope`() = runBlocking {
+        val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck("d1"))))
+        val envelope = dispatcher.call(
+            alice,
+            "card_add",
+            args(
+                """{"deck_id":"d1","front":"Dog","back":"Hund",""" +
+                    """"front_image":"https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Dog.jpg/300px-Dog.jpg"}""",
+            ),
+        ).envelope()
+        val notes = envelope["notes"]!!.jsonArray.map { it.jsonPrimitive.content }
+        assertTrue(notes.any { "300px" in it }, notes.toString())
+        assertNull(envelope["error"])
+    }
+
+    @Test
+    fun `tag trending reads the tenant's index and names it`() = runBlocking {
+        val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck())))
+        val data = dispatcher.call(alice, "tag_trending", args("""{"limit":1}""")).envelope()["data"]!!.jsonObject
+        assertEquals("spanish", data["tags"]!!.jsonArray.single().jsonObject["label"]!!.jsonPrimitive.content)
+        assertEquals(PubkyEnvironment.Staging.nexusBaseUrl, data["indexer"]!!.jsonPrimitive.content)
+    }
+
+    private fun io.modelcontextprotocol.kotlin.sdk.types.CallToolResult.envelope(): JsonObject = assertNotNull(structuredContent)
+
+    private fun io.modelcontextprotocol.kotlin.sdk.types.CallToolResult.errorCode(): String =
+        envelope()["error"]!!.jsonObject["code"]!!.jsonPrimitive.content
+}

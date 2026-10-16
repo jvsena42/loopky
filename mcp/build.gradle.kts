@@ -13,9 +13,25 @@ plugins {
  * native image: it runs in a container, so the single-file constraints `:cli` lives under do
  * not apply, and nothing here may be copied into `:cli` on the assumption that they do.
  */
+/**
+ * The agent skill, copied onto the classpath so `McpInstructions` serves its card-writing rules
+ * as the server's `instructions` (#486). Copied at build time rather than typed into a string, so
+ * the connector and Claude Code teach one set of rules — a hand-kept copy would be a second skill
+ * nobody evaluates.
+ */
+val copyAgentSkill = tasks.register<Copy>("copyAgentSkill") {
+    from(rootProject.file("plugins/loopky/skills/loopky/SKILL.md"))
+    into(layout.buildDirectory.dir("generated/skill/com/github/jvsena42/loopky/mcp"))
+}
+
 kotlin {
     jvmToolchain(17)
+    sourceSets.main {
+        resources.srcDir(layout.buildDirectory.dir("generated/skill"))
+    }
 }
+
+tasks.named("processResources") { dependsOn(copyAgentSkill) }
 
 application {
     mainClass.set("com.github.jvsena42.loopky.mcp.MainKt")
