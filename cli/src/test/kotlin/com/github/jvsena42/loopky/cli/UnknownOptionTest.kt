@@ -59,8 +59,13 @@ class UnknownOptionTest {
      */
     @Test
     fun `every option name the source reads is described somewhere`() {
-        val sources = File("src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.toList()
-        assertTrue(sources.isNotEmpty(), "expected to find the CLI sources next to the test's working directory")
+        // Both modules: the commands that read most of the flags live in `:cli-core`, and a guard
+        // that walked `:cli` alone still passed on `Main.kt` while seeing none of them.
+        val root = File(requireNotNull(System.getProperty("loopky.repoRoot")) { "set by cli/build.gradle.kts" })
+        val sources = listOf("cli", "cli-core").flatMap { module ->
+            root.resolve("$module/src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.toList()
+                .also { assertTrue(it.isNotEmpty(), "expected to find $module's sources under ${root.path}") }
+        }
         val text = sources.joinToString("\n") { it.readText() }
 
         // `internal const val CHECK_IMAGES_FLAG = "check-images"` and friends, so a read spelled
