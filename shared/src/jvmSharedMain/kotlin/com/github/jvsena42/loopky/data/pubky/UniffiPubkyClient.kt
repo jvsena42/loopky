@@ -6,6 +6,7 @@ import uniffi.pubkycore.auth as ffiAuth
 import uniffi.pubkycore.awaitAuthApproval as ffiAwaitAuthApproval
 import uniffi.pubkycore.cancelGrantAuthFlowHandle as ffiCancelGrantAuthFlowHandle
 import uniffi.pubkycore.configureGrantAuthFlows as ffiConfigureGrantAuthFlows
+import uniffi.pubkycore.configureMaxBodyBytes as ffiConfigureMaxBodyBytes
 import uniffi.pubkycore.configureSessionCache as ffiConfigureSessionCache
 import uniffi.pubkycore.createRecoveryFile as ffiCreateRecoveryFile
 import uniffi.pubkycore.createTagId as ffiCreateTagId
@@ -223,6 +224,15 @@ class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : Pubky
     fun configureSessionCache(capacity: Int): Result<String> {
         require(capacity > 0) { "capacity must be positive" }
         return runFfi { ffiConfigureSessionCache(capacity.toUInt()) }
+    }
+
+    /**
+     * The most bytes one homeserver read may return; the limit then in force comes back. A server
+     * sizes it to its concurrency, since every read is buffered whole, several times over.
+     */
+    fun configureMaxBodyBytes(maxBytes: Long): Long {
+        require(maxBytes > 0) { "maxBytes must be positive" }
+        return ffiConfigureMaxBodyBytes(maxBytes.toULong()).toLong()
     }
 
     // --- Helpers --------------------------------------------------------------
