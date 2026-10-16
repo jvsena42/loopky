@@ -3,31 +3,39 @@
 #
 #   deploy.sh <staging|production> ghcr.io/jvsena42/loopky-mcp@sha256:<digest>
 #
-# CD reaches this as an SSH *forced command* (see README.md), so the key CI holds can do exactly
-# this and nothing else; the arguments then arrive in SSH_ORIGINAL_COMMAND and are validated here
-# rather than trusted, because whoever holds that key chooses them.
+# CD reaches this as an SSH *forced command*, one key per environment, with the environment
+# fixed in the command itself (`command="/opt/loopky-mcp/deploy.sh production"`, see README.md).
+# The environment is taken from that argv and never from SSH_ORIGINAL_COMMAND, which whoever holds
+# the key chooses: otherwise the staging key, readable by any workflow, could roll production and
+# skip its required reviewers. The caller sends only the digest, validated here.
 set -euo pipefail
 
 ROOT=/opt/loopky-mcp
 STATE=/srv/loopky-mcp
 IMAGE_RE='^ghcr\.io/jvsena42/loopky-mcp@sha256:[0-9a-f]{64}$'
 
+usage() { echo "usage: deploy.sh <staging|production> <image@digest>" >&2; exit 2; }
+
 if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
+  FIXED="${1:-}"
+  [ "$#" -eq 1 ] || { echo "this key's forced command must name exactly one environment" >&2; exit 2; }
   set -f
   # shellcheck disable=SC2086
   set -- $SSH_ORIGINAL_COMMAND
   [ "${1:-}" = deploy ] && shift
+  [ "$#" -eq 2 ] || usage
+  [ "$1" = "$FIXED" ] || { echo "this key deploys $FIXED only, not $1" >&2; exit 2; }
 fi
+[ "$#" -eq 2 ] || usage
 
-ENVIRONMENT="${1:-}"
-IMAGE="${2:-}"
+ENVIRONMENT="$1"
+IMAGE="$2"
 case "$ENVIRONMENT" in
   production) HOST_PORT=8081 ;;
   staging) HOST_PORT=8082 ;;
-  *) echo "environment must be staging or production" >&2; exit 2 ;;
+  *) usage ;;
 esac
 [[ "$IMAGE" =~ $IMAGE_RE ]] || { echo "image must be ghcr.io/jvsena42/loopky-mcp@sha256:<64 hex>" >&2; exit 2; }
-[ "$#" -eq 2 ] || { echo "usage: deploy.sh <env> <image@digest>" >&2; exit 2; }
 
 # shellcheck source=/dev/null
 source "/etc/loopky-mcp/$ENVIRONMENT/env"   # LOOPKY_MCP_PUBLIC_URL, and nothing secret

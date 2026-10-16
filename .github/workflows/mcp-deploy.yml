@@ -8,7 +8,9 @@ name: MCP deploy
 # in the repository settings, not here, so this file cannot be edited into skipping it.
 #
 # What a run needs, per GitHub Environment (`staging`, `production`):
-#   secrets  VPS_HOST, VPS_USER, VPS_SSH_KEY (the forced-command deploy key), VPS_KNOWN_HOSTS
+#   secrets  VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_KNOWN_HOSTS
+#            VPS_SSH_KEY is that environment's own key, whose forced command names the environment:
+#            the VPS decides which environment a key rolls, never this workflow (deploy.sh).
 #   vars     MCP_PUBLIC_URL (https://mcp.staging.loopky.app, https://mcp.loopky.app)
 # mcp/deploy/README.md has the server side.
 
