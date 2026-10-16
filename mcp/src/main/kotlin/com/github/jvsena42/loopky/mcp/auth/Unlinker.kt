@@ -4,9 +4,14 @@ import com.github.jvsena42.loopky.mcp.RingLogin
 import com.github.jvsena42.loopky.mcp.security.RedactingLogger
 import com.github.jvsena42.loopky.mcp.store.McpStore
 import com.github.jvsena42.loopky.mcp.vault.CredentialVault
-import com.github.jvsena42.loopky.util.runSuspendCatching
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
+import java.util.concurrent.TimeoutException
 
 /**
  * Ends a link the way #486 requires: the grant is revoked on the homeserver first, so a leaked
@@ -20,8 +25,13 @@ class Unlinker(
     private val clock: Clock,
     /** A link younger than this is skipped by the sweep: between approval and the code exchange it has no family yet. */
     private val sweepGrace: Duration = Duration.ofHours(1),
+    /** The most one homeserver revoke may take before the unlink goes on without it. */
+    private val revokeTimeout: Duration = Duration.ofSeconds(REVOKE_TIMEOUT_SECONDS),
 ) {
     private val log = RedactingLogger("loopky-mcp.unlink")
+
+    /** Where a revoke that outlived its bound finishes, so a hung homeserver holds a thread here and nothing else. */
+    private val revokes = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Revokes on the homeserver (best effort: the row goes regardless) and deletes the link and every token. */
     suspend fun unlink(pubky: String): Boolean {
@@ -30,7 +40,7 @@ class Unlinker(
             .onFailure { log.error("Link for $pubky holds a credential the vault cannot open; deleting it unrevoked", it) }
             .getOrNull()
         if (secret != null) {
-            runSuspendCatching { ringLogin.revoke(secret).getOrThrow() }
+            revokeWithin(secret)
                 .onFailure { log.warn("Revoking the grant for $pubky on the homeserver failed; deleting the link anyway", it) }
         }
         store.tokens.revokeAllFor(pubky, clock.instant())
@@ -44,10 +54,26 @@ class Unlinker(
         if (!store.tokens.hasLiveFamily(pubky, clock.instant())) unlink(pubky)
     }
 
+    /**
+     * [RingLogin.revoke] under [revokeTimeout]. A timeout *around* an FFI call waits for it
+     * anyway (§13.10), so the revoke runs as a coroutine of its own and is abandoned at the
+     * bound: the sweep used to await one lapsed link on an unresponsive homeserver forever,
+     * and every later sweep step with it.
+     */
+    private suspend fun revokeWithin(secret: String): Result<Unit> {
+        val attempt = revokes.async { ringLogin.revoke(secret) }
+        return withTimeoutOrNull(revokeTimeout.toMillis()) { attempt.await() }
+            ?: Result.failure(TimeoutException("the homeserver did not answer within $revokeTimeout"))
+    }
+
     /** Links whose every refresh token has lapsed: the inactivity bound (#486). Returns how many were unlinked. */
     suspend fun sweepExpired(): Int {
         store.codes.deleteExpired(clock.instant())
         val now = clock.instant()
         return store.tokens.pubkysWithoutLiveFamily(now, touchedBefore = now.minus(sweepGrace)).count { unlink(it) }
+    }
+
+    private companion object {
+        const val REVOKE_TIMEOUT_SECONDS = 15L
     }
 }

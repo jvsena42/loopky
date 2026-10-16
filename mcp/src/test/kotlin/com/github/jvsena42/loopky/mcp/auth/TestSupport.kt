@@ -54,6 +54,9 @@ class FakeRingLogin : RingLogin {
 
     /** When set, [start] waits on it: a relay that is slow to answer. */
     var startGate: CompletableDeferred<Unit>? = null
+
+    /** When set, [revoke] waits on it after recording the attempt: a homeserver that never answers. */
+    var revokeGate: CompletableDeferred<Unit>? = null
     private val answers = HashMap<String, LoginPoll>()
     private var counter = 0
 
@@ -76,6 +79,7 @@ class FakeRingLogin : RingLogin {
 
     override suspend fun revoke(sessionSecret: String): Result<Unit> {
         revoked += sessionSecret
+        revokeGate?.await()
         return revokeResult
     }
 

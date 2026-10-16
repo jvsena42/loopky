@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.mcp.auth
 
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.json.jsonPrimitive
 import java.time.Duration
 import kotlin.test.Test
@@ -31,6 +32,17 @@ class UnlinkTest {
         assertTrue(server.unlinker.unlink(PUBKY))
         assertEquals(listOf(SESSION_SECRET), ring.revoked, "the revoke was attempted")
         assertNull(harness.store.links.find(PUBKY))
+    }
+
+    @Test
+    fun `a homeserver that never answers the revoke does not hold the unlink, or the sweep behind it`() = oauthTest {
+        val clientId = registerClient()
+        tokensFor(clientId)
+        val unlinker = Unlinker(harness.store, harness.vault, ring, clock, revokeTimeout = Duration.ofMillis(50))
+        ring.revokeGate = CompletableDeferred()
+        assertTrue(unlinker.unlink(PUBKY))
+        assertEquals(listOf(SESSION_SECRET), ring.revoked, "the revoke was attempted")
+        assertNull(harness.store.links.find(PUBKY), "the link waited on the homeserver")
     }
 
     @Test
