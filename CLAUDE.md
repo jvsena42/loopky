@@ -32,6 +32,8 @@ A fresh session has none of this in context, so establish it before the first ed
                                         # and the only one that loads the real libpubkycore
 ./gradlew :shared:compileKotlinMetadata # fast commonMain compile check
 ./gradlew :cli-core:test :cli:test      # the CLI's tests: the commands, then the binary around them
+./gradlew :mcp:test                     # the hosted MCP server's: tool catalog drift, tenant isolation,
+                                        # the Streamable HTTP gates
 ./gradlew :cli:installDist              # build `loopky` -> cli/build/install/loopky/bin/loopky
 ./gradlew :cli:nativeCompile            # the shipped artifact: one binary, needs GRAALVM_HOME
                                         # (GraalVM for JDK 25). native-image does NOT cross-compile;
@@ -164,6 +166,28 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   table, `commands --json`, the native-image metadata) stays in `cli/`. The packages are
   still `com.github.jvsena42.loopky.cli…` on purpose: the reachability metadata names classes,
   and a rename drops them silently. Architecture.md §13.15.
+- `mcp/` — the hosted, multi-user remote MCP server (#214, #486): Claude's connector, for the
+  chat-only audience the binary cannot reach. A plain JVM module over `:cli-core`, Ktor 3 and the
+  official Kotlin MCP SDK's Streamable HTTP transport, JSON responses. `tools/` is a
+  **whitelist** over `cliCommands()` (`McpTools.kt`): each tool names the options it exposes and
+  the ones it refuses, `ToolCatalogTest` holds both against the table, and a tool call is
+  **argv → `Args.parse` → the same `:cli-core` function** the CLI's `dispatch` calls
+  (`ToolDispatcher`), through the same `requireKnownOptions`. A remote caller never names a
+  path: every `OptionValue.Path` option and `import`'s file operand are refused, and `cards`/
+  `text` are written to a per-call owner-only temp directory the server deletes in `finally`
+  (`InlineScratch`), capped at 1 MiB and 2,000 cards; `--check-images` is refused because the
+  server fetches no caller URL, and `UrlGuard` runs over every picture address anyway. `tenant/`
+  is the per-user repository graph (`Tenant`, opened by a `TenantFactory` from
+  `SessionSecrets`): `TenantPool` is a bounded LRU with idle eviction, **one call at a time per
+  user** and a global cap, and *isolation is the security property* its tests hold under
+  concurrency and across eviction. A session the homeserver refuses is reported through
+  `SessionSecrets.revoked`, the graph closed, and the HTTP gate answers that principal 401 with
+  `WWW-Authenticate` until a *different* secret is linked — never a silent retry. `installMcp`
+  mounts `/mcp`; every request needs a bearer the `AccessTokenVerifier` accepts and an `Origin`
+  the `OriginPolicy` allows, and an MCP session id is bound to the principal that initialized it
+  (a foreign one is "not found"). The server `instructions` are the skill's card-writing sections,
+  copied from `plugins/loopky/skills/loopky/SKILL.md` at build time. The OAuth half (`Seams.kt`'s
+  verifier and secrets, the rate limiter, the DNS-resolving SSRF guard) is wired in `Main`.
 - `iosApp/iosApp/` — iOS app. SwiftUI screens in `Views/`, `NavigationStack` in `Navigation/`, Koin bootstrap in `DI/`. Compose Multiplatform UI is **not** used for iOS screens.
 
 ### Non-obvious rules

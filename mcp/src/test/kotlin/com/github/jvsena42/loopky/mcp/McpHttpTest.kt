@@ -1,0 +1,216 @@
+package com.github.jvsena42.loopky.mcp
+
+import com.github.jvsena42.loopky.cli.FakeDeckRepository
+import com.github.jvsena42.loopky.cli.testDeck
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.pubky.PubkyError
+import com.github.jvsena42.loopky.mcp.tenant.TenantLimits
+import com.github.jvsena42.loopky.mcp.tenant.TenantPool
+import io.ktor.client.HttpClient
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import io.ktor.server.testing.ApplicationTestBuilder
+import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.nio.file.Files
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+/** `tools/list` and `tools/call` over Streamable HTTP, and the gates in front of them. */
+class McpHttpTest {
+
+    private val verifier = FakeVerifier(
+        mapOf(
+            "token-alice" to Principal("alice", "claude"),
+            "token-bob" to Principal("bob", "claude"),
+        ),
+    )
+    private val secrets = FakeSecrets(mapOf("alice" to "secret-alice", "bob" to "secret-bob"))
+    private val factory = FakeTenantFactory { pubky, secret ->
+        FakeTenant(secret, sessionFor(pubky, secret), decks = FakeDeckRepository(testDeck(), owned = listOf(ownedDeck(pubky))))
+    }
+    private val pool = TenantPool(factory, secrets, TenantLimits())
+
+    private fun deps(limits: HttpLimits = HttpLimits()) = McpDeps(
+        environment = PubkyEnvironment.Staging,
+        publicUrl = "https://mcp.staging.loopky.app",
+        verifier = verifier,
+        originPolicy = OriginPolicy.allowing("https://claude.ai"),
+        tenants = pool,
+        scratchDir = Files.createTempDirectory("mcp-http").resolve("inline"),
+        instructions = "Rules.",
+        limits = limits,
+    )
+
+    private fun serving(limits: HttpLimits = HttpLimits(), block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
+        application { installMcp(deps(limits)) }
+        block()
+    }
+
+    private suspend fun HttpClient.rpc(
+        body: String,
+        token: String? = "token-alice",
+        session: String? = null,
+        origin: String? = null,
+    ): HttpResponse = post(MCP_PATH) {
+        token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
+        session?.let { header("Mcp-Session-Id", it) }
+        origin?.let { header(HttpHeaders.Origin, it) }
+        header(HttpHeaders.Accept, "application/json, text/event-stream")
+        contentType(ContentType.Application.Json)
+        setBody(body)
+    }
+
+    private suspend fun HttpClient.initialize(token: String = "token-alice"): String {
+        val response = rpc(INITIALIZE, token)
+        assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
+        val session = assertNotNull(response.headers["Mcp-Session-Id"], "no session id on the initialize response")
+        assertEquals(HttpStatusCode.Accepted, rpc(INITIALIZED, token, session).status)
+        return session
+    }
+
+    private suspend fun HttpResponse.json(): JsonObject = Json.parseToJsonElement(bodyAsText()).jsonObject
+
+    @Test
+    fun `tools are listed and called over Streamable HTTP`() = serving {
+        val session = client.initialize()
+
+        val listed = client.rpc(LIST_TOOLS, session = session).json()
+        val tools = listed["result"]!!.jsonObject["tools"]!!.jsonArray.map { it.jsonObject["name"]!!.jsonPrimitive.content }
+        assertEquals(12, tools.size)
+        assertContains(tools, "deck_create")
+        assertContains(tools, "card_remove")
+
+        val called = client.rpc(call("deck_list", "{}", id = 3), session = session).json()
+        val result = called["result"]!!.jsonObject
+        assertNull(result["isError"]?.jsonPrimitive?.boolean?.takeIf { it }, called.toString())
+        val envelope = result["structuredContent"]!!.jsonObject
+        assertEquals(true, envelope["ok"]!!.jsonPrimitive.boolean)
+        assertEquals("deck list", envelope["command"]!!.jsonPrimitive.content)
+        assertEquals("staging", envelope["environment"]!!.jsonPrimitive.content)
+        val decks = envelope["data"]!!.jsonObject["decks"]!!.jsonArray
+        assertEquals("deck-alice", decks.single().jsonObject["id"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `the initialize result carries the instructions`() = serving {
+        val response = client.rpc(INITIALIZE)
+        assertEquals("Rules.", response.json()["result"]!!.jsonObject["instructions"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `no bearer is 401 with the protected-resource challenge`() = serving {
+        val response = client.rpc(INITIALIZE, token = null)
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertEquals(
+            "Bearer resource_metadata=\"https://mcp.staging.loopky.app/.well-known/oauth-protected-resource\"",
+            response.headers[HttpHeaders.WWWAuthenticate],
+        )
+        assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = "token-mallory").status)
+    }
+
+    @Test
+    fun `a disallowed origin is 403, an allowed or absent one passes`() = serving {
+        assertEquals(HttpStatusCode.Forbidden, client.rpc(INITIALIZE, origin = "https://evil.example").status)
+        assertEquals(HttpStatusCode.OK, client.rpc(INITIALIZE, origin = "https://claude.ai").status)
+    }
+
+    @Test
+    fun `a session created for one principal is not found for another`() = serving {
+        val session = client.initialize("token-alice")
+        val stolen = client.rpc(call("deck_list", "{}"), token = "token-bob", session = session)
+        assertEquals(HttpStatusCode.NotFound, stolen.status)
+        // And bob's own session serves bob's decks, never alice's.
+        val own = client.initialize("token-bob")
+        val envelope = client.rpc(call("deck_list", "{}"), token = "token-bob", session = own).json()["result"]!!
+            .jsonObject["structuredContent"]!!.jsonObject
+        assertEquals("deck-bob", envelope["data"]!!.jsonObject["decks"]!!.jsonArray.single().jsonObject["id"]!!.jsonPrimitive.content)
+        // Alice's session still answers alice.
+        assertEquals(HttpStatusCode.OK, client.rpc(call("deck_list", "{}"), session = session).status)
+    }
+
+    @Test
+    fun `a revoked credential answers the call once, then 401 with the challenge`() = serving {
+        val session = client.initialize()
+        secrets.secrets["alice"] = "secret-alice"
+        // The tenant opened for alice refuses its session on the first read.
+        pool.close()
+        val refusing = TenantPool(
+            FakeTenantFactory { pubky, secret ->
+                FakeTenant(
+                    secret,
+                    sessionFor(pubky, secret),
+                    decks = FakeDeckRepository(testDeck("d1"), readFails = PubkyError("Session rejected: 401 Unauthorized")),
+                )
+            },
+            secrets,
+            TenantLimits(),
+        )
+        testApplication {
+            application {
+                installMcp(
+                    McpDeps(
+                        environment = PubkyEnvironment.Staging,
+                        publicUrl = "https://mcp.example",
+                        verifier = verifier,
+                        originPolicy = OriginPolicy.allowing(),
+                        tenants = refusing,
+                        scratchDir = Files.createTempDirectory("mcp-http-revoked"),
+                        instructions = "R",
+                    ),
+                )
+            }
+            val own = client.initialize()
+            val called = client.rpc(call("deck_show", """{"deck_id":"d1"}"""), session = own).json()
+            val envelope = called["result"]!!.jsonObject["structuredContent"]!!.jsonObject
+            assertEquals("session_expired", envelope["error"]!!.jsonObject["code"]!!.jsonPrimitive.content)
+            assertEquals(true, envelope["error"]!!.jsonObject["reconnect"]!!.jsonPrimitive.boolean)
+            assertEquals(listOf("alice"), secrets.revoked)
+
+            val next = client.rpc(call("deck_list", "{}"), session = own)
+            assertEquals(HttpStatusCode.Unauthorized, next.status)
+            val challenge = assertNotNull(next.headers[HttpHeaders.WWWAuthenticate])
+            assertContains(challenge, "resource_metadata=\"https://mcp.example/.well-known/oauth-protected-resource\"")
+            assertContains(challenge, "invalid_token")
+        }
+        assertTrue(session.isNotEmpty())
+    }
+
+    @Test
+    fun `a body past the limit is 413`() = serving(HttpLimits(maxBodyBytes = 256)) {
+        val response = client.rpc(call("deck_list", """{"x":"${"a".repeat(300)}"}"""))
+        assertEquals(HttpStatusCode.PayloadTooLarge, response.status)
+    }
+
+    @Test
+    fun `a request without a session after initialize is refused by the transport`() = serving {
+        client.initialize()
+        assertEquals(HttpStatusCode.NotFound, client.rpc(call("deck_list", "{}"), session = "not-a-session").status)
+    }
+
+    private fun call(tool: String, arguments: String, id: Int = 2) =
+        """{"jsonrpc":"2.0","id":$id,"method":"tools/call","params":{"name":"$tool","arguments":$arguments}}"""
+
+    private companion object {
+        const val INITIALIZE = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18",""" +
+            """"capabilities":{},"clientInfo":{"name":"test","version":"1"}}}"""
+        const val INITIALIZED = """{"jsonrpc":"2.0","method":"notifications/initialized"}"""
+        const val LIST_TOOLS = """{"jsonrpc":"2.0","id":2,"method":"tools/list"}"""
+    }
+}
