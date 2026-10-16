@@ -47,6 +47,29 @@ class TenantPoolTest {
     }
 
     @Test
+    fun `a re-link with a new secret reopens the graph instead of serving the old grant`() = runBlocking {
+        val pool = pool()
+        val first = pool.withTenant("alice") { it } as FakeTenant
+        secrets.secrets["alice"] = "secret-alice#2"
+        val second = pool.withTenant("alice") { it } as FakeTenant
+        assertEquals("secret-alice#2", second.secret)
+        assertTrue(first.closed, "the graph holding the replaced grant is closed")
+    }
+
+    @Test
+    fun `a refusal of a secret that was replaced meanwhile never unlinks the new one`() = runBlocking {
+        val pool = pool()
+        pool.withTenant("alice") {
+            // Re-linked while this call ran on the old grant, which the re-link then revoked.
+            secrets.secrets["alice"] = "secret-alice#2"
+            pool.revoke("alice")
+        }
+        assertTrue(secrets.revoked.isEmpty(), "the new link was reported revoked")
+        assertTrue(!pool.isRevoked("alice"))
+        assertEquals("secret-alice#2", (pool.withTenant("alice") { it } as FakeTenant).secret)
+    }
+
+    @Test
     fun `each principal gets the graph opened from its own secret`() = runBlocking {
         val pool = pool()
         assertEquals("alice", pool.pubkyOf("alice"))

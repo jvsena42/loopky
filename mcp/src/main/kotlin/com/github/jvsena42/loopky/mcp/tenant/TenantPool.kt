@@ -95,8 +95,7 @@ class TenantPool(
             // user needs; outside the call timeout, which is for the command and not the queue.
             withTimeoutOrNull(limits.busyWait) { gate.acquire() } ?: throw TenantRefusal.ServerBusy()
             try {
-                val tenant = entry.tenant ?: open(pubky, entry)
-                return bounded(block, tenant)
+                return bounded(block, current(pubky, entry))
             } finally {
                 gate.release()
             }
@@ -112,10 +111,14 @@ class TenantPool(
      * [withTenant]'s block — the graph is closed once the block returns.
      */
     suspend fun revoke(pubky: String) {
-        val hash = poolLock.withLock { entries[pubky]?.secretHash }
-            ?: secrets.sessionSecretFor(pubky)?.let(::sha256)
-        if (hash != null) revoked[pubky] = hash
-        secrets.revoked(pubky)
+        val stored = secrets.sessionSecretFor(pubky)?.let(::sha256)
+        val refused = poolLock.withLock { entries[pubky]?.secretHash } ?: stored
+        // A re-link while the refused call ran has already replaced the credential: the refusal
+        // is about a secret that is no longer on record, and reporting it would unlink the new one.
+        if (stored == null || stored == refused) {
+            if (refused != null) revoked[pubky] = refused
+            secrets.revoked(pubky)
+        }
         evict(pubky)
     }
 
@@ -183,7 +186,19 @@ class TenantPool(
         return entry
     }
 
-    private suspend fun open(pubky: String, entry: Entry): Tenant {
+    /**
+     * The open graph, unless the credential on record changed since it was opened — a re-link
+     * revokes the old grant, so a graph still holding it would fail its next write and report the
+     * new link revoked. **The caller must hold [Entry.lock].**
+     */
+    private suspend fun current(pubky: String, entry: Entry): Tenant {
+        entry.tenant?.let { open ->
+            val stored = secrets.sessionSecretFor(pubky)
+            if (stored != null && sha256(stored) == entry.secretHash) return open
+            entry.tenant = null
+            entry.secretHash = null
+            open.closeQuietly()
+        }
         val (secret, hash) = linkedSecret(pubky)
         val tenant = try {
             factory.open(secret)
