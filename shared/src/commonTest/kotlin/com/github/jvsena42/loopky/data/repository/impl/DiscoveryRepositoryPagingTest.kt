@@ -19,7 +19,9 @@ import com.github.jvsena42.loopky.testing.TEST_PUBKY
 import com.github.jvsena42.loopky.testing.identityRepository
 import com.github.jvsena42.loopky.testing.signedInProvider
 import com.github.jvsena42.loopky.testing.testDeck
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlin.test.Test
@@ -49,6 +51,7 @@ class DiscoveryRepositoryPagingTest {
         backgroundTasks = FakeBackgroundTasks(),
         deckCache = FakeDeckCacheStore(),
         preferences = FakeAppPreferences(),
+        scope = CoroutineScope(SupervisorJob()),
     )
     private val tagRepo = RecordingTagRepository()
     private val identityRepo = identityRepository(

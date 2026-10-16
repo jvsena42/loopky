@@ -42,7 +42,6 @@ import com.github.jvsena42.loopky.util.epochMillis
 import com.github.jvsena42.loopky.util.localDayIndex
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,7 +79,7 @@ class SrsRepositoryImpl(
     private val pendingReviews: PendingReviewStore,
     private val settingsRepository: SettingsRepository,
     private val studyProgress: StudyProgressStore,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob()),
+    private val scope: CoroutineScope,
     /** Injected so a test can cross midnight without touching the device clock. */
     private val dayIndex: (Long) -> Int = ::localDayIndex,
 ) : SrsRepository {

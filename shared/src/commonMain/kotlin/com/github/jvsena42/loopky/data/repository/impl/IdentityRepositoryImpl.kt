@@ -41,7 +41,6 @@ import com.github.jvsena42.loopky.util.encodeUriComponent
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -73,7 +72,7 @@ internal class IdentityRepositoryImpl(
      * Injectable because the one thing it runs is a *deletion*, and a test that cannot await it
      * cannot tell "did not delete" from "has not deleted yet".
      */
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob()),
+    private val scope: CoroutineScope,
 ) : IdentityRepository {
 
     override val keyCustody: Flow<KeyCustody> = localKeyStore.custody

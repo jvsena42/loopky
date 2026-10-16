@@ -13,8 +13,10 @@ import com.github.jvsena42.loopky.testing.signedInProvider
 import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testDeck
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -47,6 +49,7 @@ class DeckRepositoryWriteLockTest {
         backgroundTasks = FakeBackgroundTasks(),
         deckCache = FakeDeckCacheStore(),
         preferences = FakeAppPreferences(),
+        scope = CoroutineScope(SupervisorJob()),
     )
 
     @Test

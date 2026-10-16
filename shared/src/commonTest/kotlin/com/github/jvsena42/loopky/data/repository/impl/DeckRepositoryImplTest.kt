@@ -27,7 +27,9 @@ import com.github.jvsena42.loopky.testing.signedInProvider
 import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testDeck
 import com.github.jvsena42.loopky.testing.testDeckWithCards
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlin.test.Test
@@ -470,6 +472,7 @@ class DeckRepositoryImplTest {
             FakeBackgroundTasks(),
             FakeDeckCacheStore(),
             FakeAppPreferences(),
+            scope = CoroutineScope(SupervisorJob()),
         ).fetchRemote(TEST_PUBKY, clone.id).getOrThrow()
 
         assertEquals(DeckSource.Kind.Clone, refetched.source?.kind)
