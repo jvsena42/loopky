@@ -48,6 +48,11 @@ coil = "3.6.3"
 # QR encoding for the tablet Pubky Ring sign-in panel. Core only — the `android` artifact
 # pulls in a camera/scanner stack we already cover with play-services-code-scanner.
 zxing = "3.5.4"
+# The hosted MCP server (#214). Ktor is pinned to what the MCP Kotlin SDK compiles against, so the
+# two cannot resolve to different Ktor majors.
+mcpKotlinSdk = "0.15.0"
+ktor = "3.5.1"
+logback = "1.5.32"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -101,6 +106,16 @@ play-app-update-ktx = { module = "com.google.android.play:app-update-ktx", versi
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+mcp-kotlin-sdk-server = { module = "io.modelcontextprotocol:kotlin-sdk-server", version.ref = "mcpKotlinSdk" }
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+ktor-server-sse = { module = "io.ktor:ktor-server-sse", version.ref = "ktor" }
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktor-server-forwarded-header = { module = "io.ktor:ktor-server-forwarded-header", version.ref = "ktor" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

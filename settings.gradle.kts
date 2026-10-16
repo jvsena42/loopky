@@ -57,3 +57,5 @@ include(":shared")
 include(":cli")
 // The CLI's command layer, a library so the hosted MCP server can share it.
 include(":cli-core")
+// The hosted remote MCP server (#214): the same command functions as `:cli`, behind OAuth.
+include(":mcp")
