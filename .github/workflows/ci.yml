@@ -72,7 +72,7 @@ jobs:
           # the image is compiled from, and the dependency versions behind both. Not `commonMain`
           # — the macOS row fails on reaching a JDK *native* library, and nothing in commonMain
           # can name one.
-          CLI='^(cli/|shared/src/jvmMain/|shared/src/jvmSharedMain/|(shared/)?build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle/(libs\.versions\.toml|wrapper/)|\.github/(workflows/ci\.yml|actions/))'
+          CLI='^(cli/|cli-core/|shared/src/jvmMain/|shared/src/jvmSharedMain/|(shared/)?build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle/(libs\.versions\.toml|wrapper/)|\.github/(workflows/ci\.yml|actions/))'
           # **What can break a *test* row, which `CLI` deliberately does not cover.**
           # `shared/src/jvmTest/` reaches no native image, so adding it to `CLI` would put a
           # `macos-14` `nativeCompile` on the 10× multiplier behind a change that cannot affect it.
@@ -205,7 +205,7 @@ jobs:
       # Runs the whole shared suite on the jvm() target, including the FFI smoke test that loads
       # the real .so and derives a keypair through it.
       - name: Shared tests on the JVM target
-        run: ./gradlew :shared:jvmTest :cli:test
+        run: ./gradlew :shared:jvmTest :cli-core:test :cli:test
 
       - name: Build the distribution
         run: ./gradlew :cli:installDist
@@ -347,7 +347,7 @@ jobs:
         run: |
           set -euo pipefail
           FILES=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || true)
-          LOGIC='^(cli/src/main/|shared/src/commonMain/kotlin/com/github/jvsena42/loopky/(data|domain)/)'
+          LOGIC='^((cli|cli-core)/src/main/|shared/src/commonMain/kotlin/com/github/jvsena42/loopky/(data|domain)/)'
           if printf '%s\n' "$FILES" | grep -qE "$LOGIC" && ! printf '%s\n' "$FILES" | grep -q '^plugins/'; then
             echo "::warning title=Agent skill not touched::This PR changes CLI or import/deck logic and leaves plugins/loopky/skills/loopky/SKILL.md alone. Check whether an agent following the skill would now do the wrong thing, and say so in the PR description."
           fi
@@ -446,7 +446,7 @@ jobs:
           cache-provider: basic
 
       - name: The CLI's own tests
-        run: ./gradlew :cli:test
+        run: ./gradlew :cli-core:test :cli:test
 
       # **Unfiltered, and that is the whole point of this change.** Every earlier version of this
       # step held packages out because `win32-x86-64/pubkycore.dll` did not exist, and said so —

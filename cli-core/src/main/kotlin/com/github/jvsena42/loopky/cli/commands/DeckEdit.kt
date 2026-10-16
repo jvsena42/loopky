@@ -89,7 +89,7 @@ suspend fun deckEdit(
     // The homeserver's copy, not this process's idea of it — and `updateMetadata` reads the deck
     // out of the cache this populates, so a `deck edit` without it patches nothing.
     val current = decks.sync(id).getOrElse { throw asCliError(it) }
-    val edited = current.applying(args)
+    val edited = current.applying(args, onNote)
     args.requireSpeechPairAfter(current, edited.listenEnabled, edited.speakEnabled, edited.frontLang, edited.backLang)
     val languageNotes = languageAdvice(
         edited.frontLang.takeIf { args.has("front-lang") },
@@ -133,7 +133,7 @@ suspend fun deckEdit(
     )
 }
 
-private fun Deck.applying(args: Args): Deck {
+private fun Deck.applying(args: Args, onNote: (String) -> Unit): Deck {
     val clearCover = args.has("clear-cover")
     if (clearCover && (args.has("cover-url") || args.has("cover-emoji"))) {
         throw CliError(ExitCode.Usage, "--clear-cover and --cover-url/--cover-emoji say opposite things.")
@@ -146,7 +146,7 @@ private fun Deck.applying(args: Args): Deck {
         title = args.text("title", title) ?: throw CliError(ExitCode.Usage, "--title cannot be empty."),
         description = if (args.has("description")) args.deckDescription() else description,
         coverEmoji = if (clearCover) null else args.text("cover-emoji", coverEmoji),
-        coverImageRef = args.editedCover(clearCover, coverImageRef),
+        coverImageRef = args.editedCover(clearCover, coverImageRef, onNote),
         tags = args.editedTags(this, frontLang, backLang),
         listenEnabled = args.flag("listen", default = listenEnabled),
         speakEnabled = args.flag("speak", default = speakEnabled),
@@ -162,10 +162,14 @@ private fun Deck.applying(args: Args): Deck {
  * goes through [checkedImageUrl] like every other picture, so an `http://` cover is refused here
  * rather than written into a manifest and rendered as a blank tile on both apps.
  */
-private fun Args.editedCover(clearCover: Boolean, current: MediaRef.Image?): MediaRef.Image? = when {
+private fun Args.editedCover(
+    clearCover: Boolean,
+    current: MediaRef.Image?,
+    onNote: (String) -> Unit,
+): MediaRef.Image? = when {
     clearCover -> null
     !has("cover-url") -> current
-    else -> text("cover-url", null)?.checkedImageUrl("--cover-url")?.let(::remoteImage)
+    else -> text("cover-url", null)?.checkedImageUrl("--cover-url", onNote)?.let(::remoteImage)
 }
 
 /**

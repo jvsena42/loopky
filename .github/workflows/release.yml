@@ -50,7 +50,7 @@ jobs:
     # The tag and the four version numbers in the source have to be the same release, and this is
     # where that is settled — before anything is built, signed or pushed.
     #
-    # `--version` is compiled in from `loopkyCliVersion` (`:cli:generateCliVersion`). Without this
+    # `--version` is compiled in from `loopkyCliVersion` (`:cli-core:generateCliVersion`). Without this
     # check, tagging `v0.2.0` without bumping the property ships a GitHub release, a
     # `ghcr.io/…/loopky:0.2.0` image and a `loopky_0.2.0_amd64.deb` whose binary answers
     # `loopky 0.1.0` — and `install.sh` ends by running `--version`, so the wrong number is the

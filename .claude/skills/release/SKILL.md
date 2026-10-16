@@ -45,7 +45,7 @@ merge commit.
 2. **Pre-flight checks**:
    - Working tree clean (`git status`), on `main`, in sync with `origin/main` (`git fetch origin`).
    - `./gradlew detektAll` — abort if it reports issues.
-   - `./gradlew :shared:allTests` and `./gradlew :cli:test` — abort if either fails.
+   - `./gradlew :shared:allTests` and `./gradlew :cli-core:test :cli:test` — abort if any fails.
    - Confirm the release secrets exist, because a tag pushed without them fails *after* it is
      public: `gh secret list` must show `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and
      `KEY_PASSWORD`. If any is missing, stop and point the user at `docs/releasing.md` — the
@@ -60,7 +60,7 @@ merge commit.
      two build numbers in lockstep. This xcconfig is the base configuration for the project's build
      configs; `Info.plist` carries no version keys.
    - `gradle.properties` — `loopkyCliVersion` to the numeric version. This is the **single source**
-     for `loopky --version` (compiled in by `:cli:generateCliVersion`), the `.deb`'s `Version:`,
+     for `loopky --version` (compiled in by `:cli-core:generateCliVersion`), the `.deb`'s `Version:`,
      and the container image tag.
    - `plugins/loopky/.claude-plugin/plugin.json` and `plugins/loopky/.codex-plugin/plugin.json` — the
      agent plugin's `version`, to the same numeric version; the `version` in `.claude-plugin/marketplace.json`; and

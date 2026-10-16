@@ -49,9 +49,9 @@ class CommandSurfaceJsonTest {
     fun `an option the parser treats as a switch is reported as one`() {
         (surface.commands.flatMap { it.options } + surface.globals).forEach {
             assertEquals(
-                it.name in Args.SWITCHES,
+                it.name in PARSER_SWITCHES,
                 it.value == "switch",
-                "--${it.name} is '${it.value}' here but ${if (it.name in Args.SWITCHES) "is" else "is not"} a parser switch",
+                "--${it.name} is '${it.value}' here but ${if (it.name in PARSER_SWITCHES) "is" else "is not"} a parser switch",
             )
         }
     }

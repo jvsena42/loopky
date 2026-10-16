@@ -82,7 +82,8 @@ loopky/
 ```
 
 `:cli` consumes the same graph and stops at `data` — it resolves repositories from Koin and
-treats `presentation/` as dead weight. That is the shape the no-use-case-layer rule pays off in:
+treats `presentation/` as dead weight. Its command functions live one module down, in the
+`:cli-core` library, so a second front end can share them (§13.15). That is the shape the no-use-case-layer rule pays off in:
 a third consumer needed no new layer, only a platform module.
 
 Platform UI modules depend on `shared`. `shared` depends only on Kotlin stdlib, Coroutines, kotlinx-serialization, Koin (+ the Koin ViewModel DSL), the multiplatform `androidx.lifecycle` ViewModel, Liftric KVault, and (via expect/actual) the Pubky FFI. SQLDelight and multiplatform-settings are **not** dependencies in v1 — see §8.
@@ -1519,7 +1520,7 @@ emulator, and SRS flush failures that only appear when the network goes away mid
   `distributionSha256Sum` in `gradle-wrapper.properties` checks the bytes of the distribution that
   jar then downloads — `validateDistributionUrl` only ever checked the URL was well-formed. Move
   `distributionSha256Sum` with `distributionUrl`, from `https://services.gradle.org/distributions/<dist>.sha256`.
-- **Plugins (actual):** `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.jvm` (`:cli` only), `com.android.kotlin.multiplatform.library` (`:shared`)/`com.android.application` (`:androidApp`), `org.jetbrains.kotlin.plugin.serialization`, the Compose-compiler plugin (`org.jetbrains.kotlin.plugin.compose`), `application` (`:cli`), and `io.gitlab.arturbosch.detekt`. Koin is a runtime dependency (no plugin). **No `app.cash.sqldelight` plugin** — SQLDelight is not adopted (§8.1).
+- **Plugins (actual):** `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.jvm` (`:cli` and `:cli-core` only), `com.android.kotlin.multiplatform.library` (`:shared`)/`com.android.application` (`:androidApp`), `org.jetbrains.kotlin.plugin.serialization`, the Compose-compiler plugin (`org.jetbrains.kotlin.plugin.compose`), `application` (`:cli`), and `io.gitlab.arturbosch.detekt`. Koin is a runtime dependency (no plugin). **No `app.cash.sqldelight` plugin** — SQLDelight is not adopted (§8.1).
 - **iOS framework packaging:** `shared` is consumed as a static framework (`baseName = "Shared"`, `isStatic = true`) per `shared/build.gradle.kts`; an XCFramework / SPM packaging step can come later.
 - **Compose:** AndroidX, not Compose Multiplatform (#273). One `androidx.compose:compose-bom` pins
   runtime, foundation, ui, material3, material3-adaptive and the icon pack to a set released
@@ -1535,7 +1536,7 @@ emulator, and SRS flush failures that only appear when the network goes away mid
 - **`:cli` packaging:** `./gradlew :cli:installDist` produces `cli/build/install/loopky/bin/loopky`; `:cli:distTar` produces a tarball. Both need a JRE 17 on the target machine, which is short of the goal — see §13.11.
 - **Lint:** detekt with `detekt-formatting` + `detekt-compose-rules` (`config/detekt/detekt.yml`) via `./gradlew detektAll`; SwiftLint via `./gradlew lintSwift` (`iosApp/.swiftlint.yml`, generated `pubkycore.swift` excluded).
 - **`./gradlew ciCheck`** runs what CI runs, in one command — `detektAll`, the Android and JVM
-  test suites, `:cli:test`, `:androidApp:assembleDebug`, `:cli:installDist`,
+  test suites, `:cli-core:test`, `:cli:test`, `:androidApp:assembleDebug`, `:cli:installDist`,
   `:shared:assembleAndroidMain` (which finalizes `checkJniLibsArePackaged`) — plus, **on a Mac
   only**, `:shared:compileKotlinIosSimulatorArm64` and `lintSwift`. That host-conditional half is
   the point: a Mac checkout is strictly stronger than CI rather than differently weak, and the two
@@ -1554,11 +1555,11 @@ emulator, and SRS flush failures that only appear when the network goes away mid
     path gate, so the wrapper check runs on everything.
   - *Unit tests + Android build* — `:shared:testAndroidHostTest :androidApp:testDebugUnitTest`, then
     `:androidApp:assembleDebug`.
-  - *CLI on Linux x86_64* — `:shared:jvmTest :cli:test`, then `installDist` and a smoke test of
+  - *CLI on Linux x86_64* — `:shared:jvmTest :cli-core:test :cli:test`, then `installDist` and a smoke test of
     the jar's exit codes, envelope and completion scripts.
   - *CLI as a native binary* — `cli/Dockerfile` through buildx, then the one-file and FFI
     assertions on the artifact people install.
-  - *CLI as a native binary (macOS aarch64)* — the second row, gated on `cli/**`,
+  - *CLI as a native binary (macOS aarch64)* — the second row, gated on `cli/**`, `cli-core/**`,
     `shared/src/jvmMain|jvmSharedMain/**` and the build definition. **The two rows fail
     differently**, and until #239 only one was built: `checkNativeImageIsOneFile` had always failed
     on macOS over one `reflect-config.json` entry that leaves Linux clean, and the first sign of it
@@ -2559,6 +2560,32 @@ and returning its `--json` shape, with **no logic in the arg parser**. `dispatch
 verbs and nothing else. An MCP server should be a binding over those functions rather than a
 second implementation of them.
 
+**Those functions are a library module, `:cli-core`, and `:cli` is a front end over it (#488).**
+An MCP server cannot depend on an application module, and should not pull in what `:cli` also
+holds: `Main`, the native-image metadata, install and update, completions. The rule for the line
+is *anything a hosted server would call goes in `:cli-core`; anything about being a terminal
+binary on someone's machine stays in `:cli`*:
+
+- `:cli-core` — the deck, card, import and tag commands (`Decks`, `DeckCreate`, `DeckEdit`, `Cards`,
+  `CardList`, `Import`, `ApkgImport`, `ImageProbe`, `Tags` …), and the types they answer in:
+  `CommandResult`/`result`/`cliJson`, `CliError`/`asCliError`/`ExitCode`, `Args` and
+  `requireUsableOperand`, the views, `DeckWriteLock` and `CliEnvironment`. Also
+  `generateCliVersion`, because the image prober sends `CLI_VERSION` as its User-Agent. It depends
+  on `:shared` and kotlinx only — **no Koin**: callers hand the commands their repositories.
+- `:cli` — `Main`/`dispatch`, the Koin start-up and the session (`startCli`, `SessionCache`,
+  `requireSession`), the envelopes and `StdoutGuard`, `login`/`logout`/`whoami` (sign-in by QR is
+  the human-in-the-loop path; a server signs in another way), `doctor`, `update` and install
+  detection, `batch`, completions and `CommandSurface`.
+
+Three things not to undo. The packages did **not** move — `com.github.jvsena42.loopky.cli…` in
+both modules — because the reachability metadata under `cli/src/main/resources/META-INF/
+native-image/` names classes, and a renamed one drops out of it with nothing reporting it. The
+commands still take `Args` rather than plain values, so the "plain values" above is looser than it
+reads; narrowing the signatures is for when `:mcp` needs it, not part of the move. And
+`CommandSurface` stays in `:cli` for now as the authority `commands --json`, the completions,
+`batch` and `AgentPluginTest` read; the MCP tool list should be checked against it too, which may
+argue for moving it down once `:mcp` exists.
+
 Whether such a server is hosted — and therefore holds users' session secrets, with everything that
 implies — or runs on the user's own machine over stdio is open. Finding 1 pushes the same way for
 a different reason: a process that outlives one command is the natural place to renew a session
@@ -2672,7 +2699,9 @@ the relay with `doctor`'s probe before showing a QR and fails 5, 14 or 15 there 
   Upstream work; until then such a sandbox exempts Loopky's hosts from interception.
 - **Its own repo, and the `core` / `presentation` split.** Starting in-tree is cheaper while
   `shared` is moving; the trigger for extracting is the first *out-of-tree* consumer, which needs
-  a published artifact — and that artifact is the module boundary. The seam is real and these two
+  a published artifact — and that artifact is the module boundary. `:cli-core` (§13.15) is the
+  module that would be published; the MCP server stays in-tree beside it until `:shared` stops
+  changing under #214, because each of those changes would otherwise be a publish and a bump. The seam is real and these two
   consumers name it: the CLI wants repositories and treats VMs as dead weight, while the watch
   (#73) wants `presentation/`.
 

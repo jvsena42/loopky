@@ -211,7 +211,7 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
  * is a retry loop. A proxy that drops rather than refuses is a timeout, and stays
  * [ExitCode.Network].
  */
-internal fun Throwable.isProxyRefusal(): Boolean {
+fun Throwable.isProxyRefusal(): Boolean {
     val message = message?.lowercase() ?: return false
     JDK_TUNNEL_STATUS.find(message)?.let { return it.groupValues[1] in REFUSING_STATUSES }
     return RUST_TUNNEL_REFUSALS.any { it in message } || PROXY_AUTH_STATUS.containsMatchIn(message)
@@ -221,7 +221,7 @@ internal fun Throwable.isProxyRefusal(): Boolean {
  * The certificate chain did not verify, in either stack. The JDK words it as a PKIX failure,
  * usually a cause or two below the `SSLHandshakeException`; rustls as "invalid peer certificate".
  */
-internal fun Throwable.isUntrustedCertificate(): Boolean =
+fun Throwable.isUntrustedCertificate(): Boolean =
     generateSequence(this) { it.cause }.take(MAX_CAUSES).any { error ->
         val message = error.message?.lowercase().orEmpty()
         error is SSLPeerUnverifiedException || UNTRUSTED_CERTIFICATE.any { it in message }

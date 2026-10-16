@@ -98,7 +98,7 @@ internal fun Args.imageCheckConcurrency(): Int {
  * to stop, and the surface already hard-errors on the two analogous cases (`--separator` on an
  * `.apkg`, `--if-not-exists` without `--id`).
  */
-internal fun Args.requireImageCheckOptions() {
+fun Args.requireImageCheckOptions() {
     if (!has(CHECK_IMAGES_CONCURRENCY_FLAG)) return
     if (!checksImages() && verb != CARD_CHECK_IMAGES) {
         throw CliError(

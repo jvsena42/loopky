@@ -38,10 +38,12 @@ subprojects {
                 "src/commonTest/kotlin",
                 "src/jvmTest/kotlin",
                 "src/androidHostTest/kotlin",
-                // :cli is a plain JVM module, so its sources are where a JVM module puts them
-                // rather than in a KMP source set.
+                // :cli and :cli-core are plain JVM modules, so their sources are where a JVM
+                // module puts them rather than in a KMP source set.
                 "src/main/kotlin",
                 "src/test/kotlin",
+                // `:cli-core`'s fixtures, which `:cli`'s tests read.
+                "src/testFixtures/kotlin",
             )
         )
     }
@@ -112,6 +114,7 @@ tasks.register("ciCheck") {
         ":shared:assembleAndroidMain",
         ":androidApp:testDebugUnitTest",
         ":shared:jvmTest",
+        ":cli-core:test",
         ":cli:test",
         ":androidApp:assembleDebug",
         ":cli:installDist",

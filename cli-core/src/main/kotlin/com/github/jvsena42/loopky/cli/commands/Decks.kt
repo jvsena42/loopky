@@ -165,7 +165,7 @@ internal fun Args.deckDescription(): String? {
  * runs its **own** path up to the write rather than borrowing another's, which is the whole point:
  * a pre-flight through a different parser answers a question nobody asked (#257, item 8).
  */
-internal const val DRY_RUN_FLAG = "dry-run"
+const val DRY_RUN_FLAG = "dry-run"
 
 /** A `--name`/`--no-name` pair, since a deck opt-in has to be turnable *off* as well as on. */
 internal fun Args.flag(name: String, default: Boolean): Boolean = flagOrNull(name) ?: default

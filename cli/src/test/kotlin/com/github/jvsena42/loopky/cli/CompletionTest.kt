@@ -46,14 +46,14 @@ class CompletionTest {
     fun `every option the table calls a switch is one to the parser`() {
         offeredOptions()
             .filter { it.value == OptionValue.Switch }
-            .forEach { assertContains(Args.SWITCHES, it.name, "--${it.name} is offered as a switch but takes a value") }
+            .forEach { assertContains(PARSER_SWITCHES, it.name, "--${it.name} is offered as a switch but takes a value") }
     }
 
     /** And the reverse: a switch the parser knows and nothing offers is either new or deliberate. */
     @Test
     fun `every switch the parser knows is offered or deliberately withheld`() {
         val offered = offeredOptions().filter { it.value == OptionValue.Switch }.map { it.name }.toSet()
-        val unaccounted = Args.SWITCHES - offered - UNOFFERED_SWITCHES
+        val unaccounted = PARSER_SWITCHES - offered - UNOFFERED_SWITCHES
         assertEquals(
             emptySet(),
             unaccounted,
@@ -80,7 +80,7 @@ class CompletionTest {
     fun `an option that takes a value is never also declared a switch`() {
         offeredOptions()
             .filter { it.value != OptionValue.Switch }
-            .forEach { assertTrue(it.name !in Args.SWITCHES, "--${it.name} takes a value but the parser drops it") }
+            .forEach { assertTrue(it.name !in PARSER_SWITCHES, "--${it.name} takes a value but the parser drops it") }
     }
 
     /** One name, one meaning. The scripts write one arm per kind, so two kinds would pick one. */

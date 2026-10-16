@@ -109,7 +109,7 @@ class Args private constructor(
          * `--front --back x` wrong in the direction that matters: it would silently read the
          * *flag* as the front of a card and write it to the homeserver.
          *
-         * `internal` so `CompletionTest` can hold it against the completion table: a switch the
+         * `internal`, and read by `:cli`'s `CompletionTest` through the test fixtures: a switch the
          * shell offers that the parser does not know here eats the next word as its value.
          */
         internal val SWITCHES = setOf(
