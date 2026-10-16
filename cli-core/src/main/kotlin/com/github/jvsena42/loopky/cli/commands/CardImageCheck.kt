@@ -9,7 +9,7 @@ import com.github.jvsena42.loopky.data.repository.DeckRepository
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-internal const val CARD_CHECK_IMAGES = "card check-images"
+const val CARD_CHECK_IMAGES = "card check-images"
 
 @Serializable
 data class CardImageCheckResult(

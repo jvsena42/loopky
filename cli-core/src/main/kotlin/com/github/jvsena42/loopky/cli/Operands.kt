@@ -19,7 +19,7 @@ package com.github.jvsena42.loopky.cli
  * What is rejected is only what genuinely cannot survive a path segment: nothing, whitespace,
  * a separator, a URI delimiter, and the two relative segments.
  */
-internal fun requireUsableOperand(value: String, name: String): String {
+fun requireUsableOperand(value: String, name: String): String {
     val complaint = when {
         value.isBlank() ->
             "is empty. That can never address a record, so it is refused here rather than sent"

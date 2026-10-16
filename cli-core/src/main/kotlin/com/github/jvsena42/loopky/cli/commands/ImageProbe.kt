@@ -66,7 +66,7 @@ data class ImageCheck(
 /** Whether this invocation asked for the probe. */
 internal fun Args.checksImages(): Boolean = has(CHECK_IMAGES_FLAG)
 
-internal const val CHECK_IMAGES_FLAG = "check-images"
+const val CHECK_IMAGES_FLAG = "check-images"
 
 internal const val CHECK_IMAGES_CONCURRENCY_FLAG = "check-images-concurrency"
 
@@ -98,7 +98,7 @@ internal fun Args.imageCheckConcurrency(): Int {
  * to stop, and the surface already hard-errors on the two analogous cases (`--separator` on an
  * `.apkg`, `--if-not-exists` without `--id`).
  */
-internal fun Args.requireImageCheckOptions() {
+fun Args.requireImageCheckOptions() {
     if (!has(CHECK_IMAGES_CONCURRENCY_FLAG)) return
     if (!checksImages() && verb != CARD_CHECK_IMAGES) {
         throw CliError(
