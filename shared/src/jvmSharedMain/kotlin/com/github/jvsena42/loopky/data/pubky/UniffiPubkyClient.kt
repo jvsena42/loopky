@@ -4,6 +4,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.pubkycore.auth as ffiAuth
 import uniffi.pubkycore.awaitAuthApproval as ffiAwaitAuthApproval
+import uniffi.pubkycore.cancelGrantAuthFlowHandle as ffiCancelGrantAuthFlowHandle
+import uniffi.pubkycore.configureGrantAuthFlows as ffiConfigureGrantAuthFlows
+import uniffi.pubkycore.configureSessionCache as ffiConfigureSessionCache
 import uniffi.pubkycore.createRecoveryFile as ffiCreateRecoveryFile
 import uniffi.pubkycore.createTagId as ffiCreateTagId
 import uniffi.pubkycore.decryptRecoveryFile as ffiDecryptRecoveryFile
@@ -20,6 +23,7 @@ import uniffi.pubkycore.getSignupToken as ffiGetSignupToken
 import uniffi.pubkycore.list as ffiList
 import uniffi.pubkycore.mnemonicPhraseToKeypair as ffiMnemonicPhraseToKeypair
 import uniffi.pubkycore.parseAuthUrl as ffiParseAuthUrl
+import uniffi.pubkycore.pollGrantAuthFlowHandle as ffiPollGrantAuthFlowHandle
 import uniffi.pubkycore.publish as ffiPublish
 import uniffi.pubkycore.publishHttps as ffiPublishHttps
 import uniffi.pubkycore.put as ffiPut
@@ -30,10 +34,12 @@ import uniffi.pubkycore.republishHomeserver as ffiRepublishHomeserver
 import uniffi.pubkycore.resolve as ffiResolve
 import uniffi.pubkycore.resolveHttps as ffiResolveHttps
 import uniffi.pubkycore.revalidateSession as ffiRevalidateSession
+import uniffi.pubkycore.revokeOwnGrant as ffiRevokeOwnGrant
 import uniffi.pubkycore.signIn as ffiSignIn
 import uniffi.pubkycore.signOut as ffiSignOut
 import uniffi.pubkycore.signUpCookie as ffiSignUpCookie
 import uniffi.pubkycore.startAuthFlow as ffiStartAuthFlow
+import uniffi.pubkycore.startGrantAuthFlowHandle as ffiStartGrantAuthFlowHandle
 import uniffi.pubkycore.switchNetwork as ffiSwitchNetwork
 import uniffi.pubkycore.validateMnemonicPhrase as ffiValidateMnemonicPhrase
 
@@ -192,6 +198,28 @@ class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : Pubky
     override fun switchNetwork(useTestnet: Boolean) = runFfi { ffiSwitchNetwork(useTestnet) }
 
     // --- Helpers --------------------------------------------------------------
+    // --- Server-only: many users in one process (#214) -------------------------
+    // Not on [PubkyClient]: the apps and the CLI hold one session, and the iOS client has no
+    // binding for any of this.
+
+    /** Starts a grant flow under its own id, so concurrent sign-ins never share a slot. JSON: `flow_id`, `authorization_url`. */
+    suspend fun startGrantAuthFlowHandle(capabilities: String, relay: String? = null) =
+        runFfiSuspend { ffiStartGrantAuthFlowHandle(capabilities, clientId, relay) }
+
+    /** Never blocks. JSON: `{"status":"pending"}`, or `"approved"` with the session — handed out once. */
+    suspend fun pollGrantAuthFlowHandle(flowId: String) = runFfiSuspend { ffiPollGrantAuthFlowHandle(flowId) }
+
+    suspend fun cancelGrantAuthFlowHandle(flowId: String) = runFfiSuspend { ffiCancelGrantAuthFlowHandle(flowId) }
+
+    /** Revokes the grant behind a stored secret with a proof of possession; no live bearer needed. */
+    suspend fun revokeOwnGrant(sessionSecret: String) = runFfiSuspend { ffiRevokeOwnGrant(sessionSecret) }
+
+    fun configureGrantAuthFlows(maxConcurrent: Int, ttlSeconds: Int) =
+        runFfi { ffiConfigureGrantAuthFlows(maxConcurrent.toUInt(), ttlSeconds.toUInt()) }
+
+    /** How many grant sessions the FFI keeps minted; an LRU, so a busy server sizes it to its tenants. */
+    fun configureSessionCache(capacity: Int) = runFfi { ffiConfigureSessionCache(capacity.toUInt()) }
+
     private inline fun runFfi(block: () -> List<String>): Result<String> =
         try {
             block().toResult()
