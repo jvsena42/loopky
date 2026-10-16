@@ -21,6 +21,8 @@ import com.github.jvsena42.loopky.cli.commands.requireImageCheckOptions
 import com.github.jvsena42.loopky.cli.commands.tagTrending
 import com.github.jvsena42.loopky.cli.requireKnownOptions
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.pubky.toErrorReason
+import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.mcp.LOOPKY_CAPABILITIES
 import com.github.jvsena42.loopky.mcp.Principal
 import com.github.jvsena42.loopky.mcp.security.UserLimiter
@@ -87,7 +89,8 @@ class ToolDispatcher(
             // The same classification the CLI's `main` makes of anything that escaped a command,
             // and for the same reason: an exit code the caller can branch on, never a stack trace.
             Log.e(TAG, "${tool.name} failed", error)
-            failed(principal, tool, CliError(ExitCode.of(error), error.message ?: error::class.simpleName.orEmpty()), notes)
+            val message = error.message ?: error::class.simpleName.orEmpty()
+            failed(principal, tool, CliError(ExitCode.of(error), message, cause = error), notes)
         }.asToolResult()
     }
 
@@ -169,17 +172,27 @@ class ToolDispatcher(
         error: CliError,
         notes: List<String>,
     ): JsonObject {
-        // The FFI has already re-minted a bearer from the grant by the time a command reports
-        // this, so what is left is a grant Ring revoked (#486): report it, drop the graph, and say
-        // the user has to reconnect. Never a retry — the next call would open the same secret.
-        val revoked = error.exitCode == ExitCode.SessionExpired
+        // The exit table folds a refused session and a session preamble that could not be made
+        // (a 502 in front of the homeserver, a dead connection) into one code, and only the
+        // first is a revoked grant. The FFI has already re-minted a bearer from the grant by the
+        // time a command reports a refusal, so that one is Ring's doing (#486): report it, drop
+        // the graph, say the user has to reconnect. The second is reported as the network
+        // failure it is — unlinking on it would sign every user out for a 30-second outage.
+        val reason = error.cause?.toErrorReason()
+        val revoked = error.exitCode == ExitCode.SessionExpired && reason == ErrorReason.SessionExpired
+        val unreachable = reason == ErrorReason.SessionUnreachable
         if (revoked) tenants.revoke(principal.pubky)
+        val code = if (unreachable) ExitCode.Network else error.exitCode
         return ToolEnvelope.failure(
             command = tool.command.path,
             environment = environment,
-            code = error.exitCode.json,
-            exit = error.exitCode.code,
-            message = if (revoked) REVOKED_MESSAGE else error.message.orEmpty(),
+            code = code.json,
+            exit = code.code,
+            message = when {
+                revoked -> REVOKED_MESSAGE
+                unreachable -> UNREACHABLE_MESSAGE
+                else -> error.message.orEmpty()
+            },
             data = error.data,
             notes = notes,
             reconnect = revoked,
@@ -204,5 +217,7 @@ class ToolDispatcher(
         const val WHOAMI = "whoami"
         const val REVOKED_MESSAGE = "The homeserver no longer accepts this account's Loopky session: the grant was " +
             "revoked in Pubky Ring. Ask the user to reconnect the Loopky connector; retrying cannot help."
+        const val UNREACHABLE_MESSAGE = "The homeserver could not be reached to check this account's session. " +
+            "The session is still linked; retry in a moment."
     }
 }

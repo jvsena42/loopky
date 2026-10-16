@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
@@ -223,6 +224,16 @@ class TenantPoolTest {
         assertFailsWith<TenantRefusal.Revoked> { pool.withTenant("alice") { } }
         assertEquals(listOf("alice"), secrets.revoked)
         assertTrue(pool.isRevoked("alice"))
+    }
+
+    @Test
+    fun `a homeserver the factory cannot reach is reported as that, and nothing is unlinked`() = runBlocking {
+        val unreachable = FakeTenantFactory { _, _ -> throw PubkyError("Failed to import session: Request failed: HTTP transport error") }
+        val pool = TenantPool(unreachable, secrets, TenantLimits()) { now }
+        assertFailsWith<PubkyError> { pool.withTenant("alice") { } }
+        assertEquals(emptyList(), secrets.revoked)
+        assertFalse(pool.isRevoked("alice"))
+        assertEquals("secret-alice", secrets.secrets["alice"], "the credential is still on record for the retry")
     }
 
     @Test

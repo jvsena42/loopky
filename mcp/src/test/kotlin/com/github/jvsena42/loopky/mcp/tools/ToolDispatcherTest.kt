@@ -207,6 +207,28 @@ class ToolDispatcherTest {
         assertTrue((factory.opened.single() as FakeTenant).closed)
     }
 
+    /** The exit table folds this into `session_expired`; here it must stay a retry, never an unlink. */
+    @Test
+    fun `a homeserver that cannot be reached for the session check is a network failure, not a revoke`() = runBlocking {
+        val unreachable = PubkyError("Failed to import session: Request failed: HTTP transport error")
+        val factory = FakeTenantFactory { pubky, secret ->
+            FakeTenant(secret, sessionFor(pubky, secret), decks = FakeDeckRepository(testDeck("d1"), readFails = unreachable))
+        }
+        val pool = TenantPool(factory, secrets, TenantLimits())
+        val dispatcher = ToolDispatcher(PubkyEnvironment.Staging, pool, scratch)
+
+        val result = dispatcher.call(alice, "deck_show", args("""{"deck_id":"d1"}"""))
+
+        assertEquals(true, result.isError)
+        val error = result.envelope()["error"]!!.jsonObject
+        assertEquals("network", error["code"]!!.jsonPrimitive.content)
+        assertEquals(false, error["reconnect"]!!.jsonPrimitive.boolean)
+        assertContains(error["message"]!!.jsonPrimitive.content, "still linked")
+        assertEquals(emptyList(), secrets.revoked, "a transient failure unlinked the user")
+        assertFalse(pool.isRevoked("alice"))
+        assertFalse((factory.opened.single() as FakeTenant).closed, "the graph was dropped for a failure a retry fixes")
+    }
+
     @Test
     fun `notes the CLI would have put on stderr travel in the envelope`() = runBlocking {
         val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck("d1"))))

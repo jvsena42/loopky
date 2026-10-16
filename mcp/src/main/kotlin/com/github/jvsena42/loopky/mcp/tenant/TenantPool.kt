@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.mcp.tenant
 
-import com.github.jvsena42.loopky.cli.ExitCode
+import com.github.jvsena42.loopky.data.pubky.toErrorReason
+import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.mcp.SessionSecrets
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.NonCancellable
@@ -204,8 +205,9 @@ class TenantPool(
             factory.open(secret)
         } catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
             // The one failure worth classifying here: a secret the homeserver refuses outright is
-            // a revoked grant, and reporting it is what stops the next call opening it again.
-            if (ExitCode.of(error) == ExitCode.SessionExpired) {
+            // a revoked grant, and reporting it is what stops the next call opening it again. The
+            // reason and not the exit code, which folds "could not be reached" into the same one.
+            if (error.toErrorReason() == ErrorReason.SessionExpired) {
                 revoked[pubky] = hash
                 secrets.revoked(pubky)
                 throw TenantRefusal.Revoked(pubky)
