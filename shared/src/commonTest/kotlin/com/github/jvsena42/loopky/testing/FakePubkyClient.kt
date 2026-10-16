@@ -296,6 +296,12 @@ class FakePubkyClient : PubkyClient {
     /** When set, [signIn] fails with this. */
     var signInFailure: Throwable? = null
 
+    /** When set, [signIn] suspends until it completes, so a test can act while one is in flight. */
+    var signInGate: CompletableDeferred<Unit>? = null
+
+    /** The capabilities a [signIn] session is granted. */
+    var signInCapabilities: List<String> = listOf("/pub/loopky/:rw")
+
     override fun generateSecretKey(): Result<String> =
         Result.success(fakeSecretKeyFor("generated-secret"))
 
@@ -372,8 +378,9 @@ class FakePubkyClient : PubkyClient {
 
     override suspend fun signIn(secretKey: String): Result<String> {
         signInCalls.add(secretKey)
+        signInGate?.await()
         signInFailure?.let { return Result.failure(it) }
-        return Result.success(grantSessionJson(fakePubkyFor(secretKey)))
+        return Result.success(grantSessionJson(fakePubkyFor(secretKey), signInCapabilities))
     }
 
     /** What [signOut] answers. A failure models a revoke the homeserver never confirmed. */
@@ -450,8 +457,10 @@ class FakePubkyClient : PubkyClient {
      * that rely on the payload to tell them which homeserver they landed on get an empty string,
      * which is the real behaviour and the reason local signup has to fill it in itself.
      */
-    private fun grantSessionJson(pubky: String): String =
-        """{"pubky":"$pubky","capabilities":["/pub/loopky/:rw"],"grant_secret":"grant-${pubky.take(8)}"}"""
+    private fun grantSessionJson(pubky: String, capabilities: List<String> = listOf("/pub/loopky/:rw")): String {
+        val caps = capabilities.joinToString(",") { "\"$it\"" }
+        return """{"pubky":"$pubky","capabilities":[$caps],"grant_secret":"grant-${pubky.take(8)}"}"""
+    }
 
     private fun unused(): Nothing =
         throw UnsupportedOperationException("Not used by the code under test")

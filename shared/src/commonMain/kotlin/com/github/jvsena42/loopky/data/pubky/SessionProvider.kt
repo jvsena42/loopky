@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.data.pubky
 
 import com.github.jvsena42.loopky.domain.model.Session
+import kotlinx.coroutines.sync.Mutex
 import kotlin.concurrent.Volatile
 
 /**
@@ -30,6 +31,13 @@ class MutableSessionProvider : SessionProvider {
     private var value: Session? = null
 
     override fun current(): Session? = value
+
+    /**
+     * Held by revalidation and by sign-out, so neither runs inside the other. A revalidation can
+     * now *mint* a session (re-signing in with a held key), and one finishing after sign-out's
+     * clears would sign the user back in with a session nothing revoked. Not reentrant.
+     */
+    val authLock = Mutex()
 
     fun set(session: Session?) {
         value = session

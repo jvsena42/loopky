@@ -10,7 +10,6 @@ import com.github.jvsena42.loopky.data.storage.SecureSessionStore
 import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeMark
@@ -19,7 +18,7 @@ import kotlin.time.TimeSource
 /**
  * [SessionRevalidator] backed by the Pubky FFI `revalidateSession` call.
  *
- * A [Mutex] serializes concurrent revalidation attempts, and the stale-secret check inside it
+ * [MutableSessionProvider.authLock] serializes concurrent revalidation attempts, and the stale-secret check inside it
  * makes them genuinely *coalesce*: waiters that were failing on a secret which has since been
  * replaced take the refreshed session instead of issuing their own round-trip. The lock alone did
  * not do this — every waiter re-ran the FFI call in turn, which matters much more now that
@@ -38,6 +37,7 @@ import kotlin.time.TimeSource
  * otherwise lock them out with the key sitting in the keystore.
  * Only a rejection triggers it — a network failure says nothing about the session — and only for
  * the signed-in pubky's own registered key. A backed-up key is left alone; its owner can restore.
+ * And never into a wider scope than the session had: the CLI's `/pub/loopky/:rw` is structural.
  */
 internal class SessionRevalidatorImpl(
     private val pubky: PubkyClient,
@@ -46,16 +46,14 @@ internal class SessionRevalidatorImpl(
     private val localKeyStore: LocalKeyStore,
 ) : SessionRevalidator {
 
-    private val mutex = Mutex()
-
     /** The last failed attempt and when it happened, for the [FAILURE_WINDOW] check. Guarded by
-     * [mutex]; cleared by any success, so a recovered session never reads as a remembered one. */
+     * the auth lock; cleared by any success, so a recovered session never reads as a remembered one. */
     private var lastFailure: Failure? = null
 
     override suspend fun revalidate(): Result<Session> {
         // Captured before the lock: this is the secret the caller found wanting.
         val staleSecret = sessionProvider.current()?.sessionSecret
-        return mutex.withLock {
+        return sessionProvider.authLock.withLock {
             val now = sessionProvider.current()
             if (now != null && staleSecret != null && now.sessionSecret != staleSecret) {
                 Log.d(TAG, "session already refreshed by another caller; reusing it")
@@ -84,9 +82,13 @@ internal class SessionRevalidatorImpl(
             val json = pubky.revalidateSession(current.sessionSecret)
                 .recoverRejection(current)
                 .getOrThrow()
-            // Neither payload names the homeserver, and the session did not move.
-            val refreshed = parseSessionPayload(json, loopkyJson)
-                .let { if (it.homeserver.isBlank()) it.copy(homeserver = current.homeserver) else it }
+            // Neither payload carries the homeserver or the profile, and neither moved.
+            val refreshed = parseSessionPayload(json, loopkyJson).let {
+                it.copy(
+                    identity = current.identity,
+                    homeserver = it.homeserver.ifBlank { current.homeserver },
+                )
+            }
             sessionStore.save(refreshed)
             sessionProvider.set(refreshed)
             Log.d(TAG, "session revalidated successfully")
@@ -99,16 +101,25 @@ internal class SessionRevalidatorImpl(
 
     private suspend fun Result<String>.recoverRejection(current: Session): Result<String> {
         val rejection = exceptionOrNull()?.takeIf { it.isSessionExpired() } ?: return this
-        val held = localKeyStore.current()
+        // A vault that will not decrypt (a restored backup, a reset keystore) must not replace the
+        // expiry with its own error: the caller still has to be told to sign in.
+        val held = runSuspendCatching { localKeyStore.current() }.getOrNull()
             ?.takeIf { it.registered && it.backedUpBy.isEmpty() && it.pubky == current.identity.pubky }
             ?: return this
         Log.d(TAG, "session rejected; signing in again with the un-backed-up key Loopky holds")
-        val signedIn = pubky.signIn(held.secretKeyHex)
-        if (signedIn.isSuccess) return signedIn
-        // The class only: the FFI's message for a call handed a secret key is not loggable. The
-        // rejection stays the answer, so the caller sees an expiry rather than the second call's error.
-        Log.e(TAG, "re-sign-in with the held key failed — ${signedIn.exceptionOrNull()!!::class.simpleName}")
-        return Result.failure(rejection)
+        // The class only: the FFI's message for a call handed a secret key is not loggable. Either
+        // way the rejection stays the answer, rather than the second call's error.
+        val json = pubky.signIn(held.secretKeyHex)
+            .onFailure { Log.e(TAG, "re-sign-in with the held key failed — ${it::class.simpleName}") }
+            .getOrNull() ?: return Result.failure(rejection)
+        val minted = runCatching { parseSessionPayload(json, loopkyJson) }.getOrNull()
+        val granted = minted?.capabilities?.map { it.value }?.toSet()
+        if (granted == null || !current.capabilities.map { it.value }.containsAll(granted)) {
+            Log.e(TAG, "re-sign-in would widen the session's scope; revoking it")
+            minted?.let { pubky.signOut(it.sessionSecret) }
+            return Result.failure(rejection)
+        }
+        return Result.success(json)
     }
 
     companion object {

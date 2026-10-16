@@ -34,7 +34,9 @@ interface PubkyClient {
      *
      * [signIn] is grant, verified against staging on 2026-10-16 (sign in, write, read, delete,
      * revalidate, sign out). [signUp] still binds to the cookie variant on the JVM — iOS is already
-     * grant for both — because nobody has driven a grant signup against a real account yet.
+     * grant for both — because nobody has driven a grant signup against a real account yet. A
+     * pubky whose record names a homeserver it has no account on gets the same 404 from either
+     * flow (measured 2026-10-16), which is what routes restore to the unregistered-key screen.
      *
      * Mixing the two kinds is safe: `restore_session` sniffs which it was handed, so [signOut],
      * [revalidateSession] and `put_with_session` take either.
