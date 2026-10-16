@@ -2,27 +2,32 @@
   <description>
     The invariant that costs real money if it breaks. A signup token is single-use and never
     expires, and by the time Loopky holds one the user has already spent an SMS attempt (two per
-    week) or paid sats. If the app is killed between obtaining the token and Ring redeeming it,
-    the token must still be there on the next launch — otherwise they pay twice.
+    week) or paid sats. If the app is killed between obtaining the token and registering the
+    account, the next launch must spend that same token — otherwise they pay twice.
 
-    Requires the same setup as `17-signup-invite-code.xml`, and a freshly minted staging token.
+    Loopky redeems the token itself now (9372ff86), so the window is the "signup_local_progress"
+    step: the token is stored as `PendingSignup.Redeemable` when verification succeeds, and the key
+    is stored before `signUp` runs.
 
-    This journey deliberately never completes the hand-off, so the token it uses stays unspent
-    and can be reused for the next run — unlike journey 17, which burns one.
+    **Expected to fail as of 2026-10-16, from reading the code — not yet driven.** "Create a
+    Pubky" always opens the method screen, which never consults the stored token (#510); the local step
+    is reached only by finishing a method again, and starting Lightning again calls
+    `createInvoice`, which overwrites the stored token with a new pending invoice. Record the
+    result in the PR that runs this.
+
+    Use the invite-code method to probe it for free (the code IS the token, so re-entering it is
+    the honest fallback, but a user who paid by SMS or Lightning has no code to re-enter). Requires
+    the same setup as `17-signup-invite-code.xml` and a freshly minted staging token.
   </description>
   <actions>
     <action>From a signed-out Loopky, tap "onboarding_create_pubky", then "signup_method_invite"</action>
+    <action>Turn airplane mode ON, so registration stalls on "signup_local_progress" with the token already stored</action>
     <action>Tap "signup_invite_input", type a freshly minted XXXX-XXXX-XXXX token, tap "signup_invite_submit"</action>
-    <action>When Pubky Ring opens, DO NOT authorize. Press back to return to Loopky</action>
-    <action>Verify Loopky is on the hand-off screen: "signup_title" reads "Finishing in Pubky Ring…"</action>
-
-    <action>Kill the app outright: adb shell am force-stop com.github.jvsena42.loopky</action>
-    <action>Relaunch: adb shell am start -n com.github.jvsena42.loopky/.MainActivity</action>
+    <action>While "signup_local_progress" (or its error) is on screen, kill the app outright: adb shell am force-stop com.github.jvsena42.loopky. Note the pubky in logcat ("registerKey: registering …")</action>
+    <action>Turn airplane mode OFF and relaunch: adb shell am start -n com.github.jvsena42.loopky/.MainActivity</action>
     <action>Verify logcat shows "init: no persisted session" — signing up never completed, so there is no session</action>
-    <action>Navigate to the hand-off again (onboarding_create_pubky is the entry; the stored token is what the hand-off resumes from) and verify "signup_handoff_copy" is present — the token survived the process being killed</action>
-    <action>Tap "signup_handoff_copy" and verify the toast "Code copied — keep it somewhere safe", then paste elsewhere and confirm the value matches the token that was minted. A token the user can read cannot be lost to a bug in the app</action>
-
-    <action>THE WRONG-PUBKY BRANCH, if it can be provoked. When Ring's signup fails while it holds another already-signed-up pubky, Ring quietly authorizes THAT pubky instead and returns a valid session with the token unspent</action>
-    <action>Verify that in this case Loopky still shows "signup_handoff_copy" — i.e. the token was NOT cleared. Clearing on "we got a session" would throw away something the user paid for in exactly the case where they still need it. logcat shows "onApproved: signed in on a different homeserver — keeping the token"</action>
+    <action>THE INVARIANT. Tap "onboarding_create_pubky" and verify Loopky offers to finish the signup with the stored token — WITHOUT asking for a verification method again — and registers the SAME pubky noted above</action>
+    <action>Verify logcat shows no second Homegate request for a token, and no "registerKey" for a different pubky — a fresh key would strand the first identity, and a fresh token would charge the user twice</action>
+    <action>If instead the method screen appears: that is the failure described above. Do NOT pay to probe the Lightning branch; record the finding instead</action>
   </actions>
 </journey>

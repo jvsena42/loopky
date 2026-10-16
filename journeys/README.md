@@ -86,8 +86,11 @@ a line when you close it.
   link on a Play install, where `pm get-app-links` should read `verified`. And a `https://loopky.app/…` link
   tapped in Notes on a TestFlight build: a simulator opens them (`simctl openurl`, warm and cold),
   but that delivery has never called `onContinueUserActivity`, so the fallback is unexercised.
-- **22 — a real local signup end to end.** It needs a signup token (SMS, sats or an invite code).
-  Redemption, the backup screens and the unbacked sign-out warning are covered by unit tests only.
+- **22 — the rest of a local signup.** Invite code → minted key → Home with the backup reminder
+  sheet was driven on Android against staging on 2026-10-16. The retry check, the backup screens
+  and the unbacked sign-out warning are covered by unit tests only.
+- **18 — a paid-for token surviving the app dying.** Never driven against the local flow, and the
+  code suggests it fails: nothing offers a stored token on the next launch (see the journey).
 - **29 — the share legs inside the real apps.** No emulator has X, Threads, Instagram or WhatsApp,
   so only the fallbacks (the browser's composer, the system share sheet) have run. Also never
   driven: confirming the Pubky post (`recap_post_confirm`), the empty state, the failed-read
