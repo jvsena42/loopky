@@ -151,6 +151,18 @@ class ToolDispatcherTest {
         assertEquals(true, envelope["ok"]!!.jsonPrimitive.boolean, envelope.toString())
         assertEquals(3, envelope["data"]!!.jsonObject["cards"]!!.jsonPrimitive.int)
         assertEquals(emptyList(), decks.published)
+        assertEquals("inline", envelope["data"]!!.jsonObject["source"]!!.jsonPrimitive.content)
+    }
+
+    /** The commands name the file they read; the server's directory layout is not the caller's to learn. */
+    @Test
+    fun `the scratch path never reaches the caller, in a result or in a message`() = runBlocking {
+        val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck())))
+        val empty = dispatcher.call(alice, "import", args("""{"text":"only a front\n","dry_run":true}""")).envelope()
+        assertEquals("Nothing importable in inline.", empty["error"]!!.jsonObject["message"]!!.jsonPrimitive.content)
+        val blank = dispatcher.call(alice, "card_add", args("""{"deck_id":"d1","text":"# only a comment\n"}""")).envelope()
+        assertEquals("inline held no cards.", blank["error"]!!.jsonObject["message"]!!.jsonPrimitive.content)
+        assertFalse(scratch.root.toString() in empty.toString() + blank.toString())
     }
 
     @Test

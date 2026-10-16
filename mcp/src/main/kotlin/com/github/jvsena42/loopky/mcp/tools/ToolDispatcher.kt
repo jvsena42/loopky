@@ -91,7 +91,7 @@ class ToolDispatcher(
             Log.e(TAG, "${tool.name} failed", error)
             val message = error.message ?: error::class.simpleName.orEmpty()
             failed(principal, tool, CliError(ExitCode.of(error), message, cause = error), notes)
-        }.asToolResult()
+        }.let { scratch.redact(it) as JsonObject }.asToolResult()
     }
 
     /**
