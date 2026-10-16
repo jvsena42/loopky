@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.mcp
 
 import com.github.jvsena42.loopky.data.pubky.UniffiPubkyClient
+import com.github.jvsena42.loopky.mcp.security.RedactingLogger
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -11,6 +12,8 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /** [RingLogin] over the FFI's id-addressed grant flows, which is what lets two people sign in at once. */
 class FfiRingLogin(private val pubky: UniffiPubkyClient) : RingLogin {
+
+    private val log = RedactingLogger("loopky-mcp.ring")
 
     override suspend fun start(): PendingLogin {
         val started = Json.parseToJsonElement(pubky.startGrantAuthFlowHandle(LOOPKY_CAPABILITIES).getOrThrow()).jsonObject
@@ -37,6 +40,7 @@ class FfiRingLogin(private val pubky: UniffiPubkyClient) : RingLogin {
             ?: listOfNotNull((session["capabilities"] as? JsonPrimitive)?.content)
         if (granted != listOf(LOOPKY_CAPABILITIES)) {
             pubky.revokeOwnGrant(session.text("grant_secret"))
+                .onFailure { log.warn("Revoking a grant with the wrong scope failed; only Ring can revoke it now", it) }
             return LoginPoll.Failed("Pubky Ring granted $granted; Loopky for Claude needs exactly $LOOPKY_CAPABILITIES")
         }
         return LoginPoll.Approved(pubky = session.text("pubky"), sessionSecret = session.text("grant_secret"))
@@ -68,7 +72,8 @@ class FfiRingLogin(private val pubky: UniffiPubkyClient) : RingLogin {
  * pending-flow cap and lifetime to the OAuth half's own (`PendingLoginCaps`, `Lifetimes`), so the
  * FFI is never the limit a sign-in hits first.
  */
-fun UniffiPubkyClient.configureForServer(sessions: Int, pendingFlows: Int, flowSeconds: Int) {
+fun UniffiPubkyClient.configureForServer(sessions: Int, pendingFlows: Int, flowSeconds: Int, maxBodyBytes: Long) {
     configureSessionCache(sessions).getOrThrow()
     configureGrantAuthFlows(pendingFlows, flowSeconds).getOrThrow()
+    configureMaxBodyBytes(maxBodyBytes)
 }
