@@ -38,6 +38,7 @@ complexity:
       - '**/androidHostTest/**'
       - '**/jvmTest/**'
       - '**/src/test/kotlin/**'
+      - '**/src/testFixtures/kotlin/**'
       - '**/testing/**'
       # Seven injected collaborators, not a parameter-object smell: the widest repository in the
       # app plus an injectable coroutine scope, which exists so a test can await a deletion that
@@ -61,6 +62,7 @@ complexity:
       - '**/androidHostTest/**'
       - '**/jvmTest/**'
       - '**/src/test/kotlin/**'
+      - '**/src/testFixtures/kotlin/**'
       - '**/data/pubky/PubkyClient.kt'
       - '**/data/pubky/UniffiPubkyClient.kt'
       # Same reason as the two above: a wide interface, and the count is the interface's, not a
@@ -152,6 +154,7 @@ style:
       - '**/androidHostTest/**'
       - '**/jvmTest/**'
       - '**/src/test/kotlin/**'
+      - '**/src/testFixtures/kotlin/**'
       - '**/testing/**'
   UnusedPrivateMember:
     active: true
