@@ -108,7 +108,8 @@ trade-off is unsettled rather than closed: **#247** holds what it would take and
 ./gradlew :cli:linuxDistTar         # -> cli/build/distributions/loopky-linux-x86-64.tar
 ./gradlew :cli:macosDistTar         # -> cli/build/distributions/loopky-darwin-aarch64.tar
 ./gradlew :cli:windowsDistZip       # -> cli/build/distributions/loopky-win32-x86-64.zip
-./gradlew :cli:test                 # the CLI's own unit tests
+./gradlew :cli-core:test            # the commands' unit tests (deck, card, import, tag)
+./gradlew :cli:test                 # the binary's own: dispatch, login, update, completions
 ./gradlew :shared:jvmTest           # the whole shared suite on the jvm() target, plus the
                                     # FFI smoke test that proves libpubkycore actually loads
 ```

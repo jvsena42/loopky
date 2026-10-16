@@ -31,6 +31,7 @@ A fresh session has none of this in context, so establish it before the first ed
 ./gradlew :shared:jvmTest               # the same suite on the desktop target — fastest full run,
                                         # and the only one that loads the real libpubkycore
 ./gradlew :shared:compileKotlinMetadata # fast commonMain compile check
+./gradlew :cli-core:test :cli:test      # the CLI's tests: the commands, then the binary around them
 ./gradlew :cli:installDist              # build `loopky` -> cli/build/install/loopky/bin/loopky
 ./gradlew :cli:nativeCompile            # the shipped artifact: one binary, needs GRAALVM_HOME
                                         # (GraalVM for JDK 25). native-image does NOT cross-compile;
