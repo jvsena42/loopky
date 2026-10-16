@@ -33,7 +33,9 @@ A fresh session has none of this in context, so establish it before the first ed
 ./gradlew :shared:compileKotlinMetadata # fast commonMain compile check
 ./gradlew :cli-core:test :cli:test      # the CLI's tests: the commands, then the binary around them
 ./gradlew :mcp:test                     # the hosted MCP server's: tool catalog drift, tenant isolation,
-                                        # the Streamable HTTP gates
+                                        # the Streamable HTTP gates, OAuth, the vault
+docker build -f mcp/Dockerfile -t loopky-mcp . && bash mcp/deploy/smoke-test.sh loopky-mcp
+                                        # the server's image, booted the way the VPS runs it
 ./gradlew :cli:installDist              # build `loopky` -> cli/build/install/loopky/bin/loopky
 ./gradlew :cli:nativeCompile            # the shipped artifact: one binary, needs GRAALVM_HOME
                                         # (GraalVM for JDK 25). native-image does NOT cross-compile;
@@ -193,6 +195,10 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   pinned-connect guard — has **no caller yet**: no tool fetches a caller's URL, and the syntactic
   `UrlGuard` is what runs over every picture address. A future fetch path goes through
   `SsrfGuard`, never around it.
+  It ships as one container (`mcp/Dockerfile`) that CI boots on every PR and `mcp-deploy.yml`
+  rolls onto a VPS by digest — staging on every push to `main`, production behind the
+  environment's reviewers; `mcp/deploy/README.md` is the operator's half. Its `/tmp` must be an
+  **exec** tmpfs, or JNA and sqlite-jdbc cannot load their libraries. Architecture.md §13.19.
 - `iosApp/iosApp/` — iOS app. SwiftUI screens in `Views/`, `NavigationStack` in `Navigation/`, Koin bootstrap in `DI/`. Compose Multiplatform UI is **not** used for iOS screens.
 
 ### Non-obvious rules

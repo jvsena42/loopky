@@ -2729,12 +2729,52 @@ graph. The client id is per `UniffiPubkyClient` instance now (`clientId`, defaul
 so the server identifies as `mcp.loopky.app` and Ring lists — and revokes — it separately from the
 phone.
 
-Two things it does not do. It does not sign in: `startAuthFlow`/`awaitAuthApproval` are one global
-slot in the FFI (§13.10), so the server runs its Ring flow outside any graph and hands the secret
-in. And it does not bound anything: how many graphs live at once, and for how long, is the
-server's LRU (#214), not the graph's concern.
+Two things it does not do. It does not sign in: the server runs its Ring flow outside any graph,
+through the FFI's id-addressed flows (§13.19), and hands the secret in. And it does not bound
+anything: how many graphs live at once, and for how long, is the server's LRU (#214), not the
+graph's concern.
 
-### 13.19 Still open
+### 13.19 The hosted server (`:mcp`, #214, #486)
+
+The audience the binary can never reach — Claude with no shell, a phone — gets a hosted remote MCP
+server: one deployment per network (`switchNetwork` is process-global), each a Ktor app that is an
+OAuth 2.1 authorization server *and* the MCP resource it protects. Claude registers dynamically,
+the user approves a **grant** in Pubky Ring for `/pub/loopky/:rw` only, under the server's own
+client id, and every tool call runs a `:cli-core` command on that user's `TenantGraph` (§13.18).
+The tool layer's rules are in CLAUDE.md's `mcp/` bullet; this is the part around it.
+
+**Custody.** What the server keeps is a ~2-year grant credential per user, so it is held as
+narrowly as the design allows: AES-256-GCM per credential, the AAD binding it to the pubky and
+the environment, the master key in a root-owned file outside the database; OAuth tokens are opaque
+handles stored as SHA-256 hashes. The credential never leaves the process. Unlinking — a revoked
+last refresh token, or 90 days without one — revokes the grant on the homeserver from the stored
+secret alone (`revoke_own_grant`, a proof logout that needs no live bearer) before the row goes.
+`loopky-mcp admin revoke-all` is the mass-revocation path a leak calls for, and it keeps the row
+of any grant it could not revoke so a rerun retries it.
+
+**Four things not to undo.** *A re-link replaces the credential, and the pool follows it*: a
+second sign-in revokes the first grant, so a tenant still holding it would fail its next write,
+and that refusal used to unlink the user's new, valid link — found by an end-to-end run against
+staging, not by a test. The pool reopens a graph whenever the secret on record changed, and
+reports a refusal only for the secret still on record. *An approval is exactly the asked-for
+scope*, or it is revoked on the spot rather than stored. *The `/mcp` gate is a route-scoped
+plugin*, not a Plugins-phase interceptor (that answered `/healthz` with a 401), and it runs before
+the handlers, because inside `sse {}` the response is already a 200. *The FFI is configured for a
+server*: id-addressed grant flows instead of the global slot §13.10 describes, polled without
+blocking and capped below the OAuth half's own pending-login cap, and an LRU session cache with
+single-flight minting sized to the pool, because two concurrent re-mints of one grant replace each
+other's bearer.
+
+**Deployment.** `mcp/Dockerfile` (jammy for `libpubkycore`'s glibc floor, non-root, read-only
+root) is built and booted on every PR by CI's `mcp` job. `/tmp` must be an **exec** tmpfs: JNA and
+sqlite-jdbc load their native libraries from it, and Docker's default tmpfs is `noexec` — the
+smoke test caught the server dying at its first database open. `RUST_LOG=warn`, because
+`libpubkycore` logs a pending sign-in's relay channel at INFO. `mcp-deploy.yml` rolls staging on
+every push to `main` and production, by the same digest, behind the `production` environment's
+reviewers; on the VPS a forced-command SSH key can run `deploy.sh` and nothing else.
+`mcp/deploy/README.md` is the operator's half.
+
+### 13.20 Still open
 
 - **A TLS-intercepting proxy** (§13.17) needs the pubky SDK to trust a CA it was not built with.
   Upstream work; until then such a sandbox exempts Loopky's hosts from interception.
