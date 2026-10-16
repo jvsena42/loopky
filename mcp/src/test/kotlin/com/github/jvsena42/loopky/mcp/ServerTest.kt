@@ -81,6 +81,27 @@ class ServerTest {
         }
     }
 
+    @Test
+    fun `health fails once the store cannot be read`() = testApplication {
+        val harness = OAuthHarness.create()
+        try {
+            application {
+                loopkyMcp(
+                    ServerParts(
+                        oauth = harness.deps(),
+                        tenantFactory = FakeTenantFactory(),
+                        scratchDir = Files.createTempDirectory("mcp-health").resolve("inline"),
+                    ),
+                )
+            }
+            assertEquals(HttpStatusCode.OK, client.get("/healthz").status)
+            harness.store.close()
+            assertEquals(HttpStatusCode.ServiceUnavailable, client.get("/healthz").status)
+        } finally {
+            harness.close()
+        }
+    }
+
     private companion object {
         const val INITIALIZE = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18",""" +
             """"capabilities":{},"clientInfo":{"name":"test","version":"1"}}}"""

@@ -19,6 +19,7 @@ import com.github.jvsena42.loopky.mcp.tenant.TenantPool
 import com.github.jvsena42.loopky.mcp.vault.MasterKey
 import com.github.jvsena42.loopky.mcp.vault.VaultBootstrap
 import com.github.jvsena42.loopky.util.runSuspendCatching
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
@@ -28,16 +29,20 @@ import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import kotlin.system.exitProcess
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 fun main(args: Array<String>) {
     val config = McpConfig.fromEnvironment()
@@ -93,7 +98,15 @@ fun Application.loopkyMcp(parts: ServerParts) {
     // first is whatever the client sent, once anything but Caddy can reach this port (#518).
     install(XForwardedHeaders) { useLastProxy() }
     routing {
-        get("/healthz") { call.respondText("ok") }
+        // A real read, so a wedged database thread fails the container's healthcheck and
+        // `restart: unless-stopped` acts. Detached and abandoned at the bound: a JDBC call that
+        // blocks answers no cancellation, and a probe waiting on it would hang with it.
+        get("/healthz") {
+            val probe = async(Dispatchers.IO) { parts.oauth.store.ping() }
+            val live = withTimeoutOrNull(HEALTH_TIMEOUT) { runSuspendCatching { probe.await() }.isSuccess } ?: false
+            if (!live) probe.cancel()
+            if (live) call.respondText("ok") else call.respondText("unhealthy", status = HttpStatusCode.ServiceUnavailable)
+        }
     }
 
     val oauth = installOAuth(parts.oauth)
@@ -143,3 +156,5 @@ private val sweepLog = RedactingLogger("loopky-mcp.sweep")
 
 /** The largest record a tool reads: a deck manifest or a card chunk. */
 private const val MAX_RECORD_BYTES = 8L * 1024 * 1024
+
+private val HEALTH_TIMEOUT = 3.seconds

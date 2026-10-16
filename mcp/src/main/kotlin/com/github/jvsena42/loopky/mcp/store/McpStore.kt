@@ -9,6 +9,11 @@ class McpStore(val db: McpDatabase, private val lock: DataDirLock? = null) : Aut
     val tokens = TokenStore(db)
     val links = LinkStore(db)
 
+    /** A trivial read, for the health check: answers only when the database thread is free. */
+    suspend fun ping() {
+        db.transaction { c -> c.createStatement().use { it.execute("SELECT 1") } }
+    }
+
     override fun close() {
         db.close()
         lock?.close()
