@@ -2,6 +2,9 @@ package com.github.jvsena42.loopky.mcp
 
 import com.github.jvsena42.loopky.cli.CLI_VERSION
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.mcp.security.ClientKey
+import com.github.jvsena42.loopky.mcp.security.RateLimitPolicy
+import com.github.jvsena42.loopky.mcp.security.TokenBucketLimiter
 import com.github.jvsena42.loopky.mcp.security.UserLimiter
 import com.github.jvsena42.loopky.mcp.tenant.TenantPool
 import com.github.jvsena42.loopky.mcp.tools.InlineScratch
@@ -19,6 +22,7 @@ import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.application.install
 import io.ktor.server.application.pluginOrNull
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.origin
 import io.ktor.server.request.header
 import io.ktor.server.request.httpMethod
 import io.ktor.server.response.header
@@ -41,6 +45,10 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.nio.file.Path
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
@@ -78,11 +86,19 @@ data class HttpLimits(
     val maxSessionsPerPrincipal: Int = DEFAULT_MAX_SESSIONS_PER_PRINCIPAL,
     /** A session nobody has used for this long is closed on the next initialize. */
     val sessionIdleTtl: Duration = DEFAULT_SESSION_IDLE_TTL,
+    /**
+     * Bearer checks that *failed*, per client address. Every request costs a token lookup, and
+     * nothing else stood in front of it; charging only the failures means an address that
+     * Claude's users share pays nothing for their valid traffic, and a flood of made-up tokens
+     * from one place is answered 429 before the store sees it.
+     */
+    val failedAuthRate: RateLimitPolicy = RateLimitPolicy.perMinute(count = DEFAULT_FAILED_AUTH_PER_MINUTE),
 ) {
     private companion object {
         const val DEFAULT_MAX_BODY_BYTES = 2L * 1024 * 1024
         const val DEFAULT_MAX_SESSIONS = 1_000
         const val DEFAULT_MAX_SESSIONS_PER_PRINCIPAL = 8
+        const val DEFAULT_FAILED_AUTH_PER_MINUTE = 60
         val DEFAULT_SESSION_IDLE_TTL = 1.hours
     }
 }
@@ -177,6 +193,7 @@ private class McpSession(
 private class McpSessions(private val deps: McpDeps, private val dispatcher: ToolDispatcher) {
 
     private val sessions = ConcurrentHashMap<String, McpSession>()
+    private val failedAuth = TokenBucketLimiter(deps.limits.failedAuthRate, FunctionClock(deps.clock))
 
     /** The auth, revocation and origin gates. False means the call was answered. */
     suspend fun admit(call: ApplicationCall): Boolean {
@@ -191,7 +208,14 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
             call.reject(HttpStatusCode.PayloadTooLarge, "Request body exceeds ${deps.limits.maxBodyBytes} bytes.")
             return false
         }
+        val address = ClientKey.of(call.request.origin.remoteHost)
+        if (failedAuth.retryAfterSeconds(address) > 0) {
+            call.response.header(HttpHeaders.RetryAfter, failedAuth.retryAfterSeconds(address).toString())
+            call.reject(HttpStatusCode.TooManyRequests, "Too many failed authentications from this address.")
+            return false
+        }
         val principal = principalOf(call) ?: run {
+            failedAuth.tryAcquire(address)
             call.unauthorized(null)
             return false
         }
@@ -309,6 +333,13 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
 }
 
 private const val MCP_SESSION_ID_HEADER = "Mcp-Session-Id"
+
+/** [McpDeps.clock] as the `java.time.Clock` the limiter reads. */
+private class FunctionClock(private val now: () -> Long) : Clock() {
+    override fun getZone(): ZoneId = ZoneOffset.UTC
+    override fun withZone(zone: ZoneId?): Clock = this
+    override fun instant(): Instant = Instant.ofEpochMilli(now())
+}
 
 /** A JSON-RPC-shaped refusal, the way the SDK words its own, so a client reads one shape. */
 private suspend fun ApplicationCall.reject(status: HttpStatusCode, message: String) {

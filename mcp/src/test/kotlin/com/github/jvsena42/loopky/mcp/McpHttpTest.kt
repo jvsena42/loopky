@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.cli.FakeDeckRepository
 import com.github.jvsena42.loopky.cli.testDeck
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.pubky.PubkyError
+import com.github.jvsena42.loopky.mcp.security.RateLimitPolicy
 import com.github.jvsena42.loopky.mcp.tenant.TenantLimits
 import com.github.jvsena42.loopky.mcp.tenant.TenantPool
 import io.ktor.client.HttpClient
@@ -18,6 +19,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.server.application.install
+import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
@@ -61,7 +64,10 @@ class McpHttpTest {
     )
 
     private fun serving(limits: HttpLimits = HttpLimits(), block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
-        application { installMcp(deps(limits)) }
+        application {
+            install(XForwardedHeaders)
+            installMcp(deps(limits))
+        }
         block()
     }
 
@@ -125,6 +131,26 @@ class McpHttpTest {
             response.headers[HttpHeaders.WWWAuthenticate],
         )
         assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = "token-mallory").status)
+    }
+
+    @Test
+    fun `failed bearer checks are bounded per address, and valid traffic from elsewhere is not`() = serving(
+        HttpLimits(failedAuthRate = RateLimitPolicy(burst = 2, perSecond = 0.0)),
+    ) {
+        assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = "token-mallory").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.rpc(INITIALIZE, token = null).status)
+        val limited = client.rpc(INITIALIZE, token = "token-mallory")
+        assertEquals(HttpStatusCode.TooManyRequests, limited.status)
+        assertNotNull(limited.headers[HttpHeaders.RetryAfter])
+        assertEquals(HttpStatusCode.TooManyRequests, client.rpc(INITIALIZE).status, "the address is refused before the lookup")
+        val elsewhere = client.post(MCP_PATH) {
+            header(HttpHeaders.Authorization, "Bearer token-alice")
+            header("X-Forwarded-For", "198.51.100.9")
+            header(HttpHeaders.Accept, "application/json, text/event-stream")
+            contentType(ContentType.Application.Json)
+            setBody(INITIALIZE)
+        }
+        assertEquals(HttpStatusCode.OK, elsewhere.status)
     }
 
     @Test
