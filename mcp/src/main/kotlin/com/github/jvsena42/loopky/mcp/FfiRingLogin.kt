@@ -18,11 +18,18 @@ class FfiRingLogin(private val pubky: UniffiPubkyClient) : RingLogin {
     }
 
     override suspend fun poll(flowId: String): LoginPoll {
-        val payload = pubky.pollGrantAuthFlowHandle(flowId).getOrElse {
-            return LoginPoll.Failed(it.message ?: "The sign-in could not be completed")
+        // An FFI error is thrown, which the host reads as "ask again" (a relay blip must not fail a
+        // sign-in the user already approved), except a flow the FFI no longer has: that one is over.
+        val payload = pubky.pollGrantAuthFlowHandle(flowId).getOrElse { error ->
+            if (error.message.orEmpty().startsWith(NO_SUCH_FLOW)) return LoginPoll.Expired
+            throw error
         }
         val answer = Json.parseToJsonElement(payload).jsonObject
-        if (answer.text("status") != "approved") return LoginPoll.Pending
+        when (answer.text("status")) {
+            "approved" -> Unit
+            "expired" -> return LoginPoll.Expired
+            else -> return LoginPoll.Pending
+        }
         val session = answer["session"]!!.jsonObject
         // Ring can only narrow what was asked for; anything but exactly the one scope is refused
         // rather than stored, so the server can never end up holding more than `/pub/loopky/`.
@@ -52,6 +59,7 @@ class FfiRingLogin(private val pubky: UniffiPubkyClient) : RingLogin {
 
     private companion object {
         const val SESSION_REJECTED = "Session rejected"
+        const val NO_SUCH_FLOW = "No auth flow with id"
     }
 }
 
