@@ -57,21 +57,14 @@ interface PubkyClient {
     suspend fun revalidateSession(sessionSecret: String): Result<String>
 
     /**
-     * Pubky Ring-style deeplink flow, minting `pubkyauth://signin?…`.
+     * Pubky Ring-style deeplink flow, minting `pubkyauth://signin_grant?…` (#130).
      *
-     * **Pinned to the cookie variant because no Ring release can parse a grant URL** (#321).
-     * v1.19's APK ships the pre-0.10 `libpubkycore.so` — byte-identical to the one
-     * react-native-pubky#39 replaced — whose parser accepts the intent hosts `""`, `signin` and
-     * `signup` and answers `signin_grant` with "Unrecognized format", filed as
-     * pubky/pubky-ring#375. Measured back to back on 2026-09-13: the cookie URL raises Ring's
-     * approval prompt, the grant URL does not reach it. Grant is still where this ends up — the
-     * cookie flow is deprecated upstream — so revert the pin, do not rebuild it, once Ring ships
-     * an APK whose native library matches its bindings.
+     * Needs **Ring v2.0 or newer**: older releases answer a grant URL with "Unrecognized format"
+     * and the user cannot sign in at all (#321).
      *
-     * Either flow's approval payload is read the same way: [parseSessionPayload] takes both
-     * `session_secret` and grant's `grant_secret`, and the FFI's `restore_session` sniffs which
-     * kind of token it was handed, so [signOut], [revalidateSession] and `put_with_session` take
-     * either unchanged.
+     * The approval payload names the secret `grant_secret`, which [parseSessionPayload] aliases;
+     * `restore_session` sniffs the token kind, so [signOut], [revalidateSession] and
+     * `put_with_session` take it unchanged.
      */
     suspend fun startAuthFlow(capabilities: String): Result<String>
     suspend fun awaitAuthApproval(): Result<String>
