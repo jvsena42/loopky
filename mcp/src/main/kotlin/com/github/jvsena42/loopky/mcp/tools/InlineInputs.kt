@@ -50,26 +50,33 @@ object InlineInputs {
     }
 
     /**
-     * The picture addresses in [text], for the guard: the two image columns of a delimited line
-     * or the two image keys of a JSONL one, never a URL inside prose. A networking deck has
-     * `https://192.168.1.1/admin` on a back, and `loopky import` takes it; the guard is about
-     * what a phone will be sent to fetch, and a back is not that.
+     * The picture addresses in [text], for the guard: the image columns of a delimited line or the
+     * image keys of a JSONL one, never a URL inside prose. A networking deck has
+     * `https://192.168.1.1/admin` on a back, and `loopky import` takes it; the guard is about what
+     * a phone will be sent to fetch, and a back is not that.
+     *
+     * Deliberately wider than either reader rather than a copy of them: the raw line is split
+     * (an empty front is the normal shape of a picture card, and trimming would shift its
+     * columns), comment lines are checked too, a `{` line that is not JSON is read as columns,
+     * and an import line is split on every separator it contains. Checking a column a reader
+     * skips can only refuse a private address the reader would have ignored; missing one stores it.
      */
     fun imageUrlsIn(text: String, kind: InlineInput): List<String> =
-        text.lineSequence().flatMap { imageFieldsOf(it.trim(), kind) }.filter { it.startsWith(HTTP, ignoreCase = true) }.toList()
+        text.lineSequence().flatMap { imageFieldsOf(it, kind) }.filter { it.startsWith(HTTP, ignoreCase = true) }.distinct().toList()
 
     private fun imageFieldsOf(line: String, kind: InlineInput): List<String> {
-        if (line.isEmpty() || line.startsWith('#')) return emptyList()
-        if (line.startsWith('{')) {
-            val row = runCatching { Json.parseToJsonElement(line).jsonObject }.getOrNull() ?: return emptyList()
-            return IMAGE_KEYS.mapNotNull { key -> (row[key] as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotEmpty() } }
+        if (line.isBlank()) return emptyList()
+        if (line.trimStart().startsWith('{')) {
+            val row = runCatching { Json.parseToJsonElement(line).jsonObject }.getOrNull()
+            if (row != null) {
+                return IMAGE_KEYS.mapNotNull { key -> (row[key] as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotEmpty() } }
+            }
         }
-        val separator = when (kind) {
-            InlineInput.CardFile -> TAB
-            // The parser's own candidates, in its order; a line with none is a single column.
-            InlineInput.ImportSource -> IMPORT_SEPARATORS.firstOrNull { it in line } ?: return emptyList()
+        val separators = when (kind) {
+            InlineInput.CardFile -> listOf(TAB)
+            InlineInput.ImportSource -> IMPORT_SEPARATORS.filter { it in line }
         }
-        return line.split(separator).drop(SIDES).map { it.trim() }.filter { it.isNotEmpty() }
+        return separators.flatMap { separator -> line.split(separator).drop(SIDES) }.map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     private fun cardsAsJsonl(cards: JsonElement): InlineContent {

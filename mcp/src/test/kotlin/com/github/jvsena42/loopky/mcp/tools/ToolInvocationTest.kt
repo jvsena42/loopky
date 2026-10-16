@@ -213,4 +213,17 @@ class ToolInvocationTest {
             invoke("import", """{"text":"router,https://10.0.0.1/\nhttps://a.example/x: https://b.example/y"}""")
         assertEquals(emptyList(), imported.imageUrls)
     }
+
+    /** The shapes the readers take that a trimmed, comment-skipping, per-line guard missed. */
+    @Test
+    fun `picture columns are found wherever a reader could take them`() {
+        // An empty front: the picture card's normal shape, which trimming shifted a column left.
+        assertEquals(listOf("https://10.0.0.1/x.png"), cardText("\\tback\\thttps://10.0.0.1/x.png"))
+        // `#1 ranked` is a card to CardFile, and the import reader has no comment rule at all.
+        assertEquals(listOf("https://10.0.0.2/x.png"), cardText("#1 ranked\\tback\\thttps://10.0.0.2/x.png"))
+        // A `{` line that is not JSON is columns to the import reader.
+        assertEquals(listOf("https://10.0.0.3/x.png"), invoke("import", """{"text":"{not json\tback\thttps://10.0.0.3/x.png"}""").imageUrls)
+    }
+
+    private fun cardText(text: String) = invoke("card_add", """{"deck_id":"d1","text":"$text"}""").imageUrls
 }
