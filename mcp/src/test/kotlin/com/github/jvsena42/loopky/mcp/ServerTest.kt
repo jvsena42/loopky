@@ -18,6 +18,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -26,6 +28,8 @@ import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * The composed server: the OAuth half issuing a token that the MCP half accepts, and a tool call
@@ -91,12 +95,36 @@ class ServerTest {
                         oauth = harness.deps(),
                         tenantFactory = FakeTenantFactory(),
                         scratchDir = Files.createTempDirectory("mcp-health").resolve("inline"),
+                        upkeep = Upkeep(onWedged = {}),
                     ),
                 )
             }
             assertEquals(HttpStatusCode.OK, client.get("/healthz").status)
             harness.store.close()
             assertEquals(HttpStatusCode.ServiceUnavailable, client.get("/healthz").status)
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun `a store that stays unreadable makes the server exit, so the container restarts`() = testApplication {
+        val harness = OAuthHarness.create()
+        val wedged = CompletableDeferred<Unit>()
+        try {
+            application {
+                loopkyMcp(
+                    ServerParts(
+                        oauth = harness.deps(),
+                        tenantFactory = FakeTenantFactory(),
+                        scratchDir = Files.createTempDirectory("mcp-watchdog").resolve("inline"),
+                        upkeep = Upkeep(watchdogEvery = 50.milliseconds, onWedged = { wedged.complete(Unit) }),
+                    ),
+                )
+            }
+            startApplication()
+            harness.store.close()
+            withTimeout(10.seconds) { wedged.await() }
         } finally {
             harness.close()
         }

@@ -90,7 +90,15 @@ class ServerParts(
     val tenantFactory: TenantFactory,
     val scratchDir: Path,
     val tenantLimits: TenantLimits = TenantLimits(),
+    val upkeep: Upkeep = Upkeep(),
+)
+
+/** The periodic work: the sweep, and the watchdog that turns a wedged store into a restart. */
+class Upkeep(
     val sweepEvery: Duration = 5.minutes,
+    val watchdogEvery: Duration = 30.seconds,
+    /** What the watchdog does about a store that stopped answering: exit, so the container restarts. */
+    val onWedged: () -> Unit = { exitProcess(1) },
 )
 
 fun Application.loopkyMcp(parts: ServerParts) {
@@ -98,14 +106,13 @@ fun Application.loopkyMcp(parts: ServerParts) {
     // first is whatever the client sent, once anything but Caddy can reach this port (#518).
     install(XForwardedHeaders) { useLastProxy() }
     routing {
-        // A real read, so a wedged database thread fails the container's healthcheck and
-        // `restart: unless-stopped` acts. Detached and abandoned at the bound: a JDBC call that
-        // blocks answers no cancellation, and a probe waiting on it would hang with it.
+        // A real read, so a wedged database thread fails the deploy gate and the healthcheck.
         get("/healthz") {
-            val probe = async(Dispatchers.IO) { parts.oauth.store.ping() }
-            val live = withTimeoutOrNull(HEALTH_TIMEOUT) { runSuspendCatching { probe.await() }.isSuccess } ?: false
-            if (!live) probe.cancel()
-            if (live) call.respondText("ok") else call.respondText("unhealthy", status = HttpStatusCode.ServiceUnavailable)
+            if (storeLive(parts.oauth.store)) {
+                call.respondText("ok")
+            } else {
+                call.respondText("unhealthy", status = HttpStatusCode.ServiceUnavailable)
+            }
         }
     }
 
@@ -126,14 +133,30 @@ fun Application.loopkyMcp(parts: ServerParts) {
 
     // Each step guarded on its own: one that threw (a busy database) used to end the loop for
     // good, and with it the inactivity unlink, the stale-flow reap and the idle-graph close.
+    // Docker only *marks* a container unhealthy outside Swarm; `restart: unless-stopped` acts on an
+    // exit. So the server probes itself and exits when the store has been unreadable for a while,
+    // which is what turns a wedged database thread into a restart.
+    val watchdog = launch {
+        var failures = 0
+        while (isActive) {
+            delay(parts.upkeep.watchdogEvery)
+            failures = if (storeLive(parts.oauth.store)) 0 else failures + 1
+            if (failures >= WATCHDOG_FAILURES) {
+                sweepLog.error("The store has been unreadable for $failures probes; exiting so the container restarts")
+                parts.upkeep.onWedged()
+                return@launch
+            }
+        }
+    }
     val sweeper = launch {
         while (isActive) {
-            delay(parts.sweepEvery)
+            delay(parts.upkeep.sweepEvery)
             runSuspendCatching { oauth.sweep() }.onFailure { sweepLog.warn("The OAuth sweep failed; retrying next tick", it) }
             runSuspendCatching { tenants.sweep() }.onFailure { sweepLog.warn("The tenant sweep failed; retrying next tick", it) }
         }
     }
     monitor.subscribe(ApplicationStopped) {
+        watchdog.cancel()
         sweeper.cancel()
         runBlocking { tenants.close() }
         parts.oauth.store.close()
@@ -158,3 +181,16 @@ private val sweepLog = RedactingLogger("loopky-mcp.sweep")
 private const val MAX_RECORD_BYTES = 8L * 1024 * 1024
 
 private val HEALTH_TIMEOUT = 3.seconds
+
+/**
+ * One store read, detached and abandoned at the bound: a JDBC call that blocks answers no
+ * cancellation, and a probe waiting on it would hang with it.
+ */
+private suspend fun Application.storeLive(store: McpStore): Boolean {
+    val probe = async(Dispatchers.IO) { store.ping() }
+    val live = withTimeoutOrNull(HEALTH_TIMEOUT) { runSuspendCatching { probe.await() }.isSuccess } ?: false
+    if (!live) probe.cancel()
+    return live
+}
+
+private const val WATCHDOG_FAILURES = 3
