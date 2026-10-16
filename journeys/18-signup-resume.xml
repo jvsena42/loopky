@@ -10,7 +10,7 @@
     is stored before `signUp` runs.
 
     **Expected to fail as of 2026-10-16, from reading the code — not yet driven.** "Create a
-    Pubky" always opens the method screen, which never consults the stored token; the local step
+    Pubky" always opens the method screen, which never consults the stored token (#510); the local step
     is reached only by finishing a method again, and starting Lightning again calls
     `createInvoice`, which overwrites the stored token with a new pending invoice. Record the
     result in the PR that runs this.
