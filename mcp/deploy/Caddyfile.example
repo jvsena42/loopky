@@ -1,0 +1,8 @@
+# TLS in front of both deployments. Copy to /etc/caddy/Caddyfile and adjust the hostnames.
+mcp.loopky.app {
+	reverse_proxy 127.0.0.1:8081
+}
+
+mcp.staging.loopky.app {
+	reverse_proxy 127.0.0.1:8082
+}

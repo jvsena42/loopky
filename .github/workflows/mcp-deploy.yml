@@ -1,0 +1,170 @@
+name: MCP deploy
+
+# Continuous to staging, approved to production (#214, #486).
+#
+# Every push to `main` that can change the server builds one image, pushes it to GHCR and rolls
+# **staging** to it by digest. **Production** takes the same digest, never a rebuild, and only
+# after the `production` GitHub Environment's required reviewers approve. That gate is configured
+# in the repository settings, not here, so this file cannot be edited into skipping it.
+#
+# What a run needs, per GitHub Environment (`staging`, `production`):
+#   secrets  VPS_HOST, VPS_USER, VPS_SSH_KEY (the forced-command deploy key), VPS_KNOWN_HOSTS
+#   vars     MCP_PUBLIC_URL (https://mcp.staging.loopky.app, https://mcp.loopky.app)
+# mcp/deploy/README.md has the server side.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mcp/**'
+      - 'cli-core/**'
+      - 'shared/src/commonMain/**'
+      - 'shared/src/jvmMain/**'
+      - 'shared/src/jvmSharedMain/**'
+      - 'shared/build.gradle.kts'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - '.github/workflows/mcp-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: 'Redeploy an existing image digest (sha256:…) instead of building. Empty builds HEAD.'
+        required: false
+        default: ''
+
+# Never two deploys at once, and never cancel one half-way: a cancelled roll is a box in an
+# unknown state.
+concurrency:
+  group: mcp-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/jvsena42/loopky-mcp
+
+jobs:
+  image:
+    name: Build and push the image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.pick.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+        if: inputs.digest == ''
+
+      - name: Set up JDK 17
+        if: inputs.digest == ''
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        if: inputs.digest == ''
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      # CI already ran this on the PR; again here because what merged is not what was tested
+      # when `main` moved underneath it.
+      - name: MCP server tests
+        if: inputs.digest == ''
+        run: ./gradlew :mcp:test
+
+      - uses: docker/setup-buildx-action@v4
+        if: inputs.digest == ''
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read the version
+        if: inputs.digest == ''
+        id: version
+        run: echo "version=$(grep -oP '^loopkyCliVersion=\K.+' gradle.properties)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        if: inputs.digest == ''
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: mcp/Dockerfile
+          push: true
+          provenance: false
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Smoke-test the pushed image
+        if: inputs.digest == ''
+        run: bash mcp/deploy/smoke-test.sh "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
+
+      - name: Pick the digest
+        id: pick
+        env:
+          BUILT: ${{ steps.build.outputs.digest }}
+          GIVEN: ${{ inputs.digest }}
+        run: |
+          set -euo pipefail
+          DIGEST="${GIVEN:-$BUILT}"
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "not a digest: $DIGEST" >&2; exit 1; }
+          docker manifest inspect "$IMAGE@$DIGEST" >/dev/null
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "### $IMAGE@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+
+  staging:
+    name: Deploy to staging
+    needs: image
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.MCP_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: mcp/deploy
+      - name: Roll staging
+        uses: ./mcp/deploy/action
+        with:
+          environment: staging
+          image: ${{ env.IMAGE }}@${{ needs.image.outputs.digest }}
+          public-url: ${{ vars.MCP_PUBLIC_URL }}
+          host: ${{ secrets.VPS_HOST }}
+          user: ${{ secrets.VPS_USER }}
+          ssh-key: ${{ secrets.VPS_SSH_KEY }}
+          known-hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
+
+  production:
+    name: Deploy to production
+    needs: [image, staging]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.MCP_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: mcp/deploy
+      - name: Roll production
+        uses: ./mcp/deploy/action
+        with:
+          environment: production
+          image: ${{ env.IMAGE }}@${{ needs.image.outputs.digest }}
+          public-url: ${{ vars.MCP_PUBLIC_URL }}
+          host: ${{ secrets.VPS_HOST }}
+          user: ${{ secrets.VPS_USER }}
+          ssh-key: ${{ secrets.VPS_SSH_KEY }}
+          known-hosts: ${{ secrets.VPS_KNOWN_HOSTS }}

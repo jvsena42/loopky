@@ -1,0 +1,42 @@
+name: Roll an MCP environment
+description: Deploy an image digest to the VPS over the forced-command key, then probe it from outside.
+inputs:
+  environment: { required: true, description: staging or production }
+  image: { required: true, description: 'ghcr.io/jvsena42/loopky-mcp@sha256:…' }
+  public-url: { required: true, description: The environment's https origin }
+  host: { required: true, description: VPS host }
+  user: { required: true, description: Deploy user }
+  ssh-key: { required: true, description: Private key whose authorized_keys entry forces deploy.sh }
+  known-hosts: { required: true, description: The VPS host key line(s); never trust-on-first-use }
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        IMAGE: ${{ inputs.image }}
+        HOST: ${{ inputs.host }}
+        USER_NAME: ${{ inputs.user }}
+        SSH_KEY: ${{ inputs.ssh-key }}
+        KNOWN_HOSTS: ${{ inputs.known-hosts }}
+      run: |
+        set -euo pipefail
+        DIR="$(mktemp -d)"
+        trap 'rm -rf "$DIR"' EXIT
+        printf '%s\n' "$SSH_KEY" > "$DIR/key"
+        printf '%s\n' "$KNOWN_HOSTS" > "$DIR/known_hosts"
+        chmod 600 "$DIR/key"
+        ssh -i "$DIR/key" -o UserKnownHostsFile="$DIR/known_hosts" -o StrictHostKeyChecking=yes \
+          -o BatchMode=yes -o ConnectTimeout=20 \
+          "$USER_NAME@$HOST" deploy "$ENVIRONMENT" "$IMAGE"
+
+    # From outside, through Caddy and DNS: the box saying it is healthy on loopback does not mean
+    # Claude can reach it.
+    - shell: bash
+      env:
+        URL: ${{ inputs.public-url }}
+      run: |
+        set -euo pipefail
+        for _ in $(seq 1 20); do curl -fsS "$URL/healthz" >/dev/null && break; sleep 3; done
+        curl -fsS "$URL/healthz"
+        curl -fsS "$URL/.well-known/oauth-authorization-server" | jq -e --arg u "$URL" '.issuer == $u' >/dev/null

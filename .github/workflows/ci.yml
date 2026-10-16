@@ -1170,6 +1170,58 @@ jobs:
       - name: Lint the Swift
         run: ./gradlew lintSwift
 
+  mcp:
+    # The hosted MCP server (#214): its suite, then the image CD ships, started and probed. A green
+    # `:mcp:test` runs on the runner's JDK with the jvm() `.so` beside it; the container is a
+    # different glibc, a non-root user and a read-only root, and only starting it says those agree.
+    name: MCP server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: MCP server tests
+        run: ./gradlew :mcp:test
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: mcp/Dockerfile
+          load: true
+          tags: loopky-mcp:ci
+          provenance: false
+
+      # Offline on purpose: the metadata endpoints and `/healthz` answer without a homeserver, so
+      # this cannot flake on the network, and it still proves the image boots under the
+      # constraints the VPS runs it with.
+      - name: Smoke-test the container
+        run: bash mcp/deploy/smoke-test.sh loopky-mcp:ci
+
+      - name: Say which tests failed
+        if: failure()
+        uses: ./.github/actions/failing-tests
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mcp-test-reports
+          path: 'mcp/build/reports/tests/'
+          if-no-files-found: ignore
+
   ci-ok:
     # **The one check branch protection requires, standing for every job above.** Requiring the
     # jobs by name cannot work: a matrix job skipped by `if:` reports once under its unexpanded
@@ -1192,6 +1244,7 @@ jobs:
       - cli-sandbox-sim
       - cli-binary-macos
       - ios
+      - mcp
     if: always()
     runs-on: ubuntu-latest
     steps:
