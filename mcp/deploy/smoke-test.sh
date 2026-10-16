@@ -76,6 +76,12 @@ chmod 0400 "$WORK/secrets/next_master_key"
 as_root chown 10001 /w/secrets/next_master_key
 container --rm -v "$WORK/secrets/next_master_key:/run/secrets/next_master_key:ro" "$IMAGE" \
   admin rotate-key /run/secrets/next_master_key
+# The old key must be refused once the database is under the new one: a server that came up on
+# it would be reading credentials it cannot open.
+if container --rm "$IMAGE" admin revoke-all >/dev/null 2>&1; then
+  echo "the old master key still opens the rotated database" >&2
+  exit 1
+fi
 as_root sh -c 'cp /w/secrets/next_master_key /w/secrets/master_key && chown 10001 /w/secrets/master_key && chmod 0400 /w/secrets/master_key'
 serve
 wait_healthy

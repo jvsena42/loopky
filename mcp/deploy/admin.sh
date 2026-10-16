@@ -32,6 +32,16 @@ compose() { docker compose -f "$ROOT/compose.yml" "$@"; }
 exec 9>"$STATE/$ENVIRONMENT/deploy.lock"
 flock -n 9 || { echo "a deploy to $ENVIRONMENT is running; try again when it ends" >&2; exit 75; }
 
+# A leftover .next means a rotation re-wrapped the database and never swapped the file: it is then
+# the only key the vault opens with, and overwriting it loses every credential. Checked before the
+# service is touched, since restarting it on the old key would fail the same way.
+NEXT="$KEYS/master_key.next"
+if [ "$COMMAND" = rotate-key ] && [ -e "$NEXT" ]; then
+  echo "$NEXT exists: a previous rotation did not finish, and the database may already be under it." >&2
+  echo "Move it over master_key by hand and start the server before rotating again." >&2
+  exit 1
+fi
+
 compose stop mcp
 trap 'compose up -d --wait --wait-timeout 90 || echo "STARTING $ENVIRONMENT FAILED: it is down" >&2' EXIT
 
@@ -40,8 +50,7 @@ case "$COMMAND" in
     compose run --rm --no-deps mcp admin revoke-all
     ;;
   rotate-key)
-    NEXT="$KEYS/master_key.next"
-    head -c 32 /dev/urandom | base64 > "$NEXT"
+    (umask 077 && head -c 32 /dev/urandom | base64 > "$NEXT")
     chown 10001:10001 "$NEXT"
     chmod 0400 "$NEXT"
     compose run --rm --no-deps -v "$NEXT:/run/secrets/next_master_key:ro" mcp \
