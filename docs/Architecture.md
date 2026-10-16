@@ -2693,7 +2693,44 @@ stacks rather than trusting the JVM's view. A
 because the FFI's grant resume (§13.10) keeps rejoining a relay it never reached; `login` now asks
 the relay with `doctor`'s probe before showing a QR and fails 5, 14 or 15 there (#360).
 
-### 13.18 Still open
+### 13.18 One repository graph per user (#214)
+
+A hosted MCP server is one JVM process serving many Loopky users, and the repositories were
+written for a process with one. Every repository caches per session — decks, cards, review state,
+settings, the session itself — over one `MutableSessionProvider`, so "which user" is a property of
+the *graph*, not of any call. Keying every cache by `(user, deckId)` was the alternative and it was
+rejected: it is a change to every repository, it has to be kept up by every future one, and a
+single missed key is a cross-tenant read with nothing reporting it. Isolation is structural
+instead. `TenantGraph` (`shared/jvmMain/.../di/TenantGraph.kt`) is one isolated Koin instance per
+user — `koinApplication`, never `startKoin` — built from `sharedModule()` plus a tenant platform
+module in which **every store is in memory** (`InMemoryStores.kt`): there is no file under a
+config home that a second graph could read, and a closed graph leaves nothing behind. What tenants
+share is `TenantServices`: the one `PubkyClient` (the FFI is process-global and takes its session
+secret per call), the `HttpFetcher`, `NexusClient` and `HomegateClient`, and a
+`PassThroughMediaProcessor` typed as such so `JvmMediaProcessor` cannot come back through a
+`MediaProcessor` parameter.
+
+Three things not to undo, each found by the first two-tenant test rather than by reading.
+**`sharedModule` is a function.** Koin keeps a `single`'s instance inside the module's own factory,
+not inside the `Koin` that resolved it, so a module *object* loaded into two `koinApplication`s
+hands both the same session provider — two "isolated" graphs with one user between them. Every
+graph builds its own module; `KoinGraphTest` asserts two graphs share no singleton. **The
+repositories' fire-and-forget scope is a graph binding** (`REPOSITORY_SCOPE`, cancelled by
+`Koin.close()`), not a per-repository default: a graph on a server is opened and closed many times
+per process, and a scope that outlived its graph kept writing with a session the tenant had been
+handed back. **A graph adopts one session, once.** `adoptSession` refuses a second rather than
+compare pubkys, because a comparison runs after the session is already in place and the window
+between the two is where a request writes as the wrong user; a rotated credential means a new
+graph. The client id is per `UniffiPubkyClient` instance now (`clientId`, default `loopky.app`),
+so the server identifies as `mcp.loopky.app` and Ring lists — and revokes — it separately from the
+phone.
+
+Two things it does not do. It does not sign in: `startAuthFlow`/`awaitAuthApproval` are one global
+slot in the FFI (§13.10), so the server runs its Ring flow outside any graph and hands the secret
+in. And it does not bound anything: how many graphs live at once, and for how long, is the
+server's LRU (#214), not the graph's concern.
+
+### 13.19 Still open
 
 - **A TLS-intercepting proxy** (§13.17) needs the pubky SDK to trust a CA it was not built with.
   Upstream work; until then such a sandbox exempts Loopky's hosts from interception.

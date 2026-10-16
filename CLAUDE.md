@@ -247,6 +247,17 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   HTTP *client* does not. A proxy's refusal is exit 14, never 5 (an allowlist answers the same
   every time), and `cli/sandbox-sim/run.sh` is how a network change gets checked against one.
   Architecture.md §13.17 has the measured host list; `loopky doctor` prints it.
+- **A process that serves many users builds one repository graph per user, and three things keep
+  the graphs apart (#214).** `TenantGraph` (jvmMain) is an isolated `koinApplication` per user
+  over `sharedModule()` and in-memory stores, sharing only `TenantServices` — the one
+  `PubkyClient`, the fetcher, Nexus, Homegate and a `PassThroughMediaProcessor`. Not to undo:
+  `sharedModule` is a **function**, because Koin caches a `single` inside the module object's
+  factory and a shared module object gives two graphs one session; the repositories' background
+  scope is the `REPOSITORY_SCOPE` binding, cancelled when the graph closes, never a per-repository
+  default; and a graph adopts **one** session, once — a second `adoptSession` is refused rather
+  than compared, since the comparison would run with the wrong session already in place.
+  `UniffiPubkyClient(clientId)` is how the server identifies as `mcp.loopky.app` rather than the
+  phone's `loopky.app`. Architecture.md §13.18.
 - **A binary has no build type, so the network has to be an explicit input.** The apps pin it
   (debug → staging, release → production, #42); `:cli` reads `--env`/`LOOPKY_ENV` and defaults to
   **production**, one `PubkyEnvironment` value and never a `--nexus-url` beside a

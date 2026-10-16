@@ -112,17 +112,27 @@ fun jvmPlatformModule(
     single<StudyProgressStore> { FileStudyProgressStore(get(PREFERENCES)) }
     single<DeckCacheStore> { FileDeckCacheStore(get(PREFERENCES)) }
 
+    includes(headlessPlatformModule(mediaProcessor))
+
+    single { pubkyEnvironment }
+    single { NexusClient(http = get(), baseUrl = pubkyEnvironment.nexusBaseUrl) }
+    single { HomegateClient(http = get(), baseUrl = pubkyEnvironment.homegateBaseUrl) }
+    single { UnsplashClient(http = get(), keyStore = get(), fallbackKey = unsplashFallbackKey) }
+}
+
+/**
+ * The bindings a headless JVM answers the same way in every graph it hosts — the CLI's one, or
+ * one tenant's among many on a server ([TenantGraph]): no voice, no microphone, no Ring on this
+ * machine, no password manager, no deferred window for background work, and the media processor
+ * the caller chose (see [jvmPlatformModule] for why that one is never defaulted).
+ */
+internal fun headlessPlatformModule(mediaProcessor: MediaProcessor): Module = module {
     single<MediaProcessor> { mediaProcessor }
     single<BackgroundTasks> { InlineBackgroundTasks() }
     single<Speaker> { NoSpeaker() }
     single<SpeechRecognizer> { NoSpeechRecognizer() }
     single<PubkyRingPresence> { NoPubkyRingPresence() }
     single<PasswordManagerPresence> { NoPasswordManagerPresence() }
-
-    single { pubkyEnvironment }
-    single { NexusClient(http = get(), baseUrl = pubkyEnvironment.nexusBaseUrl) }
-    single { HomegateClient(http = get(), baseUrl = pubkyEnvironment.homegateBaseUrl) }
-    single { UnsplashClient(http = get(), keyStore = get(), fallbackKey = unsplashFallbackKey) }
 }
 
 /**
