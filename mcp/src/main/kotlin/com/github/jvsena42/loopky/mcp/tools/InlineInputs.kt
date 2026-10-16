@@ -3,11 +3,14 @@ package com.github.jvsena42.loopky.mcp.tools
 import com.github.jvsena42.loopky.cli.CliError
 import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.data.anki.ApkgReader
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
 
 /** What a call sends in place of a file: the bytes, and the extension the reader picks a format by. */
 class InlineContent(val bytes: ByteArray, val extension: String)
@@ -46,8 +49,28 @@ object InlineInputs {
         return content.checked()
     }
 
-    /** Every address in [text], for the guard: a TSV's picture columns or a JSONL's URL fields. */
-    fun urlsIn(text: String): List<String> = URL_IN_TEXT.findAll(text).map { it.value }.toList()
+    /**
+     * The picture addresses in [text], for the guard: the two image columns of a delimited line
+     * or the two image keys of a JSONL one, never a URL inside prose. A networking deck has
+     * `https://192.168.1.1/admin` on a back, and `loopky import` takes it; the guard is about
+     * what a phone will be sent to fetch, and a back is not that.
+     */
+    fun imageUrlsIn(text: String, kind: InlineInput): List<String> =
+        text.lineSequence().flatMap { imageFieldsOf(it.trim(), kind) }.filter { it.startsWith(HTTP, ignoreCase = true) }.toList()
+
+    private fun imageFieldsOf(line: String, kind: InlineInput): List<String> {
+        if (line.isEmpty() || line.startsWith('#')) return emptyList()
+        if (line.startsWith('{')) {
+            val row = runCatching { Json.parseToJsonElement(line).jsonObject }.getOrNull() ?: return emptyList()
+            return IMAGE_KEYS.mapNotNull { key -> (row[key] as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotEmpty() } }
+        }
+        val separator = when (kind) {
+            InlineInput.CardFile -> TAB
+            // The parser's own candidates, in its order; a line with none is a single column.
+            InlineInput.ImportSource -> IMPORT_SEPARATORS.firstOrNull { it in line } ?: return emptyList()
+        }
+        return line.split(separator).drop(SIDES).map { it.trim() }.filter { it.isNotEmpty() }
+    }
 
     private fun cardsAsJsonl(cards: JsonElement): InlineContent {
         val rows = cards as? JsonArray ?: throw CliError(ExitCode.Usage, "`$CARDS_PROPERTY` is an array of objects.")
@@ -101,7 +124,13 @@ object InlineInputs {
         "That is $count cards; one call takes at most ${InlineLimits.MAX_CARDS}. Split them over several calls.",
     )
 
-    private val URL_IN_TEXT = Regex("""https?://[^\s"'<>\\]+""")
+    private val IMAGE_KEYS = listOf("front_image_url", "back_image_url")
+    private const val TAB = "\t"
+    private val IMPORT_SEPARATORS = listOf(TAB, ";", "|", " \u2014 ", " \u2013 ", " - ", ": ", ",")
+    private const val HTTP = "http"
+
+    /** The columns before the first image column: a front and a back. */
+    private const val SIDES = 2
     private const val JSONL = "jsonl"
     private const val TXT = "txt"
     private const val HEADER_BYTES = 8

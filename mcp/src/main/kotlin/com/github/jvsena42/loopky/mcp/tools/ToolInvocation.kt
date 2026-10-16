@@ -25,7 +25,7 @@ class ToolInvocation(
     private val operands: List<String>,
     /** The file the command reads, or null. Written by the server; its path is never the caller's. */
     val inline: InlineContent?,
-    /** Every picture URL the call carries, for the [UrlGuard]. */
+    /** Every picture URL the call carries — the image options and the image positions of the content — for the [UrlGuard]. */
     val imageUrls: List<String>,
 ) {
     val command: String get() = tool.command.path
@@ -49,7 +49,7 @@ class ToolInvocation(
             val tokens = tool.optionTokens(arguments)
             val inline = InlineInputs.of(tool, arguments)
             val urls = tool.imageUrls(arguments) +
-                (inline?.let { InlineInputs.urlsIn(String(it.bytes, Charsets.UTF_8)) }.orEmpty())
+                (inline?.let { InlineInputs.imageUrlsIn(String(it.bytes, Charsets.UTF_8), requireNotNull(tool.inline)) }.orEmpty())
             return ToolInvocation(tool, tokens, operands, inline, urls.distinct())
         }
 

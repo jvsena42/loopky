@@ -196,5 +196,21 @@ class ToolInvocationTest {
         assertEquals(listOf("https://a.example/1.png", "https://b.example/2.png"), invocation.imageUrls)
         val tsv = invoke("import", """{"text":"a\tb\thttps://c.example/3.jpg"}""")
         assertEquals(listOf("https://c.example/3.jpg"), tsv.imageUrls)
+        val semicolons = invoke("import", """{"text":"a;b;;https://d.example/4.jpg"}""")
+        assertEquals(listOf("https://d.example/4.jpg"), semicolons.imageUrls)
+    }
+
+    /** A URL on a side is content the import takes as it is; only a picture position is the guard's. */
+    @Test
+    fun `a URL inside a front or a back is not a picture, and is not guarded`() {
+        val prose = invoke(
+            "card_add",
+            """{"deck_id":"d1","text":"What does http://example.com serve?\thttps://192.168.1.1/admin\n""" +
+                """{\"front\":\"router\",\"back\":\"https://10.0.0.1/\"}\n"}""",
+        )
+        assertEquals(emptyList(), prose.imageUrls)
+        val imported =
+            invoke("import", """{"text":"router,https://10.0.0.1/\nhttps://a.example/x: https://b.example/y"}""")
+        assertEquals(emptyList(), imported.imageUrls)
     }
 }
