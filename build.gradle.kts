@@ -42,6 +42,8 @@ subprojects {
                 // module puts them rather than in a KMP source set.
                 "src/main/kotlin",
                 "src/test/kotlin",
+                // `:cli-core`'s fixtures, which `:cli`'s tests read.
+                "src/testFixtures/kotlin",
             )
         )
     }

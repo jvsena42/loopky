@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.kotlinSerialization)
+    `java-test-fixtures`
 }
 
 /**
@@ -62,6 +63,13 @@ dependencies {
     api(libs.kotlinx.serialization.json)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
+}
+
+// `:shared` exports Koin, so without this the "no Koin" rule above would be a comment: an
+// `org.koin` import here would compile, and tie the library to a started graph a server may not
+// have. Compile only — `:shared` still needs Koin at runtime, and consumers bring their own.
+configurations.named("compileClasspath") {
+    exclude(group = "io.insert-koin")
 }
 
 tasks.withType<Test>().configureEach {

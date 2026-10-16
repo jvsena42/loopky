@@ -19,12 +19,10 @@ kotlin {
 }
 
 dependencies {
-    // The command layer. Its packages are this module's, so the reachability metadata under
-    // `src/main/resources/META-INF/native-image/` names its classes exactly as before the split.
+    // The command layer, which also exports `:shared`, coroutines and serialization. Its packages
+    // are this module's, so the reachability metadata under `src/main/resources/META-INF/
+    // native-image/` names its classes exactly as before the split.
     implementation(projects.cliCore)
-    implementation(projects.shared)
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.serialization.json)
     implementation(libs.koin.core)
     // QR encoding for `loopky login`. Already in the catalog for the tablet sign-in panel; core
     // only, so it brings no camera/scanner stack.
@@ -34,6 +32,7 @@ dependencies {
     // `:shared`'s FFI bindings — this makes the compile-time dependency honest rather than
     // borrowed from a transitive `implementation`.
     implementation(libs.jna)
+    testImplementation(testFixtures(projects.cliCore))
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
 }
@@ -50,11 +49,9 @@ application {
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     // `AgentPluginTest` holds the agent plugin under `plugins/` against this binary's surface and
-    // version (#388), so a change to either side has to rerun it.
+    // version (#388), so a change to either side has to rerun it. The version is the compiled-in
+    // `CLI_VERSION`, read from the classpath rather than from `gradle.properties` a second time.
     systemProperty("loopky.repoRoot", rootDir.absolutePath)
-    val cliVersion = providers.gradleProperty("loopkyCliVersion").get()
-    systemProperty("loopky.cliVersion", cliVersion)
-    inputs.property("loopkyCliVersion", cliVersion)
     inputs.files(
         rootProject.fileTree("plugins"),
         rootProject.fileTree(".claude-plugin"),

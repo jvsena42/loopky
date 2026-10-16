@@ -21,7 +21,7 @@ import kotlin.test.fail
 class AgentPluginTest {
 
     private val root = File(requireNotNull(System.getProperty("loopky.repoRoot")) { "set by cli/build.gradle.kts" })
-    private val cliVersion = requireNotNull(System.getProperty("loopky.cliVersion"))
+    private val cliVersion = CLI_VERSION
     private val skills = File(root, "plugins").walk().filter { it.name == "SKILL.md" }.toList()
 
     @Test

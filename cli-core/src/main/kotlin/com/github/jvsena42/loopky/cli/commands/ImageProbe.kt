@@ -66,7 +66,7 @@ data class ImageCheck(
 /** Whether this invocation asked for the probe. */
 internal fun Args.checksImages(): Boolean = has(CHECK_IMAGES_FLAG)
 
-const val CHECK_IMAGES_FLAG = "check-images"
+internal const val CHECK_IMAGES_FLAG = "check-images"
 
 internal const val CHECK_IMAGES_CONCURRENCY_FLAG = "check-images-concurrency"
 
