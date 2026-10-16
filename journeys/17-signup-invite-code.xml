@@ -1,45 +1,38 @@
 <journey name="Signup — invite code to a working account">
   <description>
     The path for a user who has no Pubky at all: obtain an account on a token-gated homeserver
-    from inside Loopky, via a hand-issued invite code, and land on Home.
+    from inside Loopky, via a hand-issued invite code, and land on Home. Loopky mints the key and
+    redeems the code itself — Pubky Ring is not involved and need not be installed (since
+    9372ff86; Ring is offered afterwards, as a backup).
 
-    Requires: Loopky debug build (which points at the **staging** environment), Pubky Ring
-    installed, and Loopky signed out. A real staging signup token — mint one with the admin
-    endpoint recorded in `local.properties`:
+    Requires: Loopky debug build (which points at the **staging** environment) and Loopky signed
+    out. A real staging signup token — mint one with the admin endpoint recorded in
+    `local.properties`, into a file rather than the terminal:
 
       curl -X GET "https://admin.homeserver.staging.pubky.app/generate_signup_token" \
-           -H "X-Admin-Password: &lt;the one in local.properties&gt;"
+           -H "X-Admin-Password: &lt;the one in local.properties&gt;" > invite.txt
 
     It returns a single `XXXX-XXXX-XXXX` code. **Tokens are single-use and never expire**, so a
     code spent by a previous run is gone — mint a fresh one per attempt rather than reusing.
 
-    Warning: getting onto these screens means signing out, and the auth relay
-    (`httprelay.pubky.app`) is intermittently unreachable from the app's Rust HTTP stack on the
-    emulator. Do not sign out unless you are willing to lose the current session.
-
-    DRIVE THE RING HAND-OFF FAST. Tapping Continue opens Pubky Ring; Authorize must follow about
-    two seconds later with NOTHING in between — no layout dump, no screenshot. Driven at a
-    scripted pace this fails with "Couldn't reach the service" on an otherwise healthy network,
-    the same trap `01-onboarding-ring-auth.xml` documents. On failure use the in-app "Try again",
-    which re-sends the *same* token, and drive that chain fast too.
+    Warning: getting onto these screens means signing out. A Ring-held account comes back with a
+    QR scan; a Loopky-held one without a backup does not, so do not sign that one out.
   </description>
   <actions>
     <action>Launch Loopky. Verify the onboarding screen shows both "Sign in with Pubky Ring" (resource-id: onboarding_signin) and "Create a Pubky" (resource-id: onboarding_create_pubky)</action>
     <action>Tap "onboarding_create_pubky"</action>
-    <action>Verify the method screen: "signup_title" reads "Prove you're not a robot." and both "signup_method_sms" and "signup_method_lightning" are present, alongside "signup_method_invite"</action>
-    <action>Verify "signup_method_lightning_price" reads "Pay ₿ 10 once" — 10 sat is the STAGING price. If it reads 1000, the build is pointed at production and the staging token below will be rejected</action>
+    <action>Verify the method screen: "signup_title" reads "Prove you're not a robot." and "signup_method_sms", "signup_method_lightning" and "signup_method_invite" are all present, with no Pubky Ring install block above them</action>
+    <action>Verify "signup_method_lightning_price" reads "Pay ₿ 10 once" (possibly with a fiat figure beside it) — 10 sat is the STAGING price. If it reads 1000, the build is pointed at production and the staging token below will be rejected</action>
 
     <action>THE FORMAT CHECK. Tap "signup_method_invite", tap "signup_invite_input", type "nope", tap "signup_invite_submit"</action>
     <action>Verify "signup_error_title" reads "That code didn't work" and that the screen did NOT advance — a malformed code is rejected locally and must cost no network call</action>
 
-    <action>THE HAPPY PATH. Clear the field, type the freshly minted XXXX-XXXX-XXXX token</action>
-    <action>Chain these two taps with ~2s between and NOTHING in between: tap "signup_invite_submit"; tap Pubky Ring's "ConfirmAuthAuthorizeButton" (on a 1080x2424 emulator that lands at (789, 2245))</action>
-    <action>Verify Pubky Ring showed "Authorize Loopky" with permissions "/pub/loopky/" and "/pub/pubky.app/" READ,WRITE, and a NEW pubky — Ring mints a key for the token rather than offering the existing ones</action>
-    <action>Verify Loopky returns to the foreground and lands on Home, greeting the new pubky (e.g. "pk:6ukrmc"), with the "Nothing to study yet" empty state</action>
-    <action>Verify logcat shows "complete: session saved" and that the signup URL was logged with BOTH secrets redacted: "secret=…" and "st=…", never their values</action>
+    <action>THE HAPPY PATH. Clear the field, type the freshly minted XXXX-XXXX-XXXX token (adb shell input text "$(cat invite.txt)" keeps it off the screen log), tap "signup_invite_submit"</action>
+    <action>Verify "signup_local_progress" appears — Loopky is minting the key and registering it, with no deeplink and no relay</action>
+    <action>Verify Loopky lands on Home, greeting the new pubky, with the "No decks yet" empty state and the backup reminder sheet ("backup_reminder_sheet") raised over it</action>
+    <action>Verify logcat shows "registerKey: registering &lt;pubky prefix&gt;…" and no secret key, mnemonic or token value anywhere in the Loopky tags</action>
+    <action>Verify Profile → Settings shows the new pubky and the staging homeserver (ufibwb…d9u1uy)</action>
 
-    <action>THE RELAY-FAILURE BRANCH. It reproduces on its own whenever the chain is driven slowly. When it happens, verify the hand-off screen shows "signup_error_title" = "Couldn't reach the service", AND that "signup_handoff_token_safe" is present reading "Your code hasn't been used yet…", AND that "signup_handoff_copy" is present — its presence is the visible proof the token was kept</action>
-    <action>Tap "signup_handoff_retry", then Authorize in Ring within ~2s</action>
-    <action>Verify logcat shows a second "beginSignUp" carrying the SAME st= value, and no call to Homegate — a retry must never mint a second token</action>
+    <action>THE FAILURE BRANCH. Repeat with airplane mode on so registration fails. Verify the progress screen turns into an error with "signup_local_retry"; turn airplane mode off, tap it, and verify the account is created with the SAME pubky logcat named the first time (journey 22 has the full retry check)</action>
   </actions>
 </journey>

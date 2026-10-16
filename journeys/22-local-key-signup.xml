@@ -11,8 +11,8 @@
     The retry check below is the one that matters.
   </description>
   <actions>
-    <action>Disable Ring: adb shell pm disable-user --user 0 to.pubky.ring</action>
-    <action>From a signed-out Loopky: "onboarding_create_pubky" → "signup_create_locally_option" → "signup_method_invite"</action>
+    <action>If Ring is installed, disable it: adb shell pm disable-user --user 0 to.pubky.ring</action>
+    <action>From a signed-out Loopky: "onboarding_create_pubky" → "signup_method_invite". There is no separate "create it in Loopky" step any more (9372ff86): every signup is local</action>
     <action>Enter a valid invite code and submit</action>
     <action>Verify "signup_local_progress" appears — Loopky is minting the key and registering it itself, with no deeplink and no relay</action>
     <action>Verify Loopky lands on HOME, not on a backup screen — signup does not stand a wall in front of the app</action>
@@ -38,6 +38,6 @@
     <action>Verify "settings_signout_unbacked_title" appears and that "Back up first" is the affirmative button — signing out erases the only copy of that identity</action>
     <action>Tap "Back up first" and verify it lands on the backup menu rather than signing out</action>
 
-    <action>Restore the device: adb shell pm enable to.pubky.ring</action>
+    <action>If Ring was disabled, restore the device: adb shell pm enable to.pubky.ring</action>
   </actions>
 </journey>

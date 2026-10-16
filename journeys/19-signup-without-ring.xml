@@ -1,31 +1,22 @@
-<journey name="Signup — nothing is spent before its spender is there">
+<journey name="Signup — nothing about creating an account needs Pubky Ring">
   <description>
-    The gate that keeps a user from paying for something they cannot use — and, since #147, the
-    door out of it.
+    Loopky redeems the signup token itself (9372ff86, #147), so there is no spender to wait for and
+    no install gate: with Ring absent, every method is offered, priced and usable. What used to be
+    checked here — a Ring install block, "Needs Pubky Ring" in place of prices, and a "Create an
+    account in Loopky" link that re-entered the same screen — no longer exists. Ring is offered
+    after the account exists, from the backup menu ("backup_method_ring").
 
-    A signup token is single-use and costs an SMS attempt or sats. Who can *spend* it depends on
-    which route the user took: a token redeemed through Pubky Ring needs Ring on the device, and a
-    token redeemed in Loopky needs nothing at all. So the pre-check follows the **spender**, not
-    the flow. With Ring missing the Ring route still refuses to ask Homegate for anything, and the
-    Loopky route quotes prices and works.
-
-    Ring is *disabled* rather than uninstalled on purpose: uninstalling destroys the keys of the
-    test accounts on the device.
+    Run it on a device where Ring is not installed, or disable it without removing it
+    (uninstalling destroys the keys of the test accounts on the device):
+    adb shell pm disable-user --user 0 to.pubky.ring
   </description>
   <actions>
-    <action>Disable Ring without removing it: adb shell pm disable-user --user 0 to.pubky.ring</action>
-    <action>From a signed-out Loopky, tap "onboarding_create_pubky"</action>
-    <action>Verify "signup_ring_required_title" is present and reads "First, install Pubky Ring"</action>
-    <action>Verify BOTH method cards read "Needs Pubky Ring" in place of a price — "signup_method_lightning_price" must NOT show a sats figure, because a figure could only have come from Homegate</action>
-    <action>Verify logcat shows "load: Pubky Ring is not installed — not minting a token that cannot be spent", and no Homegate request</action>
-
-    <action>THE DOOR OUT (#147). Tap "signup_create_locally_option" — "Create an account in Loopky". It is offered whether or not Ring is installed, so this same tag is the local route in both states</action>
-    <action>Verify the install block is GONE with Ring still disabled, and that "signup_method_lightning_price" now quotes sats — Homegate was asked, because this route can spend the token itself</action>
+    <action>From a signed-out Loopky with Ring absent, tap "onboarding_create_pubky"</action>
+    <action>Verify there is NO Ring install block and NO "Create an account in Loopky" link: the method screen is the only screen, and "signup_method_sms", "signup_method_lightning" and "signup_method_invite" are all present</action>
+    <action>Verify "signup_method_lightning_price" quotes sats — Homegate was asked, because Loopky can spend the token itself</action>
     <action>Verify the fiat figure appears beside the sats one, e.g. "Pay ₿ 10 (≈ US$0.01) once". If the rate lookup fails it must read "Pay ₿ 10 once" with no placeholder and no spinner, and the card must stay tappable either way</action>
-    <action>Tap "signup_method_invite" and verify the screen moves — the local route has no Ring dependency to block on</action>
-
-    <action>THE RING ROUTE STILL GATES. Press back to onboarding, tap "onboarding_create_pubky" again, and verify the install block is back — the default spender is still Ring, and an unrecognised route argument must fall back to it rather than to local keys</action>
-
-    <action>Restore the device: adb shell pm enable to.pubky.ring</action>
+    <action>Tap "signup_method_invite" and verify the screen moves — nothing on this route depends on Ring</action>
+    <action>Optionally finish with a real invite code (journey 17), open Profile → back up, and verify "backup_method_ring" ("Export to Pubky Ring") reads "Not installed. We'll take you to it." rather than offering a hand-off that cannot work</action>
+    <action>If Ring was disabled, restore the device: adb shell pm enable to.pubky.ring</action>
   </actions>
 </journey>
