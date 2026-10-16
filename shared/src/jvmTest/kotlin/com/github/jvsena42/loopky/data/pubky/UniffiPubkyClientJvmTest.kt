@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.data.pubky
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -52,6 +53,15 @@ class UniffiPubkyClientJvmTest {
     fun `answers true for a phrase it just generated`() {
         val phrase = client.generateMnemonicPhrase().getOrThrow()
         assertEquals("true", client.validateMnemonicPhrase(phrase).getOrThrow())
+    }
+
+    // A client id reaches the homeserver on every sign-in and write, so a blank or oversized one
+    // is refused at construction rather than as a confusing FFI error on the first call.
+    @Test
+    fun `refuses a client id pubky's ClientId would reject`() {
+        assertFailsWith<IllegalArgumentException> { UniffiPubkyClient(clientId = " ") }
+        assertFailsWith<IllegalArgumentException> { UniffiPubkyClient(clientId = "a".repeat(254)) }
+        UniffiPubkyClient(clientId = "mcp.loopky.app")
     }
 
     private companion object {

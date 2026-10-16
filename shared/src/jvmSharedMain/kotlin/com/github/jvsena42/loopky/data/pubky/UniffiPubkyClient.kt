@@ -47,7 +47,10 @@ import uniffi.pubkycore.validateMnemonicPhrase as ffiValidateMnemonicPhrase
  * a public, stable name for Loopky and not as a build-variant knob: staging and release identify
  * as the same client on purpose.
  */
-private const val LOOPKY_CLIENT_ID = "loopky.app"
+const val LOOPKY_CLIENT_ID = "loopky.app"
+
+/** pubky's `ClientId` ceiling — a domain name's. */
+private const val MAX_CLIENT_ID_LENGTH = 253
 
 /**
  * JVM implementation of [PubkyClient] delegating to the UniFFI-generated Kotlin bindings in
@@ -66,8 +69,19 @@ private const val LOOPKY_CLIENT_ID = "loopky.app"
  *
  * Blocking network calls are routed through [Dispatchers.IO] so callers on the main
  * dispatcher stay responsive.
+ *
+ * [clientId] is what Ring lists the grant under and what a user revokes by name. The apps and
+ * the CLI are one client, [LOOPKY_CLIENT_ID]; a hosted server that holds grants on users' behalf
+ * identifies as its own (`mcp.loopky.app`, #214) so that "Loopky for Claude" can be revoked
+ * without signing the phone out.
  */
-class UniffiPubkyClient : PubkyClient {
+class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : PubkyClient {
+
+    init {
+        require(clientId.isNotBlank() && clientId.length <= MAX_CLIENT_ID_LENGTH) {
+            "clientId must be a non-empty domain name of at most $MAX_CLIENT_ID_LENGTH characters"
+        }
+    }
 
     // --- Keys & mnemonics -----------------------------------------------------
     override fun generateSecretKey() = runFfi { ffiGenerateSecretKey() }
@@ -102,7 +116,7 @@ class UniffiPubkyClient : PubkyClient {
         runFfiSuspend { ffiGetSignupToken(homeserverPubky, adminPassword) }
 
     override suspend fun signIn(secretKey: String) =
-        runFfiSuspend { ffiSignIn(secretKey, LOOPKY_CLIENT_ID) }
+        runFfiSuspend { ffiSignIn(secretKey, clientId) }
 
     override suspend fun signOut(sessionSecret: String) =
         runFfiSuspend { ffiSignOut(sessionSecret) }
@@ -111,7 +125,7 @@ class UniffiPubkyClient : PubkyClient {
         runFfiSuspend { ffiRevalidateSession(sessionSecret) }
 
     override suspend fun startAuthFlow(capabilities: String) =
-        runFfiSuspend { ffiStartAuthFlow(capabilities, LOOPKY_CLIENT_ID) }
+        runFfiSuspend { ffiStartAuthFlow(capabilities, clientId) }
 
     override suspend fun awaitAuthApproval() = runFfiSuspend { ffiAwaitAuthApproval() }
     override fun parseAuthUrl(url: String) = runFfi { ffiParseAuthUrl(url) }
@@ -126,10 +140,10 @@ class UniffiPubkyClient : PubkyClient {
         runFfiSuspend { ffiPublishHttps(recordName, target, secretKey) }
 
     override suspend fun put(url: String, content: String, secretKey: String) =
-        runFfiSuspend { ffiPut(url, content, secretKey, LOOPKY_CLIENT_ID) }
+        runFfiSuspend { ffiPut(url, content, secretKey, clientId) }
 
     override suspend fun putBytes(url: String, content: ByteArray, secretKey: String) =
-        runFfiSuspend { ffiPutBytes(url, content, secretKey, LOOPKY_CLIENT_ID) }
+        runFfiSuspend { ffiPutBytes(url, content, secretKey, clientId) }
 
     override suspend fun get(url: String) = runFfiSuspend { ffiGet(url) }
     override suspend fun getBytes(url: String) = runFfiSuspend { ffiGetBytes(url) }
@@ -142,7 +156,7 @@ class UniffiPubkyClient : PubkyClient {
     ) = runFfiSuspend { ffiList(url, cursor, reverse, limit, shallow) }
 
     override suspend fun deleteFile(url: String, secretKey: String) =
-        runFfiSuspend { ffiDeleteFile(url, secretKey, LOOPKY_CLIENT_ID) }
+        runFfiSuspend { ffiDeleteFile(url, secretKey, clientId) }
 
     override suspend fun republishHomeserver(secretKey: String, homeserver: String) =
         runFfiSuspend { ffiRepublishHomeserver(secretKey, homeserver) }
