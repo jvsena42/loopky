@@ -1,0 +1,90 @@
+package com.github.jvsena42.loopky.mcp
+
+import com.github.jvsena42.loopky.cli.FakeDeckRepository
+import com.github.jvsena42.loopky.cli.testDeck
+import com.github.jvsena42.loopky.mcp.auth.OAuthClient
+import com.github.jvsena42.loopky.mcp.auth.OAuthHarness
+import com.github.jvsena42.loopky.mcp.auth.PUBKY
+import com.github.jvsena42.loopky.mcp.auth.json
+import com.github.jvsena42.loopky.mcp.auth.tokens
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.nio.file.Files
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+
+/**
+ * The composed server: the OAuth half issuing a token that the MCP half accepts, and a tool call
+ * landing on the graph opened from the credential that sign-in stored. Each half has its own suite;
+ * this is the one test that the two agree on the store, the vault and the principal between them.
+ */
+class ServerTest {
+
+    @Test
+    fun `a token from the OAuth dance runs a tool on the signed-in user's graph`() = testApplication {
+        val harness = OAuthHarness.create()
+        val factory = FakeTenantFactory { pubky, secret ->
+            FakeTenant(secret, sessionFor(pubky, secret), decks = FakeDeckRepository(testDeck(), owned = listOf(ownedDeck(pubky))))
+        }
+        try {
+            application {
+                loopkyMcp(
+                    ServerParts(
+                        oauth = harness.deps(),
+                        tenantFactory = factory,
+                        scratchDir = Files.createTempDirectory("mcp-server").resolve("inline"),
+                    ),
+                )
+            }
+            val http = createClient { followRedirects = false }
+            assertEquals("ok", http.get("/healthz").bodyAsText())
+
+            val oauth = OAuthClient(harness, http)
+            val clientId = oauth.registerClient()
+            val code = oauth.codeFor(clientId, secret = "secret-$PUBKY")
+            val token = oauth.exchange(code, clientId).json().tokens().access
+
+            suspend fun rpc(body: String, session: String? = null): HttpResponse = http.post(MCP_PATH) {
+                header(HttpHeaders.Authorization, "Bearer $token")
+                session?.let { header("Mcp-Session-Id", it) }
+                header(HttpHeaders.Accept, "application/json, text/event-stream")
+                contentType(ContentType.Application.Json)
+                setBody(body)
+            }
+
+            val initialized = rpc(INITIALIZE)
+            assertEquals(HttpStatusCode.OK, initialized.status, initialized.bodyAsText())
+            val session = assertNotNull(initialized.headers["Mcp-Session-Id"])
+            rpc(INITIALIZED, session)
+
+            val called = Json.parseToJsonElement(rpc(DECK_LIST, session).bodyAsText()).jsonObject
+            val envelope = called["result"]!!.jsonObject["structuredContent"]!!.jsonObject
+            val deck = envelope["data"]!!.jsonObject["decks"]!!.jsonArray.single().jsonObject
+            assertEquals("deck-$PUBKY", deck["id"]!!.jsonPrimitive.content)
+            assertEquals("secret-$PUBKY", (factory.opened.single() as FakeTenant).secret)
+        } finally {
+            harness.close()
+        }
+    }
+
+    private companion object {
+        const val INITIALIZE = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18",""" +
+            """"capabilities":{},"clientInfo":{"name":"test","version":"1"}}}"""
+        const val INITIALIZED = """{"jsonrpc":"2.0","method":"notifications/initialized"}"""
+        const val DECK_LIST = """{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"deck_list","arguments":{}}}"""
+    }
+}
