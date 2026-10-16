@@ -4,7 +4,12 @@ import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.mcp.SessionSecrets
 import com.github.jvsena42.loopky.util.runSuspendCatching
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -81,6 +86,9 @@ class TenantPool(
          */
         var holders = 0
         var closeWhenReleased = false
+
+        /** Left to a call the pool stopped waiting for; that call closes the graph when it ends. */
+        var abandoned = false
     }
 
     private val poolLock = Mutex()
@@ -97,27 +105,33 @@ class TenantPool(
     suspend fun <T> withTenant(pubky: String, block: suspend (Tenant) -> T): T {
         while (true) {
             val entry = entryFor(pubky)
-            try {
-                withTimeoutOrNull(limits.busyWait) { entry.lock.lock() } ?: throw TenantRefusal.UserBusy(pubky)
-                try {
-                    // The entry can leave the map while this call waited for its turn (the pool
-                    // closed); a call that went on with it would run on a graph nothing tracks.
-                    if (!poolLock.withLock { entries[pubky] === entry }) continue
-                    // Inside the user's turn, so a user waiting for a global slot holds nothing
-                    // another user needs; outside the call timeout, which is for the command and
-                    // not the queue.
-                    withTimeoutOrNull(limits.busyWait) { gate.acquire() } ?: throw TenantRefusal.ServerBusy()
-                    try {
-                        return bounded(block, current(pubky, entry))
-                    } finally {
-                        gate.release()
-                    }
-                } finally {
-                    entry.lock.unlock()
-                }
+            val outcome = try {
+                turn(pubky, entry, block)
             } finally {
                 release(pubky, entry)
             }
+            if (outcome != null) return outcome.value
+        }
+    }
+
+    /**
+     * The user's turn on [entry], then a global slot inside it — so a user waiting for a slot
+     * holds nothing another user needs — then the bounded call. Null when the entry left the map
+     * while this call waited (the pool closed, or the call before it was abandoned): a call that
+     * went on with it would run on a graph nothing tracks, so the caller starts over on a live one.
+     */
+    private suspend fun <T> turn(pubky: String, entry: Entry, block: suspend (Tenant) -> T): Outcome<T>? {
+        withTimeoutOrNull(limits.busyWait) { entry.lock.lock() } ?: throw TenantRefusal.UserBusy(pubky)
+        try {
+            if (!poolLock.withLock { entries[pubky] === entry }) return null
+            withTimeoutOrNull(limits.busyWait) { gate.acquire() } ?: throw TenantRefusal.ServerBusy()
+            try {
+                return Outcome(bounded(pubky, entry, block))
+            } finally {
+                gate.release()
+            }
+        } finally {
+            entry.lock.unlock()
         }
     }
 
@@ -173,7 +187,7 @@ class TenantPool(
 
     /** Closes every graph idle past [TenantLimits.idleTtl]. */
     suspend fun sweep() {
-        poolLock.withLock { sweepLocked(clock()) }.forEach { it.closeQuietly() }
+        poolLock.withLock { pruneLocked(clock()) }.forEach { it.closeQuietly() }
     }
 
     /** The pubkys with an open graph right now, for the tests that hold isolation. */
@@ -191,11 +205,10 @@ class TenantPool(
     private suspend fun entryFor(pubky: String): Entry {
         val closing = mutableListOf<Tenant>()
         val entry = poolLock.withLock {
-            closing += sweepLocked(clock())
-            val existing = entries[pubky]
-            val entry = existing ?: Entry().also { entries[pubky] = it }
-            closing += trimLocked(keep = pubky)
+            val entry = entries[pubky] ?: Entry().also { entries[pubky] = it }
+            // Counted before the prune, so a fresh entry can never read as idle and go at once.
             entry.holders++
+            closing += pruneLocked(clock(), keep = pubky)
             entry
         }
         closing.forEach { it.closeQuietly() }
@@ -243,17 +256,41 @@ class TenantPool(
         return secret to hash
     }
 
-    private suspend fun <T> bounded(block: suspend (Tenant) -> T, tenant: Tenant): T {
-        val outcome = withTimeoutOrNull(limits.callTimeout) { Outcome(block(tenant)) }
-            ?: throw TenantRefusal.TimedOut(limits.callTimeout.inWholeSeconds)
-        return outcome.value
+    /**
+     * The open and the command under one bound, and both given up on at it. The FFI's calls
+     * block a thread and answer no cancellation, so a timeout *around* them waits for the
+     * homeserver anyway (§13.10) — and a pubky can name a homeserver that never answers, which
+     * used to hold the user's turn and a global slot for good. So the call is a coroutine of its
+     * own: at the bound this caller stops waiting and the turn and the slot go back, while the
+     * abandoned call keeps its graph until it ends and closes it then. Abandoning detaches the
+     * entry, so the user's next call opens a fresh graph; two graphs for one user until the
+     * homeserver answers is the accepted cost, the alternative being a user, and a slot, wedged
+     * until restart. **The caller must hold [Entry.lock].**
+     */
+    private suspend fun <T> bounded(pubky: String, entry: Entry, block: suspend (Tenant) -> T): T {
+        val detached = CoroutineScope(currentCoroutineContext().minusKey(Job))
+        val call = detached.async { Outcome(block(current(pubky, entry))) }
+        try {
+            val outcome = withTimeoutOrNull(limits.callTimeout) { call.await() }
+                ?: throw TenantRefusal.TimedOut(limits.callTimeout.inWholeSeconds)
+            return outcome.value
+        } finally {
+            if (!call.isCompleted) {
+                poolLock.withLock {
+                    entries.remove(pubky, entry)
+                    entry.abandoned = true
+                }
+                call.cancel()
+                call.invokeOnCompletion { detached.launch { entry.tenant?.closeQuietly() } }
+            }
+        }
     }
 
     private suspend fun release(pubky: String, entry: Entry) {
         val closing = poolLock.withLock {
             entry.holders--
             entry.lastUsed = clock()
-            if (entry.holders == 0 && entry.closeWhenReleased) {
+            if (entry.holders == 0 && entry.closeWhenReleased && !entry.abandoned) {
                 entries.remove(pubky, entry)
                 entry.tenant
             } else {
@@ -263,22 +300,21 @@ class TenantPool(
         closing?.closeQuietly()
     }
 
-    /** The caller must hold [poolLock]. Returns what to close, outside the lock. */
-    private fun sweepLocked(now: Long): List<Tenant> {
-        val idle = entries.filterValues { it.holders == 0 && now - it.lastUsed > limits.idleTtl.inWholeMilliseconds }
-        idle.keys.forEach { entries.remove(it) }
-        return idle.values.mapNotNull { it.tenant }
-    }
-
-    /** The caller must hold [poolLock]. Drops least-recently-used graphs nobody is running on. */
-    private fun trimLocked(keep: String): List<Tenant> {
+    /**
+     * Idle graphs, then the least recently used past the cap — never [keep], never one with a
+     * holder. **The caller must hold [poolLock].** Returns what to close, outside it.
+     */
+    private fun pruneLocked(now: Long, keep: String? = null): List<Tenant> {
         val closing = mutableListOf<Tenant>()
         val iterator = entries.entries.iterator()
-        while (entries.size > limits.maxTenants && iterator.hasNext()) {
+        while (iterator.hasNext()) {
             val (pubky, entry) = iterator.next()
-            if (entry.holders > 0 || pubky == keep) continue
-            iterator.remove()
-            entry.tenant?.let { closing += it }
+            val idle = now - entry.lastUsed > limits.idleTtl.inWholeMilliseconds
+            val overflow = entries.size > limits.maxTenants && pubky != keep
+            if (entry.holders == 0 && (idle || overflow)) {
+                iterator.remove()
+                entry.tenant?.let { closing += it }
+            }
         }
         return closing
     }
@@ -289,16 +325,6 @@ class TenantPool(
         const val INITIAL_CAPACITY = 16
         const val LOAD_FACTOR = 0.75f
 
-        fun sha256(secret: String): String =
-            MessageDigest.getInstance("SHA-256").digest(secret.toByteArray()).joinToString("") { "%02x".format(it) }
-
-        /** A graph that fails to close is still gone from the pool; nothing a caller can do about it. */
-        suspend fun Tenant.closeQuietly() {
-            withContext(NonCancellable) {
-                runSuspendCatching { close() }
-            }
-        }
-
         /**
          * Defence in depth over the vault: a credential stored under the wrong pubky must fail
          * here, never serve one user's calls on another's graph.
@@ -308,5 +334,15 @@ class TenantPool(
             tenant.closeQuietly()
             throw TenantRefusal.NotLinked(pubky)
         }
+    }
+}
+
+private fun sha256(secret: String): String =
+    MessageDigest.getInstance("SHA-256").digest(secret.toByteArray()).joinToString("") { "%02x".format(it) }
+
+/** A graph that fails to close is still gone from the pool; nothing a caller can do about it. */
+private suspend fun Tenant.closeQuietly() {
+    withContext(NonCancellable) {
+        runSuspendCatching { close() }
     }
 }

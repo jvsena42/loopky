@@ -19,8 +19,16 @@ import java.sql.DriverManager
 class McpDatabase private constructor(private val connection: Connection) : AutoCloseable {
     private val mutex = Mutex()
 
+    /**
+     * One thread of its own, not a slot in [Dispatchers.IO]: a hung FFI call sits on an IO
+     * thread until the homeserver answers, and 64 of those used to take bearer verification and
+     * the whole OAuth half down with them. A limited view of IO is elastic — it is not counted
+     * against IO's cap — and one thread is all a serialized connection can use.
+     */
+    private val dispatcher = Dispatchers.IO.limitedParallelism(1)
+
     suspend fun <T> transaction(block: (Connection) -> T): T = mutex.withLock {
-        withContext(Dispatchers.IO) {
+        withContext(dispatcher) {
             val result = runCatching { block(connection) }
             result.onSuccess { connection.commit() }.onFailure { connection.rollback() }
             result.getOrThrow()

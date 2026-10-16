@@ -4,8 +4,10 @@ import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.mcp.FakeSecrets
 import com.github.jvsena42.loopky.mcp.FakeTenant
 import com.github.jvsena42.loopky.mcp.FakeTenantFactory
+import com.github.jvsena42.loopky.mcp.sessionFor
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -219,6 +221,8 @@ class TenantPoolTest {
     @Test
     fun `idle graphs are closed on the next call, and the user gets a fresh one`() = runBlocking {
         val pool = pool(TenantLimits(idleTtl = 1.minutes))
+        now = 10.minutes.inWholeMilliseconds
+        assertEquals("alice", pool.pubkyOf("alice"), "a fresh entry read as idle and was pruned before its call")
         val first = pool.withTenant("alice") { it } as FakeTenant
         now += 2.minutes.inWholeMilliseconds
         pool.sweep()
@@ -270,6 +274,35 @@ class TenantPoolTest {
         assertEquals("carol", pool.pubkyOf("carol"))
     }
 
+    /**
+     * The open counts against the bound too, and a factory that never answers — a pubky naming a
+     * homeserver that never does — gives the user's turn and the global slot back at it.
+     */
+    @Test
+    fun `an open that never answers is abandoned at the bound, and the turn and the slot come back`() = runTest {
+        val answer = CompletableDeferred<Unit>()
+        val opened = mutableListOf<FakeTenant>()
+        var hangs = 1
+        val factory = TenantFactory { secret ->
+            // Not cancellable, the way a blocking FFI call is not.
+            if (secret == "secret-alice" && hangs-- > 0) withContext(NonCancellable) { answer.await() }
+            FakeTenant(secret, sessionFor(secret.removePrefix("secret-"), secret)).also { opened += it }
+        }
+        val pool =
+            TenantPool(factory, secrets, TenantLimits(maxConcurrentCalls = 1, callTimeout = 50.milliseconds)) { now }
+
+        assertFailsWith<TenantRefusal.TimedOut> { pool.withTenant("alice") { } }
+        assertEquals("bob", pool.pubkyOf("bob"), "the one global slot was still held by the abandoned open")
+        assertEquals("alice", pool.pubkyOf("alice"), "alice's turn was still held by the abandoned open")
+        assertEquals(setOf("alice", "bob"), pool.openTenants())
+
+        answer.complete(Unit)
+        runCurrent()
+        assertEquals(3, opened.size, "the abandoned open finished in the background")
+        assertTrue(opened.last { it.secret == "secret-alice" && it !== opened[1] }.closed, "its graph is closed, not served")
+        assertEquals(setOf("alice", "bob"), pool.openTenants())
+    }
+
     @Test
     fun `a call past its timeout is stopped and reported`() = runBlocking {
         val pool = pool(TenantLimits(callTimeout = 50.milliseconds))
@@ -310,7 +343,8 @@ class TenantPoolTest {
 
     @Test
     fun `a homeserver the factory cannot reach is reported as that, and nothing is unlinked`() = runBlocking {
-        val unreachable = FakeTenantFactory { _, _ -> throw PubkyError("Failed to import session: Request failed: HTTP transport error") }
+        val unreachable =
+            FakeTenantFactory { _, _ -> throw PubkyError("Failed to import session: Request failed: HTTP transport error") }
         val pool = TenantPool(unreachable, secrets, TenantLimits()) { now }
         assertFailsWith<PubkyError> { pool.withTenant("alice") { } }
         assertEquals(emptyList(), secrets.revoked)
