@@ -3,11 +3,13 @@ package com.github.jvsena42.loopky.data.repository.impl
 import com.github.jvsena42.loopky.data.pubky.AccountStamp
 import com.github.jvsena42.loopky.data.pubky.CHUNK_SIZE
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
+import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
 import com.github.jvsena42.loopky.data.pubky.SrsChunkDto
 import com.github.jvsena42.loopky.data.pubky.isNotFound
+import com.github.jvsena42.loopky.data.pubky.isRateLimited
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
 import com.github.jvsena42.loopky.data.pubky.putWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.requireSession
@@ -43,6 +45,7 @@ import com.github.jvsena42.loopky.util.localDayIndex
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -53,6 +56,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
+import kotlin.random.Random
 
 /**
  * [SrsRepository] backed by [PubkyClient]. Review state lives batched at
@@ -315,6 +319,7 @@ class SrsRepositoryImpl(
         require(isStudiable(card.deckId)) {
             "Deck ${card.deckId} is neither owned nor followed — follow or clone it to study it"
         }
+        requireStateLoaded(card.deckId)
         val wasNew = stateOf(authorFor(card.deckId), card.deckId, card.id).isNew()
         // Idempotent and single-flight, so after the first load this is a field read. Called here
         // rather than relying on the queue having been built first: that ordering happens to hold
@@ -340,6 +345,7 @@ class SrsRepositoryImpl(
         require(isStudiable(card.deckId)) {
             "Deck ${card.deckId} is neither owned nor followed — follow or clone it to study it"
         }
+        requireStateLoaded(card.deckId)
         settingsRepository.ensureLoaded()
         val next = base.review(card.id, grade, epochMillis(), currentSettings())
         upsert(card.deckId, next).getOrThrow()
@@ -441,6 +447,18 @@ class SrsRepositoryImpl(
         return base.previewIntervals(card.id, epochMillis(), currentSettings(), cap)
     }
 
+    /**
+     * Grading a card whose state was never read schedules it from nothing and, on the flush,
+     * writes that over its real history — and if its old record is not the chunk [chunkFor] picks,
+     * leaves the card in two records (#494). So a grade on a deck that did not load whole tries the
+     * load again, and is refused if it still does not arrive.
+     */
+    private suspend fun requireStateLoaded(deckId: String) {
+        val author = authorFor(deckId)
+        val failure = loadChunksFor(author, deckId)
+        if (!withCaches { (author to deckId) in loadedDecks }) throw ReviewStateUnavailableException(deckId, failure)
+    }
+
     /** No suspension, no network: [SettingsRepository.studySettings] is warmed, then simply read. */
     private fun currentSettings(): StudySettings = settingsRepository.studySettings.value.settings
 
@@ -491,15 +509,14 @@ class SrsRepositoryImpl(
         if (pending.isEmpty()) return@runSuspendCatching
 
         val owner = session.requireSession().identity.pubky
+
         // Not error handling — a restore-on-abnormal-exit, which is why it rethrows unconditionally
         // and catches Throwable. Cancellation has to restore too: flush() is reachable from
         // review()/upsert() on viewModelScope, so closing the study screen mid-flush would otherwise
         // drop up to FLUSH_EVERY reviews on the floor.
         @Suppress("TooGenericExceptionCaught")
-        try {
-            pending.mapConcurrently { (author, deckId, chunk) ->
-                writeChunk(owner, author, deckId, chunk)
-            }
+        val outcome = try {
+            writePending(owner, pending)
         } catch (err: Throwable) {
             // Put them back so the next flush retries rather than silently losing progress.
             withCaches {
@@ -508,11 +525,53 @@ class SrsRepositoryImpl(
             }
             throw err
         }
+        val unwritten = outcome.deferred.keys + outcome.failed.keys
+        if (unwritten.isNotEmpty()) {
+            withCaches {
+                dirty.addAll(unwritten)
+                dirtyStates.addAll(pendingStates.filter { key -> unwritten.any { it.matches(key) } })
+            }
+        }
         // Only now is the journal redundant. Anything graded while the writes were in flight is
         // still dirty and is re-journalled by this same call.
         writeJournal()
+        outcome.failed.values.firstOrNull()?.let { throw it }
+        outcome.deferred.entries.firstOrNull()?.let { (target, cause) ->
+            throw ReviewStateUnavailableException(target.second, cause)
+        }
         Unit
     }
+
+    private class FlushOutcome(
+        /** Chunks of decks whose state did not load, with why. */
+        val deferred: Map<Triple<String, String, Int>, Throwable?>,
+        val failed: Map<Triple<String, String, Int>, Throwable>,
+    )
+
+    /**
+     * A journal restored on a deck that never loaded is dirty with nothing else read: writing its
+     * chunks from the cache would replace whatever else they hold (#494). Those decks are loaded
+     * first, and the ones that still do not arrive stay dirty. Each chunk is written on its own, so
+     * one that keeps failing does not cancel the writes beside it.
+     */
+    private suspend fun writePending(owner: String, pending: List<Triple<String, String, Int>>): FlushOutcome {
+        val loadFailures = pending.map { (author, deckId, _) -> author to deckId }.distinct()
+            .associateWith { (author, deckId) -> loadChunksFor(author, deckId) }
+        val loaded = withCaches { loadedDecks.toSet() }
+        val (ready, unready) = pending.partition { (author, deckId, _) -> (author to deckId) in loaded }
+        val failed = ready.mapConcurrently { target ->
+            val (author, deckId, chunk) = target
+            runSuspendCatching { writeChunk(owner, author, deckId, chunk) }.exceptionOrNull()?.let { target to it }
+        }.filterNotNull().toMap()
+        return FlushOutcome(
+            deferred = unready.associateWith { (author, deckId, _) -> loadFailures[author to deckId] },
+            failed = failed,
+        )
+    }
+
+    /** Caller holds [cacheLock]. */
+    private fun Triple<String, String, Int>.matches(key: StateKey): Boolean =
+        key.authorPubky == first && key.deckId == second && stateChunks[key] == third
 
     override fun flushAsync() {
         scope.launch {
@@ -595,6 +654,7 @@ class SrsRepositoryImpl(
     private var journalRestored = false
 
     private suspend fun writeChunk(owner: String, author: String, deckId: String, chunk: Int) {
+        val url = PubkyPaths.srsChunk(owner, author, deckId, chunk)
         val states = withCaches {
             cache.filterKeys { key ->
                 key.authorPubky == author && key.deckId == deckId && stateChunks[key] == chunk
@@ -603,12 +663,47 @@ class SrsRepositoryImpl(
         val body = loopkyJson.encodeToString(
             SrsChunkDto(deck_id = deckId, author_pubky = author, chunk = chunk, states = states),
         )
-        pubky.putWithSessionRetry(
-            PubkyPaths.srsChunk(owner, author, deckId, chunk),
-            body,
-            session,
-            revalidator,
-        ).getOrThrow()
+        pubky.putWithSessionRetry(url, body, session, revalidator).getOrThrow()
+    }
+
+    /**
+     * Caller holds [cacheLock]. A state already in the cache is a buffered review, newer than the
+     * homeserver's — and its chunk is left alone too: re-pointing it would move a dirty review out
+     * of the chunk the flush is about to write, and it would never be written.
+     */
+    private fun mergeLoaded(author: String, deckId: String, dto: SrsChunkDto) {
+        dto.states.forEach { state ->
+            val key = StateKey(author, deckId, state.card_id)
+            if (key in cache) return@forEach
+            cache[key] = state.toDomain()
+            stateChunks[key] = dto.chunk
+        }
+    }
+
+    /**
+     * One GET, retried twice on a dropped connection or a 429 — the failures seen in #494, each of
+     * which cost a deck's review state for the launch. Not on being offline, which answers the same
+     * a second later. Jittered: the reads run concurrently, and a 429 arrives for all of them.
+     */
+    private suspend fun readChunk(url: String): Result<String> {
+        var backoff = CHUNK_READ_BACKOFF_MS
+        repeat(CHUNK_READ_ATTEMPTS - 1) {
+            val result = pubky.get(url)
+            val error = result.exceptionOrNull() ?: return result
+            if (!error.isRetryableRead()) return result
+            delay(backoff / 2 + Random.nextLong(backoff / 2 + 1))
+            backoff *= 2
+        }
+        return pubky.get(url)
+    }
+
+    // isNotFound first: ids are [a-z0-9], so a 404's URL can contain "429".
+    private fun Throwable.isRetryableRead(): Boolean {
+        if (isNotFound()) return false
+        val status = (this as? PubkyError)?.status
+        if (status != null) return status == HTTP_TOO_MANY_REQUESTS
+        val msg = message?.lowercase().orEmpty()
+        return isRateLimited() || DROPPED_CONNECTION.any { it in msg }
     }
 
     /**
@@ -619,10 +714,10 @@ class SrsRepositoryImpl(
      * card's deck position is not yet known, so a guessed range would make those reviews
      * permanently unreadable.
      */
-    private suspend fun loadChunksFor(author: String, deckId: String) {
-        val owner = session.current()?.identity?.pubky ?: return
+    private suspend fun loadChunksFor(author: String, deckId: String): Throwable? {
+        val owner = session.current()?.identity?.pubky ?: return null
         val loaded = withCaches { loadedDecks.contains(author to deckId) }
-        if (loaded) return
+        if (loaded) return null
 
         val root = PubkyPaths.srsRoot(owner, author, deckId)
         // Paged: one chunk record per ~100 cards against a default page of 100 records, so a
@@ -634,26 +729,28 @@ class SrsRepositoryImpl(
         val listed = listing.isComplete || listing.failure?.isNotFound() == true
         if (!listed) Log.e(TAG, "loadChunksFor: $root not listed whole — ${listing.failure?.message}")
 
-        val read = listing.entries.mapConcurrently { url ->
-            pubky.get(url)
-                .mapCatching { loopkyJson.decodeFromString<SrsChunkDto>(it) }
-                .onSuccess { dto ->
-                    withCaches {
-                        dto.states.forEach { state ->
-                            val key = StateKey(author, deckId, state.card_id)
-                            // A buffered review is newer than what is on the homeserver.
-                            if (key !in cache) cache[key] = state.toDomain()
-                            stateChunks[key] = dto.chunk
-                        }
-                    }
-                }
-                .onFailure { Log.e(TAG, "loadChunksFor: $url unreadable — ${it.message}", it) }
-                .isSuccess
-        }
+        val failures = listing.entries.mapConcurrently { url ->
+            val body = readChunk(url).getOrElse {
+                Log.e(TAG, "loadChunksFor: $url unreadable — ${it.message}", it)
+                return@mapConcurrently it
+            }
+            // An undecodable record counts as read: it holds nothing to lose, and refusing it
+            // would refuse every grade on the deck for good.
+            runCatching { loopkyJson.decodeFromString<SrsChunkDto>(body) }
+                .onSuccess { dto -> withCaches { mergeLoaded(author, deckId, dto) } }
+                .onFailure { Log.e(TAG, "loadChunksFor: $url undecodable — ${it.message}", it) }
+            null
+        }.filterNotNull()
         // Loaded only when all of it arrived (#494). Marking a partial read as loaded made it
         // permanent for the process: nothing asked again, and nothing could tell a caller that
         // the states it was handed were some of them. Left unmarked, the next caller retries.
-        if (listed && read.all { it }) withCaches { loadedDecks.add(author to deckId) }
+        val failure = if (listed) {
+            failures.firstOrNull()
+        } else {
+            listing.failure ?: IllegalStateException("$root listing truncated")
+        }
+        if (failure == null) withCaches { loadedDecks.add(author to deckId) }
+        return failure
     }
 
     private val loadedDecks = mutableSetOf<Pair<String, String>>()
@@ -694,6 +791,11 @@ class SrsRepositoryImpl(
 
         /** Fallback bucket count when a card's deck position is unknown. */
         private const val CHUNK_BUCKETS = 64
+
+        private const val CHUNK_READ_ATTEMPTS = 3
+        private const val CHUNK_READ_BACKOFF_MS = 300L
+        private const val HTTP_TOO_MANY_REQUESTS = 429
+        private val DROPPED_CONNECTION = listOf("connection reset", "connection closed", "broken pipe")
     }
 }
 
@@ -728,4 +830,14 @@ private fun PendingReview.toDomain() = SrsState(
     // An out-of-range ordinal means a journal written by a build with a different grade set. The
     // grade is a display detail; dropping it keeps the schedule, which is the part that matters.
     lastGrade = lastGrade?.let { SrsGrade.entries.getOrNull(it) },
+)
+
+/**
+ * A deck's review state did not load whole, so a grade on it, or a write of its chunks, would
+ * replace the states that did not arrive (#494). Nothing is lost: the write stays queued.
+ */
+class ReviewStateUnavailableException(deckId: String, cause: Throwable?) : IllegalStateException(
+    // The cause's wording is carried so toErrorReason classifies it as what it was (offline, busy).
+    "Review state for deck $deckId could not be read — ${cause?.message ?: "not signed in"}",
+    cause,
 )

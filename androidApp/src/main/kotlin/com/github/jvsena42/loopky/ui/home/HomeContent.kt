@@ -145,7 +145,7 @@ fun TodaysDecksGrid(
                         cardCount = deck.cardCount,
                         coverEmoji = deck.coverEmoji,
                         coverImage = deck.coverImage,
-                        authorLabel = dueCaption(deck, countsKnown),
+                        authorLabel = dueCaption(deck, countsKnown && deck.countsKnown),
                         onClick = { onDeckClick(deck.id) },
                         modifier = Modifier
                             .weight(1f)
@@ -164,7 +164,8 @@ fun TodaysDecksGrid(
  * The tile's own caption slot is normally the author's name, which on this screen is always you or
  * someone you already chose to follow — so it is spent on the number that decides whether to tap.
  *
- * [countsKnown] false is the cached first paint: the deck is real, its badge is not yet.
+ * [countsKnown] false is the cached first paint, or a deck whose review state did not load: the
+ * deck is real, its badge is not.
  */
 @Composable
 private fun dueCaption(deck: DeckSummary, countsKnown: Boolean): String = when {
@@ -401,7 +402,7 @@ fun TodaysDecksSection(
         decks.forEach { deck ->
             DeckRow(
                 deck = deck,
-                countsKnown = countsKnown,
+                countsKnown = countsKnown && deck.countsKnown,
                 onClick = { onDeckClick(deck.id) },
             )
         }

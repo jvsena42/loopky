@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.RecapClock
 import com.github.jvsena42.loopky.domain.model.SrsGrade
+import com.github.jvsena42.loopky.domain.model.SrsState
 import com.github.jvsena42.loopky.domain.model.StudySettings
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
@@ -163,6 +164,48 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertTrue(assertIs<HomeUiState.Content>(vm.state.value).countsKnown)
+    }
+
+    /**
+     * A deck whose review state did not load whole has cards that read as never seen, so its count
+     * is a wrong number rather than a small one (#494). It loses its own badge and its share of the
+     * totals — not every other deck's — and gets them back once studying re-reads it.
+     */
+    @Test
+    fun reviewStateThatDidNotLoadWholeIsNotCounted() = runTest {
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish", cardCount = 1)
+        deckRepo.decks["deck2"] = testDeck(id = "deck2", title = "French", cardCount = 1)
+        srsRepo.due = listOf(testCard("c1", deckId = "deck1"), testCard("f1", deckId = "deck2"))
+        srsRepo.unreadDecks += "deck1"
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val partial = assertIs<HomeUiState.Content>(vm.state.value)
+        assertTrue(partial.countsKnown)
+        assertEquals(mapOf("deck1" to false, "deck2" to true), partial.decks.associate { it.id to it.countsKnown })
+        assertEquals(expected = 1, actual = partial.newToday)
+
+        srsRepo.unreadDecks.clear()
+        srsRepo.dueForDeck("deck1")
+        val state = SrsState("c1", dueAt = 0L, intervalDays = 1, easeFactor = 2.5, repetitions = 1, lastGrade = null)
+        srsRepo.upsert("deck1", state).getOrThrow()
+        advanceUntilIdle()
+
+        val healed = assertIs<HomeUiState.Content>(vm.state.value)
+        assertTrue(healed.decks.all { it.countsKnown })
+        assertEquals(expected = 1, actual = healed.dueToday)
+    }
+
+    @Test
+    fun aDeckWhoseStateDidNotLoadNeverReadsAsCaughtUp() = runTest {
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish", cardCount = 1)
+        srsRepo.unreadDecks += "deck1"
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        assertFalse(assertIs<HomeUiState.Content>(vm.state.value).isCaughtUp)
     }
 
     /**

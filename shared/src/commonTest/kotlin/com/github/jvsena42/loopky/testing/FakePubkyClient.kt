@@ -95,6 +95,9 @@ class FakePubkyClient : PubkyClient {
      */
     var failGetWhenUrlContains: String? = null
 
+    /** When set, [failGetWhenUrlContains] fails only this many matching reads, then clears itself. */
+    var failGetTimes: Int? = null
+
     /** What [startAuthFlow] hands back, and the capabilities it was asked for. */
     var authFlowResult: Result<String> = Result.success("pubkyauth:///?caps=&secret=test")
     val authFlowCapabilities = mutableListOf<String>()
@@ -158,13 +161,20 @@ class FakePubkyClient : PubkyClient {
     override suspend fun get(url: String): Result<String> {
         gets.add(url)
         failGetWith?.let { return Result.failure(it) }
-        failGetWhenUrlContains?.let { needle ->
-            if (needle in url) {
-                return Result.failure(PubkyError("HTTP transport error: error sending request for url ($url)"))
-            }
+        if (failGetWhenUrlContains?.let { it in url } == true) {
+            consumeFailGetTime()
+            // The wording #494 was found with: a reset connection, which a retry gets past.
+            val reset = "connection error: Connection reset by peer (os error 104)"
+            return Result.failure(PubkyError("HTTP transport error: error sending request for url ($url): $reset"))
         }
         return store[url]?.let { Result.success(it) }
             ?: Result.failure(PubkyError("not found: $url"))
+    }
+
+    private fun consumeFailGetTime() {
+        val remaining = failGetTimes ?: return
+        failGetTimes = (remaining - 1).takeIf { it > 0 }
+        if (remaining <= 1) failGetWhenUrlContains = null
     }
 
     override suspend fun getBytes(url: String): Result<String> = get(url)
