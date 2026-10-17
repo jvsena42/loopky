@@ -46,7 +46,8 @@ permissions:
   contents: read
 
 # Actions pinned to commit SHAs, unlike ci.yml: this workflow pushes the image staging then runs,
-# so a moved tag on any action here would ship straight to a live environment. Bump them together.
+# so a moved tag on any action here would ship straight to a live environment. Dependabot moves
+# each SHA and its tag comment together (#522); never write a bare `@v7` here.
 env:
   IMAGE: ghcr.io/jvsena42/loopky-mcp
 
