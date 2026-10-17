@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.cli
 
+import com.github.jvsena42.loopky.cli.commands.requireLoginEnvironmentAgrees
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.domain.model.Capability
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
@@ -8,6 +9,7 @@ import java.nio.file.Paths
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 /**
  * A session on one network and an `--env` naming the other has to be refused, and refused *loudly*.
@@ -66,5 +68,44 @@ class EnvironmentMismatchTest {
     @Test
     fun `a self-hosted homeserver is not refused`() {
         checkEnvironmentAgrees(sessionOn("somebodyelseshomeserverpubky"), cli(PubkyEnvironment.Production))
+    }
+
+    /** `login` makes the session every other command is checked against, so it checks its own (#507). */
+    @Test
+    fun `login refuses a session from the other network and says it was kept`() {
+        val error = assertFailsWith<CliError> {
+            requireLoginEnvironmentAgrees(
+                sessionOn(PubkyEnvironment.Staging.defaultHomeserver),
+                cli(PubkyEnvironment.Production),
+                export = false,
+            )
+        }
+        val message = error.message.orEmpty()
+        assertEquals(ExitCode.EnvironmentMismatch, error.exitCode)
+        assertTrue("--env staging" in message, message)
+        assertTrue("session is stored" in message, message)
+        assertTrue("--export" !in message, message)
+    }
+
+    @Test
+    fun `under --export it says no secret was printed`() {
+        val error = assertFailsWith<CliError> {
+            requireLoginEnvironmentAgrees(
+                sessionOn(PubkyEnvironment.Production.defaultHomeserver),
+                cli(PubkyEnvironment.Staging),
+                export = true,
+            )
+        }
+        assertTrue("--export printed no secret" in error.message.orEmpty(), error.message.orEmpty())
+    }
+
+    @Test
+    fun `login accepts a matching or self-hosted session`() {
+        requireLoginEnvironmentAgrees(
+            sessionOn(PubkyEnvironment.Staging.defaultHomeserver),
+            cli(PubkyEnvironment.Staging),
+            export = false,
+        )
+        requireLoginEnvironmentAgrees(sessionOn("somebodyelseshomeserverpubky"), cli(PubkyEnvironment.Production), export = true)
     }
 }

@@ -160,9 +160,7 @@ private const val GRANT_SECRET_PARTS = 4
  * it catches the common mistake rather than every mistake.
  */
 internal fun checkEnvironmentAgrees(session: Session, environment: CliEnvironment) {
-    val other = PubkyEnvironment.entries.firstOrNull {
-        it != environment.pubky && it.defaultHomeserver == session.homeserver
-    } ?: return
+    val other = otherEnvironmentOf(session, environment) ?: return
     throw CliError(
         ExitCode.EnvironmentMismatch,
         "This session is on ${other.name.lowercase()} (homeserver ${session.homeserver}) but " +
@@ -171,5 +169,11 @@ internal fun checkEnvironmentAgrees(session: Session, environment: CliEnvironmen
             "Re-run with --env ${other.name.lowercase()}.",
     )
 }
+
+/** The environment [session] provably belongs to when it is not [environment]'s, or null. */
+internal fun otherEnvironmentOf(session: Session, environment: CliEnvironment): PubkyEnvironment? =
+    PubkyEnvironment.entries.firstOrNull {
+        it != environment.pubky && it.defaultHomeserver == session.homeserver
+    }
 
 private const val TAG = "Loopky/Cli"

@@ -8,6 +8,7 @@ import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.TerminalQr
 import com.github.jvsena42.loopky.cli.asCliError
 import com.github.jvsena42.loopky.cli.eventEnvelope
+import com.github.jvsena42.loopky.cli.otherEnvironmentOf
 import com.github.jvsena42.loopky.cli.requireSession
 import com.github.jvsena42.loopky.cli.requireSessionSecretShape
 import com.github.jvsena42.loopky.cli.result
@@ -220,6 +221,7 @@ suspend fun login(
         sweep?.let { hook -> runCatching { Runtime.getRuntime().removeShutdownHook(hook) } }
     }
     val export = args.has("export")
+    requireLoginEnvironmentAgrees(session, environment, export)
     if (export) {
         stderr("")
         stderr("--export prints a live session secret below. It is also stored in ${sessionStore.location}.")
@@ -244,6 +246,26 @@ suspend fun login(
                 appendLine("Treat that like a password: it authorises writes to /pub/loopky until it expires.")
             }
         }.trimEnd(),
+    )
+}
+
+/**
+ * `checkEnvironmentAgrees` guards every command that *has* a session, and `login` is the one that
+ * makes it, so without this a session on the other network was reported `ok` and the next command
+ * exited 8 — one step after the person who could fix it had put their phone away (#507).
+ *
+ * The session is **kept**: it is valid, only on the other network, and discarding it would cost a
+ * second scan for a mistake the right `--env` fixes.
+ */
+internal fun requireLoginEnvironmentAgrees(session: Session, environment: CliEnvironment, export: Boolean) {
+    val other = otherEnvironmentOf(session, environment)?.name?.lowercase() ?: return
+    throw CliError(
+        ExitCode.EnvironmentMismatch,
+        "Ring approved an identity on $other (homeserver ${session.homeserver}), but this login ran " +
+            "for ${environment.name}. The session is stored, so no new scan is needed: run the next " +
+            "commands with --env $other (or LOOPKY_ENV=$other). To use ${environment.name} instead, " +
+            "run `loopky login` again and approve with an identity on that network." +
+            if (export) " --export printed no secret." else "",
     )
 }
 

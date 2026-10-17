@@ -218,7 +218,9 @@ fun cliCommands(): List<CliCommand> = listOf(
         ),
         // Sign-in is what produces a session; it cannot require one.
         needsSession = false,
-        alsoExits = listOf(ExitCode.Timeout),
+        // It checks the session it just made against --env, the way every other command checks
+        // the one it was handed (#507).
+        alsoExits = listOf(ExitCode.Timeout, ExitCode.EnvironmentMismatch),
         notBatchable = "A batch runs as one session; sign in before it.",
     ),
     CliCommand(
