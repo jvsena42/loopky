@@ -6,7 +6,7 @@
 # `libpubkycore.so` JNA extracts at runtime needs GLIBC_2.34, and the base has to carry at least
 # that. Temurin's jammy images do (2.35); a musl/alpine base does not load it at all.
 # Base images by digest: CD ships this image to staging unattended, so a re-pushed tag must not
-# change what it runs. Bump both together, deliberately, for security updates.
+# change what it runs. Dependabot proposes digest bumps for both in one PR (#522).
 FROM --platform=linux/amd64 eclipse-temurin:17-jdk-jammy@sha256:43f4431cc895d37ceb115e2e1f160545ec45caee9c1cb4246fc6bb879d58aeda AS builder
 
 ENV GRADLE_USER_HOME=/gradle

@@ -4,9 +4,9 @@
 # the Gradle side: it gets a PR of its own, so a red run names the dependency that broke it.
 #
 # Not here, on purpose:
-#   docker  `cli/Dockerfile` pins `ubuntu:22.04` for the glibc floor (see the file), and
-#           `debian:bookworm-slim` carries no version Dependabot can compare. Its only possible
-#           PR would be the one that must not merge.
+#   docker  for `cli/`: its Dockerfile pins `ubuntu:22.04` for the glibc floor (see the file),
+#           and `debian:bookworm-slim` carries no version Dependabot can compare. Its only
+#           possible PR would be the one that must not merge. `mcp/` is covered below.
 #   GraalVM `GRAALVM_VERSION` in that Dockerfile and `java-version` in the workflows are plain
 #           strings to Dependabot. They move by hand, together.
 version: 2
@@ -21,10 +21,29 @@ updates:
     groups:
       # Workflows pin major tags (`@v7`), so nearly every update lands in `actions-major`. An
       # action used only by `release.yml` is not exercised by the PR's own run.
+      # `mcp-deploy.yml` pins commit SHAs with the tag in a comment (#522); Dependabot moves the
+      # SHA and the comment together, in the same PRs. Its own run happens only after merge, so
+      # read the diff before approving: the next push to `main` ships to staging.
       actions-minor:
         update-types: [minor, patch]
       actions-major:
         update-types: [major]
+
+  # The MCP server's two eclipse-temurin bases, pinned by digest because staging deploys
+  # whatever image `main` builds (#522). One PR for both, since the builder and runtime move
+  # together; a JDK major is a deliberate move, not a dependency bump.
+  - package-ecosystem: docker
+    directory: /mcp
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build
+    ignore:
+      - dependency-name: eclipse-temurin
+        update-types: [version-update:semver-major]
+    groups:
+      mcp-base-images:
+        patterns: ["*"]
 
   - package-ecosystem: gradle
     directory: /
