@@ -116,6 +116,9 @@ internal suspend fun appendBatch(
         "$text. First failure was row ${failures.first().row}: ${failure.message} " +
             "Re-run the same file — rows already applied are skipped.",
         cliJson.encodeToJsonElement(CardWriteResult.serializer(), payload),
+        // The homeserver's own error, so a caller can still tell a refused session from an
+        // unreachable one: the exit code alone folds the two together.
+        cause = failure.cause,
     )
 }
 
@@ -231,6 +234,7 @@ internal suspend fun applyBatch(
         "$text. First failure was row ${failures.first().row} (card ${failures.first().cardId}): " +
             "${failures.first().message} Re-run the same file — rows already applied are skipped.",
         cliJson.encodeToJsonElement(CardWriteResult.serializer(), payload),
+        cause = stopped?.cause,
     )
 }
 

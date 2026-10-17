@@ -34,6 +34,7 @@ import com.github.jvsena42.loopky.util.epochMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -64,6 +65,7 @@ class SrsRepositoryImplTest {
         backgroundTasks = FakeBackgroundTasks(),
         deckCache = FakeDeckCacheStore(),
         preferences = FakeAppPreferences(),
+        scope = CoroutineScope(SupervisorJob()),
     )
     private val journal = FakePendingReviewStore()
     private val settings = FakeSettingsRepository()
@@ -224,6 +226,7 @@ class SrsRepositoryImplTest {
 
         val restarted = SrsRepositoryImpl(
             pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore,
+            scope = CoroutineScope(SupervisorJob()),
         )
         restarted.refreshDailyProgress()
 
@@ -238,7 +241,9 @@ class SrsRepositoryImplTest {
         repo.markGoalCelebrated()
 
         val restarted =
-            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore)
+            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore,
+                scope = CoroutineScope(SupervisorJob()),
+            )
         restarted.refreshDailyProgress()
 
         assertTrue(restarted.dailyProgress.value.goalCelebrated, "today's celebration came back")
@@ -252,6 +257,7 @@ class SrsRepositoryImplTest {
         val repo = SrsRepositoryImpl(
             pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore,
             dayIndex = { today },
+            scope = CoroutineScope(SupervisorJob()),
         )
         repo.dueForDeck("deck1")
         repo.review(testCard("c1", deckId = "deck1"), SrsGrade.Good).getOrThrow()
@@ -271,6 +277,7 @@ class SrsRepositoryImplTest {
         val repo = SrsRepositoryImpl(
             pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore,
             dayIndex = { today },
+            scope = CoroutineScope(SupervisorJob()),
         )
         repo.dueForDeck("deck1")
         repo.review(testCard("c1", deckId = "deck1"), SrsGrade.Good).getOrThrow()
@@ -466,7 +473,9 @@ class SrsRepositoryImplTest {
         // A fresh repo has a cold cache; building the due queue must load the persisted state
         // from the homeserver (repetitions grows from 3, not from a zeroed new-card baseline).
         val coldRepo =
-            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore)
+            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore,
+                scope = CoroutineScope(SupervisorJob()),
+            )
         coldRepo.dueForDeck("deck1")
         val next = coldRepo.review(testCard("c1"), SrsGrade.Good).getOrThrow()
         assertEquals(4, next.repetitions)
@@ -620,7 +629,9 @@ class SrsRepositoryImplTest {
         // A new instance over the same journal stands in for a restarted process.
         pubky.failAllSessionCallsWith = null
         val restarted =
-            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore)
+            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore,
+                scope = CoroutineScope(SupervisorJob()),
+            )
         restarted.flush().getOrThrow()
 
         val url = "pubky://$TEST_PUBKY/pub/loopky/srs/$TEST_PUBKY/deck1/0.json"
@@ -694,7 +705,9 @@ class SrsRepositoryImplTest {
         val chunk = journal.entries.single().chunk
 
         val restarted =
-            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore)
+            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore,
+                scope = CoroutineScope(SupervisorJob()),
+            )
         restarted.flush().getOrThrow()
 
         val url = "pubky://$TEST_PUBKY/pub/loopky/srs/$TEST_PUBKY/deck1/$chunk.json"
@@ -732,7 +745,9 @@ class SrsRepositoryImplTest {
         // this user reviews they never did and flush them to *their* homeserver.
         session.set(fakeSession("freshpk"))
         val restarted =
-            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore)
+            SrsRepositoryImpl(pubky, session, revalidator, deckRepo, cardRepo, journal, settings, progressStore,
+                scope = CoroutineScope(SupervisorJob()),
+            )
         restarted.flush().getOrThrow()
 
         assertNull(restarted.stateFor("deck1", "c1"))

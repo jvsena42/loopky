@@ -51,5 +51,5 @@ fun asCliError(error: Throwable, injected: Boolean = false): CliError {
         injected -> " LOOPKY_SESSION is no longer valid; mint a new one with `loopky login --export`."
         else -> " Run `loopky login` again."
     }
-    return CliError(code, (error.message ?: error::class.simpleName ?: "failed") + hint)
+    return CliError(code, (error.message ?: error::class.simpleName ?: "failed") + hint, cause = error)
 }

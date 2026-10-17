@@ -49,7 +49,6 @@ import com.github.jvsena42.loopky.util.epochMillis
 import com.github.jvsena42.loopky.util.generateId
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -81,7 +80,7 @@ class DeckRepositoryImpl(
      * App-scoped: re-hosting outlives whatever screen triggered it, so it cannot run on a
      * `viewModelScope` that dies in `onCleared()`. Injectable so tests can pass `backgroundScope`.
      */
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob()),
+    private val scope: CoroutineScope,
 ) : DeckRepository {
 
     init {

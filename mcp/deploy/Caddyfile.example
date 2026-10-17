@@ -1,0 +1,21 @@
+# TLS in front of both deployments. Copy to /etc/caddy/Caddyfile and adjust the hostnames.
+#
+# A starting point, not a production edge: per-address request limiting, the flood guard the
+# server deliberately leaves to the proxy, is #518. No upstream read timeout on purpose — an MCP
+# event stream sits idle between messages, and one would cut it.
+(mcp_edge) {
+	request_body {
+		max_size 4MB
+	}
+	header -Server
+}
+
+mcp.loopky.app {
+	import mcp_edge
+	reverse_proxy 127.0.0.1:8081
+}
+
+mcp.staging.loopky.app {
+	import mcp_edge
+	reverse_proxy 127.0.0.1:8082
+}

@@ -1,0 +1,174 @@
+name: MCP deploy
+
+# Continuous to staging, approved to production (#214, #486).
+#
+# Every push to `main` that can change the server builds one image, pushes it to GHCR and rolls
+# **staging** to it by digest. **Production** takes the same digest, never a rebuild, and only
+# after the `production` GitHub Environment's required reviewers approve. That gate is configured
+# in the repository settings, not here, so this file cannot be edited into skipping it.
+#
+# What a run needs, per GitHub Environment (`staging`, `production`):
+#   secrets  VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_KNOWN_HOSTS
+#            VPS_SSH_KEY is that environment's own key, whose forced command names the environment:
+#            the VPS decides which environment a key rolls, never this workflow (deploy.sh).
+#   vars     MCP_PUBLIC_URL (https://mcp.staging.loopky.app, https://mcp.loopky.app)
+# mcp/deploy/README.md has the server side.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mcp/**'
+      - 'cli-core/**'
+      - 'shared/src/commonMain/**'
+      - 'shared/src/jvmMain/**'
+      - 'shared/src/jvmSharedMain/**'
+      - 'shared/build.gradle.kts'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - '.github/workflows/mcp-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: 'Redeploy an existing image digest (sha256:…) instead of building. Empty builds HEAD.'
+        required: false
+        default: ''
+
+# Never two deploys at once, and never cancel one half-way: a cancelled roll is a box in an
+# unknown state.
+concurrency:
+  group: mcp-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+# Actions pinned to commit SHAs, unlike ci.yml: this workflow pushes the image staging then runs,
+# so a moved tag on any action here would ship straight to a live environment. Bump them together.
+env:
+  IMAGE: ghcr.io/jvsena42/loopky-mcp
+
+jobs:
+  image:
+    name: Build and push the image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.pick.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: inputs.digest == ''
+
+      - name: Set up JDK 17
+        if: inputs.digest == ''
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        if: inputs.digest == ''
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
+
+      # CI already ran this on the PR; again here because what merged is not what was tested
+      # when `main` moved underneath it.
+      - name: MCP server tests
+        if: inputs.digest == ''
+        run: ./gradlew :mcp:test
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: inputs.digest == ''
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read the version
+        if: inputs.digest == ''
+        id: version
+        run: echo "version=$(grep -oP '^loopkyCliVersion=\K.+' gradle.properties)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        if: inputs.digest == ''
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: mcp/Dockerfile
+          push: true
+          provenance: false
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Smoke-test the pushed image
+        if: inputs.digest == ''
+        run: bash mcp/deploy/smoke-test.sh "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
+
+      - name: Pick the digest
+        id: pick
+        env:
+          BUILT: ${{ steps.build.outputs.digest }}
+          GIVEN: ${{ inputs.digest }}
+        run: |
+          set -euo pipefail
+          DIGEST="${GIVEN:-$BUILT}"
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "not a digest: $DIGEST" >&2; exit 1; }
+          docker manifest inspect "$IMAGE@$DIGEST" >/dev/null
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "### $IMAGE@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+
+  staging:
+    name: Deploy to staging
+    needs: image
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.MCP_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: mcp/deploy
+      - name: Roll staging
+        uses: ./mcp/deploy/action
+        with:
+          environment: staging
+          image: ${{ env.IMAGE }}@${{ needs.image.outputs.digest }}
+          public-url: ${{ vars.MCP_PUBLIC_URL }}
+          host: ${{ secrets.VPS_HOST }}
+          user: ${{ secrets.VPS_USER }}
+          ssh-key: ${{ secrets.VPS_SSH_KEY }}
+          known-hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
+
+  production:
+    name: Deploy to production
+    needs: [image, staging]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.MCP_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: mcp/deploy
+      - name: Roll production
+        uses: ./mcp/deploy/action
+        with:
+          environment: production
+          image: ${{ env.IMAGE }}@${{ needs.image.outputs.digest }}
+          public-url: ${{ vars.MCP_PUBLIC_URL }}
+          host: ${{ secrets.VPS_HOST }}
+          user: ${{ secrets.VPS_USER }}
+          ssh-key: ${{ secrets.VPS_SSH_KEY }}
+          known-hosts: ${{ secrets.VPS_KNOWN_HOSTS }}

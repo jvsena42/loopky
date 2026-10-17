@@ -2570,21 +2570,25 @@ binary on someone's machine stays in `:cli`*:
   `CardList`, `Import`, `ApkgImport`, `ImageProbe`, `Tags` …), and the types they answer in:
   `CommandResult`/`result`/`cliJson`, `CliError`/`asCliError`/`ExitCode`, `Args` and
   `requireUsableOperand`, the views, `DeckWriteLock` and `CliEnvironment`. Also
-  `generateCliVersion`, because the image prober sends `CLI_VERSION` as its User-Agent. It depends
-  on `:shared` and kotlinx only — **no Koin**: callers hand the commands their repositories.
+  `generateCliVersion`, because the image prober sends `CLI_VERSION` as its User-Agent, and the
+  command table (`CommandSurface.kt`) with `requireKnownOptions`, since #214: the table is data
+  about the commands that both front ends read, and the validation beside it is the one every
+  front end has to run. It depends on `:shared` and kotlinx only — **no Koin**: callers hand the
+  commands their repositories.
 - `:cli` — `Main`/`dispatch`, the Koin start-up and the session (`startCli`, `SessionCache`,
   `requireSession`), the envelopes and `StdoutGuard`, `login`/`logout`/`whoami` (sign-in by QR is
   the human-in-the-loop path; a server signs in another way), `doctor`, `update` and install
-  detection, `batch`, completions and `CommandSurface`.
+  detection, `batch`, completions, `commands --json` and the near-miss hints over the table
+  (`CommandLineHints.kt`).
 
 Three things not to undo. The packages did **not** move — `com.github.jvsena42.loopky.cli…` in
 both modules — because the reachability metadata under `cli/src/main/resources/META-INF/
 native-image/` names classes, and a renamed one drops out of it with nothing reporting it. The
 commands still take `Args` rather than plain values, so the "plain values" above is looser than it
 reads; narrowing the signatures is for when `:mcp` needs it, not part of the move. And
-`CommandSurface` stays in `:cli` for now as the authority `commands --json`, the completions,
-`batch` and `AgentPluginTest` read; the MCP tool list should be checked against it too, which may
-argue for moving it down once `:mcp` exists.
+`CommandSurface` moved down with `:mcp` (#214): it is the authority `commands --json`, the
+completions, `batch`, `AgentPluginTest` **and** the MCP tool list are checked against, and a
+table two front ends read belongs in the module both depend on.
 
 Whether such a server is hosted — and therefore holds users' session secrets, with everything that
 implies — or runs on the user's own machine over stdio is open. Finding 1 pushes the same way for
@@ -2693,10 +2697,106 @@ stacks rather than trusting the JVM's view. A
 because the FFI's grant resume (§13.10) keeps rejoining a relay it never reached; `login` now asks
 the relay with `doctor`'s probe before showing a QR and fails 5, 14 or 15 there (#360).
 
-### 13.18 Still open
+### 13.18 One repository graph per user (#214)
+
+A hosted MCP server is one JVM process serving many Loopky users, and the repositories were
+written for a process with one. Every repository caches per session — decks, cards, review state,
+settings, the session itself — over one `MutableSessionProvider`, so "which user" is a property of
+the *graph*, not of any call. Keying every cache by `(user, deckId)` was the alternative and it was
+rejected: it is a change to every repository, it has to be kept up by every future one, and a
+single missed key is a cross-tenant read with nothing reporting it. Isolation is structural
+instead. `TenantGraph` (`shared/jvmMain/.../di/TenantGraph.kt`) is one isolated Koin instance per
+user — `koinApplication`, never `startKoin` — built from `sharedModule()` plus a tenant platform
+module in which **every store is in memory** (`InMemoryStores.kt`): there is no file under a
+config home that a second graph could read, and a closed graph leaves nothing behind. What tenants
+share is `TenantServices`: the one `PubkyClient` (the FFI is process-global and takes its session
+secret per call), the `HttpFetcher`, `NexusClient` and `HomegateClient`, and a
+`PassThroughMediaProcessor` typed as such so `JvmMediaProcessor` cannot come back through a
+`MediaProcessor` parameter.
+
+Three things not to undo, each found by the first two-tenant test rather than by reading.
+**`sharedModule` is a function.** Koin keeps a `single`'s instance inside the module's own factory,
+not inside the `Koin` that resolved it, so a module *object* loaded into two `koinApplication`s
+hands both the same session provider — two "isolated" graphs with one user between them. Every
+graph builds its own module; `KoinGraphTest` asserts two graphs share no singleton. **The
+repositories' fire-and-forget scope is a graph binding** (`REPOSITORY_SCOPE`, cancelled by
+`Koin.close()`), not a per-repository default: a graph on a server is opened and closed many times
+per process, and a scope that outlived its graph kept writing with a session the tenant had been
+handed back. **A graph adopts one session, once.** `adoptSession` refuses a second rather than
+compare pubkys, because a comparison runs after the session is already in place and the window
+between the two is where a request writes as the wrong user; a rotated credential means a new
+graph. The client id is per `UniffiPubkyClient` instance now (`clientId`, default `loopky.app`),
+so the server identifies as `mcp.loopky.app` and Ring lists — and revokes — it separately from the
+phone.
+
+Two things it does not do. It does not sign in: the server runs its Ring flow outside any graph,
+through the FFI's id-addressed flows (§13.19), and hands the secret in. And it does not bound
+anything: how many graphs live at once, and for how long, is the server's LRU (#214), not the
+graph's concern.
+
+### 13.19 The hosted server (`:mcp`, #214, #486)
+
+The audience the binary can never reach — Claude with no shell, a phone — gets a hosted remote MCP
+server: one deployment per network (`switchNetwork` is process-global), each a Ktor app that is an
+OAuth 2.1 authorization server *and* the MCP resource it protects. Claude registers dynamically,
+the user approves a **grant** in Pubky Ring for `/pub/loopky/:rw` only, under the server's own
+client id, and every tool call runs a `:cli-core` command on that user's `TenantGraph` (§13.18).
+The tool layer's rules are in CLAUDE.md's `mcp/` bullet; this is the part around it.
+
+**Custody.** What the server keeps is a ~2-year grant credential per user, so it is held as
+narrowly as the design allows: AES-256-GCM per credential, the AAD binding it to the pubky and
+the environment, the master key in a root-owned file outside the database; OAuth tokens are opaque
+handles stored as SHA-256 hashes. The credential never leaves the process. Unlinking — a revoked
+last refresh token, or 90 days without one — revokes the grant on the homeserver from the stored
+secret alone (`revoke_own_grant`, a proof logout that needs no live bearer) before the row goes.
+`loopky-mcp admin revoke-all` is the mass-revocation path a leak calls for, and it keeps the row
+of any grant it could not revoke so a rerun retries it.
+
+**Four things not to undo.** *A re-link replaces the credential, and the pool follows it*: a
+second sign-in revokes the first grant, so a tenant still holding it would fail its next write,
+and that refusal used to unlink the user's new, valid link — found by an end-to-end run against
+staging, not by a test. The pool reopens a graph whenever the secret on record changed, and
+reports a refusal only for the secret still on record. *An approval is exactly the asked-for
+scope*, or it is revoked on the spot rather than stored. *The `/mcp` gate is a route-scoped
+plugin*, not a Plugins-phase interceptor (that answered `/healthz` with a 401), and it runs before
+the handlers, because inside `sse {}` the response is already a 200. *The FFI is configured for a
+server*: id-addressed grant flows instead of the global slot §13.10 describes, polled without
+blocking and capped below the OAuth half's own pending-login cap, and an LRU session cache with
+single-flight minting sized to the pool, because two concurrent re-mints of one grant replace each
+other's bearer.
+
+**Deployment.** `mcp/Dockerfile` (jammy for `libpubkycore`'s glibc floor, non-root, read-only
+root) is built and booted on every PR by CI's `mcp` job. `/tmp` must be an **exec** tmpfs: JNA and
+sqlite-jdbc load their native libraries from it, and Docker's default tmpfs is `noexec` — the
+smoke test caught the server dying at its first database open. `RUST_LOG=warn`, because
+`libpubkycore` logs a pending sign-in's relay channel at INFO. `mcp-deploy.yml` rolls staging on
+every push to `main` and production, by the same digest, behind the `production` environment's
+reviewers; on the VPS a forced-command SSH key can run `deploy.sh` and nothing else.
+`mcp/deploy/README.md` is the operator's half.
+
+### 13.20 Still open
 
 - **A TLS-intercepting proxy** (§13.17) needs the pubky SDK to trust a CA it was not built with.
   Upstream work; until then such a sandbox exempts Loopky's hosts from interception.
+- **Ring phishing goes around the MCP server's authorize page, and nothing in the server can
+  stop it.** The page shows who is asking — the registered client name and the callback's domain
+  — but an attacker never shows the victim the page: they open `/authorize` in *their own*
+  browser, with a client they registered for free, and put the `pubkyauth://` QR it renders on a
+  site they control, under any wording they like. The victim scans it, Ring shows a request for
+  `/pub/loopky/:rw` from the relay and nothing the server can put a name to, and the approval
+  lands in the attacker's flow. This is inherent to the relay model: the grant is decided between
+  Ring and the relay, and the server learns of it afterwards. What the server's pieces do and do
+  not buy against it, honestly. **Pinning registration to Claude's callback** means the code can
+  only be redeemed through `claude.ai`, so the attacker ends up with the victim's decks linked to
+  *their own Claude account* rather than with a raw bearer in a script — bounded by Claude's
+  connector behaviour and attributable to that account, but still the victim's decks. **The
+  scope** bounds what is reachable: `/pub/loopky/:rw`, never a post, a follow or the profile.
+  **Ring lists the grant** under `mcp.loopky.app`, apart from the phone's, so the victim can
+  revoke it there, and `admin revoke-all` ends every grant at once. What would close it is a
+  client name Ring shows and the server cannot forge — a signed request the relay carries through
+  to Ring's prompt — which is Ring's and the relay's to build, not this server's. The reverse
+  direction, an attacker's approval landing in a victim's flow, is not possible: the txn the page
+  polls with is random, header-borne and keyed in memory.
 - **Its own repo, and the `core` / `presentation` split.** Starting in-tree is cheaper while
   `shared` is moving; the trigger for extracting is the first *out-of-tree* consumer, which needs
   a published artifact — and that artifact is the module boundary. `:cli-core` (§13.15) is the

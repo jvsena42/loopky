@@ -116,6 +116,7 @@ tasks.register("ciCheck") {
         ":shared:jvmTest",
         ":cli-core:test",
         ":cli:test",
+        ":mcp:test",
         ":androidApp:assembleDebug",
         ":cli:installDist",
         "checkStringPlurals",

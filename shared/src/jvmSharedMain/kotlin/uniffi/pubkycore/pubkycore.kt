@@ -382,21 +382,56 @@ internal interface _UniFFILib : Library {
                 uniffiCheckContractApiVersion(lib)
                 uniffiCheckApiChecksums(lib)
                 FfiConverterTypeEventListener.register(lib)
+                FfiConverterTypePubkyEventStreamListener.register(lib)
                 }
         }
     }
 
     fun uniffi_pubkycore_fn_free_eventnotifier(`ptr`: Pointer,_uniffi_out_err: RustCallStatus, 
     ): Unit
+    fun uniffi_pubkycore_fn_free_pubkystoragelock(`ptr`: Pointer,_uniffi_out_err: RustCallStatus, 
+    ): Unit
+    fun uniffi_pubkycore_fn_method_pubkystoragelock_delete(`ptr`: Pointer,_uniffi_out_err: RustCallStatus, 
+    ): Unit
+    fun uniffi_pubkycore_fn_method_pubkystoragelock_info(`ptr`: Pointer,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_method_pubkystoragelock_put(`ptr`: Pointer,`content`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): Unit
+    fun uniffi_pubkycore_fn_method_pubkystoragelock_refresh(`ptr`: Pointer,`timeoutSeconds`: Long,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_method_pubkystoragelock_unlock(`ptr`: Pointer,_uniffi_out_err: RustCallStatus, 
+    ): Unit
     fun uniffi_pubkycore_fn_init_callback_eventlistener(`callbackStub`: ForeignCallback,_uniffi_out_err: RustCallStatus, 
     ): Unit
+    fun uniffi_pubkycore_fn_init_callback_pubkyeventstreamlistener(`callbackStub`: ForeignCallback,_uniffi_out_err: RustCallStatus, 
+    ): Unit
     fun uniffi_pubkycore_fn_func_auth(`url`: RustBuffer.ByValue,`secretKey`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_auth_with_capabilities(`url`: RustBuffer.ByValue,`secretKey`: RustBuffer.ByValue,`approvedCapabilities`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_await_auth_approval(_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_await_cookie_auth_approval(_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_await_grant_auth_approval(_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_await_grant_auth_flow(_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_await_grant_auth_flow_handle(`flowId`: RustBuffer.ByValue,`timeoutSecs`: Int,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_cancel_grant_auth_flow(_uniffi_out_err: RustCallStatus, 
+    ): Unit
+    fun uniffi_pubkycore_fn_func_cancel_grant_auth_flow_handle(`flowId`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_configure_client(`config`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): Unit
+    fun uniffi_pubkycore_fn_func_configure_grant_auth_flows(`maxConcurrent`: Int,`ttlSecs`: Int,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_configure_max_body_bytes(`maxBytes`: Long,_uniffi_out_err: RustCallStatus, 
+    ): Long
+    fun uniffi_pubkycore_fn_func_configure_session_cache(`capacity`: Int,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_create_custom_grant_proof(`sessionSecret`: RustBuffer.ByValue,`dataJson`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_create_recovery_file(`secretKey`: RustBuffer.ByValue,`passphrase`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
@@ -407,6 +442,8 @@ internal interface _UniFFILib : Library {
     fun uniffi_pubkycore_fn_func_delete_file(`url`: RustBuffer.ByValue,`secretKey`: RustBuffer.ByValue,`clientId`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_delete_with_session(`url`: RustBuffer.ByValue,`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_derive_grant_encryption_key(`sessionSecret`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_generate_mnemonic_phrase(_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
@@ -424,15 +461,33 @@ internal interface _UniFFILib : Library {
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_get_signup_token(`homeserverPubky`: RustBuffer.ByValue,`adminPassword`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_grant_encryption_key_scopes(`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_grant_signed_approval(`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_init_logging(_uniffi_out_err: RustCallStatus, 
     ): Unit
     fun uniffi_pubkycore_fn_func_list(`url`: RustBuffer.ByValue,`cursor`: RustBuffer.ByValue,`reverse`: RustBuffer.ByValue,`limit`: RustBuffer.ByValue,`shallow`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_list_grants(`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_mnemonic_phrase_to_keypair(`mnemonicPhrase`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_parse_auth_url(`url`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_parse_deep_link(`url`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_poll_grant_auth_flow(_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_poll_grant_auth_flow_handle(`flowId`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_public_exists(`address`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): Byte
+    fun uniffi_pubkycore_fn_func_public_get_bytes(`address`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_public_list(`address`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_public_stats(`address`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_publish(`recordName`: RustBuffer.ByValue,`recordContent`: RustBuffer.ByValue,`secretKey`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
@@ -454,7 +509,29 @@ internal interface _UniFFILib : Library {
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_resolve_https(`publicKey`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_restore_grant_auth_flow(`state`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_revalidate_session(`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_revoke_grant(`sessionSecret`: RustBuffer.ByValue,`grantId`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_revoke_own_grant(`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_save_grant_auth_flow(_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_session_delete(`pathOrAddress`: RustBuffer.ByValue,`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): Unit
+    fun uniffi_pubkycore_fn_func_session_exists(`pathOrAddress`: RustBuffer.ByValue,`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): Byte
+    fun uniffi_pubkycore_fn_func_session_get_bytes(`pathOrAddress`: RustBuffer.ByValue,`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_session_list(`pathOrAddress`: RustBuffer.ByValue,`sessionSecret`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_session_lock(`pathOrAddress`: RustBuffer.ByValue,`sessionSecret`: RustBuffer.ByValue,`timeoutSeconds`: Long,_uniffi_out_err: RustCallStatus, 
+    ): Pointer
+    fun uniffi_pubkycore_fn_func_session_put_bytes(`pathOrAddress`: RustBuffer.ByValue,`content`: RustBuffer.ByValue,`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): Unit
+    fun uniffi_pubkycore_fn_func_session_stats(`pathOrAddress`: RustBuffer.ByValue,`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_set_event_listener(`listener`: Long,_uniffi_out_err: RustCallStatus, 
     ): Unit
@@ -462,7 +539,11 @@ internal interface _UniFFILib : Library {
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_sign_in_cookie(`secretKey`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_sign_in_cookie_blocking(`secretKey`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_sign_in_grant(`secretKey`: RustBuffer.ByValue,`clientId`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_sign_in_grant_blocking(`secretKey`: RustBuffer.ByValue,`clientId`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_sign_out(`sessionSecret`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
@@ -476,11 +557,23 @@ internal interface _UniFFILib : Library {
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_start_cookie_auth_flow(`capabilitiesStr`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_start_event_stream(`config`: RustBuffer.ByValue,`listener`: Long,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_start_grant_auth_flow(`capabilitiesStr`: RustBuffer.ByValue,`clientId`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_start_grant_auth_flow_handle(`capabilitiesStr`: RustBuffer.ByValue,`clientId`: RustBuffer.ByValue,`relay`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_start_grant_auth_flow_with_config(`config`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_stop_all_event_streams(_uniffi_out_err: RustCallStatus, 
+    ): Long
+    fun uniffi_pubkycore_fn_func_stop_event_stream(`subscriptionId`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): Byte
     fun uniffi_pubkycore_fn_func_switch_network(`useTestnet`: Byte,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_pubkycore_fn_func_validate_mnemonic_phrase(`mnemonicPhrase`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_pubkycore_fn_func_verify_custom_grant_proof(`proof`: RustBuffer.ByValue,`clockSkewSeconds`: Long,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun ffi_pubkycore_rustbuffer_alloc(`size`: Int,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
@@ -598,11 +691,31 @@ internal interface _UniFFILib : Library {
     ): Unit
     fun uniffi_pubkycore_checksum_func_auth(
     ): Short
+    fun uniffi_pubkycore_checksum_func_auth_with_capabilities(
+    ): Short
     fun uniffi_pubkycore_checksum_func_await_auth_approval(
     ): Short
     fun uniffi_pubkycore_checksum_func_await_cookie_auth_approval(
     ): Short
     fun uniffi_pubkycore_checksum_func_await_grant_auth_approval(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_await_grant_auth_flow(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_await_grant_auth_flow_handle(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_cancel_grant_auth_flow(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_cancel_grant_auth_flow_handle(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_configure_client(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_configure_grant_auth_flows(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_configure_max_body_bytes(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_configure_session_cache(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_create_custom_grant_proof(
     ): Short
     fun uniffi_pubkycore_checksum_func_create_recovery_file(
     ): Short
@@ -613,6 +726,8 @@ internal interface _UniFFILib : Library {
     fun uniffi_pubkycore_checksum_func_delete_file(
     ): Short
     fun uniffi_pubkycore_checksum_func_delete_with_session(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_derive_grant_encryption_key(
     ): Short
     fun uniffi_pubkycore_checksum_func_generate_mnemonic_phrase(
     ): Short
@@ -630,15 +745,33 @@ internal interface _UniFFILib : Library {
     ): Short
     fun uniffi_pubkycore_checksum_func_get_signup_token(
     ): Short
+    fun uniffi_pubkycore_checksum_func_grant_encryption_key_scopes(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_grant_signed_approval(
+    ): Short
     fun uniffi_pubkycore_checksum_func_init_logging(
     ): Short
     fun uniffi_pubkycore_checksum_func_list(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_list_grants(
     ): Short
     fun uniffi_pubkycore_checksum_func_mnemonic_phrase_to_keypair(
     ): Short
     fun uniffi_pubkycore_checksum_func_parse_auth_url(
     ): Short
     fun uniffi_pubkycore_checksum_func_parse_deep_link(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_poll_grant_auth_flow(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_poll_grant_auth_flow_handle(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_public_exists(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_public_get_bytes(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_public_list(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_public_stats(
     ): Short
     fun uniffi_pubkycore_checksum_func_publish(
     ): Short
@@ -660,7 +793,29 @@ internal interface _UniFFILib : Library {
     ): Short
     fun uniffi_pubkycore_checksum_func_resolve_https(
     ): Short
+    fun uniffi_pubkycore_checksum_func_restore_grant_auth_flow(
+    ): Short
     fun uniffi_pubkycore_checksum_func_revalidate_session(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_revoke_grant(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_revoke_own_grant(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_save_grant_auth_flow(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_session_delete(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_session_exists(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_session_get_bytes(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_session_list(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_session_lock(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_session_put_bytes(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_session_stats(
     ): Short
     fun uniffi_pubkycore_checksum_func_set_event_listener(
     ): Short
@@ -668,7 +823,11 @@ internal interface _UniFFILib : Library {
     ): Short
     fun uniffi_pubkycore_checksum_func_sign_in_cookie(
     ): Short
+    fun uniffi_pubkycore_checksum_func_sign_in_cookie_blocking(
+    ): Short
     fun uniffi_pubkycore_checksum_func_sign_in_grant(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_sign_in_grant_blocking(
     ): Short
     fun uniffi_pubkycore_checksum_func_sign_out(
     ): Short
@@ -682,13 +841,41 @@ internal interface _UniFFILib : Library {
     ): Short
     fun uniffi_pubkycore_checksum_func_start_cookie_auth_flow(
     ): Short
+    fun uniffi_pubkycore_checksum_func_start_event_stream(
+    ): Short
     fun uniffi_pubkycore_checksum_func_start_grant_auth_flow(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_start_grant_auth_flow_handle(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_start_grant_auth_flow_with_config(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_stop_all_event_streams(
+    ): Short
+    fun uniffi_pubkycore_checksum_func_stop_event_stream(
     ): Short
     fun uniffi_pubkycore_checksum_func_switch_network(
     ): Short
     fun uniffi_pubkycore_checksum_func_validate_mnemonic_phrase(
     ): Short
+    fun uniffi_pubkycore_checksum_func_verify_custom_grant_proof(
+    ): Short
+    fun uniffi_pubkycore_checksum_method_pubkystoragelock_delete(
+    ): Short
+    fun uniffi_pubkycore_checksum_method_pubkystoragelock_info(
+    ): Short
+    fun uniffi_pubkycore_checksum_method_pubkystoragelock_put(
+    ): Short
+    fun uniffi_pubkycore_checksum_method_pubkystoragelock_refresh(
+    ): Short
+    fun uniffi_pubkycore_checksum_method_pubkystoragelock_unlock(
+    ): Short
     fun uniffi_pubkycore_checksum_method_eventlistener_on_event_occurred(
+    ): Short
+    fun uniffi_pubkycore_checksum_method_pubkyeventstreamlistener_on_event(
+    ): Short
+    fun uniffi_pubkycore_checksum_method_pubkyeventstreamlistener_on_error(
+    ): Short
+    fun uniffi_pubkycore_checksum_method_pubkyeventstreamlistener_on_complete(
     ): Short
     fun ffi_pubkycore_uniffi_contract_version(
     ): Int
@@ -710,6 +897,9 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
     if (lib.uniffi_pubkycore_checksum_func_auth() != 51826.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pubkycore_checksum_func_auth_with_capabilities() != 62946.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pubkycore_checksum_func_await_auth_approval() != 56488.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -717,6 +907,33 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_await_grant_auth_approval() != 15252.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_await_grant_auth_flow() != 25430.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_await_grant_auth_flow_handle() != 43474.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_cancel_grant_auth_flow() != 21408.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_cancel_grant_auth_flow_handle() != 27553.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_configure_client() != 49656.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_configure_grant_auth_flows() != 36358.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_configure_max_body_bytes() != 5303.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_configure_session_cache() != 7117.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_create_custom_grant_proof() != 56343.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_create_recovery_file() != 48846.toShort()) {
@@ -732,6 +949,9 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_delete_with_session() != 26332.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_derive_grant_encryption_key() != 48351.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_generate_mnemonic_phrase() != 2358.toShort()) {
@@ -758,10 +978,19 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
     if (lib.uniffi_pubkycore_checksum_func_get_signup_token() != 47927.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pubkycore_checksum_func_grant_encryption_key_scopes() != 382.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_grant_signed_approval() != 2791.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pubkycore_checksum_func_init_logging() != 21182.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_list() != 63419.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_list_grants() != 59792.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_mnemonic_phrase_to_keypair() != 45784.toShort()) {
@@ -771,6 +1000,24 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_parse_deep_link() != 29971.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_poll_grant_auth_flow() != 62466.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_poll_grant_auth_flow_handle() != 25105.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_public_exists() != 55217.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_public_get_bytes() != 37051.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_public_list() != 13947.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_public_stats() != 55842.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_publish() != 48989.toShort()) {
@@ -803,7 +1050,40 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
     if (lib.uniffi_pubkycore_checksum_func_resolve_https() != 17266.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pubkycore_checksum_func_restore_grant_auth_flow() != 41658.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pubkycore_checksum_func_revalidate_session() != 57726.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_revoke_grant() != 15677.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_revoke_own_grant() != 22919.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_save_grant_auth_flow() != 63609.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_session_delete() != 42303.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_session_exists() != 49208.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_session_get_bytes() != 63122.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_session_list() != 37640.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_session_lock() != 27857.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_session_put_bytes() != 63275.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_session_stats() != 20269.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_set_event_listener() != 60071.toShort()) {
@@ -815,7 +1095,13 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
     if (lib.uniffi_pubkycore_checksum_func_sign_in_cookie() != 28058.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pubkycore_checksum_func_sign_in_cookie_blocking() != 31194.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pubkycore_checksum_func_sign_in_grant() != 49219.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_sign_in_grant_blocking() != 6356.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_sign_out() != 27163.toShort()) {
@@ -836,7 +1122,22 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
     if (lib.uniffi_pubkycore_checksum_func_start_cookie_auth_flow() != 49536.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pubkycore_checksum_func_start_event_stream() != 33730.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pubkycore_checksum_func_start_grant_auth_flow() != 48937.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_start_grant_auth_flow_handle() != 53487.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_start_grant_auth_flow_with_config() != 31556.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_stop_all_event_streams() != 58496.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_func_stop_event_stream() != 11015.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pubkycore_checksum_func_switch_network() != 64215.toShort()) {
@@ -845,7 +1146,34 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
     if (lib.uniffi_pubkycore_checksum_func_validate_mnemonic_phrase() != 30362.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pubkycore_checksum_func_verify_custom_grant_proof() != 15853.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_method_pubkystoragelock_delete() != 25786.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_method_pubkystoragelock_info() != 33361.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_method_pubkystoragelock_put() != 1671.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_method_pubkystoragelock_refresh() != 5441.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_method_pubkystoragelock_unlock() != 14327.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pubkycore_checksum_method_eventlistener_on_event_occurred() != 11531.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_method_pubkyeventstreamlistener_on_event() != 590.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_method_pubkyeventstreamlistener_on_error() != 13809.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pubkycore_checksum_method_pubkyeventstreamlistener_on_complete() != 17264.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -872,6 +1200,46 @@ public object FfiConverterUShort: FfiConverter<UShort, Short> {
 
     override fun write(value: UShort, buf: ByteBuffer) {
         buf.putShort(value.toShort())
+    }
+}
+
+public object FfiConverterUInt: FfiConverter<UInt, Int> {
+    override fun lift(value: Int): UInt {
+        return value.toUInt()
+    }
+
+    override fun read(buf: ByteBuffer): UInt {
+        return lift(buf.getInt())
+    }
+
+    override fun lower(value: UInt): Int {
+        return value.toInt()
+    }
+
+    override fun allocationSize(value: UInt) = 4
+
+    override fun write(value: UInt, buf: ByteBuffer) {
+        buf.putInt(value.toInt())
+    }
+}
+
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
     }
 }
 
@@ -1183,6 +1551,913 @@ public object FfiConverterTypeEventNotifier: FfiConverter<EventNotifier, Pointer
 
 
 
+public interface PubkyStorageLockInterface {
+    @Throws(PubkyCoreException::class)
+    fun `delete`()@Throws(PubkyCoreException::class)
+    fun `info`(): StorageLockInfo@Throws(PubkyCoreException::class)
+    fun `put`(`content`: ByteArray)@Throws(PubkyCoreException::class)
+    fun `refresh`(`timeoutSeconds`: ULong): StorageLockInfo@Throws(PubkyCoreException::class)
+    fun `unlock`()
+    companion object
+}
+
+class PubkyStorageLock(
+    pointer: Pointer
+) : FFIObject(pointer), PubkyStorageLockInterface {
+
+    /**
+     * Disconnect the object from the underlying Rust object.
+     *
+     * It can be called more than once, but once called, interacting with the object
+     * causes an `IllegalStateException`.
+     *
+     * Clients **must** call this method once done with the object, or cause a memory leak.
+     */
+    override protected fun freeRustArcPtr() {
+        rustCall() { status ->
+            _UniFFILib.INSTANCE.uniffi_pubkycore_fn_free_pubkystoragelock(this.pointer, status)
+        }
+    }
+
+    
+    @Throws(PubkyCoreException::class)override fun `delete`() =
+        callWithPointer {
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_method_pubkystoragelock_delete(it,
+        
+        _status)
+}
+        }
+    
+    
+    
+    @Throws(PubkyCoreException::class)override fun `info`(): StorageLockInfo =
+        callWithPointer {
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_method_pubkystoragelock_info(it,
+        
+        _status)
+}
+        }.let {
+            FfiConverterTypeStorageLockInfo.lift(it)
+        }
+    
+    
+    @Throws(PubkyCoreException::class)override fun `put`(`content`: ByteArray) =
+        callWithPointer {
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_method_pubkystoragelock_put(it,
+        FfiConverterByteArray.lower(`content`),
+        _status)
+}
+        }
+    
+    
+    
+    @Throws(PubkyCoreException::class)override fun `refresh`(`timeoutSeconds`: ULong): StorageLockInfo =
+        callWithPointer {
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_method_pubkystoragelock_refresh(it,
+        FfiConverterULong.lower(`timeoutSeconds`),
+        _status)
+}
+        }.let {
+            FfiConverterTypeStorageLockInfo.lift(it)
+        }
+    
+    
+    @Throws(PubkyCoreException::class)override fun `unlock`() =
+        callWithPointer {
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_method_pubkystoragelock_unlock(it,
+        
+        _status)
+}
+        }
+    
+    
+    
+
+    
+    companion object
+    
+}
+
+public object FfiConverterTypePubkyStorageLock: FfiConverter<PubkyStorageLock, Pointer> {
+    override fun lower(value: PubkyStorageLock): Pointer = value.callWithPointer { it }
+
+    override fun lift(value: Pointer): PubkyStorageLock {
+        return PubkyStorageLock(value)
+    }
+
+    override fun read(buf: ByteBuffer): PubkyStorageLock {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: PubkyStorageLock) = 8
+
+    override fun write(value: PubkyStorageLock, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+
+
+data class Capability (
+    var `path`: String, 
+    var `permission`: String
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeCapability: FfiConverterRustBuffer<Capability> {
+    override fun read(buf: ByteBuffer): Capability {
+        return Capability(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Capability) = (
+            FfiConverterString.allocationSize(value.`path`) +
+            FfiConverterString.allocationSize(value.`permission`)
+    )
+
+    override fun write(value: Capability, buf: ByteBuffer) {
+            FfiConverterString.write(value.`path`, buf)
+            FfiConverterString.write(value.`permission`, buf)
+    }
+}
+
+
+
+
+data class CustomGrantProof (
+    var `grant`: String, 
+    var `proof`: String
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeCustomGrantProof: FfiConverterRustBuffer<CustomGrantProof> {
+    override fun read(buf: ByteBuffer): CustomGrantProof {
+        return CustomGrantProof(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CustomGrantProof) = (
+            FfiConverterString.allocationSize(value.`grant`) +
+            FfiConverterString.allocationSize(value.`proof`)
+    )
+
+    override fun write(value: CustomGrantProof, buf: ByteBuffer) {
+            FfiConverterString.write(value.`grant`, buf)
+            FfiConverterString.write(value.`proof`, buf)
+    }
+}
+
+
+
+
+data class EventStreamConfig (
+    var `users`: List<EventStreamUser>, 
+    var `homeserver`: String?, 
+    var `paths`: List<String>, 
+    var `limit`: UShort?, 
+    var `maxEventBytes`: ULong?, 
+    var `live`: Boolean, 
+    var `reverse`: Boolean, 
+    var `sessionSecret`: String?
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeEventStreamConfig: FfiConverterRustBuffer<EventStreamConfig> {
+    override fun read(buf: ByteBuffer): EventStreamConfig {
+        return EventStreamConfig(
+            FfiConverterSequenceTypeEventStreamUser.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EventStreamConfig) = (
+            FfiConverterSequenceTypeEventStreamUser.allocationSize(value.`users`) +
+            FfiConverterOptionalString.allocationSize(value.`homeserver`) +
+            FfiConverterSequenceString.allocationSize(value.`paths`) +
+            FfiConverterOptionalUShort.allocationSize(value.`limit`) +
+            FfiConverterOptionalULong.allocationSize(value.`maxEventBytes`) +
+            FfiConverterBoolean.allocationSize(value.`live`) +
+            FfiConverterBoolean.allocationSize(value.`reverse`) +
+            FfiConverterOptionalString.allocationSize(value.`sessionSecret`)
+    )
+
+    override fun write(value: EventStreamConfig, buf: ByteBuffer) {
+            FfiConverterSequenceTypeEventStreamUser.write(value.`users`, buf)
+            FfiConverterOptionalString.write(value.`homeserver`, buf)
+            FfiConverterSequenceString.write(value.`paths`, buf)
+            FfiConverterOptionalUShort.write(value.`limit`, buf)
+            FfiConverterOptionalULong.write(value.`maxEventBytes`, buf)
+            FfiConverterBoolean.write(value.`live`, buf)
+            FfiConverterBoolean.write(value.`reverse`, buf)
+            FfiConverterOptionalString.write(value.`sessionSecret`, buf)
+    }
+}
+
+
+
+
+data class EventStreamUser (
+    var `publicKey`: String, 
+    var `cursor`: ULong?
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeEventStreamUser: FfiConverterRustBuffer<EventStreamUser> {
+    override fun read(buf: ByteBuffer): EventStreamUser {
+        return EventStreamUser(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EventStreamUser) = (
+            FfiConverterString.allocationSize(value.`publicKey`) +
+            FfiConverterOptionalULong.allocationSize(value.`cursor`)
+    )
+
+    override fun write(value: EventStreamUser, buf: ByteBuffer) {
+            FfiConverterString.write(value.`publicKey`, buf)
+            FfiConverterOptionalULong.write(value.`cursor`, buf)
+    }
+}
+
+
+
+
+data class GrantAuthFlowConfig (
+    var `capabilities`: String, 
+    var `clientId`: String, 
+    var `homeserver`: String?, 
+    var `signupToken`: String?, 
+    var `relay`: String?, 
+    var `clientSecret`: ByteArray?, 
+    var `clientKeySecret`: ByteArray?, 
+    var `approvalFormat`: GrantApprovalMode?, 
+    var `xSource`: String?, 
+    var `xSuccess`: String?, 
+    var `xError`: String?, 
+    var `xCancel`: String?
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeGrantAuthFlowConfig: FfiConverterRustBuffer<GrantAuthFlowConfig> {
+    override fun read(buf: ByteBuffer): GrantAuthFlowConfig {
+        return GrantAuthFlowConfig(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalByteArray.read(buf),
+            FfiConverterOptionalByteArray.read(buf),
+            FfiConverterOptionalTypeGrantApprovalMode.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: GrantAuthFlowConfig) = (
+            FfiConverterString.allocationSize(value.`capabilities`) +
+            FfiConverterString.allocationSize(value.`clientId`) +
+            FfiConverterOptionalString.allocationSize(value.`homeserver`) +
+            FfiConverterOptionalString.allocationSize(value.`signupToken`) +
+            FfiConverterOptionalString.allocationSize(value.`relay`) +
+            FfiConverterOptionalByteArray.allocationSize(value.`clientSecret`) +
+            FfiConverterOptionalByteArray.allocationSize(value.`clientKeySecret`) +
+            FfiConverterOptionalTypeGrantApprovalMode.allocationSize(value.`approvalFormat`) +
+            FfiConverterOptionalString.allocationSize(value.`xSource`) +
+            FfiConverterOptionalString.allocationSize(value.`xSuccess`) +
+            FfiConverterOptionalString.allocationSize(value.`xError`) +
+            FfiConverterOptionalString.allocationSize(value.`xCancel`)
+    )
+
+    override fun write(value: GrantAuthFlowConfig, buf: ByteBuffer) {
+            FfiConverterString.write(value.`capabilities`, buf)
+            FfiConverterString.write(value.`clientId`, buf)
+            FfiConverterOptionalString.write(value.`homeserver`, buf)
+            FfiConverterOptionalString.write(value.`signupToken`, buf)
+            FfiConverterOptionalString.write(value.`relay`, buf)
+            FfiConverterOptionalByteArray.write(value.`clientSecret`, buf)
+            FfiConverterOptionalByteArray.write(value.`clientKeySecret`, buf)
+            FfiConverterOptionalTypeGrantApprovalMode.write(value.`approvalFormat`, buf)
+            FfiConverterOptionalString.write(value.`xSource`, buf)
+            FfiConverterOptionalString.write(value.`xSuccess`, buf)
+            FfiConverterOptionalString.write(value.`xError`, buf)
+            FfiConverterOptionalString.write(value.`xCancel`, buf)
+    }
+}
+
+
+
+
+data class GrantAuthFlowStateRecord (
+    var `authorizationUrl`: String, 
+    var `clientKeySecret`: ByteArray, 
+    var `approvalKeySecret`: ByteArray?
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeGrantAuthFlowStateRecord: FfiConverterRustBuffer<GrantAuthFlowStateRecord> {
+    override fun read(buf: ByteBuffer): GrantAuthFlowStateRecord {
+        return GrantAuthFlowStateRecord(
+            FfiConverterString.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterOptionalByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: GrantAuthFlowStateRecord) = (
+            FfiConverterString.allocationSize(value.`authorizationUrl`) +
+            FfiConverterByteArray.allocationSize(value.`clientKeySecret`) +
+            FfiConverterOptionalByteArray.allocationSize(value.`approvalKeySecret`)
+    )
+
+    override fun write(value: GrantAuthFlowStateRecord, buf: ByteBuffer) {
+            FfiConverterString.write(value.`authorizationUrl`, buf)
+            FfiConverterByteArray.write(value.`clientKeySecret`, buf)
+            FfiConverterOptionalByteArray.write(value.`approvalKeySecret`, buf)
+    }
+}
+
+
+
+
+data class PubkyClientConfig (
+    var `useTestnet`: Boolean, 
+    var `testnetHost`: String?, 
+    var `requestTimeoutMs`: ULong?, 
+    var `readTimeoutMs`: ULong?, 
+    var `poolMaxIdlePerHost`: ULong?, 
+    var `maxErrorBodyBytes`: ULong?, 
+    var `userAgentExtra`: String?
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypePubkyClientConfig: FfiConverterRustBuffer<PubkyClientConfig> {
+    override fun read(buf: ByteBuffer): PubkyClientConfig {
+        return PubkyClientConfig(
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PubkyClientConfig) = (
+            FfiConverterBoolean.allocationSize(value.`useTestnet`) +
+            FfiConverterOptionalString.allocationSize(value.`testnetHost`) +
+            FfiConverterOptionalULong.allocationSize(value.`requestTimeoutMs`) +
+            FfiConverterOptionalULong.allocationSize(value.`readTimeoutMs`) +
+            FfiConverterOptionalULong.allocationSize(value.`poolMaxIdlePerHost`) +
+            FfiConverterOptionalULong.allocationSize(value.`maxErrorBodyBytes`) +
+            FfiConverterOptionalString.allocationSize(value.`userAgentExtra`)
+    )
+
+    override fun write(value: PubkyClientConfig, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`useTestnet`, buf)
+            FfiConverterOptionalString.write(value.`testnetHost`, buf)
+            FfiConverterOptionalULong.write(value.`requestTimeoutMs`, buf)
+            FfiConverterOptionalULong.write(value.`readTimeoutMs`, buf)
+            FfiConverterOptionalULong.write(value.`poolMaxIdlePerHost`, buf)
+            FfiConverterOptionalULong.write(value.`maxErrorBodyBytes`, buf)
+            FfiConverterOptionalString.write(value.`userAgentExtra`, buf)
+    }
+}
+
+
+
+
+data class PubkyStorageEvent (
+    var `eventType`: String, 
+    var `resource`: String, 
+    var `cursor`: ULong, 
+    var `contentHash`: String?
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypePubkyStorageEvent: FfiConverterRustBuffer<PubkyStorageEvent> {
+    override fun read(buf: ByteBuffer): PubkyStorageEvent {
+        return PubkyStorageEvent(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PubkyStorageEvent) = (
+            FfiConverterString.allocationSize(value.`eventType`) +
+            FfiConverterString.allocationSize(value.`resource`) +
+            FfiConverterULong.allocationSize(value.`cursor`) +
+            FfiConverterOptionalString.allocationSize(value.`contentHash`)
+    )
+
+    override fun write(value: PubkyStorageEvent, buf: ByteBuffer) {
+            FfiConverterString.write(value.`eventType`, buf)
+            FfiConverterString.write(value.`resource`, buf)
+            FfiConverterULong.write(value.`cursor`, buf)
+            FfiConverterOptionalString.write(value.`contentHash`, buf)
+    }
+}
+
+
+
+
+data class StorageListOptions (
+    var `reverse`: Boolean, 
+    var `shallow`: Boolean, 
+    var `limit`: UShort?, 
+    var `cursor`: String?
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeStorageListOptions: FfiConverterRustBuffer<StorageListOptions> {
+    override fun read(buf: ByteBuffer): StorageListOptions {
+        return StorageListOptions(
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: StorageListOptions) = (
+            FfiConverterBoolean.allocationSize(value.`reverse`) +
+            FfiConverterBoolean.allocationSize(value.`shallow`) +
+            FfiConverterOptionalUShort.allocationSize(value.`limit`) +
+            FfiConverterOptionalString.allocationSize(value.`cursor`)
+    )
+
+    override fun write(value: StorageListOptions, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`reverse`, buf)
+            FfiConverterBoolean.write(value.`shallow`, buf)
+            FfiConverterOptionalUShort.write(value.`limit`, buf)
+            FfiConverterOptionalString.write(value.`cursor`, buf)
+    }
+}
+
+
+
+
+data class StorageListPage (
+    var `entries`: List<String>, 
+    var `nextCursor`: String?
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeStorageListPage: FfiConverterRustBuffer<StorageListPage> {
+    override fun read(buf: ByteBuffer): StorageListPage {
+        return StorageListPage(
+            FfiConverterSequenceString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: StorageListPage) = (
+            FfiConverterSequenceString.allocationSize(value.`entries`) +
+            FfiConverterOptionalString.allocationSize(value.`nextCursor`)
+    )
+
+    override fun write(value: StorageListPage, buf: ByteBuffer) {
+            FfiConverterSequenceString.write(value.`entries`, buf)
+            FfiConverterOptionalString.write(value.`nextCursor`, buf)
+    }
+}
+
+
+
+
+data class StorageLockInfo (
+    var `path`: String, 
+    var `token`: String, 
+    var `timeoutSeconds`: ULong
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeStorageLockInfo: FfiConverterRustBuffer<StorageLockInfo> {
+    override fun read(buf: ByteBuffer): StorageLockInfo {
+        return StorageLockInfo(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: StorageLockInfo) = (
+            FfiConverterString.allocationSize(value.`path`) +
+            FfiConverterString.allocationSize(value.`token`) +
+            FfiConverterULong.allocationSize(value.`timeoutSeconds`)
+    )
+
+    override fun write(value: StorageLockInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`path`, buf)
+            FfiConverterString.write(value.`token`, buf)
+            FfiConverterULong.write(value.`timeoutSeconds`, buf)
+    }
+}
+
+
+
+
+data class StorageResourceStats (
+    var `contentLength`: ULong?, 
+    var `contentType`: String?, 
+    var `lastModifiedMs`: ULong?, 
+    var `etag`: String?
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeStorageResourceStats: FfiConverterRustBuffer<StorageResourceStats> {
+    override fun read(buf: ByteBuffer): StorageResourceStats {
+        return StorageResourceStats(
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: StorageResourceStats) = (
+            FfiConverterOptionalULong.allocationSize(value.`contentLength`) +
+            FfiConverterOptionalString.allocationSize(value.`contentType`) +
+            FfiConverterOptionalULong.allocationSize(value.`lastModifiedMs`) +
+            FfiConverterOptionalString.allocationSize(value.`etag`)
+    )
+
+    override fun write(value: StorageResourceStats, buf: ByteBuffer) {
+            FfiConverterOptionalULong.write(value.`contentLength`, buf)
+            FfiConverterOptionalString.write(value.`contentType`, buf)
+            FfiConverterOptionalULong.write(value.`lastModifiedMs`, buf)
+            FfiConverterOptionalString.write(value.`etag`, buf)
+    }
+}
+
+
+
+
+data class VerifiedCustomGrantProof (
+    var `identity`: String, 
+    var `clientId`: String, 
+    var `clientPublicKey`: String, 
+    var `grantId`: String, 
+    var `capabilities`: List<Capability>, 
+    var `grantIssuedAt`: ULong, 
+    var `grantExpiresAt`: ULong, 
+    var `proofIssuedAt`: ULong, 
+    var `nonce`: String, 
+    var `dataJson`: String
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeVerifiedCustomGrantProof: FfiConverterRustBuffer<VerifiedCustomGrantProof> {
+    override fun read(buf: ByteBuffer): VerifiedCustomGrantProof {
+        return VerifiedCustomGrantProof(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeCapability.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: VerifiedCustomGrantProof) = (
+            FfiConverterString.allocationSize(value.`identity`) +
+            FfiConverterString.allocationSize(value.`clientId`) +
+            FfiConverterString.allocationSize(value.`clientPublicKey`) +
+            FfiConverterString.allocationSize(value.`grantId`) +
+            FfiConverterSequenceTypeCapability.allocationSize(value.`capabilities`) +
+            FfiConverterULong.allocationSize(value.`grantIssuedAt`) +
+            FfiConverterULong.allocationSize(value.`grantExpiresAt`) +
+            FfiConverterULong.allocationSize(value.`proofIssuedAt`) +
+            FfiConverterString.allocationSize(value.`nonce`) +
+            FfiConverterString.allocationSize(value.`dataJson`)
+    )
+
+    override fun write(value: VerifiedCustomGrantProof, buf: ByteBuffer) {
+            FfiConverterString.write(value.`identity`, buf)
+            FfiConverterString.write(value.`clientId`, buf)
+            FfiConverterString.write(value.`clientPublicKey`, buf)
+            FfiConverterString.write(value.`grantId`, buf)
+            FfiConverterSequenceTypeCapability.write(value.`capabilities`, buf)
+            FfiConverterULong.write(value.`grantIssuedAt`, buf)
+            FfiConverterULong.write(value.`grantExpiresAt`, buf)
+            FfiConverterULong.write(value.`proofIssuedAt`, buf)
+            FfiConverterString.write(value.`nonce`, buf)
+            FfiConverterString.write(value.`dataJson`, buf)
+    }
+}
+
+
+
+
+enum class GrantApprovalMode {
+    BARE_GRANT,SIGNED_APPROVAL_V1;
+    companion object
+}
+
+public object FfiConverterTypeGrantApprovalMode: FfiConverterRustBuffer<GrantApprovalMode> {
+    override fun read(buf: ByteBuffer) = try {
+        GrantApprovalMode.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: GrantApprovalMode) = 4
+
+    override fun write(value: GrantApprovalMode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+
+sealed class PubkyCoreException: Exception() {
+    // Each variant is a nested class
+    
+    class Transport(
+        val `details`: String
+        ) : PubkyCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    class Server(
+        val `status`: UShort, 
+        val `details`: String
+        ) : PubkyCoreException() {
+        override val message
+            get() = "status=${ `status` }, details=${ `details` }"
+    }
+    
+    class Validation(
+        val `details`: String
+        ) : PubkyCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    class DecodeJson(
+        val `details`: String
+        ) : PubkyCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    class Pkarr(
+        val `details`: String, 
+        val `retryable`: Boolean
+        ) : PubkyCoreException() {
+        override val message
+            get() = "details=${ `details` }, retryable=${ `retryable` }"
+    }
+    
+    class Parse(
+        val `details`: String
+        ) : PubkyCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    class Authentication(
+        val `details`: String, 
+        val `expired`: Boolean
+        ) : PubkyCoreException() {
+        override val message
+            get() = "details=${ `details` }, expired=${ `expired` }"
+    }
+    
+    class Build(
+        val `details`: String
+        ) : PubkyCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    class State(
+        val `details`: String
+        ) : PubkyCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+
+    companion object ErrorHandler : CallStatusErrorHandler<PubkyCoreException> {
+        override fun lift(error_buf: RustBuffer.ByValue): PubkyCoreException = FfiConverterTypePubkyCoreError.lift(error_buf)
+    }
+
+    
+}
+
+public object FfiConverterTypePubkyCoreError : FfiConverterRustBuffer<PubkyCoreException> {
+    override fun read(buf: ByteBuffer): PubkyCoreException {
+        
+
+        return when(buf.getInt()) {
+            1 -> PubkyCoreException.Transport(
+                FfiConverterString.read(buf),
+                )
+            2 -> PubkyCoreException.Server(
+                FfiConverterUShort.read(buf),
+                FfiConverterString.read(buf),
+                )
+            3 -> PubkyCoreException.Validation(
+                FfiConverterString.read(buf),
+                )
+            4 -> PubkyCoreException.DecodeJson(
+                FfiConverterString.read(buf),
+                )
+            5 -> PubkyCoreException.Pkarr(
+                FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            6 -> PubkyCoreException.Parse(
+                FfiConverterString.read(buf),
+                )
+            7 -> PubkyCoreException.Authentication(
+                FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            8 -> PubkyCoreException.Build(
+                FfiConverterString.read(buf),
+                )
+            9 -> PubkyCoreException.State(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PubkyCoreException): Int {
+        return when(value) {
+            is PubkyCoreException.Transport -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is PubkyCoreException.Server -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterUShort.allocationSize(value.`status`)
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is PubkyCoreException.Validation -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is PubkyCoreException.DecodeJson -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is PubkyCoreException.Pkarr -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`details`)
+                + FfiConverterBoolean.allocationSize(value.`retryable`)
+            )
+            is PubkyCoreException.Parse -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is PubkyCoreException.Authentication -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`details`)
+                + FfiConverterBoolean.allocationSize(value.`expired`)
+            )
+            is PubkyCoreException.Build -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is PubkyCoreException.State -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+        }
+    }
+
+    override fun write(value: PubkyCoreException, buf: ByteBuffer) {
+        when(value) {
+            is PubkyCoreException.Transport -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is PubkyCoreException.Server -> {
+                buf.putInt(2)
+                FfiConverterUShort.write(value.`status`, buf)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is PubkyCoreException.Validation -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is PubkyCoreException.DecodeJson -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is PubkyCoreException.Pkarr -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`details`, buf)
+                FfiConverterBoolean.write(value.`retryable`, buf)
+                Unit
+            }
+            is PubkyCoreException.Parse -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is PubkyCoreException.Authentication -> {
+                buf.putInt(7)
+                FfiConverterString.write(value.`details`, buf)
+                FfiConverterBoolean.write(value.`expired`, buf)
+                Unit
+            }
+            is PubkyCoreException.Build -> {
+                buf.putInt(8)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is PubkyCoreException.State -> {
+                buf.putInt(9)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
 internal typealias Handle = Long
 internal class ConcurrentHandleMap<T>(
     private val leftMap: MutableMap<Handle, T> = mutableMapOf(),
@@ -1346,6 +2621,154 @@ public object FfiConverterTypeEventListener: FfiConverterCallbackInterface<Event
 
 
 
+
+
+// Declaration and FfiConverters for PubkyEventStreamListener Callback Interface
+
+public interface PubkyEventStreamListener {
+    fun `onEvent`(`event`: PubkyStorageEvent)
+    fun `onError`(`message`: String)
+    fun `onComplete`()
+    
+    companion object
+}
+
+// The ForeignCallback that is passed to Rust.
+internal class ForeignCallbackTypePubkyEventStreamListener : ForeignCallback {
+    @Suppress("TooGenericExceptionCaught")
+    override fun callback(handle: Handle, method: Int, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val cb = FfiConverterTypePubkyEventStreamListener.lift(handle)
+        return when (method) {
+            IDX_CALLBACK_FREE -> {
+                FfiConverterTypePubkyEventStreamListener.drop(handle)
+                // Successful return
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+                UNIFFI_CALLBACK_SUCCESS
+            }
+            1 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeOnEvent`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            2 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeOnError`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            3 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeOnComplete`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            
+            else -> {
+                // An unexpected error happened.
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+                try {
+                    // Try to serialize the error into a string
+                    outBuf.setValue(FfiConverterString.lower("Invalid Callback index"))
+                } catch (e: Throwable) {
+                    // If that fails, then it's time to give up and just return
+                }
+                UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+        }
+    }
+
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeOnEvent`(kotlinCallbackInterface: PubkyEventStreamListener, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
+        }
+        fun makeCall() : Int {
+            kotlinCallbackInterface.`onEvent`(
+                FfiConverterTypePubkyStorageEvent.read(argsBuf)
+            )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeOnError`(kotlinCallbackInterface: PubkyEventStreamListener, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
+        }
+        fun makeCall() : Int {
+            kotlinCallbackInterface.`onError`(
+                FfiConverterString.read(argsBuf)
+            )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeOnComplete`(kotlinCallbackInterface: PubkyEventStreamListener, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        fun makeCall() : Int {
+            kotlinCallbackInterface.`onComplete`(
+            )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
+
+        return makeCallAndHandleError()
+    }
+    
+}
+
+// The ffiConverter which transforms the Callbacks in to Handles to pass to Rust.
+public object FfiConverterTypePubkyEventStreamListener: FfiConverterCallbackInterface<PubkyEventStreamListener>(
+    foreignCallback = ForeignCallbackTypePubkyEventStreamListener()
+) {
+    override fun register(lib: _UniFFILib) {
+        rustCall() { status ->
+            lib.uniffi_pubkycore_fn_init_callback_pubkyeventstreamlistener(this.foreignCallback, status)
+        }
+    }
+}
+
+
+
+
 public object FfiConverterOptionalUShort: FfiConverterRustBuffer<UShort?> {
     override fun read(buf: ByteBuffer): UShort? {
         if (buf.get().toInt() == 0) {
@@ -1368,6 +2791,35 @@ public object FfiConverterOptionalUShort: FfiConverterRustBuffer<UShort?> {
         } else {
             buf.put(1)
             FfiConverterUShort.write(value, buf)
+        }
+    }
+}
+
+
+
+
+public object FfiConverterOptionalULong: FfiConverterRustBuffer<ULong?> {
+    override fun read(buf: ByteBuffer): ULong? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterULong.read(buf)
+    }
+
+    override fun allocationSize(value: ULong?): Int {
+        if (value == null) {
+            return 1
+        } else {
+            return 1 + FfiConverterULong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ULong?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterULong.write(value, buf)
         }
     }
 }
@@ -1433,6 +2885,122 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<String?> {
 
 
 
+public object FfiConverterOptionalByteArray: FfiConverterRustBuffer<ByteArray?> {
+    override fun read(buf: ByteBuffer): ByteArray? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterByteArray.read(buf)
+    }
+
+    override fun allocationSize(value: ByteArray?): Int {
+        if (value == null) {
+            return 1
+        } else {
+            return 1 + FfiConverterByteArray.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ByteArray?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterByteArray.write(value, buf)
+        }
+    }
+}
+
+
+
+
+public object FfiConverterOptionalTypeStorageResourceStats: FfiConverterRustBuffer<StorageResourceStats?> {
+    override fun read(buf: ByteBuffer): StorageResourceStats? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeStorageResourceStats.read(buf)
+    }
+
+    override fun allocationSize(value: StorageResourceStats?): Int {
+        if (value == null) {
+            return 1
+        } else {
+            return 1 + FfiConverterTypeStorageResourceStats.allocationSize(value)
+        }
+    }
+
+    override fun write(value: StorageResourceStats?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeStorageResourceStats.write(value, buf)
+        }
+    }
+}
+
+
+
+
+public object FfiConverterOptionalTypeGrantApprovalMode: FfiConverterRustBuffer<GrantApprovalMode?> {
+    override fun read(buf: ByteBuffer): GrantApprovalMode? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeGrantApprovalMode.read(buf)
+    }
+
+    override fun allocationSize(value: GrantApprovalMode?): Int {
+        if (value == null) {
+            return 1
+        } else {
+            return 1 + FfiConverterTypeGrantApprovalMode.allocationSize(value)
+        }
+    }
+
+    override fun write(value: GrantApprovalMode?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeGrantApprovalMode.write(value, buf)
+        }
+    }
+}
+
+
+
+
+public object FfiConverterOptionalSequenceString: FfiConverterRustBuffer<List<String>?> {
+    override fun read(buf: ByteBuffer): List<String>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceString.read(buf)
+    }
+
+    override fun allocationSize(value: List<String>?): Int {
+        if (value == null) {
+            return 1
+        } else {
+            return 1 + FfiConverterSequenceString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<String>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceString.write(value, buf)
+        }
+    }
+}
+
+
+
+
 public object FfiConverterSequenceString: FfiConverterRustBuffer<List<String>> {
     override fun read(buf: ByteBuffer): List<String> {
         val len = buf.getInt()
@@ -1455,10 +3023,68 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<String>> {
     }
 }
 
+
+
+
+public object FfiConverterSequenceTypeCapability: FfiConverterRustBuffer<List<Capability>> {
+    override fun read(buf: ByteBuffer): List<Capability> {
+        val len = buf.getInt()
+        return List<Capability>(len) {
+            FfiConverterTypeCapability.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<Capability>): Int {
+        val sizeForLength = 4
+        val sizeForItems = value.map { FfiConverterTypeCapability.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<Capability>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.forEach {
+            FfiConverterTypeCapability.write(it, buf)
+        }
+    }
+}
+
+
+
+
+public object FfiConverterSequenceTypeEventStreamUser: FfiConverterRustBuffer<List<EventStreamUser>> {
+    override fun read(buf: ByteBuffer): List<EventStreamUser> {
+        val len = buf.getInt()
+        return List<EventStreamUser>(len) {
+            FfiConverterTypeEventStreamUser.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<EventStreamUser>): Int {
+        val sizeForLength = 4
+        val sizeForItems = value.map { FfiConverterTypeEventStreamUser.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<EventStreamUser>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.forEach {
+            FfiConverterTypeEventStreamUser.write(it, buf)
+        }
+    }
+}
+
 fun `auth`(`url`: String, `secretKey`: String): List<String> {
     return FfiConverterSequenceString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_auth(FfiConverterString.lower(`url`),FfiConverterString.lower(`secretKey`),_status)
+})
+}
+
+
+fun `authWithCapabilities`(`url`: String, `secretKey`: String, `approvedCapabilities`: String): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_auth_with_capabilities(FfiConverterString.lower(`url`),FfiConverterString.lower(`secretKey`),FfiConverterString.lower(`approvedCapabilities`),_status)
 })
 }
 
@@ -1483,6 +3109,81 @@ fun `awaitGrantAuthApproval`(): List<String> {
     return FfiConverterSequenceString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_await_grant_auth_approval(_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `awaitGrantAuthFlow`(): String {
+    return FfiConverterString.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_await_grant_auth_flow(_status)
+})
+}
+
+
+fun `awaitGrantAuthFlowHandle`(`flowId`: String, `timeoutSecs`: UInt): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_await_grant_auth_flow_handle(FfiConverterString.lower(`flowId`),FfiConverterUInt.lower(`timeoutSecs`),_status)
+})
+}
+
+
+fun `cancelGrantAuthFlow`() =
+    
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_cancel_grant_auth_flow(_status)
+}
+
+
+
+fun `cancelGrantAuthFlowHandle`(`flowId`: String): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_cancel_grant_auth_flow_handle(FfiConverterString.lower(`flowId`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `configureClient`(`config`: PubkyClientConfig) =
+    
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_configure_client(FfiConverterTypePubkyClientConfig.lower(`config`),_status)
+}
+
+
+
+fun `configureGrantAuthFlows`(`maxConcurrent`: UInt, `ttlSecs`: UInt): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_configure_grant_auth_flows(FfiConverterUInt.lower(`maxConcurrent`),FfiConverterUInt.lower(`ttlSecs`),_status)
+})
+}
+
+
+fun `configureMaxBodyBytes`(`maxBytes`: ULong): ULong {
+    return FfiConverterULong.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_configure_max_body_bytes(FfiConverterULong.lower(`maxBytes`),_status)
+})
+}
+
+
+fun `configureSessionCache`(`capacity`: UInt): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_configure_session_cache(FfiConverterUInt.lower(`capacity`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `createCustomGrantProof`(`sessionSecret`: String, `dataJson`: String): CustomGrantProof {
+    return FfiConverterTypeCustomGrantProof.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_create_custom_grant_proof(FfiConverterString.lower(`sessionSecret`),FfiConverterString.lower(`dataJson`),_status)
 })
 }
 
@@ -1523,6 +3224,15 @@ fun `deleteWithSession`(`url`: String, `sessionSecret`: String): List<String> {
     return FfiConverterSequenceString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_delete_with_session(FfiConverterString.lower(`url`),FfiConverterString.lower(`sessionSecret`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `deriveGrantEncryptionKey`(`sessionSecret`: String, `path`: String): ByteArray? {
+    return FfiConverterOptionalByteArray.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_derive_grant_encryption_key(FfiConverterString.lower(`sessionSecret`),FfiConverterString.lower(`path`),_status)
 })
 }
 
@@ -1590,6 +3300,24 @@ fun `getSignupToken`(`homeserverPubky`: String, `adminPassword`: String): List<S
 })
 }
 
+@Throws(PubkyCoreException::class)
+
+fun `grantEncryptionKeyScopes`(`sessionSecret`: String): List<String>? {
+    return FfiConverterOptionalSequenceString.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_grant_encryption_key_scopes(FfiConverterString.lower(`sessionSecret`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `grantSignedApproval`(`sessionSecret`: String): String? {
+    return FfiConverterOptionalString.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_grant_signed_approval(FfiConverterString.lower(`sessionSecret`),_status)
+})
+}
+
 
 fun `initLogging`() =
     
@@ -1603,6 +3331,14 @@ fun `list`(`url`: String, `cursor`: String?, `reverse`: Boolean?, `limit`: UShor
     return FfiConverterSequenceString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_list(FfiConverterString.lower(`url`),FfiConverterOptionalString.lower(`cursor`),FfiConverterOptionalBoolean.lower(`reverse`),FfiConverterOptionalUShort.lower(`limit`),FfiConverterOptionalBoolean.lower(`shallow`),_status)
+})
+}
+
+
+fun `listGrants`(`sessionSecret`: String): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_list_grants(FfiConverterString.lower(`sessionSecret`),_status)
 })
 }
 
@@ -1627,6 +3363,59 @@ fun `parseDeepLink`(`url`: String): List<String> {
     return FfiConverterSequenceString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_parse_deep_link(FfiConverterString.lower(`url`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `pollGrantAuthFlow`(): String? {
+    return FfiConverterOptionalString.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_poll_grant_auth_flow(_status)
+})
+}
+
+
+fun `pollGrantAuthFlowHandle`(`flowId`: String): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_poll_grant_auth_flow_handle(FfiConverterString.lower(`flowId`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `publicExists`(`address`: String): Boolean {
+    return FfiConverterBoolean.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_public_exists(FfiConverterString.lower(`address`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `publicGetBytes`(`address`: String): ByteArray {
+    return FfiConverterByteArray.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_public_get_bytes(FfiConverterString.lower(`address`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `publicList`(`address`: String, `options`: StorageListOptions): StorageListPage {
+    return FfiConverterTypeStorageListPage.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_public_list(FfiConverterString.lower(`address`),FfiConverterTypeStorageListOptions.lower(`options`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `publicStats`(`address`: String): StorageResourceStats? {
+    return FfiConverterOptionalTypeStorageResourceStats.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_public_stats(FfiConverterString.lower(`address`),_status)
 })
 }
 
@@ -1710,11 +3499,108 @@ fun `resolveHttps`(`publicKey`: String): List<String> {
 })
 }
 
+@Throws(PubkyCoreException::class)
+
+fun `restoreGrantAuthFlow`(`state`: GrantAuthFlowStateRecord): String {
+    return FfiConverterString.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_restore_grant_auth_flow(FfiConverterTypeGrantAuthFlowStateRecord.lower(`state`),_status)
+})
+}
+
 
 fun `revalidateSession`(`sessionSecret`: String): List<String> {
     return FfiConverterSequenceString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_revalidate_session(FfiConverterString.lower(`sessionSecret`),_status)
+})
+}
+
+
+fun `revokeGrant`(`sessionSecret`: String, `grantId`: String): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_revoke_grant(FfiConverterString.lower(`sessionSecret`),FfiConverterString.lower(`grantId`),_status)
+})
+}
+
+
+fun `revokeOwnGrant`(`sessionSecret`: String): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_revoke_own_grant(FfiConverterString.lower(`sessionSecret`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `saveGrantAuthFlow`(): GrantAuthFlowStateRecord {
+    return FfiConverterTypeGrantAuthFlowStateRecord.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_save_grant_auth_flow(_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `sessionDelete`(`pathOrAddress`: String, `sessionSecret`: String) =
+    
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_session_delete(FfiConverterString.lower(`pathOrAddress`),FfiConverterString.lower(`sessionSecret`),_status)
+}
+
+
+@Throws(PubkyCoreException::class)
+
+fun `sessionExists`(`pathOrAddress`: String, `sessionSecret`: String): Boolean {
+    return FfiConverterBoolean.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_session_exists(FfiConverterString.lower(`pathOrAddress`),FfiConverterString.lower(`sessionSecret`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `sessionGetBytes`(`pathOrAddress`: String, `sessionSecret`: String): ByteArray {
+    return FfiConverterByteArray.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_session_get_bytes(FfiConverterString.lower(`pathOrAddress`),FfiConverterString.lower(`sessionSecret`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `sessionList`(`pathOrAddress`: String, `sessionSecret`: String, `options`: StorageListOptions): StorageListPage {
+    return FfiConverterTypeStorageListPage.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_session_list(FfiConverterString.lower(`pathOrAddress`),FfiConverterString.lower(`sessionSecret`),FfiConverterTypeStorageListOptions.lower(`options`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `sessionLock`(`pathOrAddress`: String, `sessionSecret`: String, `timeoutSeconds`: ULong): PubkyStorageLock {
+    return FfiConverterTypePubkyStorageLock.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_session_lock(FfiConverterString.lower(`pathOrAddress`),FfiConverterString.lower(`sessionSecret`),FfiConverterULong.lower(`timeoutSeconds`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `sessionPutBytes`(`pathOrAddress`: String, `content`: ByteArray, `sessionSecret`: String) =
+    
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_session_put_bytes(FfiConverterString.lower(`pathOrAddress`),FfiConverterByteArray.lower(`content`),FfiConverterString.lower(`sessionSecret`),_status)
+}
+
+
+@Throws(PubkyCoreException::class)
+
+fun `sessionStats`(`pathOrAddress`: String, `sessionSecret`: String): StorageResourceStats? {
+    return FfiConverterOptionalTypeStorageResourceStats.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_session_stats(FfiConverterString.lower(`pathOrAddress`),FfiConverterString.lower(`sessionSecret`),_status)
 })
 }
 
@@ -1742,11 +3628,29 @@ fun `signInCookie`(`secretKey`: String): List<String> {
 })
 }
 
+@Throws(PubkyCoreException::class)
+
+fun `signInCookieBlocking`(`secretKey`: String): String {
+    return FfiConverterString.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_sign_in_cookie_blocking(FfiConverterString.lower(`secretKey`),_status)
+})
+}
+
 
 fun `signInGrant`(`secretKey`: String, `clientId`: String): List<String> {
     return FfiConverterSequenceString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_sign_in_grant(FfiConverterString.lower(`secretKey`),FfiConverterString.lower(`clientId`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `signInGrantBlocking`(`secretKey`: String, `clientId`: String): String {
+    return FfiConverterString.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_sign_in_grant_blocking(FfiConverterString.lower(`secretKey`),FfiConverterString.lower(`clientId`),_status)
 })
 }
 
@@ -1798,11 +3702,53 @@ fun `startCookieAuthFlow`(`capabilitiesStr`: String): List<String> {
 })
 }
 
+@Throws(PubkyCoreException::class)
+
+fun `startEventStream`(`config`: EventStreamConfig, `listener`: PubkyEventStreamListener): String {
+    return FfiConverterString.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_start_event_stream(FfiConverterTypeEventStreamConfig.lower(`config`),FfiConverterTypePubkyEventStreamListener.lower(`listener`),_status)
+})
+}
+
 
 fun `startGrantAuthFlow`(`capabilitiesStr`: String, `clientId`: String): List<String> {
     return FfiConverterSequenceString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_start_grant_auth_flow(FfiConverterString.lower(`capabilitiesStr`),FfiConverterString.lower(`clientId`),_status)
+})
+}
+
+
+fun `startGrantAuthFlowHandle`(`capabilitiesStr`: String, `clientId`: String, `relay`: String?): List<String> {
+    return FfiConverterSequenceString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_start_grant_auth_flow_handle(FfiConverterString.lower(`capabilitiesStr`),FfiConverterString.lower(`clientId`),FfiConverterOptionalString.lower(`relay`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `startGrantAuthFlowWithConfig`(`config`: GrantAuthFlowConfig): GrantAuthFlowStateRecord {
+    return FfiConverterTypeGrantAuthFlowStateRecord.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_start_grant_auth_flow_with_config(FfiConverterTypeGrantAuthFlowConfig.lower(`config`),_status)
+})
+}
+
+
+fun `stopAllEventStreams`(): ULong {
+    return FfiConverterULong.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_stop_all_event_streams(_status)
+})
+}
+
+
+fun `stopEventStream`(`subscriptionId`: String): Boolean {
+    return FfiConverterBoolean.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_stop_event_stream(FfiConverterString.lower(`subscriptionId`),_status)
 })
 }
 
@@ -1819,6 +3765,15 @@ fun `validateMnemonicPhrase`(`mnemonicPhrase`: String): List<String> {
     return FfiConverterSequenceString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_validate_mnemonic_phrase(FfiConverterString.lower(`mnemonicPhrase`),_status)
+})
+}
+
+@Throws(PubkyCoreException::class)
+
+fun `verifyCustomGrantProof`(`proof`: CustomGrantProof, `clockSkewSeconds`: ULong): VerifiedCustomGrantProof {
+    return FfiConverterTypeVerifiedCustomGrantProof.lift(
+    rustCallWithError(PubkyCoreException) { _status ->
+    _UniFFILib.INSTANCE.uniffi_pubkycore_fn_func_verify_custom_grant_proof(FfiConverterTypeCustomGrantProof.lower(`proof`),FfiConverterULong.lower(`clockSkewSeconds`),_status)
 })
 }
 

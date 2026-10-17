@@ -272,12 +272,17 @@ private val SERVER_STATUS = Regex("(?<![0-9a-z])50[0234](?![0-9a-z])")
  * command's success would have used. A batch write is the case it exists for: 35 of 665 rows had
  * landed when the homeserver 500'd, and an envelope carrying only a message left a caller with no
  * way to tell which (#229, item 2). Null everywhere else — a failure with nothing to report.
+ *
+ * [cause] is the shared-layer failure this classifies, when there is one: [ExitCode] folds
+ * `SessionExpired` and `SessionUnreachable` into one code, and a front end that acts on the
+ * first (the MCP unlinks the account) has to be able to tell it from the second.
  */
 class CliError(
     val exitCode: ExitCode,
     message: String,
     val data: JsonElement? = null,
-) : RuntimeException(message.withoutRepeatedPrefix())
+    cause: Throwable? = null,
+) : RuntimeException(message.withoutRepeatedPrefix(), cause)
 
 /**
  * `"Request failed: Request failed: Invalid request/URI: …"` said once (#240, finding 6).

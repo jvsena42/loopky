@@ -1,0 +1,353 @@
+package com.github.jvsena42.loopky.mcp.tenant
+
+import com.github.jvsena42.loopky.data.pubky.toErrorReason
+import com.github.jvsena42.loopky.domain.model.ErrorReason
+import com.github.jvsena42.loopky.mcp.SessionSecrets
+import com.github.jvsena42.loopky.util.runSuspendCatching
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+
+/**
+ * The bounds a deployment puts on tenants. Every one of them exists because the server is shared:
+ * a graph per user costs heap, a call costs a homeserver round trip, and one user's long import
+ * must not be the reason another's `deck list` waits.
+ */
+data class TenantLimits(
+    /** Open graphs kept at once; the least recently used is closed when a new one is needed. */
+    val maxTenants: Int = DEFAULT_MAX_TENANTS,
+    /** A graph nobody has used for this long is closed on the next call that looks. */
+    val idleTtl: Duration = DEFAULT_IDLE_TTL,
+    /** Calls in flight across every user. */
+    val maxConcurrentCalls: Int = DEFAULT_MAX_CONCURRENT_CALLS,
+    /** The most one call may run; what it had written by then stays written. */
+    val callTimeout: Duration = DEFAULT_CALL_TIMEOUT,
+    /** How long a call waits for the user's turn, or for a global slot, before it is refused. */
+    val busyWait: Duration = DEFAULT_BUSY_WAIT,
+) {
+    private companion object {
+        const val DEFAULT_MAX_TENANTS = 64
+        val DEFAULT_IDLE_TTL = 30.minutes
+        const val DEFAULT_MAX_CONCURRENT_CALLS = 8
+        val DEFAULT_CALL_TIMEOUT = 10.minutes
+        val DEFAULT_BUSY_WAIT = 2.seconds
+    }
+}
+
+/**
+ * One [Tenant] per linked user, opened on first use and kept while it is being used.
+ *
+ * **Isolation is the security property.** A call for one pubky runs against the graph opened from
+ * that pubky's secret and no other: the map is keyed by the verified principal, a graph is never
+ * handed to a call for a different key, and an evicted graph is closed rather than reused. The
+ * tests in `TenantPoolTest` hold that under concurrency and across eviction, which is where a
+ * cache would get it wrong.
+ *
+ * **One operation at a time per user**, because the repositories serialize a deck's manifest
+ * writes with an in-process mutex and nothing else: two calls on one graph are two read-modify-
+ * writes of the same record. A second call waits [TenantLimits.busyWait] and is then refused as
+ * [TenantRefusal.UserBusy] rather than queued — an agent told "busy" waits; one left queued behind
+ * a ten-minute import times out and retries into the queue again.
+ *
+ * **A refused credential is reported, never retried.** The FFI re-mints a bearer from the stored
+ * grant on its own, so a session the homeserver still refuses after that is a revoked grant
+ * (#486). [revoke] tells [SessionSecrets], drops the graph, and remembers the refused secret so
+ * [isRevoked] can answer the HTTP layer until the user links again with a different one.
+ */
+class TenantPool(
+    private val factory: TenantFactory,
+    private val secrets: SessionSecrets,
+    private val limits: TenantLimits = TenantLimits(),
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
+    private class Entry {
+        val lock = Mutex()
+        var tenant: Tenant? = null
+        var secretHash: String? = null
+        var lastUsed = 0L
+
+        /**
+         * Calls holding or waiting for [lock]. A count and not a flag: the call that held the
+         * lock used to clear a flag on its way out, so the call queued behind it ran with the
+         * entry marked idle, and any other user's trim closed its graph under it.
+         */
+        var holders = 0
+        var closeWhenReleased = false
+
+        /** Left to a call the pool stopped waiting for; that call closes the graph when it ends. */
+        var abandoned = false
+    }
+
+    private val poolLock = Mutex()
+
+    /** Access-ordered, so iteration starts at the least recently used. Guarded by [poolLock]. */
+    private val entries = LinkedHashMap<String, Entry>(INITIAL_CAPACITY, LOAD_FACTOR, true)
+
+    private val gate = Semaphore(limits.maxConcurrentCalls)
+
+    /** Pubky to the hash of the secret the homeserver refused. Never the secret. */
+    private val revoked = ConcurrentHashMap<String, String>()
+
+    /** Runs [block] on [pubky]'s graph, opening it first if need be. */
+    suspend fun <T> withTenant(pubky: String, block: suspend (Tenant) -> T): T {
+        while (true) {
+            val entry = entryFor(pubky)
+            val outcome = try {
+                turn(pubky, entry, block)
+            } finally {
+                release(pubky, entry)
+            }
+            if (outcome != null) return outcome.value
+        }
+    }
+
+    /**
+     * The user's turn on [entry], then a global slot inside it — so a user waiting for a slot
+     * holds nothing another user needs — then the bounded call. Null when the entry left the map
+     * while this call waited (the pool closed, or the call before it was abandoned): a call that
+     * went on with it would run on a graph nothing tracks, so the caller starts over on a live one.
+     */
+    private suspend fun <T> turn(pubky: String, entry: Entry, block: suspend (Tenant) -> T): Outcome<T>? {
+        withTimeoutOrNull(limits.busyWait) { entry.lock.lock() } ?: throw TenantRefusal.UserBusy(pubky)
+        try {
+            if (!poolLock.withLock { entries[pubky] === entry }) return null
+            withTimeoutOrNull(limits.busyWait) { gate.acquire() } ?: throw TenantRefusal.ServerBusy()
+            try {
+                return Outcome(bounded(pubky, entry, block))
+            } finally {
+                gate.release()
+            }
+        } finally {
+            entry.lock.unlock()
+        }
+    }
+
+    /**
+     * Reports [pubky]'s credential as refused by the homeserver: [SessionSecrets.revoked], the
+     * graph closed, and the refused secret remembered for [isRevoked]. Safe to call from inside
+     * [withTenant]'s block — the graph is closed once the block returns.
+     */
+    suspend fun revoke(pubky: String) {
+        val stored = secrets.sessionSecretFor(pubky)?.let(::sha256)
+        val refused = poolLock.withLock { entries[pubky]?.secretHash } ?: stored
+        // A re-link while the refused call ran has already replaced the credential: the refusal
+        // is about a secret that is no longer on record, and reporting it would unlink the new one.
+        if (stored == null || stored == refused) {
+            if (refused != null) revoked[pubky] = refused
+            secrets.revoked(pubky)
+        }
+        evict(pubky)
+    }
+
+    /**
+     * True while the credential on record for [pubky] is the one the homeserver refused, or
+     * there is none left: the HTTP layer answers such a caller 401 so the client reconnects. A
+     * *different* secret means the user has linked again, and the memory is dropped.
+     */
+    suspend fun isRevoked(pubky: String): Boolean {
+        val refused = revoked[pubky] ?: return false
+        val current = secrets.sessionSecretFor(pubky)
+        return when {
+            current == null -> true
+            sha256(current) == refused -> true
+            else -> {
+                revoked.remove(pubky, refused)
+                false
+            }
+        }
+    }
+
+    /** Closes [pubky]'s graph, now or when the call holding it returns. */
+    suspend fun evict(pubky: String) {
+        val closing = poolLock.withLock {
+            val entry = entries[pubky] ?: return
+            if (entry.holders > 0) {
+                entry.closeWhenReleased = true
+                null
+            } else {
+                entries.remove(pubky)
+                entry.tenant
+            }
+        }
+        closing?.closeQuietly()
+    }
+
+    /** Closes every graph idle past [TenantLimits.idleTtl]. */
+    suspend fun sweep() {
+        poolLock.withLock { pruneLocked(clock()) }.forEach { it.closeQuietly() }
+    }
+
+    /** The pubkys with an open graph right now, for the tests that hold isolation. */
+    suspend fun openTenants(): Set<String> = poolLock.withLock {
+        entries.filterValues { it.tenant != null }.keys.toSet()
+    }
+
+    suspend fun close() {
+        val closing = poolLock.withLock {
+            entries.values.mapNotNull { it.tenant }.also { entries.clear() }
+        }
+        closing.forEach { it.closeQuietly() }
+    }
+
+    private suspend fun entryFor(pubky: String): Entry {
+        val closing = mutableListOf<Tenant>()
+        val entry = poolLock.withLock {
+            val entry = entries[pubky] ?: Entry().also { entries[pubky] = it }
+            // Counted before the prune, so a fresh entry can never read as idle and go at once.
+            entry.holders++
+            closing += pruneLocked(clock(), keep = pubky)
+            entry
+        }
+        closing.forEach { it.closeQuietly() }
+        return entry
+    }
+
+    /**
+     * The open graph, unless the credential on record changed since it was opened — a re-link
+     * revokes the old grant, so a graph still holding it would fail its next write and report the
+     * new link revoked. **The caller must hold [Entry.lock].**
+     */
+    private suspend fun current(pubky: String, entry: Entry): Tenant {
+        entry.tenant?.let { open ->
+            val stored = secrets.sessionSecretFor(pubky)
+            if (stored != null && sha256(stored) == entry.secretHash) return open
+            entry.tenant = null
+            entry.secretHash = null
+            open.closeQuietly()
+        }
+        val (secret, hash) = linkedSecret(pubky)
+        val tenant = try {
+            factory.open(secret)
+        } catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
+            // The one failure worth classifying here: a secret the homeserver refuses outright is
+            // a revoked grant, and reporting it is what stops the next call opening it again. The
+            // reason and not the exit code, which folds "could not be reached" into the same one.
+            if (error.toErrorReason() == ErrorReason.SessionExpired) {
+                revoked[pubky] = hash
+                secrets.revoked(pubky)
+                throw TenantRefusal.Revoked(pubky)
+            }
+            throw error
+        }
+        requireOwnedBy(tenant, pubky)
+        entry.tenant = tenant
+        entry.secretHash = hash
+        return tenant
+    }
+
+    /** The secret on record and its hash, refused up front when it is the one the homeserver already did. */
+    private suspend fun linkedSecret(pubky: String): Pair<String, String> {
+        val secret = secrets.sessionSecretFor(pubky) ?: throw TenantRefusal.NotLinked(pubky)
+        val hash = sha256(secret)
+        if (revoked[pubky] == hash) throw TenantRefusal.Revoked(pubky)
+        return secret to hash
+    }
+
+    /**
+     * The open and the command under one bound, and both given up on at it. The FFI's calls
+     * block a thread and answer no cancellation, so a timeout *around* them waits for the
+     * homeserver anyway (§13.10) — and a pubky can name a homeserver that never answers, which
+     * used to hold the user's turn and a global slot for good. So the call is a coroutine of its
+     * own: at the bound this caller stops waiting and the turn and the slot go back, while the
+     * abandoned call keeps its graph until it ends and closes it then. Abandoning detaches the
+     * entry, so the user's next call opens a fresh graph; two graphs for one user until the
+     * homeserver answers is the accepted cost, the alternative being a user, and a slot, wedged
+     * until restart. **The caller must hold [Entry.lock].**
+     */
+    private suspend fun <T> bounded(pubky: String, entry: Entry, block: suspend (Tenant) -> T): T {
+        val detached = CoroutineScope(currentCoroutineContext().minusKey(Job))
+        val call = detached.async { Outcome(block(current(pubky, entry))) }
+        try {
+            val outcome = withTimeoutOrNull(limits.callTimeout) { call.await() }
+                ?: throw TenantRefusal.TimedOut(limits.callTimeout.inWholeSeconds)
+            return outcome.value
+        } finally {
+            // NonCancellable: a cancelled caller's lock() throws if it has to wait, and skipping
+            // this would leave the entry mapped with a detached call still running on its graph.
+            if (!call.isCompleted) {
+                withContext(NonCancellable) {
+                    poolLock.withLock {
+                        entries.remove(pubky, entry)
+                        entry.abandoned = true
+                    }
+                }
+                call.cancel()
+                call.invokeOnCompletion { detached.launch { entry.tenant?.closeQuietly() } }
+            }
+        }
+    }
+
+    /** NonCancellable for the same reason as [bounded]'s cleanup: a missed `holders--` pins the entry for good. */
+    private suspend fun release(pubky: String, entry: Entry) {
+        val closing = withContext(NonCancellable) { poolLock.withLock {
+            entry.holders--
+            entry.lastUsed = clock()
+            if (entry.holders == 0 && entry.closeWhenReleased && !entry.abandoned) {
+                entries.remove(pubky, entry)
+                entry.tenant
+            } else {
+                null
+            }
+        } }
+        closing?.closeQuietly()
+    }
+
+    /**
+     * Idle graphs, then the least recently used past the cap — never [keep], never one with a
+     * holder. **The caller must hold [poolLock].** Returns what to close, outside it.
+     */
+    private fun pruneLocked(now: Long, keep: String? = null): List<Tenant> {
+        val closing = mutableListOf<Tenant>()
+        val iterator = entries.entries.iterator()
+        while (iterator.hasNext()) {
+            val (pubky, entry) = iterator.next()
+            val idle = now - entry.lastUsed > limits.idleTtl.inWholeMilliseconds
+            val overflow = entries.size > limits.maxTenants && pubky != keep
+            if (entry.holders == 0 && (idle || overflow)) {
+                iterator.remove()
+                entry.tenant?.let { closing += it }
+            }
+        }
+        return closing
+    }
+
+    private class Outcome<T>(val value: T)
+
+    private companion object {
+        const val INITIAL_CAPACITY = 16
+        const val LOAD_FACTOR = 0.75f
+
+        /**
+         * Defence in depth over the vault: a credential stored under the wrong pubky must fail
+         * here, never serve one user's calls on another's graph.
+         */
+        suspend fun requireOwnedBy(tenant: Tenant, pubky: String) {
+            if (tenant.session.identity.pubky == pubky) return
+            tenant.closeQuietly()
+            throw TenantRefusal.NotLinked(pubky)
+        }
+    }
+}
+
+private fun sha256(secret: String): String =
+    MessageDigest.getInstance("SHA-256").digest(secret.toByteArray()).joinToString("") { "%02x".format(it) }
+
+/** A graph that fails to close is still gone from the pool; nothing a caller can do about it. */
+private suspend fun Tenant.closeQuietly() {
+    withContext(NonCancellable) {
+        runSuspendCatching { close() }
+    }
+}

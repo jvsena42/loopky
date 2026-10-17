@@ -112,6 +112,6 @@ fun initKoinAndroid(
 ) {
     startKoin {
         appDeclaration()
-        modules(sharedModule, androidPlatformModule(unsplashFallbackKey, pubkyEnvironment, localNexusBaseUrl))
+        modules(sharedModule(), androidPlatformModule(unsplashFallbackKey, pubkyEnvironment, localNexusBaseUrl))
     }
 }

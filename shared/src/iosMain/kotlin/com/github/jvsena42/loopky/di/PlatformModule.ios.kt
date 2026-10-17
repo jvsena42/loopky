@@ -115,7 +115,7 @@ fun doInitKoin(
     val environment = PubkyEnvironment.fromNameOrProduction(pubkyEnvironmentName)
     startKoin {
         modules(
-            sharedModule,
+            sharedModule(),
             iosPlatformModule(rawPubkyClient, unsplashFallbackKey, environment),
         )
     }

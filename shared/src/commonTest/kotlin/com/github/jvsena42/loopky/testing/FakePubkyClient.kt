@@ -399,8 +399,12 @@ class FakePubkyClient : PubkyClient {
     var revalidateResult: Result<String>? = null
     val revalidatedSecrets = mutableListOf<String>()
 
+    /** When set, [revalidateSession] suspends on it — an adoption held mid-round-trip. */
+    var revalidateGate: CompletableDeferred<Unit>? = null
+
     override suspend fun revalidateSession(sessionSecret: String): Result<String> {
         revalidatedSecrets += sessionSecret
+        revalidateGate?.await()
         return revalidateResult ?: unused()
     }
 
