@@ -7,7 +7,9 @@ import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
 import com.github.jvsena42.loopky.data.pubky.SrsChunkDto
+import com.github.jvsena42.loopky.data.pubky.isNetworkFailure
 import com.github.jvsena42.loopky.data.pubky.isNotFound
+import com.github.jvsena42.loopky.data.pubky.isRateLimited
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
 import com.github.jvsena42.loopky.data.pubky.putWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.requireSession
@@ -43,6 +45,7 @@ import com.github.jvsena42.loopky.util.localDayIndex
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -140,6 +143,7 @@ class SrsRepositoryImpl(
             dirtyStates.clear()
             deckAuthors.clear()
             loadedDecks.clear()
+            readChunks.clear()
             journalRestored = false
             sinceFlush = 0
         }
@@ -595,6 +599,8 @@ class SrsRepositoryImpl(
     private var journalRestored = false
 
     private suspend fun writeChunk(owner: String, author: String, deckId: String, chunk: Int) {
+        val url = PubkyPaths.srsChunk(owner, author, deckId, chunk)
+        readBeforeWrite(url, author, deckId, chunk)
         val states = withCaches {
             cache.filterKeys { key ->
                 key.authorPubky == author && key.deckId == deckId && stateChunks[key] == chunk
@@ -603,12 +609,57 @@ class SrsRepositoryImpl(
         val body = loopkyJson.encodeToString(
             SrsChunkDto(deck_id = deckId, author_pubky = author, chunk = chunk, states = states),
         )
-        pubky.putWithSessionRetry(
-            PubkyPaths.srsChunk(owner, author, deckId, chunk),
-            body,
-            session,
-            revalidator,
-        ).getOrThrow()
+        pubky.putWithSessionRetry(url, body, session, revalidator).getOrThrow()
+        withCaches { readChunks.add(Triple(author, deckId, chunk)) }
+    }
+
+    /**
+     * A chunk record is written whole from [cache], so writing one whose contents were never read
+     * replaces every state in it with the few graded since (#494). Read it first and fold in what
+     * the cache lacks; a read that fails throws, and [flush] keeps the reviews dirty for the next
+     * try. A 404 is a chunk that does not exist yet — nothing to lose.
+     */
+    private suspend fun readBeforeWrite(url: String, author: String, deckId: String, chunk: Int) {
+        val known = withCaches {
+            (author to deckId) in loadedDecks || Triple(author, deckId, chunk) in readChunks
+        }
+        if (known) return
+        // An undecodable record has nothing readable to lose, and refusing it would block every
+        // later write to the chunk.
+        val dto = readChunk(url).fold(
+            onSuccess = { runCatching { loopkyJson.decodeFromString<SrsChunkDto>(it) }.getOrNull() },
+            onFailure = { err -> if (err.isNotFound()) null else throw err },
+        )
+        withCaches {
+            dto?.let { mergeLoaded(author, deckId, it) }
+            readChunks.add(Triple(author, deckId, chunk))
+        }
+    }
+
+    /** Caller holds [cacheLock]. A buffered review is newer than what is on the homeserver. */
+    private fun mergeLoaded(author: String, deckId: String, dto: SrsChunkDto) {
+        dto.states.forEach { state ->
+            val key = StateKey(author, deckId, state.card_id)
+            if (key !in cache) cache[key] = state.toDomain()
+            stateChunks[key] = dto.chunk
+        }
+        readChunks.add(Triple(author, deckId, dto.chunk))
+    }
+
+    /**
+     * One GET, retried a couple of times on the failures that are transient — a reset connection
+     * or a 429. The ones seen in #494 were, and each one cost a deck's review state for the launch.
+     */
+    private suspend fun readChunk(url: String): Result<String> {
+        var attempt = 1
+        while (true) {
+            val result = pubky.get(url)
+            val error = result.exceptionOrNull() ?: return result
+            val transient = error.isNetworkFailure() || error.isRateLimited()
+            if (!transient || attempt == CHUNK_READ_ATTEMPTS) return result
+            delay(CHUNK_READ_BACKOFF_MS * attempt)
+            attempt++
+        }
     }
 
     /**
@@ -635,18 +686,9 @@ class SrsRepositoryImpl(
         if (!listed) Log.e(TAG, "loadChunksFor: $root not listed whole — ${listing.failure?.message}")
 
         val read = listing.entries.mapConcurrently { url ->
-            pubky.get(url)
+            readChunk(url)
                 .mapCatching { loopkyJson.decodeFromString<SrsChunkDto>(it) }
-                .onSuccess { dto ->
-                    withCaches {
-                        dto.states.forEach { state ->
-                            val key = StateKey(author, deckId, state.card_id)
-                            // A buffered review is newer than what is on the homeserver.
-                            if (key !in cache) cache[key] = state.toDomain()
-                            stateChunks[key] = dto.chunk
-                        }
-                    }
-                }
+                .onSuccess { dto -> withCaches { mergeLoaded(author, deckId, dto) } }
                 .onFailure { Log.e(TAG, "loadChunksFor: $url unreadable — ${it.message}", it) }
                 .isSuccess
         }
@@ -657,6 +699,9 @@ class SrsRepositoryImpl(
     }
 
     private val loadedDecks = mutableSetOf<Pair<String, String>>()
+
+    /** Chunks read or written this session, for a deck not in [loadedDecks]. Guarded by [cacheLock]. */
+    private val readChunks = mutableSetOf<Triple<String, String, Int>>()
 
     private suspend fun stateOf(author: String, deckId: String, cardId: String): SrsState? =
         withCaches { cache[StateKey(author, deckId, cardId)] }
@@ -694,6 +739,9 @@ class SrsRepositoryImpl(
 
         /** Fallback bucket count when a card's deck position is unknown. */
         private const val CHUNK_BUCKETS = 64
+
+        private const val CHUNK_READ_ATTEMPTS = 3
+        private const val CHUNK_READ_BACKOFF_MS = 300L
     }
 }
 
