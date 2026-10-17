@@ -51,7 +51,7 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: steps.key.outputs.present == 'true'
         with:
           node-version: '22'
