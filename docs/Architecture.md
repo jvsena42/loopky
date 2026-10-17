@@ -1314,8 +1314,10 @@ deck loaded for the life of the process; a failed *listing* did the same with no
 On this screen that was a recap of 34 cards on one launch and 54 on the next, or "Nothing to recap
 yet" stated as fact, with a Retry that re-ran a no-op. It now marks a deck loaded only when the
 listing and every chunk arrived, `SrsRepository.isStateLoaded` says which decks did not, and
-`RecapViewModel` shows an error with a working Retry instead. The rest of #494 is still open: a
-review graded on a card whose chunk was never read can still write over that chunk.
+`RecapViewModel` shows an error with a working Retry instead. A transient chunk read is retried
+twice before it counts as failed, Home shows its counts as unknown rather than a smaller number,
+and a chunk the session never read is read before it is written, so a review graded meanwhile
+cannot replace the states in it (#494).
 
 **Driving it out of season.** `RecapClock` is the clock the window is read from. A debug build
 moves it (`--el recap_now <millis>` on Android, `-recapNow <millis>` on iOS); the device clock is
