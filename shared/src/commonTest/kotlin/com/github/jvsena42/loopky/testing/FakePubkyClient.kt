@@ -163,7 +163,9 @@ class FakePubkyClient : PubkyClient {
         failGetWith?.let { return Result.failure(it) }
         if (failGetWhenUrlContains?.let { it in url } == true) {
             consumeFailGetTime()
-            return Result.failure(PubkyError("HTTP transport error: error sending request for url ($url)"))
+            // The wording #494 was found with: a reset connection, which a retry gets past.
+            val reset = "connection error: Connection reset by peer (os error 104)"
+            return Result.failure(PubkyError("HTTP transport error: error sending request for url ($url): $reset"))
         }
         return store[url]?.let { Result.success(it) }
             ?: Result.failure(PubkyError("not found: $url"))
@@ -171,7 +173,7 @@ class FakePubkyClient : PubkyClient {
 
     private fun consumeFailGetTime() {
         val remaining = failGetTimes ?: return
-        failGetTimes = remaining - 1
+        failGetTimes = (remaining - 1).takeIf { it > 0 }
         if (remaining <= 1) failGetWhenUrlContains = null
     }
 
