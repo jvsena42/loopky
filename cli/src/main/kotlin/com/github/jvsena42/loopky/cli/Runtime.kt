@@ -6,6 +6,7 @@ import com.github.jvsena42.loopky.di.initKoinJvm
 import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.platform.PassThroughMediaProcessor
 import com.github.jvsena42.loopky.util.Log
+import kotlinx.serialization.json.JsonElement
 import org.koin.core.Koin
 import org.koin.core.context.stopKoin
 import org.koin.mp.KoinPlatform
@@ -159,15 +160,20 @@ private const val GRANT_SECRET_PARTS = 4
  * *other* environment's known default — a fact, not an inference — and therefore **fails open**:
  * it catches the common mistake rather than every mistake.
  */
-internal fun checkEnvironmentAgrees(session: Session, environment: CliEnvironment) {
-    val other = otherEnvironmentOf(session, environment) ?: return
-    throw CliError(
-        ExitCode.EnvironmentMismatch,
-        "This session is on ${other.name.lowercase()} (homeserver ${session.homeserver}) but " +
+internal fun checkEnvironmentAgrees(
+    session: Session,
+    environment: CliEnvironment,
+    message: (other: String) -> String = { other ->
+        "This session is on $other (homeserver ${session.homeserver}) but " +
             "--env/LOOPKY_ENV says ${environment.name}. Reads from the ${environment.name} " +
             "indexer would come back empty rather than wrong, so this is refused. " +
-            "Re-run with --env ${other.name.lowercase()}.",
-    )
+            "Re-run with --env $other."
+    },
+    data: JsonElement? = null,
+    text: String? = null,
+) {
+    val other = otherEnvironmentOf(session, environment) ?: return
+    throw CliError(ExitCode.EnvironmentMismatch, message(other.name.lowercase()), data = data, text = text)
 }
 
 /** The environment [session] provably belongs to when it is not [environment]'s, or null. */

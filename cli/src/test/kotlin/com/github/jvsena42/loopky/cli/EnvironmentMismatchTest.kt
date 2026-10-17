@@ -1,10 +1,11 @@
 package com.github.jvsena42.loopky.cli
 
-import com.github.jvsena42.loopky.cli.commands.requireLoginEnvironmentAgrees
+import com.github.jvsena42.loopky.cli.commands.loginMismatchMessage
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.domain.model.Capability
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.Session
+import kotlinx.serialization.json.JsonPrimitive
 import java.nio.file.Paths
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -70,42 +71,50 @@ class EnvironmentMismatchTest {
         checkEnvironmentAgrees(sessionOn("somebodyelseshomeserverpubky"), cli(PubkyEnvironment.Production))
     }
 
-    /** `login` makes the session every other command is checked against, so it checks its own (#507). */
     @Test
-    fun `login refuses a session from the other network and says it was kept`() {
+    fun `a refusal carries the payload and text it is handed`() {
+        val payload = JsonPrimitive("result")
         val error = assertFailsWith<CliError> {
-            requireLoginEnvironmentAgrees(
+            checkEnvironmentAgrees(
                 sessionOn(PubkyEnvironment.Staging.defaultHomeserver),
                 cli(PubkyEnvironment.Production),
-                export = false,
+                message = { other -> "on $other" },
+                data = payload,
+                text = "Signed in",
             )
         }
-        val message = error.message.orEmpty()
-        assertEquals(ExitCode.EnvironmentMismatch, error.exitCode)
+        assertEquals("on staging", error.message)
+        assertEquals(payload, error.data)
+        assertEquals("Signed in", error.text)
+    }
+
+    /** `login` makes the session every other command is checked against, so it checks its own (#507). */
+    @Test
+    fun `login's refusal says the session was kept and which --env to use`() {
+        val message = loginMismatchMessage(
+            other = "staging",
+            session = sessionOn(PubkyEnvironment.Staging.defaultHomeserver),
+            environment = cli(PubkyEnvironment.Production),
+            replaced = null,
+        )
         assertTrue("--env staging" in message, message)
         assertTrue("session is stored" in message, message)
-        assertTrue("--export" !in message, message)
+        assertTrue("replaced" !in message, message)
     }
 
+    /** `complete()` persists before the check runs, so the session it displaced is gone (#525 review). */
     @Test
-    fun `under --export it says no secret was printed`() {
-        val error = assertFailsWith<CliError> {
-            requireLoginEnvironmentAgrees(
-                sessionOn(PubkyEnvironment.Production.defaultHomeserver),
-                cli(PubkyEnvironment.Staging),
-                export = true,
-            )
-        }
-        assertTrue("--export printed no secret" in error.message.orEmpty(), error.message.orEmpty())
-    }
-
-    @Test
-    fun `login accepts a matching or self-hosted session`() {
-        requireLoginEnvironmentAgrees(
-            sessionOn(PubkyEnvironment.Staging.defaultHomeserver),
-            cli(PubkyEnvironment.Staging),
-            export = false,
+    fun `and names the session it replaced`() {
+        val previous = sessionOn(PubkyEnvironment.Production.defaultHomeserver).copy(
+            identity = PubkyIdentity(pubky = "pk:before", displayName = null, avatarUrl = null, bio = null),
+            sessionSecret = "older",
         )
-        requireLoginEnvironmentAgrees(sessionOn("somebodyelseshomeserverpubky"), cli(PubkyEnvironment.Production), export = true)
+        val message = loginMismatchMessage(
+            other = "staging",
+            session = sessionOn(PubkyEnvironment.Staging.defaultHomeserver),
+            environment = cli(PubkyEnvironment.Production),
+            replaced = previous,
+        )
+        assertTrue("replaced the session stored before, for pk:before" in message, message)
     }
 }
