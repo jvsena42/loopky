@@ -54,12 +54,9 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
     // MARK: - Auth / sessions
 
     func signUp(secretKey: String, homeserver: String, signupToken: String?) -> [String] {
-        Loopky.signUp(
-            secretKey: secretKey,
-            homeserver: homeserver,
-            signupToken: signupToken,
-            clientId: loopkyClientId
-        )
+        // Cookie, as on Android: the grant variant's session export writes outside `/pub/`,
+        // which the staging homeserver refuses with a 403.
+        Loopky.signUpCookie(secretKey: secretKey, homeserver: homeserver, signupToken: signupToken)
     }
 
     func getSignupToken(homeserverPubky: String, adminPassword: String) -> [String] {
