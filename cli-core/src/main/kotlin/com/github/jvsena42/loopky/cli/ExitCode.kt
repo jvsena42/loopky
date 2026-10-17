@@ -62,7 +62,11 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
      * wrong network **successfully, with an empty result**, so an agent that writes a tag, reads it
      * back and sees `[]` concludes the write failed and retries. Caught at startup instead.
      */
-    EnvironmentMismatch(8, "environment_mismatch", "the session and --env disagree - re-run against the other network"),
+    EnvironmentMismatch(
+        8,
+        "environment_mismatch",
+        "the session and --env disagree - run the next command with the other --env; a login's session is kept",
+    ),
 
     /** An input file could not be read, or held nothing importable. */
     BadInput(9, "bad_input", "an operand or file was unusable - do not retry it unchanged"),
@@ -273,6 +277,8 @@ private val SERVER_STATUS = Regex("(?<![0-9a-z])50[0234](?![0-9a-z])")
  * landed when the homeserver 500'd, and an envelope carrying only a message left a caller with no
  * way to tell which (#229, item 2). Null everywhere else — a failure with nothing to report.
  *
+ * [text] is [data]'s human rendering, printed to stdout without `--json` the way a result's is.
+ *
  * [cause] is the shared-layer failure this classifies, when there is one: [ExitCode] folds
  * `SessionExpired` and `SessionUnreachable` into one code, and a front end that acts on the
  * first (the MCP unlinks the account) has to be able to tell it from the second.
@@ -282,6 +288,7 @@ class CliError(
     message: String,
     val data: JsonElement? = null,
     cause: Throwable? = null,
+    val text: String? = null,
 ) : RuntimeException(message.withoutRepeatedPrefix(), cause)
 
 /**

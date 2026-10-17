@@ -367,6 +367,7 @@ private fun fail(
         // machine channel say nothing at all about half the outcomes.
         println(failureEnvelope(command, env.name, env.indexer, error, notice.available))
     } else {
+        error.text?.let(::println)
         System.err.println("loopky: ${error.message}")
         // The command's own synopsis, not the manual: an agent capturing stderr reads the tail, and
         // hundreds of lines of manual buried the one that said what was wrong (#257, item 5).

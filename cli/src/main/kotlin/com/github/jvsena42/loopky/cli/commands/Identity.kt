@@ -7,10 +7,13 @@ import com.github.jvsena42.loopky.cli.CommandResult
 import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.TerminalQr
 import com.github.jvsena42.loopky.cli.asCliError
+import com.github.jvsena42.loopky.cli.checkEnvironmentAgrees
+import com.github.jvsena42.loopky.cli.cliJson
 import com.github.jvsena42.loopky.cli.eventEnvelope
 import com.github.jvsena42.loopky.cli.requireSession
 import com.github.jvsena42.loopky.cli.requireSessionSecretShape
 import com.github.jvsena42.loopky.cli.result
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.AuthFlowHandle
@@ -19,6 +22,7 @@ import com.github.jvsena42.loopky.data.repository.SignOutOutcome
 import com.github.jvsena42.loopky.data.storage.SecureSessionStore
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.Session
+import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
@@ -79,6 +83,8 @@ data class LoginResult(
     @SerialName("stored_at") val storedAt: String? = null,
     /** Where the session itself went. See [WhoamiResult.sessionStore]. */
     @SerialName("session_store") val sessionStore: String? = null,
+    /** The network the session's homeserver is the known default of; null for a self-hosted one. */
+    @SerialName("session_environment") val sessionEnvironment: String? = null,
 )
 
 @Serializable
@@ -180,6 +186,8 @@ suspend fun login(
     // code nobody ever saw.
     val timeout = args.positiveIntOrNull("timeout")
     requireRelayReachable(retryingTimeout(::httpsProbe))
+    // `complete()` persists the approved session over this one, so a mismatch has to be able to say so.
+    val replaced = runSuspendCatching { sessionStore.load() }.getOrNull()
     val handle = identity.beginSignIn(capabilities = CLI_CAPABILITIES, returnToApp = false)
         .getOrElse { throw asCliError(it) }
 
@@ -220,31 +228,76 @@ suspend fun login(
         sweep?.let { hook -> runCatching { Runtime.getRuntime().removeShutdownHook(hook) } }
     }
     val export = args.has("export")
+    val (loginResult, text) = loginOutcome(session, sessionStore, environment, export)
     if (export) {
         stderr("")
         stderr("--export prints a live session secret below. It is also stored in ${sessionStore.location}.")
     }
-    return result(
-        LoginResult(
-            pubky = session.identity.pubky,
-            homeserver = session.homeserver,
-            capabilities = session.capabilities.map { it.value },
-            sessionSecret = session.sessionSecret.takeIf { export },
-            storedAt = environment.configHome.toString(),
-            sessionStore = sessionStore.location,
-        ),
-        buildString {
-            appendLine("Signed in as ${session.identity.pubky}")
-            appendLine("Homeserver: ${session.homeserver}")
-            appendLine("Capabilities: ${session.capabilities.joinToString(", ") { it.value }}")
-            appendLine("Session stored in ${sessionStore.location}")
-            if (export) {
-                appendLine()
-                appendLine("LOOPKY_SESSION=${session.sessionSecret}")
-                appendLine("Treat that like a password: it authorises writes to /pub/loopky until it expires.")
-            }
-        }.trimEnd(),
+    // The refusal carries the result: the session is stored either way, and under --export the
+    // secret it withheld would otherwise cost a second scan to get back (#507).
+    checkEnvironmentAgrees(
+        session,
+        environment,
+        message = { other -> loginMismatchMessage(other, session, environment, replaced) },
+        data = cliJson.encodeToJsonElement(loginResult),
+        text = text,
     )
+    return result(loginResult, text)
+}
+
+private fun loginOutcome(
+    session: Session,
+    sessionStore: SecureSessionStore,
+    environment: CliEnvironment,
+    export: Boolean,
+): Pair<LoginResult, String> {
+    val loginResult = LoginResult(
+        pubky = session.identity.pubky,
+        homeserver = session.homeserver,
+        capabilities = session.capabilities.map { it.value },
+        sessionSecret = session.sessionSecret.takeIf { export },
+        storedAt = environment.configHome.toString(),
+        sessionStore = sessionStore.location,
+        sessionEnvironment = PubkyEnvironment.entries
+            .firstOrNull { it.defaultHomeserver == session.homeserver }?.name?.lowercase(),
+    )
+    val text = buildString {
+        appendLine("Signed in as ${session.identity.pubky}")
+        appendLine("Homeserver: ${session.homeserver}")
+        appendLine("Capabilities: ${session.capabilities.joinToString(", ") { it.value }}")
+        appendLine("Session stored in ${sessionStore.location}")
+        if (export) {
+            appendLine()
+            appendLine("LOOPKY_SESSION=${session.sessionSecret}")
+            appendLine("Treat that like a password: it authorises writes to /pub/loopky until it expires.")
+        }
+    }.trimEnd()
+    return loginResult to text
+}
+
+/**
+ * `checkEnvironmentAgrees` guards every command that *has* a session, and `login` is the one that
+ * makes it, so without the check a session on the other network was reported `ok` and the next
+ * command exited 8 — one step after the person who could fix it had put their phone away (#507).
+ *
+ * The session is **kept**: it is valid, only on the other network, and discarding it would cost a
+ * second scan for a mistake the right `--env` fixes. What it displaced is named, because
+ * `complete()` has already written over it.
+ */
+internal fun loginMismatchMessage(
+    other: String,
+    session: Session,
+    environment: CliEnvironment,
+    replaced: Session?,
+): String = buildString {
+    append("Ring approved an identity on $other (homeserver ${session.homeserver}), but this login ran ")
+    append("for ${environment.name}. The session is stored, so no new scan is needed: run the next ")
+    append("commands with --env $other (or LOOPKY_ENV=$other). ")
+    if (replaced != null && replaced.sessionSecret != session.sessionSecret) {
+        append("It replaced the session stored before, for ${replaced.identity.pubky}. ")
+    }
+    append("To use ${environment.name} instead, run `loopky login` again and approve with an ")
+    append("identity on that network.")
 }
 
 /**

@@ -751,6 +751,12 @@ rather than stopped, so an approval landing as the process exits still persists 
 whoami` answers it. The code that was on screen is spent either way — the FFI's auth flow is a
 single slot the first poll takes — so the recovery is `loopky login` again rather than a retry.
 
+8 from `login` means Ring approved an identity on the other network (#507). The session is
+stored and valid there, so the recovery is the next command under the `--env` the message names,
+not another scan; before #507 `login` answered 0 and the *next* command exited 8. `data` is the
+login's ordinary result, with `session_environment` saying which network and, under `--export`, the
+secret. A session stored before the login has been replaced, and the message says whose.
+
 12 is the homeserver answering with a server error of its own. It used to be **1, internal**, which
 this table documents as "worth reporting as a bug" — and a 500 is not a bug in the client, not the
 caller's input, and unlike every other row here it may well work on the next attempt. A batch told

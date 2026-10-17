@@ -135,7 +135,7 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
 | 5 | network | Retry as-is, a few times with a pause. |
 | 6 | not_found | Check the id with `loopky deck list --json`. |
 | 7 | storage_full | Terminal: the account is out of quota. Never retry; tell the user. |
-| 8 | environment_mismatch | The session belongs to the other network; re-run with the matching `--env`. |
+| 8 | environment_mismatch | The session belongs to the other network; run the next command with the `--env` the message names. From `login` the session is already stored: do not log in again. |
 | 9 | bad_input | Fix the file or operand the message names. Never retry unchanged. |
 | 10 | unsupported_host | No build for this OS/architecture. Nothing to retry. |
 | 11 | update_unsupported | `loopky update` refused and **nothing was updated**; run the command its message names (brew, dpkg…). |
