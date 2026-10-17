@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.RecapClock
 import com.github.jvsena42.loopky.domain.model.SrsGrade
+import com.github.jvsena42.loopky.domain.model.SrsState
 import com.github.jvsena42.loopky.domain.model.StudySettings
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
@@ -160,6 +161,33 @@ class HomeViewModelTest {
         // …and once the real counts land, the state says so.
         deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish", cardCount = 2)
         deckRepo.listOwnedGate?.complete(Unit)
+        advanceUntilIdle()
+
+        assertTrue(assertIs<HomeUiState.Content>(vm.state.value).countsKnown)
+    }
+
+    /**
+     * A deck whose review state did not load whole has cards that read as never seen, so its count
+     * is a wrong number rather than a small one (#494) — and the moment studying re-reads it, the
+     * number comes back.
+     */
+    @Test
+    fun reviewStateThatDidNotLoadWholeIsNotCounted() = runTest {
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish", cardCount = 2)
+        srsRepo.due = listOf(testCard("c1", deckId = "deck1"))
+        srsRepo.unreadDecks += "deck1"
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        val partial = assertIs<HomeUiState.Content>(vm.state.value)
+        assertFalse(partial.countsKnown)
+        assertFalse(partial.isCaughtUp)
+
+        srsRepo.unreadDecks.clear()
+        srsRepo.dueForDeck("deck1")
+        val state = SrsState("c1", dueAt = 0L, intervalDays = 1, easeFactor = 2.5, repetitions = 1, lastGrade = null)
+        srsRepo.upsert("deck1", state).getOrThrow()
         advanceUntilIdle()
 
         assertTrue(assertIs<HomeUiState.Content>(vm.state.value).countsKnown)

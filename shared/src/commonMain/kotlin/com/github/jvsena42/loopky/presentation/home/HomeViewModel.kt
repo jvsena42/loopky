@@ -152,6 +152,7 @@ class HomeViewModel(
             newCardsToday = progress.newCards,
             newCardsGoal = settingsRepository.studySettings.value.settings.newCardsPerDayGoal,
             decks = decks.map { it.toSummary(counts[it.id] ?: DeckCounts()) },
+            countsKnown = stateLoadedFor(decks.map { it.id }),
             // Only meaningful when there is nothing at all left to study; skip the lookup otherwise.
             nextDueAtMillis = if (dueCount + newCount == 0) {
                 runSuspendCatching { srsRepository.nextDueAt() }.getOrNull()
@@ -225,6 +226,9 @@ class HomeViewModel(
         val updated = decks.map { deck ->
             counts[deck.id]?.let { deck.copy(dueCount = it.due, newCount = it.new) } ?: deck
         }
+        // Studying a deck re-reads review state that failed to load, so this is where a partial
+        // load from [load] gets its numbers back.
+        val countsKnown = stateLoadedFor(decks.map { it.id })
         val due = updated.sumOf { it.dueCount }
         val fresh = updated.sumOf { it.newCount }
         // Only meaningful once there is nothing left to study, and it is the one part of this that
@@ -236,10 +240,20 @@ class HomeViewModel(
         }
         _state.update { current ->
             (current as? HomeUiState.Content)
-                ?.copy(dueToday = due, newToday = fresh, decks = updated, nextDueAtMillis = nextDueAt)
+                ?.copy(
+                    dueToday = due,
+                    newToday = fresh,
+                    decks = updated,
+                    nextDueAtMillis = nextDueAt,
+                    countsKnown = countsKnown,
+                )
                 ?: current
         }
     }
+
+    /** Whether every deck's review state was read whole — a partial read is a wrong count (#494). */
+    private suspend fun stateLoadedFor(deckIds: List<String>): Boolean =
+        deckIds.all { runSuspendCatching { srsRepository.isStateLoaded(it) }.getOrDefault(false) }
 
     /**
      * The session's copy of the name is written at sign-in, so a name edited on Profile would
@@ -354,8 +368,9 @@ sealed interface HomeUiState {
          * Whether [dueToday], [newToday] and the per-deck badges are real numbers rather than
          * placeholders.
          *
-         * False only on the cached first paint, where the decks are known and the review state is
-         * not — SRS state is not cached across processes. Everything that reads a count has to ask
+         * False on the cached first paint, where the decks are known and the review state is not —
+         * SRS state is not cached across processes — and whenever some deck's review state did not
+         * load whole, where a number would be a smaller, wrong one (#494). Everything that reads a count has to ask
          * this first: with it ignored, a launch opened on "🎉 You're all caught up" over a deck
          * with two cards due, and then corrected itself a second later.
          */
