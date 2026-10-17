@@ -168,21 +168,23 @@ class HomeViewModelTest {
 
     /**
      * A deck whose review state did not load whole has cards that read as never seen, so its count
-     * is a wrong number rather than a small one (#494) — and the moment studying re-reads it, the
-     * number comes back.
+     * is a wrong number rather than a small one (#494). It loses its own badge and its share of the
+     * totals — not every other deck's — and gets them back once studying re-reads it.
      */
     @Test
     fun reviewStateThatDidNotLoadWholeIsNotCounted() = runTest {
-        deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish", cardCount = 2)
-        srsRepo.due = listOf(testCard("c1", deckId = "deck1"))
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish", cardCount = 1)
+        deckRepo.decks["deck2"] = testDeck(id = "deck2", title = "French", cardCount = 1)
+        srsRepo.due = listOf(testCard("c1", deckId = "deck1"), testCard("f1", deckId = "deck2"))
         srsRepo.unreadDecks += "deck1"
         val vm = viewModel()
 
         advanceUntilIdle()
 
         val partial = assertIs<HomeUiState.Content>(vm.state.value)
-        assertFalse(partial.countsKnown)
-        assertFalse(partial.isCaughtUp)
+        assertTrue(partial.countsKnown)
+        assertEquals(mapOf("deck1" to false, "deck2" to true), partial.decks.associate { it.id to it.countsKnown })
+        assertEquals(expected = 1, actual = partial.newToday)
 
         srsRepo.unreadDecks.clear()
         srsRepo.dueForDeck("deck1")
@@ -190,7 +192,20 @@ class HomeViewModelTest {
         srsRepo.upsert("deck1", state).getOrThrow()
         advanceUntilIdle()
 
-        assertTrue(assertIs<HomeUiState.Content>(vm.state.value).countsKnown)
+        val healed = assertIs<HomeUiState.Content>(vm.state.value)
+        assertTrue(healed.decks.all { it.countsKnown })
+        assertEquals(expected = 1, actual = healed.dueToday)
+    }
+
+    @Test
+    fun aDeckWhoseStateDidNotLoadNeverReadsAsCaughtUp() = runTest {
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", title = "Spanish", cardCount = 1)
+        srsRepo.unreadDecks += "deck1"
+        val vm = viewModel()
+
+        advanceUntilIdle()
+
+        assertFalse(assertIs<HomeUiState.Content>(vm.state.value).isCaughtUp)
     }
 
     /**

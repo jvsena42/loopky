@@ -72,7 +72,7 @@ struct HomeScreen: View {
                         cardCount: Int(deck.cardCount),
                         dueCount: Int(deck.dueCount),
                         newCount: Int(deck.newCount),
-                        countsKnown: content.countsKnown,
+                        countsKnown: content.countsKnown && deck.countsKnown,
                         coverEmoji: deck.coverEmoji,
                         coverImage: deck.coverImage,
                         authorPubky: deck.authorPubky

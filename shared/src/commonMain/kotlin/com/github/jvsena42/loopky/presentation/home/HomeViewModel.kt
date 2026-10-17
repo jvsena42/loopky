@@ -142,8 +142,9 @@ class HomeViewModel(
         // The decks travel with the call: without them this re-lists owned and followed decks and
         // re-fetches every manifest [load] has just read, doubling Home's round trips.
         val counts = runSuspendCatching { srsRepository.countsToday(decks) }.getOrDefault(emptyMap())
-        val dueCount = counts.values.sumOf { it.due }
-        val newCount = counts.values.sumOf { it.new }
+        val summaries = decks.map { it.toSummary(counts[it.id] ?: DeckCounts(), isStateLoaded(it.id)) }
+        val dueCount = summaries.knownSumOf { it.dueCount }
+        val newCount = summaries.knownSumOf { it.newCount }
         return HomeUiState.Content(
             identity = identity,
             dueToday = dueCount,
@@ -151,8 +152,7 @@ class HomeViewModel(
             doneToday = progress.reviews,
             newCardsToday = progress.newCards,
             newCardsGoal = settingsRepository.studySettings.value.settings.newCardsPerDayGoal,
-            decks = decks.map { it.toSummary(counts[it.id] ?: DeckCounts()) },
-            countsKnown = stateLoadedFor(decks.map { it.id }),
+            decks = summaries,
             // Only meaningful when there is nothing at all left to study; skip the lookup otherwise.
             nextDueAtMillis = if (dueCount + newCount == 0) {
                 runSuspendCatching { srsRepository.nextDueAt() }.getOrNull()
@@ -223,14 +223,15 @@ class HomeViewModel(
         if (counts.isEmpty()) return
 
         val decks = (_state.value as? HomeUiState.Content)?.decks ?: return
+        // Studying a deck re-reads review state that failed to load, so this is also where a
+        // partial load from [load] gets its badge back.
         val updated = decks.map { deck ->
-            counts[deck.id]?.let { deck.copy(dueCount = it.due, newCount = it.new) } ?: deck
+            counts[deck.id]?.let {
+                deck.copy(dueCount = it.due, newCount = it.new, countsKnown = isStateLoaded(deck.id))
+            } ?: deck
         }
-        // Studying a deck re-reads review state that failed to load, so this is where a partial
-        // load from [load] gets its numbers back.
-        val countsKnown = stateLoadedFor(decks.map { it.id })
-        val due = updated.sumOf { it.dueCount }
-        val fresh = updated.sumOf { it.newCount }
+        val due = updated.knownSumOf { it.dueCount }
+        val fresh = updated.knownSumOf { it.newCount }
         // Only meaningful once there is nothing left to study, and it is the one part of this that
         // can suspend on something other than the cache — so it is skipped otherwise, as in [load].
         val nextDueAt = if (due + fresh == 0) {
@@ -245,15 +246,17 @@ class HomeViewModel(
                     newToday = fresh,
                     decks = updated,
                     nextDueAtMillis = nextDueAt,
-                    countsKnown = countsKnown,
                 )
                 ?: current
         }
     }
 
-    /** Whether every deck's review state was read whole — a partial read is a wrong count (#494). */
-    private suspend fun stateLoadedFor(deckIds: List<String>): Boolean =
-        deckIds.all { runSuspendCatching { srsRepository.isStateLoaded(it) }.getOrDefault(false) }
+    private suspend fun isStateLoaded(deckId: String): Boolean =
+        runSuspendCatching { srsRepository.isStateLoaded(deckId) }.getOrDefault(false)
+
+    // A deck whose review state did not load whole has a wrong count, not a small one (#494).
+    private fun List<DeckSummary>.knownSumOf(count: (DeckSummary) -> Int): Int =
+        filter { it.countsKnown }.sumOf(count)
 
     /**
      * The session's copy of the name is written at sign-in, so a name edited on Profile would
@@ -330,7 +333,7 @@ class HomeViewModel(
         viewModelScope.launch { _effects.emit(HomeEffect.NavigateDeck(deckId, author)) }
     }
 
-    private fun Deck.toSummary(counts: DeckCounts): DeckSummary = DeckSummary(
+    private fun Deck.toSummary(counts: DeckCounts, countsKnown: Boolean = true): DeckSummary = DeckSummary(
         id = id,
         title = title,
         authorPubky = authorPubky,
@@ -339,6 +342,7 @@ class HomeViewModel(
         newCount = counts.new,
         coverEmoji = coverEmoji ?: title.firstOrNull()?.uppercaseChar()?.toString() ?: "📚",
         coverImage = coverImageRef,
+        countsKnown = countsKnown,
     )
 
     companion object {
@@ -368,9 +372,9 @@ sealed interface HomeUiState {
          * Whether [dueToday], [newToday] and the per-deck badges are real numbers rather than
          * placeholders.
          *
-         * False on the cached first paint, where the decks are known and the review state is not —
-         * SRS state is not cached across processes — and whenever some deck's review state did not
-         * load whole, where a number would be a smaller, wrong one (#494). Everything that reads a count has to ask
+         * False only on the cached first paint, where the decks are known and the review state is
+         * not — SRS state is not cached across processes. A single deck whose state did not load
+         * is [DeckSummary.countsKnown] instead. Everything that reads a count has to ask
          * this first: with it ignored, a launch opened on "🎉 You're all caught up" over a deck
          * with two cards due, and then corrected itself a second later.
          */
@@ -389,7 +393,8 @@ sealed interface HomeUiState {
          * New cards have to count: a freshly imported deck has zero due, and treating that as
          * "all caught up" would greet a 1669-card import with a congratulation (#101 §7).
          */
-        val isCaughtUp: Boolean get() = countsKnown && dueToday == 0 && newToday == 0
+        val isCaughtUp: Boolean
+            get() = countsKnown && decks.all { it.countsKnown } && dueToday == 0 && newToday == 0
 
         /** Announced, never enforced: the queue serves every card whether or not this is true. */
         val goalReached: Boolean get() = newCardsToday >= newCardsGoal
@@ -430,6 +435,11 @@ data class DeckSummary(
     val coverEmoji: String,
     /** The deck's cover art, when it has one. Renders over [coverEmoji]; null falls back to it. */
     val coverImage: MediaRef.Image? = null,
+    /**
+     * False when this deck's review state did not load whole, so its count would be wrong rather
+     * than small (#494). It is left out of the totals, and the row shows a dash.
+     */
+    val countsKnown: Boolean = true,
 )
 
 sealed interface HomeEffect {

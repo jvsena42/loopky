@@ -100,7 +100,8 @@ struct HomeView: View {
     /// whose only outcome is "All done!" is a dead end dressed as an action.
     @ViewBuilder
     private func hero(_ content: HomeContentData) -> some View {
-        if content.countsKnown && content.dueToday == 0 && content.newToday == 0 {
+        if content.countsKnown && content.decks.allSatisfy(\.countsKnown)
+            && content.dueToday == 0 && content.newToday == 0 {
             CaughtUpCard(nextDueAtMillis: content.nextDueAtMillis)
         } else {
             DailyGoalHeroCard(
