@@ -6,11 +6,11 @@ import Foundation
 // might be in a separate module, or it might be compiled inline into
 // this module. This is a bit of light hackery to work with both.
 #if canImport(pubkycoreFFI)
-    import pubkycoreFFI
+import pubkycoreFFI
 #endif
 
-private extension RustBuffer {
-    /// Allocate a new buffer, copying the contents of a `UInt8` array.
+fileprivate extension RustBuffer {
+    // Allocate a new buffer, copying the contents of a `UInt8` array.
     init(bytes: [UInt8]) {
         let rbuf = bytes.withUnsafeBufferPointer { ptr in
             RustBuffer.from(ptr)
@@ -22,14 +22,14 @@ private extension RustBuffer {
         try! rustCall { ffi_pubkycore_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
-    /// Frees the buffer in place.
-    /// The buffer must not be used after this is called.
+    // Frees the buffer in place.
+    // The buffer must not be used after this is called.
     func deallocate() {
         try! rustCall { ffi_pubkycore_rustbuffer_free(self, $0) }
     }
 }
 
-private extension ForeignBytes {
+fileprivate extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
         self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress)
     }
@@ -42,7 +42,7 @@ private extension ForeignBytes {
 // Helper classes/extensions that don't change.
 // Someday, this will be in a library of its own.
 
-private extension Data {
+fileprivate extension Data {
     init(rustBuffer: RustBuffer) {
         // TODO: This copies the buffer. Can we read directly from a
         // Rust buffer?
@@ -64,15 +64,15 @@ private extension Data {
 //
 // Instead, the read() method and these helper functions input a tuple of data
 
-private func createReader(data: Data) -> (data: Data, offset: Data.Index) {
+fileprivate func createReader(data: Data) -> (data: Data, offset: Data.Index) {
     (data: data, offset: 0)
 }
 
-/// Reads an integer at the current offset, in big-endian order, and advances
-/// the offset on success. Throws if reading the integer would move the
-/// offset past the end of the buffer.
-private func readInt<T: FixedWidthInteger>(_ reader: inout (data: Data, offset: Data.Index)) throws -> T {
-    let range = reader.offset ..< reader.offset + MemoryLayout<T>.size
+// Reads an integer at the current offset, in big-endian order, and advances
+// the offset on success. Throws if reading the integer would move the
+// offset past the end of the buffer.
+fileprivate func readInt<T: FixedWidthInteger>(_ reader: inout (data: Data, offset: Data.Index)) throws -> T {
+    let range = reader.offset..<reader.offset + MemoryLayout<T>.size
     guard reader.data.count >= range.upperBound else {
         throw UniffiInternalError.bufferOverflow
     }
@@ -82,38 +82,38 @@ private func readInt<T: FixedWidthInteger>(_ reader: inout (data: Data, offset: 
         return value as! T
     }
     var value: T = 0
-    let _ = withUnsafeMutableBytes(of: &value) { reader.data.copyBytes(to: $0, from: range) }
+    let _ = withUnsafeMutableBytes(of: &value, { reader.data.copyBytes(to: $0, from: range)})
     reader.offset = range.upperBound
     return value.bigEndian
 }
 
-/// Reads an arbitrary number of bytes, to be used to read
-/// raw bytes, this is useful when lifting strings
-private func readBytes(_ reader: inout (data: Data, offset: Data.Index), count: Int) throws -> [UInt8] {
-    let range = reader.offset ..< (reader.offset + count)
+// Reads an arbitrary number of bytes, to be used to read
+// raw bytes, this is useful when lifting strings
+fileprivate func readBytes(_ reader: inout (data: Data, offset: Data.Index), count: Int) throws -> Array<UInt8> {
+    let range = reader.offset..<(reader.offset+count)
     guard reader.data.count >= range.upperBound else {
         throw UniffiInternalError.bufferOverflow
     }
     var value = [UInt8](repeating: 0, count: count)
-    value.withUnsafeMutableBufferPointer { buffer in
+    value.withUnsafeMutableBufferPointer({ buffer in
         reader.data.copyBytes(to: buffer, from: range)
-    }
+    })
     reader.offset = range.upperBound
     return value
 }
 
-/// Reads a float at the current offset.
-private func readFloat(_ reader: inout (data: Data, offset: Data.Index)) throws -> Float {
-    return try Float(bitPattern: readInt(&reader))
+// Reads a float at the current offset.
+fileprivate func readFloat(_ reader: inout (data: Data, offset: Data.Index)) throws -> Float {
+    return Float(bitPattern: try readInt(&reader))
 }
 
-/// Reads a float at the current offset.
-private func readDouble(_ reader: inout (data: Data, offset: Data.Index)) throws -> Double {
-    return try Double(bitPattern: readInt(&reader))
+// Reads a float at the current offset.
+fileprivate func readDouble(_ reader: inout (data: Data, offset: Data.Index)) throws -> Double {
+    return Double(bitPattern: try readInt(&reader))
 }
 
-/// Indicates if the offset has reached the end of the buffer.
-private func hasRemaining(_ reader: (data: Data, offset: Data.Index)) -> Bool {
+// Indicates if the offset has reached the end of the buffer.
+fileprivate func hasRemaining(_ reader: (data: Data, offset: Data.Index)) -> Bool {
     return reader.offset < reader.data.count
 }
 
@@ -121,34 +121,34 @@ private func hasRemaining(_ reader: (data: Data, offset: Data.Index)) -> Bool {
 // struct, but we use standalone functions instead in order to make external
 // types work.  See the above discussion on Readers for details.
 
-private func createWriter() -> [UInt8] {
+fileprivate func createWriter() -> [UInt8] {
     return []
 }
 
-private func writeBytes<S: Sequence>(_ writer: inout [UInt8], _ byteArr: S) where S.Element == UInt8 {
+fileprivate func writeBytes<S>(_ writer: inout [UInt8], _ byteArr: S) where S: Sequence, S.Element == UInt8 {
     writer.append(contentsOf: byteArr)
 }
 
-/// Writes an integer in big-endian order.
-///
-/// Warning: make sure what you are trying to write
-/// is in the correct type!
-private func writeInt<T: FixedWidthInteger>(_ writer: inout [UInt8], _ value: T) {
+// Writes an integer in big-endian order.
+//
+// Warning: make sure what you are trying to write
+// is in the correct type!
+fileprivate func writeInt<T: FixedWidthInteger>(_ writer: inout [UInt8], _ value: T) {
     var value = value.bigEndian
     withUnsafeBytes(of: &value) { writer.append(contentsOf: $0) }
 }
 
-private func writeFloat(_ writer: inout [UInt8], _ value: Float) {
+fileprivate func writeFloat(_ writer: inout [UInt8], _ value: Float) {
     writeInt(&writer, value.bitPattern)
 }
 
-private func writeDouble(_ writer: inout [UInt8], _ value: Double) {
+fileprivate func writeDouble(_ writer: inout [UInt8], _ value: Double) {
     writeInt(&writer, value.bitPattern)
 }
 
-/// Protocol for types that transfer other types across the FFI. This is
-/// analogous go the Rust trait of the same name.
-private protocol FfiConverter {
+// Protocol for types that transfer other types across the FFI. This is
+// analogous go the Rust trait of the same name.
+fileprivate protocol FfiConverter {
     associatedtype FfiType
     associatedtype SwiftType
 
@@ -158,8 +158,8 @@ private protocol FfiConverter {
     static func write(_ value: SwiftType, into buf: inout [UInt8])
 }
 
-/// Types conforming to `Primitive` pass themselves directly over the FFI.
-private protocol FfiConverterPrimitive: FfiConverter where FfiType == SwiftType {}
+// Types conforming to `Primitive` pass themselves directly over the FFI.
+fileprivate protocol FfiConverterPrimitive: FfiConverter where FfiType == SwiftType { }
 
 extension FfiConverterPrimitive {
     public static func lift(_ value: FfiType) throws -> SwiftType {
@@ -171,9 +171,9 @@ extension FfiConverterPrimitive {
     }
 }
 
-/// Types conforming to `FfiConverterRustBuffer` lift and lower into a `RustBuffer`.
-/// Used for complex types where it's hard to write a custom lift/lower.
-private protocol FfiConverterRustBuffer: FfiConverter where FfiType == RustBuffer {}
+// Types conforming to `FfiConverterRustBuffer` lift and lower into a `RustBuffer`.
+// Used for complex types where it's hard to write a custom lift/lower.
+fileprivate protocol FfiConverterRustBuffer: FfiConverter where FfiType == RustBuffer {}
 
 extension FfiConverterRustBuffer {
     public static func lift(_ buf: RustBuffer) throws -> SwiftType {
@@ -187,15 +187,14 @@ extension FfiConverterRustBuffer {
     }
 
     public static func lower(_ value: SwiftType) -> RustBuffer {
-        var writer = createWriter()
-        write(value, into: &writer)
-        return RustBuffer(bytes: writer)
+          var writer = createWriter()
+          write(value, into: &writer)
+          return RustBuffer(bytes: writer)
     }
 }
-
-/// An error type for FFI errors. These errors occur at the UniFFI level, not
-/// the library level.
-private enum UniffiInternalError: LocalizedError {
+// An error type for FFI errors. These errors occur at the UniFFI level, not
+// the library level.
+fileprivate enum UniffiInternalError: LocalizedError {
     case bufferOverflow
     case incompleteData
     case unexpectedOptionalTag
@@ -206,7 +205,7 @@ private enum UniffiInternalError: LocalizedError {
     case unexpectedStaleHandle
     case rustPanic(_ message: String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .bufferOverflow: return "Reading the requested value would read past the end of the buffer"
         case .incompleteData: return "The buffer still has data after lifting its containing value"
@@ -221,16 +220,16 @@ private enum UniffiInternalError: LocalizedError {
     }
 }
 
-private let CALL_SUCCESS: Int8 = 0
-private let CALL_ERROR: Int8 = 1
-private let CALL_PANIC: Int8 = 2
-private let CALL_CANCELLED: Int8 = 3
+fileprivate let CALL_SUCCESS: Int8 = 0
+fileprivate let CALL_ERROR: Int8 = 1
+fileprivate let CALL_PANIC: Int8 = 2
+fileprivate let CALL_CANCELLED: Int8 = 3
 
-private extension RustCallStatus {
+fileprivate extension RustCallStatus {
     init() {
         self.init(
             code: CALL_SUCCESS,
-            errorBuf: RustBuffer(
+            errorBuf: RustBuffer.init(
                 capacity: 0,
                 len: 0,
                 data: nil
@@ -245,8 +244,7 @@ private func rustCall<T>(_ callback: (UnsafeMutablePointer<RustCallStatus>) -> T
 
 private func rustCallWithError<T>(
     _ errorHandler: @escaping (RustBuffer) throws -> Error,
-    _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T
-) throws -> T {
+    _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T) throws -> T {
     try makeRustCall(callback, errorHandler: errorHandler)
 }
 
@@ -255,7 +253,7 @@ private func makeRustCall<T>(
     errorHandler: ((RustBuffer) throws -> Error)?
 ) throws -> T {
     uniffiEnsureInitialized()
-    var callStatus = RustCallStatus()
+    var callStatus = RustCallStatus.init()
     let returnedVal = callback(&callStatus)
     try uniffiCheckCallStatus(callStatus: callStatus, errorHandler: errorHandler)
     return returnedVal
@@ -266,77 +264,104 @@ private func uniffiCheckCallStatus(
     errorHandler: ((RustBuffer) throws -> Error)?
 ) throws {
     switch callStatus.code {
-    case CALL_SUCCESS:
-        return
+        case CALL_SUCCESS:
+            return
 
-    case CALL_ERROR:
-        if let errorHandler = errorHandler {
-            throw try errorHandler(callStatus.errorBuf)
-        } else {
-            callStatus.errorBuf.deallocate()
-            throw UniffiInternalError.unexpectedRustCallError
-        }
+        case CALL_ERROR:
+            if let errorHandler = errorHandler {
+                throw try errorHandler(callStatus.errorBuf)
+            } else {
+                callStatus.errorBuf.deallocate()
+                throw UniffiInternalError.unexpectedRustCallError
+            }
 
-    case CALL_PANIC:
-        // When the rust code sees a panic, it tries to construct a RustBuffer
-        // with the message.  But if that code panics, then it just sends back
-        // an empty buffer.
-        if callStatus.errorBuf.len > 0 {
-            throw try UniffiInternalError.rustPanic(FfiConverterString.lift(callStatus.errorBuf))
-        } else {
-            callStatus.errorBuf.deallocate()
-            throw UniffiInternalError.rustPanic("Rust panic")
-        }
+        case CALL_PANIC:
+            // When the rust code sees a panic, it tries to construct a RustBuffer
+            // with the message.  But if that code panics, then it just sends back
+            // an empty buffer.
+            if callStatus.errorBuf.len > 0 {
+                throw UniffiInternalError.rustPanic(try FfiConverterString.lift(callStatus.errorBuf))
+            } else {
+                callStatus.errorBuf.deallocate()
+                throw UniffiInternalError.rustPanic("Rust panic")
+            }
 
-    case CALL_CANCELLED:
-        throw CancellationError()
+        case CALL_CANCELLED:
+                throw CancellationError()
 
-    default:
-        throw UniffiInternalError.unexpectedRustCallStatusCode
+        default:
+            throw UniffiInternalError.unexpectedRustCallStatusCode
     }
 }
 
 // Public interface members begin here.
 
-private struct FfiConverterUInt16: FfiConverterPrimitive {
+
+fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
     typealias FfiType = UInt16
     typealias SwiftType = UInt16
 
-    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt16 {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt16 {
         return try lift(readInt(&buf))
     }
 
-    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
         writeInt(&buf, lower(value))
     }
 }
 
-private struct FfiConverterBool: FfiConverter {
+fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
+    typealias FfiType = UInt32
+    typealias SwiftType = UInt32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
+    typealias FfiType = UInt64
+    typealias SwiftType = UInt64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
 
-    static func lift(_ value: Int8) throws -> Bool {
+    public static func lift(_ value: Int8) throws -> Bool {
         return value != 0
     }
 
-    static func lower(_ value: Bool) -> Int8 {
+    public static func lower(_ value: Bool) -> Int8 {
         return value ? 1 : 0
     }
 
-    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Bool {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Bool {
         return try lift(readInt(&buf))
     }
 
-    static func write(_ value: Bool, into buf: inout [UInt8]) {
+    public static func write(_ value: Bool, into buf: inout [UInt8]) {
         writeInt(&buf, lower(value))
     }
 }
 
-private struct FfiConverterString: FfiConverter {
+fileprivate struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
 
-    static func lift(_ value: RustBuffer) throws -> String {
+    public static func lift(_ value: RustBuffer) throws -> String {
         defer {
             value.deallocate()
         }
@@ -347,7 +372,7 @@ private struct FfiConverterString: FfiConverter {
         return String(bytes: bytes, encoding: String.Encoding.utf8)!
     }
 
-    static func lower(_ value: String) -> RustBuffer {
+    public static func lower(_ value: String) -> RustBuffer {
         return value.utf8CString.withUnsafeBufferPointer { ptr in
             // The swift string gives us int8_t, we want uint8_t.
             ptr.withMemoryRebound(to: UInt8.self) { ptr in
@@ -358,34 +383,37 @@ private struct FfiConverterString: FfiConverter {
         }
     }
 
-    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> String {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> String {
         let len: Int32 = try readInt(&buf)
-        return try String(bytes: readBytes(&buf, count: Int(len)), encoding: String.Encoding.utf8)!
+        return String(bytes: try readBytes(&buf, count: Int(len)), encoding: String.Encoding.utf8)!
     }
 
-    static func write(_ value: String, into buf: inout [UInt8]) {
+    public static func write(_ value: String, into buf: inout [UInt8]) {
         let len = Int32(value.utf8.count)
         writeInt(&buf, len)
         writeBytes(&buf, value.utf8)
     }
 }
 
-private struct FfiConverterData: FfiConverterRustBuffer {
+fileprivate struct FfiConverterData: FfiConverterRustBuffer {
     typealias SwiftType = Data
 
-    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
         let len: Int32 = try readInt(&buf)
-        return try Data(readBytes(&buf, count: Int(len)))
+        return Data(try readBytes(&buf, count: Int(len)))
     }
 
-    static func write(_ value: Data, into buf: inout [UInt8]) {
+    public static func write(_ value: Data, into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         writeBytes(&buf, value)
     }
 }
 
-public protocol EventNotifierProtocol {}
+
+public protocol EventNotifierProtocol {
+    
+}
 
 public class EventNotifier: EventNotifierProtocol {
     fileprivate let pointer: UnsafeMutableRawPointer
@@ -400,6 +428,11 @@ public class EventNotifier: EventNotifierProtocol {
     deinit {
         try! rustCall { uniffi_pubkycore_fn_free_eventnotifier(pointer, $0) }
     }
+
+    
+
+    
+    
 }
 
 public struct FfiConverterTypeEventNotifier: FfiConverter {
@@ -411,7 +444,7 @@ public struct FfiConverterTypeEventNotifier: FfiConverter {
         // The Rust code won't compile if a pointer won't fit in a UInt64.
         // We have to go via `UInt` because that's the thing that's the size of a pointer.
         let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if ptr == nil {
+        if (ptr == nil) {
             throw UniffiInternalError.unexpectedNullPointer
         }
         return try lift(ptr!)
@@ -432,6 +465,7 @@ public struct FfiConverterTypeEventNotifier: FfiConverter {
     }
 }
 
+
 public func FfiConverterTypeEventNotifier_lift(_ pointer: UnsafeMutableRawPointer) throws -> EventNotifier {
     return try FfiConverterTypeEventNotifier.lift(pointer)
 }
@@ -440,16 +474,1322 @@ public func FfiConverterTypeEventNotifier_lower(_ value: EventNotifier) -> Unsaf
     return FfiConverterTypeEventNotifier.lower(value)
 }
 
-private extension NSLock {
+
+public protocol PubkyStorageLockProtocol {
+    func delete()  throws
+    func info()  throws -> StorageLockInfo
+    func put(content: Data)  throws
+    func refresh(timeoutSeconds: UInt64)  throws -> StorageLockInfo
+    func unlock()  throws
+    
+}
+
+public class PubkyStorageLock: PubkyStorageLockProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    deinit {
+        try! rustCall { uniffi_pubkycore_fn_free_pubkystoragelock(pointer, $0) }
+    }
+
+    
+
+    
+    
+
+    public func delete() throws {
+        try 
+    rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_method_pubkystoragelock_delete(self.pointer, $0
+    )
+}
+    }
+
+    public func info() throws -> StorageLockInfo {
+        return try  FfiConverterTypeStorageLockInfo.lift(
+            try 
+    rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_method_pubkystoragelock_info(self.pointer, $0
+    )
+}
+        )
+    }
+
+    public func put(content: Data) throws {
+        try 
+    rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_method_pubkystoragelock_put(self.pointer, 
+        FfiConverterData.lower(content),$0
+    )
+}
+    }
+
+    public func refresh(timeoutSeconds: UInt64) throws -> StorageLockInfo {
+        return try  FfiConverterTypeStorageLockInfo.lift(
+            try 
+    rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_method_pubkystoragelock_refresh(self.pointer, 
+        FfiConverterUInt64.lower(timeoutSeconds),$0
+    )
+}
+        )
+    }
+
+    public func unlock() throws {
+        try 
+    rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_method_pubkystoragelock_unlock(self.pointer, $0
+    )
+}
+    }
+}
+
+public struct FfiConverterTypePubkyStorageLock: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = PubkyStorageLock
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PubkyStorageLock {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: PubkyStorageLock, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> PubkyStorageLock {
+        return PubkyStorageLock(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: PubkyStorageLock) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+
+public func FfiConverterTypePubkyStorageLock_lift(_ pointer: UnsafeMutableRawPointer) throws -> PubkyStorageLock {
+    return try FfiConverterTypePubkyStorageLock.lift(pointer)
+}
+
+public func FfiConverterTypePubkyStorageLock_lower(_ value: PubkyStorageLock) -> UnsafeMutableRawPointer {
+    return FfiConverterTypePubkyStorageLock.lower(value)
+}
+
+
+public struct Capability {
+    public var path: String
+    public var permission: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(path: String, permission: String) {
+        self.path = path
+        self.permission = permission
+    }
+}
+
+
+extension Capability: Equatable, Hashable {
+    public static func ==(lhs: Capability, rhs: Capability) -> Bool {
+        if lhs.path != rhs.path {
+            return false
+        }
+        if lhs.permission != rhs.permission {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(path)
+        hasher.combine(permission)
+    }
+}
+
+
+public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Capability {
+        return try Capability(
+            path: FfiConverterString.read(from: &buf), 
+            permission: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: Capability, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterString.write(value.permission, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeCapability_lift(_ buf: RustBuffer) throws -> Capability {
+    return try FfiConverterTypeCapability.lift(buf)
+}
+
+public func FfiConverterTypeCapability_lower(_ value: Capability) -> RustBuffer {
+    return FfiConverterTypeCapability.lower(value)
+}
+
+
+public struct CustomGrantProof {
+    public var grant: String
+    public var proof: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(grant: String, proof: String) {
+        self.grant = grant
+        self.proof = proof
+    }
+}
+
+
+extension CustomGrantProof: Equatable, Hashable {
+    public static func ==(lhs: CustomGrantProof, rhs: CustomGrantProof) -> Bool {
+        if lhs.grant != rhs.grant {
+            return false
+        }
+        if lhs.proof != rhs.proof {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(grant)
+        hasher.combine(proof)
+    }
+}
+
+
+public struct FfiConverterTypeCustomGrantProof: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomGrantProof {
+        return try CustomGrantProof(
+            grant: FfiConverterString.read(from: &buf), 
+            proof: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CustomGrantProof, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.grant, into: &buf)
+        FfiConverterString.write(value.proof, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeCustomGrantProof_lift(_ buf: RustBuffer) throws -> CustomGrantProof {
+    return try FfiConverterTypeCustomGrantProof.lift(buf)
+}
+
+public func FfiConverterTypeCustomGrantProof_lower(_ value: CustomGrantProof) -> RustBuffer {
+    return FfiConverterTypeCustomGrantProof.lower(value)
+}
+
+
+public struct EventStreamConfig {
+    public var users: [EventStreamUser]
+    public var homeserver: String?
+    public var paths: [String]
+    public var limit: UInt16?
+    public var maxEventBytes: UInt64?
+    public var live: Bool
+    public var reverse: Bool
+    public var sessionSecret: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(users: [EventStreamUser], homeserver: String?, paths: [String], limit: UInt16?, maxEventBytes: UInt64?, live: Bool, reverse: Bool, sessionSecret: String?) {
+        self.users = users
+        self.homeserver = homeserver
+        self.paths = paths
+        self.limit = limit
+        self.maxEventBytes = maxEventBytes
+        self.live = live
+        self.reverse = reverse
+        self.sessionSecret = sessionSecret
+    }
+}
+
+
+extension EventStreamConfig: Equatable, Hashable {
+    public static func ==(lhs: EventStreamConfig, rhs: EventStreamConfig) -> Bool {
+        if lhs.users != rhs.users {
+            return false
+        }
+        if lhs.homeserver != rhs.homeserver {
+            return false
+        }
+        if lhs.paths != rhs.paths {
+            return false
+        }
+        if lhs.limit != rhs.limit {
+            return false
+        }
+        if lhs.maxEventBytes != rhs.maxEventBytes {
+            return false
+        }
+        if lhs.live != rhs.live {
+            return false
+        }
+        if lhs.reverse != rhs.reverse {
+            return false
+        }
+        if lhs.sessionSecret != rhs.sessionSecret {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(users)
+        hasher.combine(homeserver)
+        hasher.combine(paths)
+        hasher.combine(limit)
+        hasher.combine(maxEventBytes)
+        hasher.combine(live)
+        hasher.combine(reverse)
+        hasher.combine(sessionSecret)
+    }
+}
+
+
+public struct FfiConverterTypeEventStreamConfig: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EventStreamConfig {
+        return try EventStreamConfig(
+            users: FfiConverterSequenceTypeEventStreamUser.read(from: &buf), 
+            homeserver: FfiConverterOptionString.read(from: &buf), 
+            paths: FfiConverterSequenceString.read(from: &buf), 
+            limit: FfiConverterOptionUInt16.read(from: &buf), 
+            maxEventBytes: FfiConverterOptionUInt64.read(from: &buf), 
+            live: FfiConverterBool.read(from: &buf), 
+            reverse: FfiConverterBool.read(from: &buf), 
+            sessionSecret: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EventStreamConfig, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeEventStreamUser.write(value.users, into: &buf)
+        FfiConverterOptionString.write(value.homeserver, into: &buf)
+        FfiConverterSequenceString.write(value.paths, into: &buf)
+        FfiConverterOptionUInt16.write(value.limit, into: &buf)
+        FfiConverterOptionUInt64.write(value.maxEventBytes, into: &buf)
+        FfiConverterBool.write(value.live, into: &buf)
+        FfiConverterBool.write(value.reverse, into: &buf)
+        FfiConverterOptionString.write(value.sessionSecret, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeEventStreamConfig_lift(_ buf: RustBuffer) throws -> EventStreamConfig {
+    return try FfiConverterTypeEventStreamConfig.lift(buf)
+}
+
+public func FfiConverterTypeEventStreamConfig_lower(_ value: EventStreamConfig) -> RustBuffer {
+    return FfiConverterTypeEventStreamConfig.lower(value)
+}
+
+
+public struct EventStreamUser {
+    public var publicKey: String
+    public var cursor: UInt64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(publicKey: String, cursor: UInt64?) {
+        self.publicKey = publicKey
+        self.cursor = cursor
+    }
+}
+
+
+extension EventStreamUser: Equatable, Hashable {
+    public static func ==(lhs: EventStreamUser, rhs: EventStreamUser) -> Bool {
+        if lhs.publicKey != rhs.publicKey {
+            return false
+        }
+        if lhs.cursor != rhs.cursor {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(publicKey)
+        hasher.combine(cursor)
+    }
+}
+
+
+public struct FfiConverterTypeEventStreamUser: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EventStreamUser {
+        return try EventStreamUser(
+            publicKey: FfiConverterString.read(from: &buf), 
+            cursor: FfiConverterOptionUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EventStreamUser, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.publicKey, into: &buf)
+        FfiConverterOptionUInt64.write(value.cursor, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeEventStreamUser_lift(_ buf: RustBuffer) throws -> EventStreamUser {
+    return try FfiConverterTypeEventStreamUser.lift(buf)
+}
+
+public func FfiConverterTypeEventStreamUser_lower(_ value: EventStreamUser) -> RustBuffer {
+    return FfiConverterTypeEventStreamUser.lower(value)
+}
+
+
+public struct GrantAuthFlowConfig {
+    public var capabilities: String
+    public var clientId: String
+    public var homeserver: String?
+    public var signupToken: String?
+    public var relay: String?
+    public var clientSecret: Data?
+    public var clientKeySecret: Data?
+    public var approvalFormat: GrantApprovalMode?
+    public var xSource: String?
+    public var xSuccess: String?
+    public var xError: String?
+    public var xCancel: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(capabilities: String, clientId: String, homeserver: String?, signupToken: String?, relay: String?, clientSecret: Data?, clientKeySecret: Data?, approvalFormat: GrantApprovalMode?, xSource: String?, xSuccess: String?, xError: String?, xCancel: String?) {
+        self.capabilities = capabilities
+        self.clientId = clientId
+        self.homeserver = homeserver
+        self.signupToken = signupToken
+        self.relay = relay
+        self.clientSecret = clientSecret
+        self.clientKeySecret = clientKeySecret
+        self.approvalFormat = approvalFormat
+        self.xSource = xSource
+        self.xSuccess = xSuccess
+        self.xError = xError
+        self.xCancel = xCancel
+    }
+}
+
+
+extension GrantAuthFlowConfig: Equatable, Hashable {
+    public static func ==(lhs: GrantAuthFlowConfig, rhs: GrantAuthFlowConfig) -> Bool {
+        if lhs.capabilities != rhs.capabilities {
+            return false
+        }
+        if lhs.clientId != rhs.clientId {
+            return false
+        }
+        if lhs.homeserver != rhs.homeserver {
+            return false
+        }
+        if lhs.signupToken != rhs.signupToken {
+            return false
+        }
+        if lhs.relay != rhs.relay {
+            return false
+        }
+        if lhs.clientSecret != rhs.clientSecret {
+            return false
+        }
+        if lhs.clientKeySecret != rhs.clientKeySecret {
+            return false
+        }
+        if lhs.approvalFormat != rhs.approvalFormat {
+            return false
+        }
+        if lhs.xSource != rhs.xSource {
+            return false
+        }
+        if lhs.xSuccess != rhs.xSuccess {
+            return false
+        }
+        if lhs.xError != rhs.xError {
+            return false
+        }
+        if lhs.xCancel != rhs.xCancel {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(capabilities)
+        hasher.combine(clientId)
+        hasher.combine(homeserver)
+        hasher.combine(signupToken)
+        hasher.combine(relay)
+        hasher.combine(clientSecret)
+        hasher.combine(clientKeySecret)
+        hasher.combine(approvalFormat)
+        hasher.combine(xSource)
+        hasher.combine(xSuccess)
+        hasher.combine(xError)
+        hasher.combine(xCancel)
+    }
+}
+
+
+public struct FfiConverterTypeGrantAuthFlowConfig: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GrantAuthFlowConfig {
+        return try GrantAuthFlowConfig(
+            capabilities: FfiConverterString.read(from: &buf), 
+            clientId: FfiConverterString.read(from: &buf), 
+            homeserver: FfiConverterOptionString.read(from: &buf), 
+            signupToken: FfiConverterOptionString.read(from: &buf), 
+            relay: FfiConverterOptionString.read(from: &buf), 
+            clientSecret: FfiConverterOptionData.read(from: &buf), 
+            clientKeySecret: FfiConverterOptionData.read(from: &buf), 
+            approvalFormat: FfiConverterOptionTypeGrantApprovalMode.read(from: &buf), 
+            xSource: FfiConverterOptionString.read(from: &buf), 
+            xSuccess: FfiConverterOptionString.read(from: &buf), 
+            xError: FfiConverterOptionString.read(from: &buf), 
+            xCancel: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: GrantAuthFlowConfig, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.capabilities, into: &buf)
+        FfiConverterString.write(value.clientId, into: &buf)
+        FfiConverterOptionString.write(value.homeserver, into: &buf)
+        FfiConverterOptionString.write(value.signupToken, into: &buf)
+        FfiConverterOptionString.write(value.relay, into: &buf)
+        FfiConverterOptionData.write(value.clientSecret, into: &buf)
+        FfiConverterOptionData.write(value.clientKeySecret, into: &buf)
+        FfiConverterOptionTypeGrantApprovalMode.write(value.approvalFormat, into: &buf)
+        FfiConverterOptionString.write(value.xSource, into: &buf)
+        FfiConverterOptionString.write(value.xSuccess, into: &buf)
+        FfiConverterOptionString.write(value.xError, into: &buf)
+        FfiConverterOptionString.write(value.xCancel, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeGrantAuthFlowConfig_lift(_ buf: RustBuffer) throws -> GrantAuthFlowConfig {
+    return try FfiConverterTypeGrantAuthFlowConfig.lift(buf)
+}
+
+public func FfiConverterTypeGrantAuthFlowConfig_lower(_ value: GrantAuthFlowConfig) -> RustBuffer {
+    return FfiConverterTypeGrantAuthFlowConfig.lower(value)
+}
+
+
+public struct GrantAuthFlowStateRecord {
+    public var authorizationUrl: String
+    public var clientKeySecret: Data
+    public var approvalKeySecret: Data?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(authorizationUrl: String, clientKeySecret: Data, approvalKeySecret: Data?) {
+        self.authorizationUrl = authorizationUrl
+        self.clientKeySecret = clientKeySecret
+        self.approvalKeySecret = approvalKeySecret
+    }
+}
+
+
+extension GrantAuthFlowStateRecord: Equatable, Hashable {
+    public static func ==(lhs: GrantAuthFlowStateRecord, rhs: GrantAuthFlowStateRecord) -> Bool {
+        if lhs.authorizationUrl != rhs.authorizationUrl {
+            return false
+        }
+        if lhs.clientKeySecret != rhs.clientKeySecret {
+            return false
+        }
+        if lhs.approvalKeySecret != rhs.approvalKeySecret {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(authorizationUrl)
+        hasher.combine(clientKeySecret)
+        hasher.combine(approvalKeySecret)
+    }
+}
+
+
+public struct FfiConverterTypeGrantAuthFlowStateRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GrantAuthFlowStateRecord {
+        return try GrantAuthFlowStateRecord(
+            authorizationUrl: FfiConverterString.read(from: &buf), 
+            clientKeySecret: FfiConverterData.read(from: &buf), 
+            approvalKeySecret: FfiConverterOptionData.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: GrantAuthFlowStateRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.authorizationUrl, into: &buf)
+        FfiConverterData.write(value.clientKeySecret, into: &buf)
+        FfiConverterOptionData.write(value.approvalKeySecret, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeGrantAuthFlowStateRecord_lift(_ buf: RustBuffer) throws -> GrantAuthFlowStateRecord {
+    return try FfiConverterTypeGrantAuthFlowStateRecord.lift(buf)
+}
+
+public func FfiConverterTypeGrantAuthFlowStateRecord_lower(_ value: GrantAuthFlowStateRecord) -> RustBuffer {
+    return FfiConverterTypeGrantAuthFlowStateRecord.lower(value)
+}
+
+
+public struct PubkyClientConfig {
+    public var useTestnet: Bool
+    public var testnetHost: String?
+    public var requestTimeoutMs: UInt64?
+    public var readTimeoutMs: UInt64?
+    public var poolMaxIdlePerHost: UInt64?
+    public var maxErrorBodyBytes: UInt64?
+    public var userAgentExtra: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(useTestnet: Bool, testnetHost: String?, requestTimeoutMs: UInt64?, readTimeoutMs: UInt64?, poolMaxIdlePerHost: UInt64?, maxErrorBodyBytes: UInt64?, userAgentExtra: String?) {
+        self.useTestnet = useTestnet
+        self.testnetHost = testnetHost
+        self.requestTimeoutMs = requestTimeoutMs
+        self.readTimeoutMs = readTimeoutMs
+        self.poolMaxIdlePerHost = poolMaxIdlePerHost
+        self.maxErrorBodyBytes = maxErrorBodyBytes
+        self.userAgentExtra = userAgentExtra
+    }
+}
+
+
+extension PubkyClientConfig: Equatable, Hashable {
+    public static func ==(lhs: PubkyClientConfig, rhs: PubkyClientConfig) -> Bool {
+        if lhs.useTestnet != rhs.useTestnet {
+            return false
+        }
+        if lhs.testnetHost != rhs.testnetHost {
+            return false
+        }
+        if lhs.requestTimeoutMs != rhs.requestTimeoutMs {
+            return false
+        }
+        if lhs.readTimeoutMs != rhs.readTimeoutMs {
+            return false
+        }
+        if lhs.poolMaxIdlePerHost != rhs.poolMaxIdlePerHost {
+            return false
+        }
+        if lhs.maxErrorBodyBytes != rhs.maxErrorBodyBytes {
+            return false
+        }
+        if lhs.userAgentExtra != rhs.userAgentExtra {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(useTestnet)
+        hasher.combine(testnetHost)
+        hasher.combine(requestTimeoutMs)
+        hasher.combine(readTimeoutMs)
+        hasher.combine(poolMaxIdlePerHost)
+        hasher.combine(maxErrorBodyBytes)
+        hasher.combine(userAgentExtra)
+    }
+}
+
+
+public struct FfiConverterTypePubkyClientConfig: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PubkyClientConfig {
+        return try PubkyClientConfig(
+            useTestnet: FfiConverterBool.read(from: &buf), 
+            testnetHost: FfiConverterOptionString.read(from: &buf), 
+            requestTimeoutMs: FfiConverterOptionUInt64.read(from: &buf), 
+            readTimeoutMs: FfiConverterOptionUInt64.read(from: &buf), 
+            poolMaxIdlePerHost: FfiConverterOptionUInt64.read(from: &buf), 
+            maxErrorBodyBytes: FfiConverterOptionUInt64.read(from: &buf), 
+            userAgentExtra: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PubkyClientConfig, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.useTestnet, into: &buf)
+        FfiConverterOptionString.write(value.testnetHost, into: &buf)
+        FfiConverterOptionUInt64.write(value.requestTimeoutMs, into: &buf)
+        FfiConverterOptionUInt64.write(value.readTimeoutMs, into: &buf)
+        FfiConverterOptionUInt64.write(value.poolMaxIdlePerHost, into: &buf)
+        FfiConverterOptionUInt64.write(value.maxErrorBodyBytes, into: &buf)
+        FfiConverterOptionString.write(value.userAgentExtra, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypePubkyClientConfig_lift(_ buf: RustBuffer) throws -> PubkyClientConfig {
+    return try FfiConverterTypePubkyClientConfig.lift(buf)
+}
+
+public func FfiConverterTypePubkyClientConfig_lower(_ value: PubkyClientConfig) -> RustBuffer {
+    return FfiConverterTypePubkyClientConfig.lower(value)
+}
+
+
+public struct PubkyStorageEvent {
+    public var eventType: String
+    public var resource: String
+    public var cursor: UInt64
+    public var contentHash: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(eventType: String, resource: String, cursor: UInt64, contentHash: String?) {
+        self.eventType = eventType
+        self.resource = resource
+        self.cursor = cursor
+        self.contentHash = contentHash
+    }
+}
+
+
+extension PubkyStorageEvent: Equatable, Hashable {
+    public static func ==(lhs: PubkyStorageEvent, rhs: PubkyStorageEvent) -> Bool {
+        if lhs.eventType != rhs.eventType {
+            return false
+        }
+        if lhs.resource != rhs.resource {
+            return false
+        }
+        if lhs.cursor != rhs.cursor {
+            return false
+        }
+        if lhs.contentHash != rhs.contentHash {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(eventType)
+        hasher.combine(resource)
+        hasher.combine(cursor)
+        hasher.combine(contentHash)
+    }
+}
+
+
+public struct FfiConverterTypePubkyStorageEvent: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PubkyStorageEvent {
+        return try PubkyStorageEvent(
+            eventType: FfiConverterString.read(from: &buf), 
+            resource: FfiConverterString.read(from: &buf), 
+            cursor: FfiConverterUInt64.read(from: &buf), 
+            contentHash: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PubkyStorageEvent, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.eventType, into: &buf)
+        FfiConverterString.write(value.resource, into: &buf)
+        FfiConverterUInt64.write(value.cursor, into: &buf)
+        FfiConverterOptionString.write(value.contentHash, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypePubkyStorageEvent_lift(_ buf: RustBuffer) throws -> PubkyStorageEvent {
+    return try FfiConverterTypePubkyStorageEvent.lift(buf)
+}
+
+public func FfiConverterTypePubkyStorageEvent_lower(_ value: PubkyStorageEvent) -> RustBuffer {
+    return FfiConverterTypePubkyStorageEvent.lower(value)
+}
+
+
+public struct StorageListOptions {
+    public var reverse: Bool
+    public var shallow: Bool
+    public var limit: UInt16?
+    public var cursor: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(reverse: Bool, shallow: Bool, limit: UInt16?, cursor: String?) {
+        self.reverse = reverse
+        self.shallow = shallow
+        self.limit = limit
+        self.cursor = cursor
+    }
+}
+
+
+extension StorageListOptions: Equatable, Hashable {
+    public static func ==(lhs: StorageListOptions, rhs: StorageListOptions) -> Bool {
+        if lhs.reverse != rhs.reverse {
+            return false
+        }
+        if lhs.shallow != rhs.shallow {
+            return false
+        }
+        if lhs.limit != rhs.limit {
+            return false
+        }
+        if lhs.cursor != rhs.cursor {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(reverse)
+        hasher.combine(shallow)
+        hasher.combine(limit)
+        hasher.combine(cursor)
+    }
+}
+
+
+public struct FfiConverterTypeStorageListOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StorageListOptions {
+        return try StorageListOptions(
+            reverse: FfiConverterBool.read(from: &buf), 
+            shallow: FfiConverterBool.read(from: &buf), 
+            limit: FfiConverterOptionUInt16.read(from: &buf), 
+            cursor: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StorageListOptions, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.reverse, into: &buf)
+        FfiConverterBool.write(value.shallow, into: &buf)
+        FfiConverterOptionUInt16.write(value.limit, into: &buf)
+        FfiConverterOptionString.write(value.cursor, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeStorageListOptions_lift(_ buf: RustBuffer) throws -> StorageListOptions {
+    return try FfiConverterTypeStorageListOptions.lift(buf)
+}
+
+public func FfiConverterTypeStorageListOptions_lower(_ value: StorageListOptions) -> RustBuffer {
+    return FfiConverterTypeStorageListOptions.lower(value)
+}
+
+
+public struct StorageListPage {
+    public var entries: [String]
+    public var nextCursor: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(entries: [String], nextCursor: String?) {
+        self.entries = entries
+        self.nextCursor = nextCursor
+    }
+}
+
+
+extension StorageListPage: Equatable, Hashable {
+    public static func ==(lhs: StorageListPage, rhs: StorageListPage) -> Bool {
+        if lhs.entries != rhs.entries {
+            return false
+        }
+        if lhs.nextCursor != rhs.nextCursor {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(entries)
+        hasher.combine(nextCursor)
+    }
+}
+
+
+public struct FfiConverterTypeStorageListPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StorageListPage {
+        return try StorageListPage(
+            entries: FfiConverterSequenceString.read(from: &buf), 
+            nextCursor: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StorageListPage, into buf: inout [UInt8]) {
+        FfiConverterSequenceString.write(value.entries, into: &buf)
+        FfiConverterOptionString.write(value.nextCursor, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeStorageListPage_lift(_ buf: RustBuffer) throws -> StorageListPage {
+    return try FfiConverterTypeStorageListPage.lift(buf)
+}
+
+public func FfiConverterTypeStorageListPage_lower(_ value: StorageListPage) -> RustBuffer {
+    return FfiConverterTypeStorageListPage.lower(value)
+}
+
+
+public struct StorageLockInfo {
+    public var path: String
+    public var token: String
+    public var timeoutSeconds: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(path: String, token: String, timeoutSeconds: UInt64) {
+        self.path = path
+        self.token = token
+        self.timeoutSeconds = timeoutSeconds
+    }
+}
+
+
+extension StorageLockInfo: Equatable, Hashable {
+    public static func ==(lhs: StorageLockInfo, rhs: StorageLockInfo) -> Bool {
+        if lhs.path != rhs.path {
+            return false
+        }
+        if lhs.token != rhs.token {
+            return false
+        }
+        if lhs.timeoutSeconds != rhs.timeoutSeconds {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(path)
+        hasher.combine(token)
+        hasher.combine(timeoutSeconds)
+    }
+}
+
+
+public struct FfiConverterTypeStorageLockInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StorageLockInfo {
+        return try StorageLockInfo(
+            path: FfiConverterString.read(from: &buf), 
+            token: FfiConverterString.read(from: &buf), 
+            timeoutSeconds: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StorageLockInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterString.write(value.token, into: &buf)
+        FfiConverterUInt64.write(value.timeoutSeconds, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeStorageLockInfo_lift(_ buf: RustBuffer) throws -> StorageLockInfo {
+    return try FfiConverterTypeStorageLockInfo.lift(buf)
+}
+
+public func FfiConverterTypeStorageLockInfo_lower(_ value: StorageLockInfo) -> RustBuffer {
+    return FfiConverterTypeStorageLockInfo.lower(value)
+}
+
+
+public struct StorageResourceStats {
+    public var contentLength: UInt64?
+    public var contentType: String?
+    public var lastModifiedMs: UInt64?
+    public var etag: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(contentLength: UInt64?, contentType: String?, lastModifiedMs: UInt64?, etag: String?) {
+        self.contentLength = contentLength
+        self.contentType = contentType
+        self.lastModifiedMs = lastModifiedMs
+        self.etag = etag
+    }
+}
+
+
+extension StorageResourceStats: Equatable, Hashable {
+    public static func ==(lhs: StorageResourceStats, rhs: StorageResourceStats) -> Bool {
+        if lhs.contentLength != rhs.contentLength {
+            return false
+        }
+        if lhs.contentType != rhs.contentType {
+            return false
+        }
+        if lhs.lastModifiedMs != rhs.lastModifiedMs {
+            return false
+        }
+        if lhs.etag != rhs.etag {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(contentLength)
+        hasher.combine(contentType)
+        hasher.combine(lastModifiedMs)
+        hasher.combine(etag)
+    }
+}
+
+
+public struct FfiConverterTypeStorageResourceStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StorageResourceStats {
+        return try StorageResourceStats(
+            contentLength: FfiConverterOptionUInt64.read(from: &buf), 
+            contentType: FfiConverterOptionString.read(from: &buf), 
+            lastModifiedMs: FfiConverterOptionUInt64.read(from: &buf), 
+            etag: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StorageResourceStats, into buf: inout [UInt8]) {
+        FfiConverterOptionUInt64.write(value.contentLength, into: &buf)
+        FfiConverterOptionString.write(value.contentType, into: &buf)
+        FfiConverterOptionUInt64.write(value.lastModifiedMs, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeStorageResourceStats_lift(_ buf: RustBuffer) throws -> StorageResourceStats {
+    return try FfiConverterTypeStorageResourceStats.lift(buf)
+}
+
+public func FfiConverterTypeStorageResourceStats_lower(_ value: StorageResourceStats) -> RustBuffer {
+    return FfiConverterTypeStorageResourceStats.lower(value)
+}
+
+
+public struct VerifiedCustomGrantProof {
+    public var identity: String
+    public var clientId: String
+    public var clientPublicKey: String
+    public var grantId: String
+    public var capabilities: [Capability]
+    public var grantIssuedAt: UInt64
+    public var grantExpiresAt: UInt64
+    public var proofIssuedAt: UInt64
+    public var nonce: String
+    public var dataJson: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(identity: String, clientId: String, clientPublicKey: String, grantId: String, capabilities: [Capability], grantIssuedAt: UInt64, grantExpiresAt: UInt64, proofIssuedAt: UInt64, nonce: String, dataJson: String) {
+        self.identity = identity
+        self.clientId = clientId
+        self.clientPublicKey = clientPublicKey
+        self.grantId = grantId
+        self.capabilities = capabilities
+        self.grantIssuedAt = grantIssuedAt
+        self.grantExpiresAt = grantExpiresAt
+        self.proofIssuedAt = proofIssuedAt
+        self.nonce = nonce
+        self.dataJson = dataJson
+    }
+}
+
+
+extension VerifiedCustomGrantProof: Equatable, Hashable {
+    public static func ==(lhs: VerifiedCustomGrantProof, rhs: VerifiedCustomGrantProof) -> Bool {
+        if lhs.identity != rhs.identity {
+            return false
+        }
+        if lhs.clientId != rhs.clientId {
+            return false
+        }
+        if lhs.clientPublicKey != rhs.clientPublicKey {
+            return false
+        }
+        if lhs.grantId != rhs.grantId {
+            return false
+        }
+        if lhs.capabilities != rhs.capabilities {
+            return false
+        }
+        if lhs.grantIssuedAt != rhs.grantIssuedAt {
+            return false
+        }
+        if lhs.grantExpiresAt != rhs.grantExpiresAt {
+            return false
+        }
+        if lhs.proofIssuedAt != rhs.proofIssuedAt {
+            return false
+        }
+        if lhs.nonce != rhs.nonce {
+            return false
+        }
+        if lhs.dataJson != rhs.dataJson {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(identity)
+        hasher.combine(clientId)
+        hasher.combine(clientPublicKey)
+        hasher.combine(grantId)
+        hasher.combine(capabilities)
+        hasher.combine(grantIssuedAt)
+        hasher.combine(grantExpiresAt)
+        hasher.combine(proofIssuedAt)
+        hasher.combine(nonce)
+        hasher.combine(dataJson)
+    }
+}
+
+
+public struct FfiConverterTypeVerifiedCustomGrantProof: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> VerifiedCustomGrantProof {
+        return try VerifiedCustomGrantProof(
+            identity: FfiConverterString.read(from: &buf), 
+            clientId: FfiConverterString.read(from: &buf), 
+            clientPublicKey: FfiConverterString.read(from: &buf), 
+            grantId: FfiConverterString.read(from: &buf), 
+            capabilities: FfiConverterSequenceTypeCapability.read(from: &buf), 
+            grantIssuedAt: FfiConverterUInt64.read(from: &buf), 
+            grantExpiresAt: FfiConverterUInt64.read(from: &buf), 
+            proofIssuedAt: FfiConverterUInt64.read(from: &buf), 
+            nonce: FfiConverterString.read(from: &buf), 
+            dataJson: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: VerifiedCustomGrantProof, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.identity, into: &buf)
+        FfiConverterString.write(value.clientId, into: &buf)
+        FfiConverterString.write(value.clientPublicKey, into: &buf)
+        FfiConverterString.write(value.grantId, into: &buf)
+        FfiConverterSequenceTypeCapability.write(value.capabilities, into: &buf)
+        FfiConverterUInt64.write(value.grantIssuedAt, into: &buf)
+        FfiConverterUInt64.write(value.grantExpiresAt, into: &buf)
+        FfiConverterUInt64.write(value.proofIssuedAt, into: &buf)
+        FfiConverterString.write(value.nonce, into: &buf)
+        FfiConverterString.write(value.dataJson, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeVerifiedCustomGrantProof_lift(_ buf: RustBuffer) throws -> VerifiedCustomGrantProof {
+    return try FfiConverterTypeVerifiedCustomGrantProof.lift(buf)
+}
+
+public func FfiConverterTypeVerifiedCustomGrantProof_lower(_ value: VerifiedCustomGrantProof) -> RustBuffer {
+    return FfiConverterTypeVerifiedCustomGrantProof.lower(value)
+}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+public enum GrantApprovalMode {
+    
+    case bareGrant
+    case signedApprovalV1
+}
+
+public struct FfiConverterTypeGrantApprovalMode: FfiConverterRustBuffer {
+    typealias SwiftType = GrantApprovalMode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GrantApprovalMode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .bareGrant
+        
+        case 2: return .signedApprovalV1
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: GrantApprovalMode, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .bareGrant:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .signedApprovalV1:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+public func FfiConverterTypeGrantApprovalMode_lift(_ buf: RustBuffer) throws -> GrantApprovalMode {
+    return try FfiConverterTypeGrantApprovalMode.lift(buf)
+}
+
+public func FfiConverterTypeGrantApprovalMode_lower(_ value: GrantApprovalMode) -> RustBuffer {
+    return FfiConverterTypeGrantApprovalMode.lower(value)
+}
+
+
+extension GrantApprovalMode: Equatable, Hashable {}
+
+
+
+public enum PubkyCoreError {
+
+    
+    
+    case Transport(details: String)
+    case Server(status: UInt16, details: String)
+    case Validation(details: String)
+    case DecodeJson(details: String)
+    case Pkarr(details: String, retryable: Bool)
+    case Parse(details: String)
+    case Authentication(details: String, expired: Bool)
+    case Build(details: String)
+    case State(details: String)
+
+    fileprivate static func uniffiErrorHandler(_ error: RustBuffer) throws -> Error {
+        return try FfiConverterTypePubkyCoreError.lift(error)
+    }
+}
+
+
+public struct FfiConverterTypePubkyCoreError: FfiConverterRustBuffer {
+    typealias SwiftType = PubkyCoreError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PubkyCoreError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Transport(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 2: return .Server(
+            status: try FfiConverterUInt16.read(from: &buf), 
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .Validation(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 4: return .DecodeJson(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 5: return .Pkarr(
+            details: try FfiConverterString.read(from: &buf), 
+            retryable: try FfiConverterBool.read(from: &buf)
+            )
+        case 6: return .Parse(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 7: return .Authentication(
+            details: try FfiConverterString.read(from: &buf), 
+            expired: try FfiConverterBool.read(from: &buf)
+            )
+        case 8: return .Build(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 9: return .State(
+            details: try FfiConverterString.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PubkyCoreError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .Transport(details):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .Server(status,details):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt16.write(status, into: &buf)
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .Validation(details):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .DecodeJson(details):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .Pkarr(details,retryable):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(details, into: &buf)
+            FfiConverterBool.write(retryable, into: &buf)
+            
+        
+        case let .Parse(details):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .Authentication(details,expired):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(details, into: &buf)
+            FfiConverterBool.write(expired, into: &buf)
+            
+        
+        case let .Build(details):
+            writeInt(&buf, Int32(8))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .State(details):
+            writeInt(&buf, Int32(9))
+            FfiConverterString.write(details, into: &buf)
+            
+        }
+    }
+}
+
+
+extension PubkyCoreError: Equatable, Hashable {}
+
+extension PubkyCoreError: Error { }
+
+fileprivate extension NSLock {
     func withLock<T>(f: () throws -> T) rethrows -> T {
-        lock()
+        self.lock()
         defer { self.unlock() }
         return try f()
     }
 }
 
-private typealias UniFFICallbackHandle = UInt64
-private class UniFFICallbackHandleMap<T> {
+fileprivate typealias UniFFICallbackHandle = UInt64
+fileprivate class UniFFICallbackHandleMap<T> {
     private var leftMap: [UniFFICallbackHandle: T] = [:]
     private var counter: [UniFFICallbackHandle: UInt64] = [:]
     private var rightMap: [ObjectIdentifier: UniFFICallbackHandle] = [:]
@@ -497,8 +1837,8 @@ private class UniFFICallbackHandleMap<T> {
     }
 }
 
-/// Magic number for the Rust proxy to call using the same mechanism as every other method,
-/// to free the callback once it's dropped by Rust.
+// Magic number for the Rust proxy to call using the same mechanism as every other method,
+// to free the callback once it's dropped by Rust.
 private let IDX_CALLBACK_FREE: Int32 = 0
 // Callback return codes
 private let UNIFFI_CALLBACK_SUCCESS: Int32 = 0
@@ -507,57 +1847,61 @@ private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
 
 // Declaration and FfiConverters for EventListener Callback Interface
 
-public protocol EventListener: AnyObject {
-    func onEventOccurred(eventData: String)
+public protocol EventListener : AnyObject {
+    func onEventOccurred(eventData: String) 
+    
 }
 
-/// The ForeignCallback that is passed to Rust.
-private let foreignCallbackCallbackInterfaceEventListener: ForeignCallback = { (handle: UniFFICallbackHandle, method: Int32, argsData: UnsafePointer<UInt8>, argsLen: Int32, out_buf: UnsafeMutablePointer<RustBuffer>) -> Int32 in
-    func invokeOnEventOccurred(_ swiftCallbackInterface: EventListener, _ argsData: UnsafePointer<UInt8>, _ argsLen: Int32, _: UnsafeMutablePointer<RustBuffer>) throws -> Int32 {
+// The ForeignCallback that is passed to Rust.
+fileprivate let foreignCallbackCallbackInterfaceEventListener : ForeignCallback =
+    { (handle: UniFFICallbackHandle, method: Int32, argsData: UnsafePointer<UInt8>, argsLen: Int32, out_buf: UnsafeMutablePointer<RustBuffer>) -> Int32 in
+    
+
+    func invokeOnEventOccurred(_ swiftCallbackInterface: EventListener, _ argsData: UnsafePointer<UInt8>, _ argsLen: Int32, _ out_buf: UnsafeMutablePointer<RustBuffer>) throws -> Int32 {
         var reader = createReader(data: Data(bytes: argsData, count: Int(argsLen)))
         func makeCall() throws -> Int32 {
             try swiftCallbackInterface.onEventOccurred(
-                eventData: FfiConverterString.read(from: &reader)
-            )
+                    eventData:  try FfiConverterString.read(from: &reader)
+                    )
             return UNIFFI_CALLBACK_SUCCESS
         }
         return try makeCall()
     }
 
+
     switch method {
-    case IDX_CALLBACK_FREE:
-        FfiConverterCallbackInterfaceEventListener.drop(handle: handle)
-        // Sucessful return
-        // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
-        return UNIFFI_CALLBACK_SUCCESS
-
-    case 1:
-        let cb: EventListener
-        do {
-            cb = try FfiConverterCallbackInterfaceEventListener.lift(handle)
-        } catch {
-            out_buf.pointee = FfiConverterString.lower("EventListener: Invalid handle")
+        case IDX_CALLBACK_FREE:
+            FfiConverterCallbackInterfaceEventListener.drop(handle: handle)
+            // Sucessful return
+            // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+            return UNIFFI_CALLBACK_SUCCESS
+        case 1:
+            let cb: EventListener
+            do {
+                cb = try FfiConverterCallbackInterfaceEventListener.lift(handle)
+            } catch {
+                out_buf.pointee = FfiConverterString.lower("EventListener: Invalid handle")
+                return UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+            do {
+                return try invokeOnEventOccurred(cb, argsData, argsLen, out_buf)
+            } catch let error {
+                out_buf.pointee = FfiConverterString.lower(String(describing: error))
+                return UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+        
+        // This should never happen, because an out of bounds method index won't
+        // ever be used. Once we can catch errors, we should return an InternalError.
+        // https://github.com/mozilla/uniffi-rs/issues/351
+        default:
+            // An unexpected error happened.
+            // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
             return UNIFFI_CALLBACK_UNEXPECTED_ERROR
-        }
-        do {
-            return try invokeOnEventOccurred(cb, argsData, argsLen, out_buf)
-        } catch {
-            out_buf.pointee = FfiConverterString.lower(String(describing: error))
-            return UNIFFI_CALLBACK_UNEXPECTED_ERROR
-        }
-
-    // This should never happen, because an out of bounds method index won't
-    // ever be used. Once we can catch errors, we should return an InternalError.
-    // https://github.com/mozilla/uniffi-rs/issues/351
-    default:
-        // An unexpected error happened.
-        // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
-        return UNIFFI_CALLBACK_UNEXPECTED_ERROR
     }
 }
 
-/// FfiConverter protocol for callback interfaces
-private enum FfiConverterCallbackInterfaceEventListener {
+// FfiConverter protocol for callback interfaces
+fileprivate struct FfiConverterCallbackInterfaceEventListener {
     private static let initCallbackOnce: () = {
         // Swift ensures this initializer code will once run once, even when accessed by multiple threads.
         try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
@@ -576,13 +1920,13 @@ private enum FfiConverterCallbackInterfaceEventListener {
     private static var handleMap = UniFFICallbackHandleMap<EventListener>()
 }
 
-extension FfiConverterCallbackInterfaceEventListener: FfiConverter {
+extension FfiConverterCallbackInterfaceEventListener : FfiConverter {
     typealias SwiftType = EventListener
-    /// We can use Handle as the FfiType because it's a typealias to UInt64
+    // We can use Handle as the FfiType because it's a typealias to UInt64
     typealias FfiType = UniFFICallbackHandle
 
     public static func lift(_ handle: UniFFICallbackHandle) throws -> SwiftType {
-        ensureCallbackinitialized()
+        ensureCallbackinitialized();
         guard let callback = handleMap.get(handle: handle) else {
             throw UniffiInternalError.unexpectedStaleHandle
         }
@@ -590,26 +1934,183 @@ extension FfiConverterCallbackInterfaceEventListener: FfiConverter {
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        ensureCallbackinitialized()
+        ensureCallbackinitialized();
         let handle: UniFFICallbackHandle = try readInt(&buf)
         return try lift(handle)
     }
 
     public static func lower(_ v: SwiftType) -> UniFFICallbackHandle {
-        ensureCallbackinitialized()
+        ensureCallbackinitialized();
         return handleMap.insert(obj: v)
     }
 
     public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
-        ensureCallbackinitialized()
+        ensureCallbackinitialized();
         writeInt(&buf, lower(v))
     }
 }
 
-private struct FfiConverterOptionUInt16: FfiConverterRustBuffer {
+
+
+// Declaration and FfiConverters for PubkyEventStreamListener Callback Interface
+
+public protocol PubkyEventStreamListener : AnyObject {
+    func onEvent(event: PubkyStorageEvent) 
+    func onError(message: String) 
+    func onComplete() 
+    
+}
+
+// The ForeignCallback that is passed to Rust.
+fileprivate let foreignCallbackCallbackInterfacePubkyEventStreamListener : ForeignCallback =
+    { (handle: UniFFICallbackHandle, method: Int32, argsData: UnsafePointer<UInt8>, argsLen: Int32, out_buf: UnsafeMutablePointer<RustBuffer>) -> Int32 in
+    
+
+    func invokeOnEvent(_ swiftCallbackInterface: PubkyEventStreamListener, _ argsData: UnsafePointer<UInt8>, _ argsLen: Int32, _ out_buf: UnsafeMutablePointer<RustBuffer>) throws -> Int32 {
+        var reader = createReader(data: Data(bytes: argsData, count: Int(argsLen)))
+        func makeCall() throws -> Int32 {
+            try swiftCallbackInterface.onEvent(
+                    event:  try FfiConverterTypePubkyStorageEvent.read(from: &reader)
+                    )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        return try makeCall()
+    }
+
+    func invokeOnError(_ swiftCallbackInterface: PubkyEventStreamListener, _ argsData: UnsafePointer<UInt8>, _ argsLen: Int32, _ out_buf: UnsafeMutablePointer<RustBuffer>) throws -> Int32 {
+        var reader = createReader(data: Data(bytes: argsData, count: Int(argsLen)))
+        func makeCall() throws -> Int32 {
+            try swiftCallbackInterface.onError(
+                    message:  try FfiConverterString.read(from: &reader)
+                    )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        return try makeCall()
+    }
+
+    func invokeOnComplete(_ swiftCallbackInterface: PubkyEventStreamListener, _ argsData: UnsafePointer<UInt8>, _ argsLen: Int32, _ out_buf: UnsafeMutablePointer<RustBuffer>) throws -> Int32 {
+        func makeCall() throws -> Int32 {
+            try swiftCallbackInterface.onComplete(
+                    )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        return try makeCall()
+    }
+
+
+    switch method {
+        case IDX_CALLBACK_FREE:
+            FfiConverterCallbackInterfacePubkyEventStreamListener.drop(handle: handle)
+            // Sucessful return
+            // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+            return UNIFFI_CALLBACK_SUCCESS
+        case 1:
+            let cb: PubkyEventStreamListener
+            do {
+                cb = try FfiConverterCallbackInterfacePubkyEventStreamListener.lift(handle)
+            } catch {
+                out_buf.pointee = FfiConverterString.lower("PubkyEventStreamListener: Invalid handle")
+                return UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+            do {
+                return try invokeOnEvent(cb, argsData, argsLen, out_buf)
+            } catch let error {
+                out_buf.pointee = FfiConverterString.lower(String(describing: error))
+                return UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+        case 2:
+            let cb: PubkyEventStreamListener
+            do {
+                cb = try FfiConverterCallbackInterfacePubkyEventStreamListener.lift(handle)
+            } catch {
+                out_buf.pointee = FfiConverterString.lower("PubkyEventStreamListener: Invalid handle")
+                return UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+            do {
+                return try invokeOnError(cb, argsData, argsLen, out_buf)
+            } catch let error {
+                out_buf.pointee = FfiConverterString.lower(String(describing: error))
+                return UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+        case 3:
+            let cb: PubkyEventStreamListener
+            do {
+                cb = try FfiConverterCallbackInterfacePubkyEventStreamListener.lift(handle)
+            } catch {
+                out_buf.pointee = FfiConverterString.lower("PubkyEventStreamListener: Invalid handle")
+                return UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+            do {
+                return try invokeOnComplete(cb, argsData, argsLen, out_buf)
+            } catch let error {
+                out_buf.pointee = FfiConverterString.lower(String(describing: error))
+                return UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+        
+        // This should never happen, because an out of bounds method index won't
+        // ever be used. Once we can catch errors, we should return an InternalError.
+        // https://github.com/mozilla/uniffi-rs/issues/351
+        default:
+            // An unexpected error happened.
+            // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+            return UNIFFI_CALLBACK_UNEXPECTED_ERROR
+    }
+}
+
+// FfiConverter protocol for callback interfaces
+fileprivate struct FfiConverterCallbackInterfacePubkyEventStreamListener {
+    private static let initCallbackOnce: () = {
+        // Swift ensures this initializer code will once run once, even when accessed by multiple threads.
+        try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
+            uniffi_pubkycore_fn_init_callback_pubkyeventstreamlistener(foreignCallbackCallbackInterfacePubkyEventStreamListener, err)
+        }
+    }()
+
+    private static func ensureCallbackinitialized() {
+        _ = initCallbackOnce
+    }
+
+    static func drop(handle: UniFFICallbackHandle) {
+        handleMap.remove(handle: handle)
+    }
+
+    private static var handleMap = UniFFICallbackHandleMap<PubkyEventStreamListener>()
+}
+
+extension FfiConverterCallbackInterfacePubkyEventStreamListener : FfiConverter {
+    typealias SwiftType = PubkyEventStreamListener
+    // We can use Handle as the FfiType because it's a typealias to UInt64
+    typealias FfiType = UniFFICallbackHandle
+
+    public static func lift(_ handle: UniFFICallbackHandle) throws -> SwiftType {
+        ensureCallbackinitialized();
+        guard let callback = handleMap.get(handle: handle) else {
+            throw UniffiInternalError.unexpectedStaleHandle
+        }
+        return callback
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        ensureCallbackinitialized();
+        let handle: UniFFICallbackHandle = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func lower(_ v: SwiftType) -> UniFFICallbackHandle {
+        ensureCallbackinitialized();
+        return handleMap.insert(obj: v)
+    }
+
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        ensureCallbackinitialized();
+        writeInt(&buf, lower(v))
+    }
+}
+
+fileprivate struct FfiConverterOptionUInt16: FfiConverterRustBuffer {
     typealias SwiftType = UInt16?
 
-    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
         guard let value = value else {
             writeInt(&buf, Int8(0))
             return
@@ -618,7 +2119,7 @@ private struct FfiConverterOptionUInt16: FfiConverterRustBuffer {
         FfiConverterUInt16.write(value, into: &buf)
     }
 
-    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterUInt16.read(from: &buf)
@@ -627,10 +2128,31 @@ private struct FfiConverterOptionUInt16: FfiConverterRustBuffer {
     }
 }
 
-private struct FfiConverterOptionBool: FfiConverterRustBuffer {
+fileprivate struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
+    typealias SwiftType = UInt64?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt64.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+fileprivate struct FfiConverterOptionBool: FfiConverterRustBuffer {
     typealias SwiftType = Bool?
 
-    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
         guard let value = value else {
             writeInt(&buf, Int8(0))
             return
@@ -639,7 +2161,7 @@ private struct FfiConverterOptionBool: FfiConverterRustBuffer {
         FfiConverterBool.write(value, into: &buf)
     }
 
-    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterBool.read(from: &buf)
@@ -648,10 +2170,10 @@ private struct FfiConverterOptionBool: FfiConverterRustBuffer {
     }
 }
 
-private struct FfiConverterOptionString: FfiConverterRustBuffer {
+fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
-    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
         guard let value = value else {
             writeInt(&buf, Int8(0))
             return
@@ -660,7 +2182,7 @@ private struct FfiConverterOptionString: FfiConverterRustBuffer {
         FfiConverterString.write(value, into: &buf)
     }
 
-    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterString.read(from: &buf)
@@ -669,10 +2191,94 @@ private struct FfiConverterOptionString: FfiConverterRustBuffer {
     }
 }
 
-private struct FfiConverterSequenceString: FfiConverterRustBuffer {
+fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
+    typealias SwiftType = Data?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterData.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterData.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+fileprivate struct FfiConverterOptionTypeStorageResourceStats: FfiConverterRustBuffer {
+    typealias SwiftType = StorageResourceStats?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeStorageResourceStats.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeStorageResourceStats.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+fileprivate struct FfiConverterOptionTypeGrantApprovalMode: FfiConverterRustBuffer {
+    typealias SwiftType = GrantApprovalMode?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeGrantApprovalMode.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeGrantApprovalMode.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]
 
-    static func write(_ value: [String], into buf: inout [UInt8]) {
+    public static func write(_ value: [String], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
@@ -680,491 +2286,872 @@ private struct FfiConverterSequenceString: FfiConverterRustBuffer {
         }
     }
 
-    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
         let len: Int32 = try readInt(&buf)
         var seq = [String]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            try seq.append(FfiConverterString.read(from: &buf))
+            seq.append(try FfiConverterString.read(from: &buf))
         }
         return seq
     }
 }
 
-public func auth(url: String, secretKey: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_auth(
-                FfiConverterString.lower(url),
-                FfiConverterString.lower(secretKey), $0
-            )
-        }
-    )
-}
+fileprivate struct FfiConverterSequenceTypeCapability: FfiConverterRustBuffer {
+    typealias SwiftType = [Capability]
 
-public func awaitAuthApproval() -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_await_auth_approval($0)
+    public static func write(_ value: [Capability], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCapability.write(item, into: &buf)
         }
-    )
-}
+    }
 
-public func awaitCookieAuthApproval() -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_await_cookie_auth_approval($0)
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Capability] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Capability]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCapability.read(from: &buf))
         }
-    )
-}
-
-public func awaitGrantAuthApproval() -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_await_grant_auth_approval($0)
-        }
-    )
-}
-
-public func createRecoveryFile(secretKey: String, passphrase: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_create_recovery_file(
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(passphrase), $0
-            )
-        }
-    )
-}
-
-public func createTagId(uri: String, label: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_create_tag_id(
-                FfiConverterString.lower(uri),
-                FfiConverterString.lower(label), $0
-            )
-        }
-    )
-}
-
-public func decryptRecoveryFile(recoveryFile: String, passphrase: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_decrypt_recovery_file(
-                FfiConverterString.lower(recoveryFile),
-                FfiConverterString.lower(passphrase), $0
-            )
-        }
-    )
-}
-
-public func deleteFile(url: String, secretKey: String, clientId: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_delete_file(
-                FfiConverterString.lower(url),
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(clientId), $0
-            )
-        }
-    )
-}
-
-public func deleteWithSession(url: String, sessionSecret: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_delete_with_session(
-                FfiConverterString.lower(url),
-                FfiConverterString.lower(sessionSecret), $0
-            )
-        }
-    )
-}
-
-public func generateMnemonicPhrase() -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_generate_mnemonic_phrase($0)
-        }
-    )
-}
-
-public func generateMnemonicPhraseAndKeypair() -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_generate_mnemonic_phrase_and_keypair($0)
-        }
-    )
-}
-
-public func generateSecretKey() -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_generate_secret_key($0)
-        }
-    )
-}
-
-public func get(url: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_get(
-                FfiConverterString.lower(url), $0
-            )
-        }
-    )
-}
-
-public func getBytes(url: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_get_bytes(
-                FfiConverterString.lower(url), $0
-            )
-        }
-    )
-}
-
-public func getHomeserver(pubky: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_get_homeserver(
-                FfiConverterString.lower(pubky), $0
-            )
-        }
-    )
-}
-
-public func getPublicKeyFromSecretKey(secretKey: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_get_public_key_from_secret_key(
-                FfiConverterString.lower(secretKey), $0
-            )
-        }
-    )
-}
-
-public func getSignupToken(homeserverPubky: String, adminPassword: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_get_signup_token(
-                FfiConverterString.lower(homeserverPubky),
-                FfiConverterString.lower(adminPassword), $0
-            )
-        }
-    )
-}
-
-public func initLogging() {
-    try! rustCall {
-        uniffi_pubkycore_fn_func_init_logging($0)
+        return seq
     }
 }
 
-public func list(url: String, cursor: String?, reverse: Bool?, limit: UInt16?, shallow: Bool?) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_list(
-                FfiConverterString.lower(url),
-                FfiConverterOptionString.lower(cursor),
-                FfiConverterOptionBool.lower(reverse),
-                FfiConverterOptionUInt16.lower(limit),
-                FfiConverterOptionBool.lower(shallow), $0
-            )
-        }
-    )
-}
+fileprivate struct FfiConverterSequenceTypeEventStreamUser: FfiConverterRustBuffer {
+    typealias SwiftType = [EventStreamUser]
 
-public func mnemonicPhraseToKeypair(mnemonicPhrase: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_mnemonic_phrase_to_keypair(
-                FfiConverterString.lower(mnemonicPhrase), $0
-            )
+    public static func write(_ value: [EventStreamUser], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeEventStreamUser.write(item, into: &buf)
         }
-    )
-}
+    }
 
-public func parseAuthUrl(url: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_parse_auth_url(
-                FfiConverterString.lower(url), $0
-            )
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [EventStreamUser] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [EventStreamUser]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeEventStreamUser.read(from: &buf))
         }
-    )
-}
-
-public func parseDeepLink(url: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_parse_deep_link(
-                FfiConverterString.lower(url), $0
-            )
-        }
-    )
-}
-
-public func publish(recordName: String, recordContent: String, secretKey: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_publish(
-                FfiConverterString.lower(recordName),
-                FfiConverterString.lower(recordContent),
-                FfiConverterString.lower(secretKey), $0
-            )
-        }
-    )
-}
-
-public func publishHttps(recordName: String, target: String, secretKey: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_publish_https(
-                FfiConverterString.lower(recordName),
-                FfiConverterString.lower(target),
-                FfiConverterString.lower(secretKey), $0
-            )
-        }
-    )
-}
-
-public func put(url: String, content: String, secretKey: String, clientId: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_put(
-                FfiConverterString.lower(url),
-                FfiConverterString.lower(content),
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(clientId), $0
-            )
-        }
-    )
-}
-
-public func putBytes(url: String, content: Data, secretKey: String, clientId: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_put_bytes(
-                FfiConverterString.lower(url),
-                FfiConverterData.lower(content),
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(clientId), $0
-            )
-        }
-    )
-}
-
-public func putBytesWithSession(url: String, content: Data, sessionSecret: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_put_bytes_with_session(
-                FfiConverterString.lower(url),
-                FfiConverterData.lower(content),
-                FfiConverterString.lower(sessionSecret), $0
-            )
-        }
-    )
-}
-
-public func putWithSession(url: String, content: String, sessionSecret: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_put_with_session(
-                FfiConverterString.lower(url),
-                FfiConverterString.lower(content),
-                FfiConverterString.lower(sessionSecret), $0
-            )
-        }
-    )
-}
-
-public func removeEventListener() {
-    try! rustCall {
-        uniffi_pubkycore_fn_func_remove_event_listener($0)
+        return seq
     }
 }
 
-public func republishHomeserver(secretKey: String, homeserver: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_republish_homeserver(
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(homeserver), $0
-            )
-        }
+public func auth(url: String, secretKey: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_auth(
+        FfiConverterString.lower(url),
+        FfiConverterString.lower(secretKey),$0)
+}
     )
 }
 
-public func resolve(publicKey: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_resolve(
-                FfiConverterString.lower(publicKey), $0
-            )
-        }
+public func authWithCapabilities(url: String, secretKey: String, approvedCapabilities: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_auth_with_capabilities(
+        FfiConverterString.lower(url),
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(approvedCapabilities),$0)
+}
     )
 }
 
-public func resolveHttps(publicKey: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_resolve_https(
-                FfiConverterString.lower(publicKey), $0
-            )
-        }
+public func awaitAuthApproval()  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_await_auth_approval($0)
+}
     )
 }
 
-public func revalidateSession(sessionSecret: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_revalidate_session(
-                FfiConverterString.lower(sessionSecret), $0
-            )
-        }
+public func awaitCookieAuthApproval()  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_await_cookie_auth_approval($0)
+}
     )
 }
 
-public func setEventListener(listener: EventListener) {
-    try! rustCall {
-        uniffi_pubkycore_fn_func_set_event_listener(
-            FfiConverterCallbackInterfaceEventListener.lower(listener), $0
-        )
-    }
+public func awaitGrantAuthApproval()  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_await_grant_auth_approval($0)
 }
-
-public func signIn(secretKey: String, clientId: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_sign_in(
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(clientId), $0
-            )
-        }
     )
 }
 
-public func signInCookie(secretKey: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_sign_in_cookie(
-                FfiConverterString.lower(secretKey), $0
-            )
-        }
+public func awaitGrantAuthFlow() throws -> String {
+    return try  FfiConverterString.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_await_grant_auth_flow($0)
+}
     )
 }
 
-public func signInGrant(secretKey: String, clientId: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_sign_in_grant(
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(clientId), $0
-            )
-        }
+public func awaitGrantAuthFlowHandle(flowId: String, timeoutSecs: UInt32)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_await_grant_auth_flow_handle(
+        FfiConverterString.lower(flowId),
+        FfiConverterUInt32.lower(timeoutSecs),$0)
+}
     )
 }
 
-public func signOut(sessionSecret: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_sign_out(
-                FfiConverterString.lower(sessionSecret), $0
-            )
-        }
+public func cancelGrantAuthFlow()  {
+    try! rustCall() {
+    uniffi_pubkycore_fn_func_cancel_grant_auth_flow($0)
+}
+}
+
+
+
+public func cancelGrantAuthFlowHandle(flowId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_cancel_grant_auth_flow_handle(
+        FfiConverterString.lower(flowId),$0)
+}
     )
 }
 
-public func signUp(secretKey: String, homeserver: String, signupToken: String?, clientId: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_sign_up(
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(homeserver),
-                FfiConverterOptionString.lower(signupToken),
-                FfiConverterString.lower(clientId), $0
-            )
-        }
+public func configureClient(config: PubkyClientConfig) throws {
+    try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_configure_client(
+        FfiConverterTypePubkyClientConfig.lower(config),$0)
+}
+}
+
+
+
+public func configureGrantAuthFlows(maxConcurrent: UInt32, ttlSecs: UInt32)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_configure_grant_auth_flows(
+        FfiConverterUInt32.lower(maxConcurrent),
+        FfiConverterUInt32.lower(ttlSecs),$0)
+}
     )
 }
 
-public func signUpCookie(secretKey: String, homeserver: String, signupToken: String?) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_sign_up_cookie(
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(homeserver),
-                FfiConverterOptionString.lower(signupToken), $0
-            )
-        }
+public func configureMaxBodyBytes(maxBytes: UInt64)  -> UInt64 {
+    return try!  FfiConverterUInt64.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_configure_max_body_bytes(
+        FfiConverterUInt64.lower(maxBytes),$0)
+}
     )
 }
 
-public func signUpGrant(secretKey: String, homeserver: String, signupToken: String?, clientId: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_sign_up_grant(
-                FfiConverterString.lower(secretKey),
-                FfiConverterString.lower(homeserver),
-                FfiConverterOptionString.lower(signupToken),
-                FfiConverterString.lower(clientId), $0
-            )
-        }
+public func configureSessionCache(capacity: UInt32)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_configure_session_cache(
+        FfiConverterUInt32.lower(capacity),$0)
+}
     )
 }
 
-public func startAuthFlow(capabilitiesStr: String, clientId: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_start_auth_flow(
-                FfiConverterString.lower(capabilitiesStr),
-                FfiConverterString.lower(clientId), $0
-            )
-        }
+public func createCustomGrantProof(sessionSecret: String, dataJson: String) throws -> CustomGrantProof {
+    return try  FfiConverterTypeCustomGrantProof.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_create_custom_grant_proof(
+        FfiConverterString.lower(sessionSecret),
+        FfiConverterString.lower(dataJson),$0)
+}
     )
 }
 
-public func startCookieAuthFlow(capabilitiesStr: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_start_cookie_auth_flow(
-                FfiConverterString.lower(capabilitiesStr), $0
-            )
-        }
+public func createRecoveryFile(secretKey: String, passphrase: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_create_recovery_file(
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(passphrase),$0)
+}
     )
 }
 
-public func startGrantAuthFlow(capabilitiesStr: String, clientId: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_start_grant_auth_flow(
-                FfiConverterString.lower(capabilitiesStr),
-                FfiConverterString.lower(clientId), $0
-            )
-        }
+public func createTagId(uri: String, label: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_create_tag_id(
+        FfiConverterString.lower(uri),
+        FfiConverterString.lower(label),$0)
+}
     )
 }
 
-public func switchNetwork(useTestnet: Bool) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_switch_network(
-                FfiConverterBool.lower(useTestnet), $0
-            )
-        }
+public func decryptRecoveryFile(recoveryFile: String, passphrase: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_decrypt_recovery_file(
+        FfiConverterString.lower(recoveryFile),
+        FfiConverterString.lower(passphrase),$0)
+}
     )
 }
 
-public func validateMnemonicPhrase(mnemonicPhrase: String) -> [String] {
-    return try! FfiConverterSequenceString.lift(
-        try! rustCall {
-            uniffi_pubkycore_fn_func_validate_mnemonic_phrase(
-                FfiConverterString.lower(mnemonicPhrase), $0
-            )
-        }
+public func deleteFile(url: String, secretKey: String, clientId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_delete_file(
+        FfiConverterString.lower(url),
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func deleteWithSession(url: String, sessionSecret: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_delete_with_session(
+        FfiConverterString.lower(url),
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func deriveGrantEncryptionKey(sessionSecret: String, path: String) throws -> Data? {
+    return try  FfiConverterOptionData.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_derive_grant_encryption_key(
+        FfiConverterString.lower(sessionSecret),
+        FfiConverterString.lower(path),$0)
+}
+    )
+}
+
+public func generateMnemonicPhrase()  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_generate_mnemonic_phrase($0)
+}
+    )
+}
+
+public func generateMnemonicPhraseAndKeypair()  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_generate_mnemonic_phrase_and_keypair($0)
+}
+    )
+}
+
+public func generateSecretKey()  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_generate_secret_key($0)
+}
+    )
+}
+
+public func get(url: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_get(
+        FfiConverterString.lower(url),$0)
+}
+    )
+}
+
+public func getBytes(url: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_get_bytes(
+        FfiConverterString.lower(url),$0)
+}
+    )
+}
+
+public func getHomeserver(pubky: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_get_homeserver(
+        FfiConverterString.lower(pubky),$0)
+}
+    )
+}
+
+public func getPublicKeyFromSecretKey(secretKey: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_get_public_key_from_secret_key(
+        FfiConverterString.lower(secretKey),$0)
+}
+    )
+}
+
+public func getSignupToken(homeserverPubky: String, adminPassword: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_get_signup_token(
+        FfiConverterString.lower(homeserverPubky),
+        FfiConverterString.lower(adminPassword),$0)
+}
+    )
+}
+
+public func grantEncryptionKeyScopes(sessionSecret: String) throws -> [String]? {
+    return try  FfiConverterOptionSequenceString.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_grant_encryption_key_scopes(
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func grantSignedApproval(sessionSecret: String) throws -> String? {
+    return try  FfiConverterOptionString.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_grant_signed_approval(
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func initLogging()  {
+    try! rustCall() {
+    uniffi_pubkycore_fn_func_init_logging($0)
+}
+}
+
+
+
+public func list(url: String, cursor: String?, reverse: Bool?, limit: UInt16?, shallow: Bool?)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_list(
+        FfiConverterString.lower(url),
+        FfiConverterOptionString.lower(cursor),
+        FfiConverterOptionBool.lower(reverse),
+        FfiConverterOptionUInt16.lower(limit),
+        FfiConverterOptionBool.lower(shallow),$0)
+}
+    )
+}
+
+public func listGrants(sessionSecret: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_list_grants(
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func mnemonicPhraseToKeypair(mnemonicPhrase: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_mnemonic_phrase_to_keypair(
+        FfiConverterString.lower(mnemonicPhrase),$0)
+}
+    )
+}
+
+public func parseAuthUrl(url: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_parse_auth_url(
+        FfiConverterString.lower(url),$0)
+}
+    )
+}
+
+public func parseDeepLink(url: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_parse_deep_link(
+        FfiConverterString.lower(url),$0)
+}
+    )
+}
+
+public func pollGrantAuthFlow() throws -> String? {
+    return try  FfiConverterOptionString.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_poll_grant_auth_flow($0)
+}
+    )
+}
+
+public func pollGrantAuthFlowHandle(flowId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_poll_grant_auth_flow_handle(
+        FfiConverterString.lower(flowId),$0)
+}
+    )
+}
+
+public func publicExists(address: String) throws -> Bool {
+    return try  FfiConverterBool.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_public_exists(
+        FfiConverterString.lower(address),$0)
+}
+    )
+}
+
+public func publicGetBytes(address: String) throws -> Data {
+    return try  FfiConverterData.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_public_get_bytes(
+        FfiConverterString.lower(address),$0)
+}
+    )
+}
+
+public func publicList(address: String, options: StorageListOptions) throws -> StorageListPage {
+    return try  FfiConverterTypeStorageListPage.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_public_list(
+        FfiConverterString.lower(address),
+        FfiConverterTypeStorageListOptions.lower(options),$0)
+}
+    )
+}
+
+public func publicStats(address: String) throws -> StorageResourceStats? {
+    return try  FfiConverterOptionTypeStorageResourceStats.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_public_stats(
+        FfiConverterString.lower(address),$0)
+}
+    )
+}
+
+public func publish(recordName: String, recordContent: String, secretKey: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_publish(
+        FfiConverterString.lower(recordName),
+        FfiConverterString.lower(recordContent),
+        FfiConverterString.lower(secretKey),$0)
+}
+    )
+}
+
+public func publishHttps(recordName: String, target: String, secretKey: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_publish_https(
+        FfiConverterString.lower(recordName),
+        FfiConverterString.lower(target),
+        FfiConverterString.lower(secretKey),$0)
+}
+    )
+}
+
+public func put(url: String, content: String, secretKey: String, clientId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_put(
+        FfiConverterString.lower(url),
+        FfiConverterString.lower(content),
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func putBytes(url: String, content: Data, secretKey: String, clientId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_put_bytes(
+        FfiConverterString.lower(url),
+        FfiConverterData.lower(content),
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func putBytesWithSession(url: String, content: Data, sessionSecret: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_put_bytes_with_session(
+        FfiConverterString.lower(url),
+        FfiConverterData.lower(content),
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func putWithSession(url: String, content: String, sessionSecret: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_put_with_session(
+        FfiConverterString.lower(url),
+        FfiConverterString.lower(content),
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func removeEventListener()  {
+    try! rustCall() {
+    uniffi_pubkycore_fn_func_remove_event_listener($0)
+}
+}
+
+
+
+public func republishHomeserver(secretKey: String, homeserver: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_republish_homeserver(
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(homeserver),$0)
+}
+    )
+}
+
+public func resolve(publicKey: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_resolve(
+        FfiConverterString.lower(publicKey),$0)
+}
+    )
+}
+
+public func resolveHttps(publicKey: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_resolve_https(
+        FfiConverterString.lower(publicKey),$0)
+}
+    )
+}
+
+public func restoreGrantAuthFlow(state: GrantAuthFlowStateRecord) throws -> String {
+    return try  FfiConverterString.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_restore_grant_auth_flow(
+        FfiConverterTypeGrantAuthFlowStateRecord.lower(state),$0)
+}
+    )
+}
+
+public func revalidateSession(sessionSecret: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_revalidate_session(
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func revokeGrant(sessionSecret: String, grantId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_revoke_grant(
+        FfiConverterString.lower(sessionSecret),
+        FfiConverterString.lower(grantId),$0)
+}
+    )
+}
+
+public func revokeOwnGrant(sessionSecret: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_revoke_own_grant(
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func saveGrantAuthFlow() throws -> GrantAuthFlowStateRecord {
+    return try  FfiConverterTypeGrantAuthFlowStateRecord.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_save_grant_auth_flow($0)
+}
+    )
+}
+
+public func sessionDelete(pathOrAddress: String, sessionSecret: String) throws {
+    try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_session_delete(
+        FfiConverterString.lower(pathOrAddress),
+        FfiConverterString.lower(sessionSecret),$0)
+}
+}
+
+
+
+public func sessionExists(pathOrAddress: String, sessionSecret: String) throws -> Bool {
+    return try  FfiConverterBool.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_session_exists(
+        FfiConverterString.lower(pathOrAddress),
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func sessionGetBytes(pathOrAddress: String, sessionSecret: String) throws -> Data {
+    return try  FfiConverterData.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_session_get_bytes(
+        FfiConverterString.lower(pathOrAddress),
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func sessionList(pathOrAddress: String, sessionSecret: String, options: StorageListOptions) throws -> StorageListPage {
+    return try  FfiConverterTypeStorageListPage.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_session_list(
+        FfiConverterString.lower(pathOrAddress),
+        FfiConverterString.lower(sessionSecret),
+        FfiConverterTypeStorageListOptions.lower(options),$0)
+}
+    )
+}
+
+public func sessionLock(pathOrAddress: String, sessionSecret: String, timeoutSeconds: UInt64) throws -> PubkyStorageLock {
+    return try  FfiConverterTypePubkyStorageLock.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_session_lock(
+        FfiConverterString.lower(pathOrAddress),
+        FfiConverterString.lower(sessionSecret),
+        FfiConverterUInt64.lower(timeoutSeconds),$0)
+}
+    )
+}
+
+public func sessionPutBytes(pathOrAddress: String, content: Data, sessionSecret: String) throws {
+    try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_session_put_bytes(
+        FfiConverterString.lower(pathOrAddress),
+        FfiConverterData.lower(content),
+        FfiConverterString.lower(sessionSecret),$0)
+}
+}
+
+
+
+public func sessionStats(pathOrAddress: String, sessionSecret: String) throws -> StorageResourceStats? {
+    return try  FfiConverterOptionTypeStorageResourceStats.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_session_stats(
+        FfiConverterString.lower(pathOrAddress),
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func setEventListener(listener: EventListener)  {
+    try! rustCall() {
+    uniffi_pubkycore_fn_func_set_event_listener(
+        FfiConverterCallbackInterfaceEventListener.lower(listener),$0)
+}
+}
+
+
+
+public func signIn(secretKey: String, clientId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_sign_in(
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func signInCookie(secretKey: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_sign_in_cookie(
+        FfiConverterString.lower(secretKey),$0)
+}
+    )
+}
+
+public func signInCookieBlocking(secretKey: String) throws -> String {
+    return try  FfiConverterString.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_sign_in_cookie_blocking(
+        FfiConverterString.lower(secretKey),$0)
+}
+    )
+}
+
+public func signInGrant(secretKey: String, clientId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_sign_in_grant(
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func signInGrantBlocking(secretKey: String, clientId: String) throws -> String {
+    return try  FfiConverterString.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_sign_in_grant_blocking(
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func signOut(sessionSecret: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_sign_out(
+        FfiConverterString.lower(sessionSecret),$0)
+}
+    )
+}
+
+public func signUp(secretKey: String, homeserver: String, signupToken: String?, clientId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_sign_up(
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(homeserver),
+        FfiConverterOptionString.lower(signupToken),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func signUpCookie(secretKey: String, homeserver: String, signupToken: String?)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_sign_up_cookie(
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(homeserver),
+        FfiConverterOptionString.lower(signupToken),$0)
+}
+    )
+}
+
+public func signUpGrant(secretKey: String, homeserver: String, signupToken: String?, clientId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_sign_up_grant(
+        FfiConverterString.lower(secretKey),
+        FfiConverterString.lower(homeserver),
+        FfiConverterOptionString.lower(signupToken),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func startAuthFlow(capabilitiesStr: String, clientId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_start_auth_flow(
+        FfiConverterString.lower(capabilitiesStr),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func startCookieAuthFlow(capabilitiesStr: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_start_cookie_auth_flow(
+        FfiConverterString.lower(capabilitiesStr),$0)
+}
+    )
+}
+
+public func startEventStream(config: EventStreamConfig, listener: PubkyEventStreamListener) throws -> String {
+    return try  FfiConverterString.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_start_event_stream(
+        FfiConverterTypeEventStreamConfig.lower(config),
+        FfiConverterCallbackInterfacePubkyEventStreamListener.lower(listener),$0)
+}
+    )
+}
+
+public func startGrantAuthFlow(capabilitiesStr: String, clientId: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_start_grant_auth_flow(
+        FfiConverterString.lower(capabilitiesStr),
+        FfiConverterString.lower(clientId),$0)
+}
+    )
+}
+
+public func startGrantAuthFlowHandle(capabilitiesStr: String, clientId: String, relay: String?)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_start_grant_auth_flow_handle(
+        FfiConverterString.lower(capabilitiesStr),
+        FfiConverterString.lower(clientId),
+        FfiConverterOptionString.lower(relay),$0)
+}
+    )
+}
+
+public func startGrantAuthFlowWithConfig(config: GrantAuthFlowConfig) throws -> GrantAuthFlowStateRecord {
+    return try  FfiConverterTypeGrantAuthFlowStateRecord.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_start_grant_auth_flow_with_config(
+        FfiConverterTypeGrantAuthFlowConfig.lower(config),$0)
+}
+    )
+}
+
+public func stopAllEventStreams()  -> UInt64 {
+    return try!  FfiConverterUInt64.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_stop_all_event_streams($0)
+}
+    )
+}
+
+public func stopEventStream(subscriptionId: String)  -> Bool {
+    return try!  FfiConverterBool.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_stop_event_stream(
+        FfiConverterString.lower(subscriptionId),$0)
+}
+    )
+}
+
+public func switchNetwork(useTestnet: Bool)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_switch_network(
+        FfiConverterBool.lower(useTestnet),$0)
+}
+    )
+}
+
+public func validateMnemonicPhrase(mnemonicPhrase: String)  -> [String] {
+    return try!  FfiConverterSequenceString.lift(
+        try! rustCall() {
+    uniffi_pubkycore_fn_func_validate_mnemonic_phrase(
+        FfiConverterString.lower(mnemonicPhrase),$0)
+}
+    )
+}
+
+public func verifyCustomGrantProof(proof: CustomGrantProof, clockSkewSeconds: UInt64) throws -> VerifiedCustomGrantProof {
+    return try  FfiConverterTypeVerifiedCustomGrantProof.lift(
+        try rustCallWithError(FfiConverterTypePubkyCoreError.lift) {
+    uniffi_pubkycore_fn_func_verify_custom_grant_proof(
+        FfiConverterTypeCustomGrantProof.lower(proof),
+        FfiConverterUInt64.lower(clockSkewSeconds),$0)
+}
     )
 }
 
@@ -1173,9 +3160,8 @@ private enum InitializationResult {
     case contractVersionMismatch
     case apiChecksumMismatch
 }
-
-/// Use a global variables to perform the versioning checks. Swift ensures that
-/// the code inside is only computed once.
+// Use a global variables to perform the versioning checks. Swift ensures that
+// the code inside is only computed once.
 private var initializationResult: InitializationResult {
     // Get the bindings contract version from our ComponentInterface
     let bindings_contract_version = 24
@@ -1184,145 +3170,286 @@ private var initializationResult: InitializationResult {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if uniffi_pubkycore_checksum_func_auth() != 51826 {
+    if (uniffi_pubkycore_checksum_func_auth() != 51826) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_await_auth_approval() != 56488 {
+    if (uniffi_pubkycore_checksum_func_auth_with_capabilities() != 62946) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_await_cookie_auth_approval() != 44552 {
+    if (uniffi_pubkycore_checksum_func_await_auth_approval() != 56488) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_await_grant_auth_approval() != 15252 {
+    if (uniffi_pubkycore_checksum_func_await_cookie_auth_approval() != 44552) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_create_recovery_file() != 48846 {
+    if (uniffi_pubkycore_checksum_func_await_grant_auth_approval() != 15252) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_create_tag_id() != 27393 {
+    if (uniffi_pubkycore_checksum_func_await_grant_auth_flow() != 25430) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_decrypt_recovery_file() != 26407 {
+    if (uniffi_pubkycore_checksum_func_await_grant_auth_flow_handle() != 43474) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_delete_file() != 43485 {
+    if (uniffi_pubkycore_checksum_func_cancel_grant_auth_flow() != 21408) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_delete_with_session() != 26332 {
+    if (uniffi_pubkycore_checksum_func_cancel_grant_auth_flow_handle() != 27553) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_generate_mnemonic_phrase() != 2358 {
+    if (uniffi_pubkycore_checksum_func_configure_client() != 49656) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_generate_mnemonic_phrase_and_keypair() != 44395 {
+    if (uniffi_pubkycore_checksum_func_configure_grant_auth_flows() != 36358) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_generate_secret_key() != 12800 {
+    if (uniffi_pubkycore_checksum_func_configure_max_body_bytes() != 5303) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_get() != 6591 {
+    if (uniffi_pubkycore_checksum_func_configure_session_cache() != 7117) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_get_bytes() != 47939 {
+    if (uniffi_pubkycore_checksum_func_create_custom_grant_proof() != 56343) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_get_homeserver() != 40658 {
+    if (uniffi_pubkycore_checksum_func_create_recovery_file() != 48846) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_get_public_key_from_secret_key() != 40316 {
+    if (uniffi_pubkycore_checksum_func_create_tag_id() != 27393) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_get_signup_token() != 47927 {
+    if (uniffi_pubkycore_checksum_func_decrypt_recovery_file() != 26407) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_init_logging() != 21182 {
+    if (uniffi_pubkycore_checksum_func_delete_file() != 43485) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_list() != 63419 {
+    if (uniffi_pubkycore_checksum_func_delete_with_session() != 26332) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_mnemonic_phrase_to_keypair() != 45784 {
+    if (uniffi_pubkycore_checksum_func_derive_grant_encryption_key() != 48351) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_parse_auth_url() != 27379 {
+    if (uniffi_pubkycore_checksum_func_generate_mnemonic_phrase() != 2358) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_parse_deep_link() != 29971 {
+    if (uniffi_pubkycore_checksum_func_generate_mnemonic_phrase_and_keypair() != 44395) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_publish() != 48989 {
+    if (uniffi_pubkycore_checksum_func_generate_secret_key() != 12800) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_publish_https() != 5614 {
+    if (uniffi_pubkycore_checksum_func_get() != 6591) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_put() != 32173 {
+    if (uniffi_pubkycore_checksum_func_get_bytes() != 47939) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_put_bytes() != 47888 {
+    if (uniffi_pubkycore_checksum_func_get_homeserver() != 40658) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_put_bytes_with_session() != 50346 {
+    if (uniffi_pubkycore_checksum_func_get_public_key_from_secret_key() != 40316) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_put_with_session() != 17390 {
+    if (uniffi_pubkycore_checksum_func_get_signup_token() != 47927) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_remove_event_listener() != 23534 {
+    if (uniffi_pubkycore_checksum_func_grant_encryption_key_scopes() != 382) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_republish_homeserver() != 63919 {
+    if (uniffi_pubkycore_checksum_func_grant_signed_approval() != 2791) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_resolve() != 34317 {
+    if (uniffi_pubkycore_checksum_func_init_logging() != 21182) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_resolve_https() != 17266 {
+    if (uniffi_pubkycore_checksum_func_list() != 63419) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_revalidate_session() != 57726 {
+    if (uniffi_pubkycore_checksum_func_list_grants() != 59792) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_set_event_listener() != 60071 {
+    if (uniffi_pubkycore_checksum_func_mnemonic_phrase_to_keypair() != 45784) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_sign_in() != 23529 {
+    if (uniffi_pubkycore_checksum_func_parse_auth_url() != 27379) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_sign_in_cookie() != 28058 {
+    if (uniffi_pubkycore_checksum_func_parse_deep_link() != 29971) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_sign_in_grant() != 49219 {
+    if (uniffi_pubkycore_checksum_func_poll_grant_auth_flow() != 62466) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_sign_out() != 27163 {
+    if (uniffi_pubkycore_checksum_func_poll_grant_auth_flow_handle() != 25105) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_sign_up() != 6399 {
+    if (uniffi_pubkycore_checksum_func_public_exists() != 55217) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_sign_up_cookie() != 55185 {
+    if (uniffi_pubkycore_checksum_func_public_get_bytes() != 37051) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_sign_up_grant() != 65298 {
+    if (uniffi_pubkycore_checksum_func_public_list() != 13947) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_start_auth_flow() != 45230 {
+    if (uniffi_pubkycore_checksum_func_public_stats() != 55842) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_start_cookie_auth_flow() != 49536 {
+    if (uniffi_pubkycore_checksum_func_publish() != 48989) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_start_grant_auth_flow() != 48937 {
+    if (uniffi_pubkycore_checksum_func_publish_https() != 5614) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_switch_network() != 64215 {
+    if (uniffi_pubkycore_checksum_func_put() != 32173) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_func_validate_mnemonic_phrase() != 30362 {
+    if (uniffi_pubkycore_checksum_func_put_bytes() != 47888) {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_pubkycore_checksum_method_eventlistener_on_event_occurred() != 11531 {
+    if (uniffi_pubkycore_checksum_func_put_bytes_with_session() != 50346) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_put_with_session() != 17390) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_remove_event_listener() != 23534) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_republish_homeserver() != 63919) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_resolve() != 34317) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_resolve_https() != 17266) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_restore_grant_auth_flow() != 41658) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_revalidate_session() != 57726) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_revoke_grant() != 15677) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_revoke_own_grant() != 22919) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_save_grant_auth_flow() != 63609) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_session_delete() != 42303) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_session_exists() != 49208) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_session_get_bytes() != 63122) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_session_list() != 37640) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_session_lock() != 27857) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_session_put_bytes() != 63275) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_session_stats() != 20269) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_set_event_listener() != 60071) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_sign_in() != 23529) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_sign_in_cookie() != 28058) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_sign_in_cookie_blocking() != 31194) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_sign_in_grant() != 49219) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_sign_in_grant_blocking() != 6356) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_sign_out() != 27163) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_sign_up() != 6399) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_sign_up_cookie() != 55185) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_sign_up_grant() != 65298) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_start_auth_flow() != 45230) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_start_cookie_auth_flow() != 49536) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_start_event_stream() != 33730) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_start_grant_auth_flow() != 48937) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_start_grant_auth_flow_handle() != 53487) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_start_grant_auth_flow_with_config() != 31556) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_stop_all_event_streams() != 58496) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_stop_event_stream() != 11015) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_switch_network() != 64215) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_validate_mnemonic_phrase() != 30362) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_func_verify_custom_grant_proof() != 15853) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_method_pubkystoragelock_delete() != 25786) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_method_pubkystoragelock_info() != 33361) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_method_pubkystoragelock_put() != 1671) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_method_pubkystoragelock_refresh() != 5441) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_method_pubkystoragelock_unlock() != 14327) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_method_eventlistener_on_event_occurred() != 11531) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_method_pubkyeventstreamlistener_on_event() != 590) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_method_pubkyeventstreamlistener_on_error() != 13809) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pubkycore_checksum_method_pubkyeventstreamlistener_on_complete() != 17264) {
         return InitializationResult.apiChecksumMismatch
     }
 
