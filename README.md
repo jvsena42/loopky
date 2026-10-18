@@ -21,8 +21,15 @@ shares decks with your class through one link.
   Discover.
 - **Loopky Recap.** Each December, a summary of your year — cards studied and mastered, your
   most-studied deck, the languages you worked on — to keep or to share.
-- **A desktop command line tool** to manage decks and cards in bulk, or to let an AI agent build
-  them for you — see [`cli/README.md`](./cli/README.md).
+- **Decks built by Claude**, three ways:
+  - **The Loopky connector**, for Claude in the browser, the desktop and mobile apps, or a cloud
+    session. Add `https://mcp.loopky.app/mcp` under Settings → Connectors and sign in once with
+    Pubky Ring. It can only write Loopky's own data, and it takes cards inline: no local files, and
+    no Anki `.apkg` upload.
+  - **The agent plugin** for Claude Code and Codex, which teaches the workflow: see
+    [`plugins/loopky/`](./plugins/loopky/).
+  - **A desktop command line tool** to manage decks and cards in bulk, for you or an agent on your
+    own machine: see [`cli/README.md`](./cli/README.md).
 - **No ads and no analytics.**
 
 ## Guides
@@ -223,6 +230,9 @@ loopky/
 │
 ├── cli/                       # `loopky`, the headless client — a GraalVM binary on :shared's
 │                              # jvm() target, so an agent can drive Loopky without a screen
+├── cli-core/                  # the CLI's commands as a library, shared with the connector
+├── mcp/                       # the hosted connector: a remote MCP server over cli-core
+├── plugins/loopky/            # the agent skill Claude Code and Codex read
 │
 └── journeys/                  # scripted end-to-end journeys
 ```
