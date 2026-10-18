@@ -1,12 +1,14 @@
 # Loopky Privacy Policy
 
-**Last updated:** 30 August 2026
+**Last updated:** 18 October 2026
 
 Loopky is a flashcards app built on [Pubky](https://pubky.org). This policy describes what happens
 to your information when you use it.
 
-The short version: **the Loopky project runs no servers of its own.** There is no Loopky account,
-no Loopky database, and no analytics.
+The short version: **the Loopky app, the command line tool and the agent plugin send nothing to
+the Loopky project.** There is no Loopky account and no analytics. The one server the project runs
+is the **Loopky connector** for Claude, and it holds data only for people who connect it — see
+section 6.
 
 That does not mean nothing receives your data. Your decks and study progress are written to a
 **Pubky homeserver**, and unless you run one yourself that server is operated by someone else — by
@@ -28,8 +30,10 @@ Questions about this policy: open an issue at
 
 ## 2. What Loopky does not do
 
-- **No Loopky backend.** The project runs no server, and none of your data is sent to us. It goes
-  to your Pubky homeserver instead, which is a different party — see sections 4 and 5.
+- **No Loopky backend for the app.** The app, the command line tool and the plugin send none of
+  your data to us. It goes to your Pubky homeserver instead, which is a different party — see
+  sections 4 and 5. The connector for Claude is the exception, and only if you add it — see
+  section 6.
 - **No analytics or telemetry.** No usage tracking, no event logging, no advertising identifiers,
   no third-party SDKs for measurement or attribution.
 - **No crash reporting.** Nothing is transmitted when the app fails.
@@ -56,8 +60,8 @@ backup option, described below — Loopky keeps its own copy either way.
 
 **If you created or restored your account inside Loopky** — which is what "Create account" does —
 then Loopky holds your private key itself. It is stored in your device's own secure storage — the Android Keystore on Android, the
-Keychain on iOS — and is used to sign your own reads and writes. It is never sent to us (we run no
-server), never sent to any third party, and never written to a log.
+Keychain on iOS — and is used to sign your own reads and writes. It is never sent to us, never
+sent to any third party, and never written to a log.
 
 In both cases the session secret is kept in that same secure storage and is sent only to your
 homeserver. **Signing out deletes both the session secret and any key Loopky is holding.** If
@@ -118,7 +122,52 @@ for.
 
 ---
 
-## 6. Microphone
+## 6. The Loopky connector for Claude
+
+The connector (`https://mcp.loopky.app/mcp`) lets Claude build decks in your account when you add
+it to Claude under Settings → Connectors. It is the one server the Loopky project operates, on a
+virtual server rented from Contabo. **If you never add it, none of this section applies to you.**
+
+**What it stores, for as long as you stay connected:**
+
+- **Your public key**, and when you connected and last used it.
+- **The Pubky session secret** that Pubky Ring grants it when you approve the connection. It can
+  write only Loopky's own storage area (`/pub/loopky/`), never your profile, posts or follows. It
+  is encrypted with AES-GCM under a key that is kept on the server outside the database and never
+  leaves it.
+- **SHA-256 hashes of the tokens Claude uses to call it**, with the Claude client they were issued
+  to and when they expire. The tokens themselves are not stored.
+- **Claude's registration** as a client: the name it gives, such as "Claude", and its callback
+  address. Nothing about you.
+
+**What it does not store:** your decks and cards. A request from Claude carries the cards to write;
+the connector writes them to your homeserver and keeps them only while the request runs, in memory
+and in a temporary file deleted when the request finishes. It reads nothing from Claude: no
+conversations, memory or files beyond what Claude sends in a request.
+
+**Logs.** The server's log records when an account connects, disconnects or fails, by public key,
+with every token and secret removed. It is rotated, so it keeps about the last 50 MB. Addresses are
+held in memory to limit request rates, and are not logged.
+
+**How long it is kept, and how to remove it.** Claude's access tokens last an hour and are renewed
+with a refresh token that lasts 90 days from its last use.
+
+- **Revoke the connector in Pubky Ring**, where it appears as `mcp.loopky.app`. From then on it
+  cannot write anything for you. It finds out the next time Claude uses a Loopky tool, when your
+  homeserver refuses the session, and then deletes everything above for your key. Until that
+  happens the encrypted session stays on the server, though it no longer works.
+- **Disconnect it in Claude.** That stops Claude using it.
+- **A connection nobody uses for 90 days ends on its own.** The connector revokes the session on
+  your homeserver and deletes everything above.
+- **To have it deleted now**, open an issue asking for it.
+
+The connector also sends what Claude asks it to the homeserver and to the Nexus indexer, as
+described in section 5. What you say to Claude, and what Claude sends to the connector, is
+governed by Anthropic's privacy policy, not this one.
+
+---
+
+## 7. Microphone
 
 The **Speak** practice mode records audio so you can practise pronunciation.
 
@@ -136,7 +185,7 @@ processing is governed by Apple's or Google's privacy policy, not this one.
 
 ---
 
-## 7. Camera, photos and images
+## 8. Camera, photos and images
 
 **The camera is used for one thing: reading a QR code that holds someone's pubky**, so you can add
 them without typing a long key by hand. Loopky reads only the text decoded from the code. No photo
@@ -153,7 +202,7 @@ deck.
 
 ---
 
-## 8. Content from other people
+## 9. Content from other people
 
 Decks, profiles and tags published by other people are fetched from their homeservers and from the
 Nexus indexer. Loopky does not verify or moderate them. Treat text and links inside someone else's
@@ -161,7 +210,7 @@ deck the way you would treat any content from a stranger on the internet.
 
 ---
 
-## 9. Deleting your data
+## 10. Deleting your data
 
 - **Sign out** (Settings) removes the session secret and your locally cached data from the device.
 - **Delete a deck** removes its records, cards and images from your homeserver.
@@ -173,32 +222,37 @@ Delete account does not delete your Pubky identity or your homeserver account, b
 not own them. Those live in Pubky Ring, and your profile and social follows in the wider Pubky
 network are left untouched.
 
+If you connected the Loopky connector, section 6 says how to remove what it holds.
+
 Copies that other people made of a deck you published are theirs, on their own homeservers, and
 cannot be recalled. This is a property of publishing to a public network.
 
 ---
 
-## 10. Children
+## 11. Children
 
 Loopky is not directed at children under 13, and we do not knowingly collect information from them.
-The Loopky project holds no user data, so there is nothing for us to delete on request. Data on a
+Apart from the connector (section 6), the Loopky project holds no user data, so there is nothing
+for us to delete on request. Data on a
 homeserver is removed with **Delete account** in Settings, or by contacting that homeserver's
 operator. An account created with Loopky's **Create account** is created on your own device; one
 you already had in Pubky Ring stays governed by Ring's own terms.
 
 ---
 
-## 11. Changes to this policy
+## 12. Changes to this policy
 
 Material changes will be published here with an updated date above. The revision history of this
 document is public in the repository, so every change is inspectable.
 
 ---
 
-## 12. Your rights
+## 13. Your rights
 
-The Loopky project holds no personal data, so requests to access, correct, export or delete data
-cannot be served by us — we have nothing to serve them from. Your content is written under your own
+Apart from what the connector holds for people who connect it (section 6), the Loopky project holds
+no personal data, so requests to access, correct, export or delete data cannot be served by us — we
+have nothing to serve them from. For the connector, open an issue and we will delete what it holds
+for your key. Your content is written under your own
 key and **Delete account** in Settings removes it from your homeserver. For anything held by your
 homeserver's operator, including backups and server logs, address that operator. If you have a
 question about any of this, open an issue at

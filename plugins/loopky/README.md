@@ -42,14 +42,19 @@ platform, too large to ship inside a plugin, so it is a prerequisite — install
 following [Install](https://github.com/jvsena42/loopky/tree/main/cli#install) in the CLI README (Homebrew, a `.deb`, or the release installer). When it is missing, the skill
 stops and asks you to.
 
-In a cloud environment (Claude Code on the web, Codex), install `loopky` in the environment's
-setup script, and add the hosts `loopky doctor` lists to the environment's allowlist.
+In a cloud environment (Claude Code on the web, Codex), the skill suggests the hosted **Loopky
+connector** instead: add `https://mcp.loopky.app/mcp` under Settings → Connectors and sign in once
+with Pubky Ring, with no install, no allowlist and no hourly phone sign-in. To use the CLI there
+anyway, install `loopky` in the environment's setup script and add the hosts `loopky doctor` lists
+to the environment's allowlist.
 
 ## Data and services
 
 The plugin declares no connectors. What leaves your machine goes through the `loopky` CLI the skill
-runs, and only to the services below. The Loopky project runs no server of its own and receives
-none of it, apart from an issue you choose to file. The full policy is at [loopky.app/privacy](https://loopky.app/privacy/), the terms at
+runs, and only to the services below. Through the CLI the Loopky project receives none of it,
+apart from an issue you choose to file. If you add the Loopky connector instead, the project's
+server holds your public key and an encrypted session for as long as you stay connected;
+section 6 of the policy says what, and how to remove it. The full policy is at [loopky.app/privacy](https://loopky.app/privacy/), the terms at
 [loopky.app/terms](https://loopky.app/terms/), and help at [loopky.app/support](https://loopky.app/support/).
 
 | Service | When | What reaches it |
@@ -62,7 +67,7 @@ none of it, apart from an issue you choose to file. The full policy is at [loopk
 | **GitHub issues** (`github.com/jvsena42/loopky`) | Only if you approve a friction report | The issue text you approved, posted publicly from your GitHub account |
 | **Image hosts** named in your cards | Only with `--check-images` | One `HEAD` request per picture URL, your IP address |
 
-**Retention.** Nothing is retained by the Loopky project. Your decks stay on your homeserver until
+**Retention.** Through the CLI, nothing is retained by the Loopky project. Your decks stay on your homeserver until
 you delete them (`loopky deck delete`). **Published decks and tags are public**: there are no
 private decks. The session secret is stored on your machine only (the macOS Keychain, or a
 file only your user can read), and `loopky logout` removes it.

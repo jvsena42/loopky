@@ -12,11 +12,20 @@ sealed interface Rotation {
     /** The token had already been rotated: a replay, so the whole family is now revoked. */
     data class Reused(val familyId: String, val pubky: String) : Rotation
     data class Expired(val familyId: String, val pubky: String) : Rotation
+
+    /** The account was unlinked while the token was still good: nothing is minted for it. */
+    data object Unlinked : Rotation
 }
 
 class TokenStore(private val db: McpDatabase) {
-    suspend fun issue(family: TokenFamily, access: AccessTokenRow, refresh: RefreshTokenRow) {
+    /**
+     * False, and nothing written, when [TokenFamily.pubky] has no link: checked in the same
+     * transaction as the insert, so a code exchanged while the account is being unlinked cannot
+     * leave token rows behind the unlink (#536).
+     */
+    suspend fun issue(family: TokenFamily, access: AccessTokenRow, refresh: RefreshTokenRow): Boolean =
         db.transaction { c ->
+            if (!c.isLinked(family.pubky)) return@transaction false
             c.exec(
                 "INSERT INTO token_families (family_id, pubky, client_id, created_at) VALUES (?, ?, ?, ?)",
                 family.familyId,
@@ -25,8 +34,8 @@ class TokenStore(private val db: McpDatabase) {
                 family.createdAt,
             )
             c.insertPair(access, refresh)
+            true
         }
-    }
 
     suspend fun findAccess(tokenHash: String): AccessTokenRow? = db.transaction { c ->
         c.queryOne("SELECT * FROM access_tokens WHERE token_hash = ?", tokenHash, map = ::toAccess)
@@ -61,6 +70,7 @@ class TokenStore(private val db: McpDatabase) {
                 c.revokeFamily(row.familyId, now)
                 Rotation.Expired(row.familyId, row.pubky)
             }
+            !c.isLinked(row.pubky) -> Rotation.Unlinked
             else -> {
                 c.exec("UPDATE refresh_tokens SET rotated_at = ? WHERE token_hash = ?", now, tokenHash)
                 val (access, refresh) = mint(row)
@@ -80,11 +90,17 @@ class TokenStore(private val db: McpDatabase) {
         }
     }
 
-    suspend fun revokeAllFor(pubky: String, now: Instant) {
+    /**
+     * Every token row, family and authorization code that names [pubky]: what an unlink leaves
+     * nothing of, as the privacy policy says (#536). Revoking them instead kept their hashes and
+     * the user's key on file for good.
+     */
+    suspend fun deleteAllFor(pubky: String) {
         db.transaction { c ->
-            c.query("SELECT family_id FROM token_families WHERE pubky = ? AND revoked_at IS NULL", pubky) {
-                it.getString("family_id")
-            }.forEach { c.revokeFamily(it, now) }
+            c.exec("DELETE FROM access_tokens WHERE pubky = ?", pubky)
+            c.exec("DELETE FROM refresh_tokens WHERE pubky = ?", pubky)
+            c.exec("DELETE FROM token_families WHERE pubky = ?", pubky)
+            c.exec("DELETE FROM auth_codes WHERE pubky = ?", pubky)
         }
     }
 
@@ -125,6 +141,9 @@ class TokenStore(private val db: McpDatabase) {
         ) { it.getInt("n") }
         return (live ?: 0) > 0
     }
+
+    private fun Connection.isLinked(pubky: String): Boolean =
+        queryOne("SELECT 1 AS linked FROM links WHERE pubky = ?", pubky) { it.getInt("linked") } != null
 
     private fun Connection.revokeFamily(familyId: String, now: Instant) {
         exec("UPDATE token_families SET revoked_at = ? WHERE family_id = ? AND revoked_at IS NULL", now, familyId)

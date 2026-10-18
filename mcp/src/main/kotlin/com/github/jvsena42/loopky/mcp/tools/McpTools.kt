@@ -23,8 +23,11 @@ import com.github.jvsena42.loopky.cli.cliCommands
  * parsing on the server, and the one path that uploads bytes), and everything about being a
  * binary — `login`, `logout`, `doctor`, `update`, `completion`, `commands`.
  */
+@Suppress("LongParameterList") // one per thing the catalog test holds a tool to
 class McpTool(
     val name: String,
+    /** What a person sees for the tool, in a client's tool list or a confirmation prompt. */
+    val title: String,
     val command: CliCommand,
     /** Option names the tool takes, as the table spells them. */
     val exposed: Set<String>,
@@ -49,13 +52,18 @@ class McpTool(
 
 /** What the tool tells a client about itself beyond what the table says. */
 data class ToolHints(
-    /** `destructiveHint`: the tool removes something. */
+    /**
+     * `destructiveHint`: the tool may overwrite or remove what is there. MCP reads `false` as "only
+     * additive", so an edit that replaces a card's text or a deck's tags is destructive too, and a
+     * client asks before running it.
+     */
     val destructive: Boolean = false,
     /** `idempotentHint`: a retry with the same arguments changes nothing more. */
     val idempotent: Boolean = false,
 )
 
 private val IDEMPOTENT = ToolHints(idempotent = true)
+private val OVERWRITES = ToolHints(destructive = true, idempotent = true)
 
 /** How a tool takes the content a command would otherwise read from a path. */
 enum class InlineInput {
@@ -93,11 +101,33 @@ fun mcpTools(): List<McpTool> {
     val commands = cliCommands().associateBy { it.path }
     fun command(path: String) = requireNotNull(commands[path]) { "no command `$path` in the table" }
     return listOf(
-        McpTool("whoami", command("whoami"), exposed = emptySet(), refused = emptyMap(), hints = IDEMPOTENT),
-        McpTool("deck_list", command("deck list"), exposed = emptySet(), refused = emptyMap(), hints = IDEMPOTENT),
-        McpTool("deck_show", command("deck show"), exposed = emptySet(), refused = emptyMap(), hints = IDEMPOTENT),
+        McpTool(
+            "whoami",
+            "Show the connected account",
+            command("whoami"),
+            exposed = emptySet(),
+            refused = emptyMap(),
+            hints = IDEMPOTENT,
+        ),
+        McpTool(
+            "deck_list",
+            "List decks",
+            command("deck list"),
+            exposed = emptySet(),
+            refused = emptyMap(),
+            hints = IDEMPOTENT,
+        ),
+        McpTool(
+            "deck_show",
+            "Show a deck",
+            command("deck show"),
+            exposed = emptySet(),
+            refused = emptyMap(),
+            hints = IDEMPOTENT,
+        ),
         McpTool(
             "deck_create",
+            "Create a deck",
             command("deck create"),
             exposed = DECK_METADATA + "id" + "if-not-exists" + "dry-run" + STUDY_OPT_INS + LANGUAGES,
             refused = mapOf("from-file" to PATH_REFUSAL) + IMAGE_CHECK_OPTIONS,
@@ -105,13 +135,15 @@ fun mcpTools(): List<McpTool> {
         ),
         McpTool(
             "deck_edit",
+            "Edit a deck",
             command("deck edit"),
             exposed = DECK_METADATA + STUDY_OPT_INS + STUDY_OPT_OUTS + LANGUAGES + "clear-tags" + "clear-cover",
             refused = emptyMap(),
-            hints = IDEMPOTENT,
+            hints = OVERWRITES,
         ),
         McpTool(
             "card_list",
+            "List cards",
             command("card list"),
             exposed = setOf("limit", "cursor", "missing-image", "has-image"),
             refused = emptyMap(),
@@ -119,6 +151,7 @@ fun mcpTools(): List<McpTool> {
         ),
         McpTool(
             "card_add",
+            "Add cards",
             command("card add"),
             exposed = CARD_FIELDS + "dry-run",
             refused = mapOf("from-file" to PATH_REFUSAL) + IMAGE_CHECK_OPTIONS,
@@ -127,29 +160,46 @@ fun mcpTools(): List<McpTool> {
         ),
         McpTool(
             "card_edit",
+            "Edit cards",
             command("card edit"),
             exposed = CARD_FIELDS + "clear-front-image" + "clear-back-image",
             refused = mapOf("from-file" to PATH_REFUSAL) + IMAGE_CHECK_OPTIONS,
             inline = InlineInput.CardFile,
-            hints = IDEMPOTENT,
+            hints = OVERWRITES,
         ),
         McpTool(
             "card_remove",
+            "Remove a card",
             command("card rm"),
             exposed = emptySet(),
             refused = emptyMap(),
-            hints = ToolHints(destructive = true, idempotent = true),
+            hints = OVERWRITES,
         ),
-        McpTool("card_move", command("card mv"), exposed = setOf("to", "after"), refused = emptyMap(), hints = IDEMPOTENT),
+        McpTool(
+            "card_move",
+            "Move a card",
+            command("card mv"),
+            exposed = setOf("to", "after"),
+            refused = emptyMap(),
+            hints = OVERWRITES,
+        ),
         McpTool(
             "import",
+            "Import a deck from text",
             command("import"),
             exposed = setOf("title", "description", "tag", "separator", "resume", "cover-url", "cover-emoji", "dry-run") +
                 STUDY_OPT_INS + STUDY_OPT_OUTS + LANGUAGES,
             refused = mapOf("front-field" to APKG_REFUSAL, "back-field" to APKG_REFUSAL) + IMAGE_CHECK_OPTIONS,
             inline = InlineInput.ImportSource,
         ),
-        McpTool("tag_trending", command("tag trending"), exposed = setOf("limit"), refused = emptyMap(), hints = IDEMPOTENT),
+        McpTool(
+            "tag_trending",
+            "List trending tags",
+            command("tag trending"),
+            exposed = setOf("limit"),
+            refused = emptyMap(),
+            hints = IDEMPOTENT,
+        ),
     )
 }
 

@@ -135,11 +135,26 @@ class ToolCatalogTest {
     }
 
     @Test
-    fun `card_remove is the one destructive tool, and reads are read-only`() {
+    fun `every tool says whether it reads, adds, or overwrites`() {
         val annotations = tools.associate { it.name to assertNotNull(it.toTool().annotations) }
-        assertEquals(listOf("card_remove"), annotations.filterValues { it.destructiveHint == true }.keys.toList())
-        assertEquals(true, annotations.getValue("deck_list").readOnlyHint)
-        assertEquals(false, annotations.getValue("deck_create").readOnlyHint)
+        // Pinned per tool, so a write tool added on the default hints fails here rather than
+        // reaching the directory as additive-only, which is what destructiveHint=false means.
+        val kinds = annotations.mapValues { (_, it) ->
+            when {
+                it.readOnlyHint == true -> "read"
+                it.destructiveHint == true -> "overwrites"
+                else -> "adds"
+            }
+        }
+        assertEquals(
+            mapOf(
+                "whoami" to "read", "deck_list" to "read", "deck_show" to "read", "deck_create" to "adds",
+                "deck_edit" to "overwrites", "card_list" to "read", "card_add" to "adds",
+                "card_edit" to "overwrites", "card_remove" to "overwrites", "card_move" to "overwrites",
+                "import" to "adds", "tag_trending" to "read",
+            ),
+            kinds,
+        )
         assertEquals(true, annotations.getValue("tag_trending").openWorldHint)
     }
 
@@ -148,7 +163,9 @@ class ToolCatalogTest {
         tools.forEach { tool ->
             val description = tool.toTool().description.orEmpty()
             assertTrue(description.isNotBlank(), tool.name)
-            assertEquals(tool.command.path, tool.toTool().annotations?.title)
+            assertEquals(tool.title, tool.toTool().annotations?.title)
+            assertEquals(tool.title, tool.toTool().title)
+            assertTrue(tool.title.first().isUpperCase(), "${tool.name}: a title is for people, not the CLI path")
         }
     }
 

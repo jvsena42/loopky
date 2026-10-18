@@ -73,6 +73,7 @@ class TokenService(
         if (!Pkce.verify(verifier, code.codeChallenge)) invalidGrant("PKCE verification failed")
         form["resource"]?.let { if (it != code.resource) invalidTarget() }
         return issue(TokenFamily(familyId, code.pubky, clientId, clock.instant()))
+            ?: invalidGrant("The account is no longer linked")
     }
 
     suspend fun refresh(form: Parameters): TokenGrant {
@@ -109,6 +110,7 @@ class TokenService(
                 unlinker.unlinkIfOrphaned(rotation.pubky)
                 invalidGrant("Refresh token has expired")
             }
+            Rotation.Unlinked -> invalidGrant("The account is no longer linked")
             Rotation.Unknown, Rotation.Revoked -> invalidGrant("Refresh token is invalid")
         }
     }
@@ -125,10 +127,10 @@ class TokenService(
         store.tokens.findAccess(hash)?.let { store.tokens.revokeAccess(hash, now) }
     }
 
-    private suspend fun issue(family: TokenFamily): TokenGrant {
+    /** Null when the account was unlinked before the tokens could be stored. */
+    private suspend fun issue(family: TokenFamily): TokenGrant? {
         val minted = mintPair(family.familyId, family.pubky, family.clientId, clock.instant())
-        store.tokens.issue(family, minted.access, minted.refresh)
-        return minted.grant
+        return minted.grant.takeIf { store.tokens.issue(family, minted.access, minted.refresh) }
     }
 
     private class Minted(val access: AccessTokenRow, val refresh: RefreshTokenRow, val grant: TokenGrant)

@@ -1,13 +1,14 @@
 # Loopky Terms of Service
 
-**Last updated:** 6 October 2026
+**Last updated:** 18 October 2026
 
 These terms cover the Loopky apps for Android and iOS, the `loopky` command line tool, the Loopky
 plugin for AI agents, and the website at [loopky.app](https://loopky.app). Using any of them means
 you accept these terms. If you do not, please do not use them.
 
-The short version: **Loopky is free software with no warranty, the project runs no servers, and
-what you publish is public and yours to answer for.**
+The short version: **Loopky is free software with no warranty, the app runs on no Loopky server,
+and what you publish is public and yours to answer for.** The one server the project runs is the
+optional connector for Claude, offered as is.
 
 ---
 
@@ -32,11 +33,17 @@ licence does not.
 
 ---
 
-## 3. The project runs no servers
+## 3. The app runs on no Loopky server
 
-There is no Loopky account and no Loopky backend. Your identity is a [Pubky](https://pubky.org)
-keypair, and your decks, cards, images, tags and study progress are written to a **Pubky
-homeserver**.
+There is no Loopky account and no Loopky backend for the apps or the command line tool. Your
+identity is a [Pubky](https://pubky.org) keypair, and your decks, cards, images, tags and study
+progress are written to a **Pubky homeserver**.
+
+The one exception is the **Loopky connector for Claude** (`https://mcp.loopky.app/mcp`), which you
+add only if you choose to. It is a free service run by the project with no warranty and no promise
+of availability: it may be rate limited, changed, paused or withdrawn, and access may be cut off
+for anyone who abuses it. What it stores is described in section 6 of the
+[privacy policy](https://loopky.app/privacy/).
 
 Unless you run one yourself, that homeserver is operated by a third party. If you signed up through
 Loopky, it is the homeserver Synonym operate for [pubky.app](https://pubky.app). **That operator's

@@ -21,8 +21,15 @@ shares decks with your class through one link.
   Discover.
 - **Loopky Recap.** Each December, a summary of your year — cards studied and mastered, your
   most-studied deck, the languages you worked on — to keep or to share.
-- **A desktop command line tool** to manage decks and cards in bulk, or to let an AI agent build
-  them for you — see [`cli/README.md`](./cli/README.md).
+- **Decks built by Claude**, three ways:
+  - **The Loopky connector**, for Claude in the browser, the desktop and mobile apps, or a cloud
+    session. Add `https://mcp.loopky.app/mcp` under Settings → Connectors and sign in once with
+    Pubky Ring. It can only write Loopky's own data, and it takes cards inline: no local files, and
+    no Anki `.apkg` upload.
+  - **The agent plugin** for Claude Code and Codex, which teaches the workflow: see
+    [`plugins/loopky/`](./plugins/loopky/).
+  - **A desktop command line tool** to manage decks and cards in bulk, for you or an agent on your
+    own machine: see [`cli/README.md`](./cli/README.md).
 - **No ads and no analytics.**
 
 ## Guides
@@ -40,16 +47,18 @@ shares decks with your class through one link.
 Loopky blends Duolingo TinyCards' playfulness, Anki's spaced repetition, and Pubky's decentralized
 identity and social graph. iOS + Android, built with Kotlin Multiplatform.
 
-There is no Loopky account and no Loopky server. You sign in with a key held by
+There is no Loopky account, and the app runs on no Loopky server. You sign in with a key held by
 [Pubky Ring](https://pubky.org), and your decks and study progress are written to a Pubky
-homeserver you hold the key to.
+homeserver you hold the key to. The one server the project runs is the optional connector for
+Claude.
 
 - **Architecture:** [`docs/Architecture.md`](./docs/Architecture.md) — module layout, layering,
   homeserver data model, Pubky/Nexus integration, what is still open. Start here.
 - **Import spec:** [`docs/specs.md`](./docs/specs.md) — the paste-to-import flow and the parser
   rules the test suite is written against.
 - **Privacy:** [`PRIVACY.md`](./PRIVACY.md) — what reaches a homeserver, and whose it is.
-- **Terms:** [`TERMS.md`](./TERMS.md) — no warranty, no Loopky servers, and what you publish is public.
+- **Terms:** [`TERMS.md`](./TERMS.md) — no warranty, no Loopky server behind the app, and what you
+  publish is public.
 
 ---
 
@@ -223,6 +232,9 @@ loopky/
 │
 ├── cli/                       # `loopky`, the headless client — a GraalVM binary on :shared's
 │                              # jvm() target, so an agent can drive Loopky without a screen
+├── cli-core/                  # the CLI's commands as a library, shared with the connector
+├── mcp/                       # the hosted connector: a remote MCP server over cli-core
+├── plugins/loopky/            # the agent skill Claude Code and Codex read
 │
 └── journeys/                  # scripted end-to-end journeys
 ```
