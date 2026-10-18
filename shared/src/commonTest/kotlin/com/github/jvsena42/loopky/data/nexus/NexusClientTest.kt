@@ -43,7 +43,7 @@ class NexusClientTest {
     @Test
     fun resourcesByTagAsksForLoopkyResourcesSortedByTaggerCount() = runTest {
         val url = "$BASE/v0/stream/resources" +
-            "?app=loopky&tags=loopky-deck&sorting=timeline&limit=30&skip=0"
+            "?app=loopky&tags=loopky-deck&sorting=taggers_count&limit=30&skip=0"
         // Shape copied from a live staging response.
         http.respond(
             url,
@@ -80,7 +80,7 @@ class NexusClientTest {
 
         assertEquals(
             "$BASE/v0/stream/resources" +
-                "?app=loopky&tags=%E2%AD%90%E2%AD%90&sorting=timeline&limit=100&skip=0",
+                "?app=loopky&tags=%E2%AD%90%E2%AD%90&sorting=taggers_count&limit=100&skip=0",
             http.requestedUrls.single(),
         )
     }

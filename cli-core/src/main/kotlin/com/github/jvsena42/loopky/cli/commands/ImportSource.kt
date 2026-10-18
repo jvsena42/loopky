@@ -60,7 +60,7 @@ internal suspend fun parseSource(
 
     if (imports.keptRows().isEmpty()) {
         imports.clear()
-        val hint = if (parsed.separator == SINGLE_COLUMN) {
+        val hint = if (parsed.draft.separator is Separator.SingleColumn) {
             ": no separator was detected, so every line read as a front with no back. Name the one the " +
                 "lines use with --separator (tab, semicolon, pipe, comma, colon, dash)"
         } else {
@@ -265,9 +265,6 @@ private fun separatorNamed(name: String): Separator = when (name.lowercase()) {
 private const val NO_SEPARATOR = "none"
 
 private const val TAB_SEPARATOR = "tab"
-
-/** What a draft with no detected separator reports itself as (`Separator.SingleColumn`). */
-private const val SINGLE_COLUMN = "singlecolumn"
 
 private const val FRONT_COLUMN = 0
 private const val BACK_COLUMN = 1

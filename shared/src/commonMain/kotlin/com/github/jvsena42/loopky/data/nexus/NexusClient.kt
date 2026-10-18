@@ -87,12 +87,14 @@ class NexusClient(
      * more behind it. A short page is therefore never evidence of the end — only an empty one is.
      * Measured on staging: `limit=100&skip=0` returned 69 of 71, and `skip=40` surfaced two the
      * first page had never shown.
+     *
+     * See [NexusResourceSorting] for why paging and [NexusResourceSorting.TaggersCount] do not mix.
      */
     suspend fun resourcesByTag(
         label: String,
         limit: Int = DEFAULT_RESOURCE_LIMIT,
         skip: Int = 0,
-        sorting: NexusResourceSorting = NexusResourceSorting.Timeline,
+        sorting: NexusResourceSorting = NexusResourceSorting.TaggersCount,
     ): Result<List<NexusResourceDto>> = runSuspendCatching {
         val url = buildString {
             append("$baseUrl/v0/stream/resources")
@@ -234,17 +236,24 @@ class NexusClient(
 }
 
 /**
- * How `/v0/stream/resources` orders a page.
+ * How `/v0/stream/resources` orders a page. Nexus accepts these two and rejects anything else.
  *
- * `taggers_count` was the other order until Nexus dropped it — staging answered it with 400
- * "unknown variant" in October 2026 (#532), and prod will once it upgrades. Nothing lost: it
- * re-ranked whenever anyone tagged anything, so it could not be paged, and as a popularity signal
- * it summed distinct taggers across every label, which put 7 of staging's top 12 decks under one
- * author (#321). Trending ranks its sample itself.
+ * **Only [Timeline] can be paged.** [TaggersCount] re-ranks whenever anyone tags anything, so a
+ * `skip`-based page 2 taken a moment after page 1 can repeat entries and skip others — there is no
+ * stable position to resume from. [Timeline] orders by `indexed_at` descending, which only ever
+ * grows at the head, so a cursor stays meaningful.
+ *
+ * [TaggersCount] is also a poor popularity signal for a deck: the resource-level count sums
+ * *distinct taggers across every label*, so a deck whose author typed five topics outranks one four
+ * people actually follow. Measured on staging, that put 7 of the top 12 decks under a single author
+ * while 11 decks sat at the bottom permanently unreachable (#321).
  */
 enum class NexusResourceSorting(val wire: String) {
     /** `indexed_at` descending — newest first, and the only order with a stable cursor. */
     Timeline("timeline"),
+
+    /** Distinct taggers summed over every label on the resource. Unstable under paging. */
+    TaggersCount("taggers_count"),
 }
 
 /** Identity of an indexed resource (Nexus `ResourceDetails`). */

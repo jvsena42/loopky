@@ -776,7 +776,8 @@ interface TagRepository {
      * who follows nobody.
      *
      * [skip] is an offset into the indexer's raw sorted set, so a page routinely comes back shorter
-     * than [limit] with more behind it; only an *empty* page means the end.
+     * than [limit] with more behind it; only an *empty* page means the end. Paging requires
+     * [NexusResourceSorting.Timeline] — see that enum for why.
      *
      * **Throws when the indexer is unreachable**, like [usersTagged] and for the same reason: "the
      * indexer did not answer" and "nobody carries this label" are different facts, and swallowing
@@ -791,7 +792,7 @@ interface TagRepository {
         tag: Tag,
         limit: Int = DEFAULT_TAGGED_LIMIT,
         skip: Int = 0,
-        sorting: NexusResourceSorting = NexusResourceSorting.Timeline,
+        sorting: NexusResourceSorting = NexusResourceSorting.TaggersCount,
     ): List<TaggedSubject>
 
     /**

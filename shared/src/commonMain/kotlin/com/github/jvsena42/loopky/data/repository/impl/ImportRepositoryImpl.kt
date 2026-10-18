@@ -290,9 +290,10 @@ class ImportRepositoryImpl : ImportRepository {
     //     is sandwiched between digits (thousands separator), or — for `,`
     //     only — immediately followed by a space (grammatical punctuation).
     //     `a | b` and `a; b` are how people type pairs (#533), so a spaced
-    //     `;`/`|` qualifies, and the lines that use it spaced must not read
-    //     as prose: most hitting it twice (shell pipes), or most splitting
-    //     into two clauses of MIN_CLAUSE_WORDS+ words each.
+    //     `;`/`|` qualifies unless the front holds another delimiter, and
+    //     the lines that use it spaced must not read as prose: most hitting
+    //     it twice (shell pipes), or for `;` most splitting into two clauses
+    //     of MIN_CLAUSE_WORDS+ words each.
     //  B) Multi-char delimiters (`" — "`): reject if most lines contain
     //     two or more occurrences (parenthetical inserts).
     //  C) Balance check: reject if the median front side exceeds 50% of
@@ -395,27 +396,37 @@ class ImportRepositoryImpl : ImportRepository {
         val idx = line.indexOf(delim)
         if (idx < 0) return false
         val after = idx + 1
-        // Followed by space → grammatical punctuation
-        if (!spacedAllowed && after < line.length && line[after] == ' ') return false
+        // Followed by space → grammatical punctuation, or for `;`/`|` a spaced pair — unless the
+        // front already holds another delimiter, where the spaced one is inside the back (#540).
+        if (after < line.length && line[after] == ' ') {
+            if (!spacedAllowed) return false
+            val front = line.substring(0, idx)
+            if (SPACED_FRONT_DELIMITERS.any { it != delim.toString() && it in front }) return false
+        }
         // Between digits → thousands / decimal separator
         if (idx > 0 && line[idx - 1].isDigit() && after < line.length && line[after].isDigit()) return false
         return true
     }
 
+    /**
+     * Over every qualifying line, so one prose line among fifty `word;translation` ones does not
+     * reject the separator. The clause rule is `;`'s alone: three words a side is a phrase deck
+     * under `|`, and a sentence pair under `;` is the price of `She ran quickly; he walked slowly`.
+     */
     private fun spacedUseReadsAsProse(qualifying: List<String>, delim: Char): Boolean {
         val spaced = qualifying.filter { line -> line.getOrNull(line.indexOf(delim) + 1) == ' ' }
-        return spaced.isNotEmpty() && readsAsProse(spaced, delim)
-    }
-
-    private fun readsAsProse(lines: List<String>, delim: Char): Boolean {
-        val multiHit = lines.count { line -> line.count { it == delim } >= 2 }
-        val clauses = lines.count { line ->
-            val idx = line.indexOf(delim)
-            line.substring(0, idx).wordCount() >= MIN_CLAUSE_WORDS &&
-                line.substring(idx + 1).wordCount() >= MIN_CLAUSE_WORDS
+        val multiHit = spaced.count { line -> line.count { it == delim } >= 2 }
+        val clauses = if (delim != ';') {
+            0
+        } else {
+            spaced.count { line ->
+                val idx = line.indexOf(delim)
+                line.substring(0, idx).wordCount() >= MIN_CLAUSE_WORDS &&
+                    line.substring(idx + 1).wordCount() >= MIN_CLAUSE_WORDS
+            }
         }
-        return multiHit.toFloat() / lines.size > MAX_MULTI_HIT_RATIO ||
-            clauses.toFloat() / lines.size > MAX_MULTI_HIT_RATIO
+        return multiHit.toFloat() / qualifying.size > MAX_SPACED_PROSE_RATIO ||
+            clauses.toFloat() / qualifying.size > MAX_SPACED_PROSE_RATIO
     }
 
     private fun String.wordCount(): Int = trim().split(Regex("\\s+")).count { it.isNotEmpty() }
@@ -536,7 +547,13 @@ class ImportRepositoryImpl : ImportRepository {
         /** Reject a multi-char delimiter if more than this fraction of lines hit it twice. */
         private const val MAX_MULTI_HIT_RATIO = 0.5f
 
-        /** A spaced `;`/`|` with this many words on both sides is joining two clauses (#533). */
+        /** A spaced `;` with this many words on both sides is joining two clauses (#533). */
         private const val MIN_CLAUSE_WORDS = 3
+
+        /** Reject a spaced `;`/`|` if more than this fraction of qualifying lines read as prose. */
+        private const val MAX_SPACED_PROSE_RATIO = 0.5f
+
+        /** Delimiters whose presence in the front means a spaced `;`/`|` sits inside the back. */
+        private val SPACED_FRONT_DELIMITERS = listOf("\t", ";", "|", " \u2014 ", " \u2013 ", " - ", ": ")
     }
 }
