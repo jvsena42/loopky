@@ -24,4 +24,12 @@ class RequestRefusedTest {
         assertEquals(ExitCode.NotFound, ExitCode.of(HttpError(404, "GET https://nexus.pubky.app/x failed with HTTP 404")))
         assertEquals(ExitCode.ProxyRefused, ExitCode.of(HttpError(407, "GET https://nexus.pubky.app/x failed with HTTP 407")))
     }
+
+    @Test
+    fun `a WAF's 403 or 451 does not advise an update`() {
+        listOf(403, 451).forEach { status ->
+            val code = ExitCode.of(HttpError(status, "GET https://nexus.pubky.app/x failed with HTTP $status"))
+            assertEquals(ExitCode.Internal, code, "HTTP $status")
+        }
+    }
 }

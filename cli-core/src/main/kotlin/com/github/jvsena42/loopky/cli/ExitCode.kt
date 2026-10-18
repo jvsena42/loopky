@@ -167,8 +167,8 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
     ),
 
     /**
-     * A web service — in practice the indexer — answered a 4xx to a request this client built
-     * (#532): staging's Nexus dropping a sort order the binary still sent.
+     * A web service — in practice the indexer — answered 400, 405, 410 or 422 to a request this
+     * client built (#532): staging's Nexus dropping a sort order the binary still sent.
      *
      * Not [Internal], the code an agent retries: the same request is refused the same way every
      * time. Usually the client and the service disagree on a version, which `loopky update` may
@@ -266,16 +266,17 @@ private val RUST_TUNNEL_REFUSALS = listOf(
 private val PROXY_AUTH_STATUS = Regex("http 407(?![0-9])")
 
 /**
- * An [HttpError] 4xx that says the request itself is wrong. Not 404 (the thing asked for is
- * absent), 407 (a proxy, already [ExitCode.ProxyRefused]), 408 or 429 (transient).
+ * An [HttpError] whose status says the request's *shape* is wrong — malformed, a method or
+ * endpoint gone, a body the service no longer accepts — which is what version skew looks like.
+ * Not a 403 or 451: a CDN or WAF in front of the indexer answers those, and `loopky update`
+ * cannot help with either.
  */
 private fun Throwable.isRefusedRequest(): Boolean =
     generateSequence(this) { it.cause }.take(MAX_CAUSES).any { error ->
-        error is HttpError && error.statusCode in CLIENT_ERRORS && error.statusCode !in NOT_REFUSALS
+        error is HttpError && error.statusCode in REQUEST_SHAPE_REFUSALS
     }
 
-private val CLIENT_ERRORS = 400..499
-private val NOT_REFUSALS = setOf(404, 407, 408, 429)
+private val REQUEST_SHAPE_REFUSALS = setOf(400, 405, 410, 422)
 
 /**
  * The homeserver answered a 5xx.
