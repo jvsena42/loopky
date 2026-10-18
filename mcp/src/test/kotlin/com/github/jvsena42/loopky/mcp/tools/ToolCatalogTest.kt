@@ -159,6 +159,18 @@ class ToolCatalogTest {
     }
 
     @Test
+    fun `a description speaks the tool's own vocabulary`() {
+        tools.map { it.toTool() }.forEach { tool ->
+            val texts = listOf(tool.description.orEmpty()) +
+                tool.inputSchema.properties.orEmpty().values.mapNotNull { it.jsonObject["description"]?.jsonPrimitive?.content }
+            texts.forEach { text -> assertFalse(Regex("--[a-z]").containsMatchIn(text), "${tool.name}: a CLI flag in \"$text\"") }
+        }
+        val import = tools.first { it.name == "import" }.toTool().description.orEmpty()
+        assertFalse(".apkg or" in import, import)
+        assertTrue(import.startsWith("Publish a deck from pasted text."), import)
+    }
+
+    @Test
     fun `every tool description names the command it binds`() {
         tools.forEach { tool ->
             val description = tool.toTool().description.orEmpty()

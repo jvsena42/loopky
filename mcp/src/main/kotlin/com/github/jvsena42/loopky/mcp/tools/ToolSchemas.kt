@@ -44,7 +44,7 @@ const val TEXT_PROPERTY = "text"
 val CARD_KEYS = setOf("id", "front", "back", "front_image_url", "back_image_url")
 
 private fun McpTool.description(): String = buildString {
-    append(command.summary.replaceFirstChar { it.uppercase() })
+    append((summary ?: command.summary).replaceFirstChar { it.uppercase() })
     append('.')
     if (command.writes) append(" Writes to the user's homeserver.")
     when (inline) {
@@ -109,7 +109,7 @@ private fun McpTool.required(): List<String> = buildList {
 }
 
 private fun JsonObjectBuilder.optionSchema(option: CliOption) {
-    put("description", option.summary)
+    put("description", option.summary.withInputNames())
     when (val value = option.value) {
         OptionValue.Switch -> put("type", "boolean")
         is OptionValue.OneOf -> {
@@ -121,6 +121,11 @@ private fun JsonObjectBuilder.optionSchema(option: CliOption) {
         OptionValue.Path -> put("type", "string")
     }
 }
+
+/** `--id` as the input a tool takes, `id`: a CLI flag name means nothing to a tool caller. */
+private fun String.withInputNames(): String = replace(CLI_FLAG) { "`${propertyName(it.groupValues[1])}`" }
+
+private val CLI_FLAG = Regex("--([a-z][a-z-]*)")
 
 private fun JsonObjectBuilder.textSchema(name: String) {
     when (name) {

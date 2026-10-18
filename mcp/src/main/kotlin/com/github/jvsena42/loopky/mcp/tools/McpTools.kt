@@ -36,6 +36,8 @@ class McpTool(
     /** Inline content standing in for the file the command would read from disk. */
     val inline: InlineInput? = null,
     val hints: ToolHints = ToolHints(),
+    /** The command's summary, where the table's says something this tool cannot do. */
+    val summary: String? = null,
 ) {
     init {
         val known = command.options.mapTo(mutableSetOf()) { it.name }
@@ -191,6 +193,8 @@ fun mcpTools(): List<McpTool> {
                 STUDY_OPT_INS + STUDY_OPT_OUTS + LANGUAGES,
             refused = mapOf("front-field" to APKG_REFUSAL, "back-field" to APKG_REFUSAL) + IMAGE_CHECK_OPTIONS,
             inline = InlineInput.ImportSource,
+            // The table's says "a pasted file or an Anki .apkg"; the connector takes text only.
+            summary = "publish a deck from pasted text",
         ),
         McpTool(
             "tag_trending",
