@@ -67,4 +67,32 @@ class LanguageTagsTest {
             LanguageTags.retag(listOf("verbs"), null, null, "es-ES", null),
         )
     }
+
+    @Test
+    fun anUnderscoreSeparatesTheRegionToo() {
+        // pt_BR is what Java and POSIX locales print (#534).
+        assertEquals(
+            listOf(LanguageTags.UMBRELLA, Tag("portuguese"), Tag("english")),
+            LanguageTags.forPair("pt_BR", "en_US"),
+        )
+    }
+
+    @Test
+    fun aCodeThatIsNoLanguageSubtagContributesNoLabel() {
+        assertEquals(emptyList(), LanguageTags.forPair("Not A Lang!!", null))
+        assertEquals(listOf(LanguageTags.UMBRELLA, Tag("russian")), LanguageTags.forPair("Not A Lang!!", "ru-RU"))
+    }
+
+    @Test
+    fun retagShedsTheLabelAPreFoldCodeLeftBehind() {
+        // Before #534 pt_BR stored the label pt-br, which retag then never recognised as derived.
+        assertEquals(
+            listOf("language", "english", "portuguese"),
+            LanguageTags.retag(listOf("language", "pt-br", "english"), "pt_BR", "en-US", "pt-BR", "en-US"),
+        )
+        assertEquals(
+            listOf("language", "russian"),
+            LanguageTags.retag(listOf("language", "not-a-lang!!"), "Not A Lang!!", null, "ru-RU", null),
+        )
+    }
 }

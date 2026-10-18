@@ -17,7 +17,7 @@ package com.github.jvsena42.loopky.domain.model
  *   splitting the label by it would halve a search for Spanish decks.
  * - **Named, not coded.** `"spanish"` rather than `es`, because the label is shown to people as a
  *   chip and searched for as a word. Codes the table does not know fall back to the subtag itself
- *   rather than going untagged.
+ *   rather than going untagged; a code that is not a language subtag at all contributes nothing.
  * - **[UMBRELLA] rides along.** A language deck is also a `"language"` deck, so the pair earns the
  *   category label too — someone browsing for language decks at all should not have to guess which
  *   of seventy language labels to open first.
@@ -38,11 +38,11 @@ object LanguageTags {
      */
     fun forPair(frontLang: String?, backLang: String?): List<Tag> {
         val languages = listOfNotNull(frontLang, backLang)
-            .map { it.substringBefore('-').trim().lowercase() }
-            .filter { it.isNotBlank() }
+            .map(::baseSubtag)
+            .filter { it.matches(BASE_SUBTAG) }
+            .mapNotNull { TagLabels.normalize(nameOf(it)) }
             .distinct()
-            .map { Tag(nameOf(it)) }
-            .distinct()
+            .map(::Tag)
         return if (languages.isEmpty()) emptyList() else listOf(UMBRELLA) + languages
     }
 
@@ -63,7 +63,8 @@ object LanguageTags {
         frontLang: String?,
         backLang: String?,
     ): List<String> {
-        val previous = forPair(previousFrontLang, previousBackLang).map { it.value }.toSet()
+        val previous = (forPair(previousFrontLang, previousBackLang).map { it.value } +
+            legacyLabels(previousFrontLang, previousBackLang)).toSet()
         val current = forPair(frontLang, backLang).map { it.value }
         val kept = tags.filter { it !in previous || it in current }
         return kept + current.filterNot { it in kept }
@@ -71,9 +72,25 @@ object LanguageTags {
 
     /** English name of a base language subtag, or the subtag itself when it is not in [NAMES]. */
     fun nameOf(code: String): String {
-        val subtag = code.substringBefore('-').trim().lowercase()
+        val subtag = baseSubtag(code)
         return NAMES[subtag] ?: subtag
     }
+
+    /** `_` too: `pt_BR` is what Java and POSIX locales print, so agents pass it (#534). */
+    private fun baseSubtag(code: String): String = code.trim().substringBefore('-').substringBefore('_').lowercase()
+
+    /**
+     * What [forPair] stored before #534 — the code up to its first `-`, unvalidated, folded on
+     * the way to the homeserver — so a deck tagged `pt-br` by `pt_BR` sheds it on the next edit.
+     */
+    private fun legacyLabels(frontLang: String?, backLang: String?): List<String> =
+        listOfNotNull(frontLang, backLang)
+            .map { it.substringBefore('-').trim().lowercase() }
+            .map { TagLabels.fold(NAMES[it] ?: it) }
+            .filter { it.isNotEmpty() }
+
+    /** A BCP-47 language subtag; anything else declares no language a tag could name. */
+    private val BASE_SUBTAG = Regex("[a-z]{2,8}")
 
     /**
      * Base subtag → English name. Covers [SpeechLanguages.COMMON] plus the languages a TTS engine
