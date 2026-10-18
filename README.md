@@ -47,16 +47,18 @@ shares decks with your class through one link.
 Loopky blends Duolingo TinyCards' playfulness, Anki's spaced repetition, and Pubky's decentralized
 identity and social graph. iOS + Android, built with Kotlin Multiplatform.
 
-There is no Loopky account and no Loopky server. You sign in with a key held by
+There is no Loopky account, and the app runs on no Loopky server. You sign in with a key held by
 [Pubky Ring](https://pubky.org), and your decks and study progress are written to a Pubky
-homeserver you hold the key to.
+homeserver you hold the key to. The one server the project runs is the optional connector for
+Claude.
 
 - **Architecture:** [`docs/Architecture.md`](./docs/Architecture.md) — module layout, layering,
   homeserver data model, Pubky/Nexus integration, what is still open. Start here.
 - **Import spec:** [`docs/specs.md`](./docs/specs.md) — the paste-to-import flow and the parser
   rules the test suite is written against.
 - **Privacy:** [`PRIVACY.md`](./PRIVACY.md) — what reaches a homeserver, and whose it is.
-- **Terms:** [`TERMS.md`](./TERMS.md) — no warranty, no Loopky servers, and what you publish is public.
+- **Terms:** [`TERMS.md`](./TERMS.md) — no warranty, no Loopky server behind the app, and what you
+  publish is public.
 
 ---
 
