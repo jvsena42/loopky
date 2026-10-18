@@ -318,7 +318,7 @@ class TagRepositoryImplTest {
 
     private fun deckStreamUrl(sampleSize: Int) =
         "$NEXUS_BASE/v0/stream/resources?app=loopky&tags=loopky-deck" +
-            "&sorting=taggers_count&limit=$sampleSize&skip=0"
+            "&sorting=timeline&limit=$sampleSize&skip=0"
 
     private companion object {
         const val NEXUS_BASE = "https://nexus.test"
