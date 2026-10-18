@@ -30,7 +30,7 @@ class Unlinker(
     /** Where a revoke that outlived its bound finishes, so a hung homeserver holds a thread here and nothing else. */
     private val revokes = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Revokes on the homeserver (best effort: the row goes regardless) and deletes the link and every token. */
+    /** Revokes on the homeserver (best effort: the row goes regardless) and deletes the link, every token and code. */
     suspend fun unlink(pubky: String): Boolean {
         val link = store.links.find(pubky) ?: return false
         val secret = runCatching { vault.open(pubky, link.credential) }
@@ -40,7 +40,7 @@ class Unlinker(
             revokeWithin(secret)
                 .onFailure { log.warn("Revoking the grant for $pubky on the homeserver failed; deleting the link anyway", it) }
         }
-        store.tokens.revokeAllFor(pubky, clock.instant())
+        store.tokens.deleteAllFor(pubky)
         store.links.delete(pubky)
         log.info("Unlinked $pubky")
         return true

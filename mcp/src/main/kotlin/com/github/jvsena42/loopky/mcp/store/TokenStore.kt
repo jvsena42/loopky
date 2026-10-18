@@ -80,11 +80,17 @@ class TokenStore(private val db: McpDatabase) {
         }
     }
 
-    suspend fun revokeAllFor(pubky: String, now: Instant) {
+    /**
+     * Every token row, family and authorization code that names [pubky]: what an unlink leaves
+     * nothing of, as the privacy policy says (#536). Revoking them instead kept their hashes and
+     * the user's key on file for good.
+     */
+    suspend fun deleteAllFor(pubky: String) {
         db.transaction { c ->
-            c.query("SELECT family_id FROM token_families WHERE pubky = ? AND revoked_at IS NULL", pubky) {
-                it.getString("family_id")
-            }.forEach { c.revokeFamily(it, now) }
+            c.exec("DELETE FROM access_tokens WHERE pubky = ?", pubky)
+            c.exec("DELETE FROM refresh_tokens WHERE pubky = ?", pubky)
+            c.exec("DELETE FROM token_families WHERE pubky = ?", pubky)
+            c.exec("DELETE FROM auth_codes WHERE pubky = ?", pubky)
         }
     }
 

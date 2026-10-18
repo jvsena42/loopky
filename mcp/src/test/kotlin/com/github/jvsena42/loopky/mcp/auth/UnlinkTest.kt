@@ -22,6 +22,8 @@ class UnlinkTest {
         assertNull(server.verifier.verify(tokens.access))
         assertEquals("invalid_grant", refresh(tokens.refresh, clientId).json()["error"]?.jsonPrimitive?.content)
         assertFalse(server.unlinker.unlink(PUBKY), "nothing left to unlink")
+        assertNull(harness.store.tokens.findAccess(TokenHash.of(tokens.access)), "no token row outlives the link")
+        assertNull(harness.store.tokens.findRefresh(TokenHash.of(tokens.refresh)))
     }
 
     @Test
