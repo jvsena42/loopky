@@ -478,6 +478,20 @@ class OAuthFlowTest {
     }
 
     @Test
+    fun `from the shared egress, naming someone's client_id does not spend their budget`() = oauthTest(
+        OAuthLimits(requestRate = RateLimitPolicy(burst = 2, perSecond = 0.0)),
+    ) {
+        val clientId = registerClient(ip = CLAUDE_EGRESS)
+        val tokens = tokensFor(clientId, backendIp = CLAUDE_EGRESS)
+        repeat(5) {
+            val forged = refresh("lk_rt_" + "A".repeat(43), clientId, ip = CLAUDE_EGRESS)
+            assertNotEquals(HttpStatusCode.OK, forged.status)
+        }
+        // The exchange spent one of two; the owner's refresh still has the other.
+        assertEquals(HttpStatusCode.OK, refresh(tokens.refresh, clientId, ip = CLAUDE_EGRESS).status)
+    }
+
+    @Test
     fun `re-linking stores the new credential and revokes the old grant`() = oauthTest {
         val clientId = registerClient()
         val first = tokensFor(clientId)

@@ -15,6 +15,8 @@ class UrlGuardTest {
             "https://134744072/picture.png",
             "https://[2606:4700:4700::1111]/picture.png",
             "https://[64:ff9b::808:808]/picture.png",
+            "https://[2002:808:808::1]/picture.png",
+            "https://[2001:db8:1::1]/picture.png",
             "https://example.com./x.png",
             "https://cdn.example:8443/x.png",
         ).forEach { assertNull(UrlGuard.syntacticRefusal(it), it) }
@@ -55,6 +57,10 @@ class UrlGuardTest {
             "https://[::127.0.0.1]/c.jpg",
             "https://[fe80::1]/c.jpg",
             "https://[64:ff9b::a00:1]/c.jpg",
+            "https://[64:ff9b:1::808:808]/c.jpg",
+            "https://[2002:7f00:1::]/c.jpg",
+            "https://[2002:a00:1::]/c.jpg",
+            "https://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/c.jpg",
             "https://4294967296/c.jpg",
         ).forEach { assertNotNull(UrlGuard.syntacticRefusal(it), it) }
     }

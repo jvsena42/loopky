@@ -32,6 +32,10 @@ class CodeStore(private val db: McpDatabase) {
         }
     }
 
+    suspend fun find(codeHash: String): AuthorizationCode? = db.transaction { c ->
+        c.queryOne("SELECT * FROM auth_codes WHERE code_hash = ?", codeHash, map = ::toCode)
+    }
+
     /** Marks the code spent and records [familyId] as what it bought, in the same transaction as the lookup. */
     suspend fun consume(codeHash: String, now: Instant, familyId: String): CodeConsumption = db.transaction { c ->
         val code = c.queryOne("SELECT * FROM auth_codes WHERE code_hash = ?", codeHash, map = ::toCode)

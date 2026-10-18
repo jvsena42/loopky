@@ -86,16 +86,16 @@ the range is every user there too:
 | Limit | Outside the range | Inside it |
 |---|---|---|
 | `/authorize`, `/authorize/status` | per address | per address — the user's own browser loads these |
-| `/token`, `/revoke` | 20/min per address | 20/min per `client_id` (per token when none is sent) |
+| `/token`, `/revoke` | 20/min per address | 20/min per client — the one the stored code or token belongs to; 300/min for the whole range when it matches nothing stored |
 | `/register` | 20/min per address | 300/min for the whole range: it carries no credential to key on |
 | Failed bearers on `/mcp` | 60/min per address, tokens this server never issued only | the same; an issued token that expired is always the 401, never counted |
 
-Inside the range the app's keys are chosen by the caller — any API customer can call from there
-with a made-up `client_id` — so the edge's range ceiling above is the real bound on `/token` and
-`/revoke`; the per-client budget only keeps one honest client from spending it all. And the one
-`/register` budget is shared on purpose: draining it delays new connections for every Claude user
-for about a minute, which is the price of not storing a client row per request unbounded. If
-Claude ever shares one `client_id` across users, per-client stops meaning per-user.
+Inside the range a client's budget is keyed on the client its stored code or token belongs to,
+never on a `client_id` the form names: only a holder of that credential can spend it, and a made-up
+key earns no bucket of its own. The two whole-range budgets are shared on purpose — anyone calling
+from the range can drain them, which delays new connections (or turns garbage credentials into a
+429) for about a minute — and the edge's range ceiling above is the bound past them. If Claude ever
+shares one client across users, per-client stops meaning per-user.
 
 `edge-test.sh` checks every row in CI against the image, including that two
 bearers do not share a budget. The module is pinned by commit, which no Dependabot ecosystem

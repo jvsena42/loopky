@@ -98,8 +98,9 @@ fun interface UrlGuard {
 
         /**
          * Through [InetAddress], which parses a literal without DNS, so `0:0:0:0:0:0:0:1` is `::1`.
-         * Anything IPv4-mapped or -compatible is refused whatever it embeds, and NAT64 when it embeds a
-         * private address.
+         * Anything IPv4-mapped or -compatible is refused whatever it embeds, as are local-use NAT64
+         * and Teredo (`2001::/32`); well-known NAT64 and 6to4 (`2002::/16`) when they embed a private
+         * address.
          */
         @Suppress("MagicNumber")
         private fun String.isNonPublicIpv6(): Boolean {
@@ -108,9 +109,8 @@ fun interface UrlGuard {
             val bytes = (address as? Inet6Address)?.address ?: return true
             val first = bytes[0].toInt() and 0xFF
             val second = bytes[1].toInt() and 0xFF
-            val embedded = bytes.drop(12).map { it.toInt() and 0xFF }
             return bytes.take(12).all { it.toInt() == 0 } ||
-                (bytes.take(12) == NAT64_PREFIX && embedded.isNonPublicIpv4()) ||
+                bytes.isNonPublicTunnel() ||
                 (first and 0xFE) == 0xFC ||
                 (first == 0xFE && (second and 0xC0) in setOf(0x80, 0xC0)) ||
                 first == 0xFF
@@ -118,6 +118,21 @@ fun interface UrlGuard {
 
         /** 64:ff9b::/96, the well-known NAT64 prefix: the IPv4 address it embeds is the one reached. */
         private val NAT64_PREFIX: List<Byte> = listOf(0, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0).map { it.toByte() }
+
+        /** 64:ff9b:1::/48, local-use NAT64: whatever it translates to is the operator's choice. */
+        private val NAT64_LOCAL_PREFIX: List<Byte> = listOf(0, 0x64, 0xff, 0x9b, 0, 1).map { it.toByte() }
+
+        /** NAT64, 6to4 and Teredo, which carry or reach an IPv4 address of their own. */
+        @Suppress("MagicNumber")
+        private fun ByteArray.isNonPublicTunnel(): Boolean {
+            fun octets(range: IntRange) = slice(range).map { it.toInt() and 0xFF }
+            val first = this[0].toInt() and 0xFF
+            val second = this[1].toInt() and 0xFF
+            return (take(12) == NAT64_PREFIX && octets(12..15).isNonPublicIpv4()) ||
+                take(6) == NAT64_LOCAL_PREFIX ||
+                (first == 0x20 && second == 0x02 && octets(2..5).isNonPublicIpv4()) ||
+                (first == 0x20 && second == 0x01 && this[2].toInt() == 0 && this[3].toInt() == 0)
+        }
 
         private const val IPV4_OCTETS = 4
         private const val OCTET_MAX = 255

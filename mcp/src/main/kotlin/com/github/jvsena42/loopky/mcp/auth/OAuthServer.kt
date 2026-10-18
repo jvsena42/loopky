@@ -12,7 +12,6 @@ import com.github.jvsena42.loopky.mcp.vault.VaultSessionSecrets
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.Parameters
 import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
@@ -49,7 +48,8 @@ class OAuthServer(private val deps: OAuthDeps) {
     private val requestLimiter = TokenBucketLimiter(deps.limits.requestRate, deps.clock)
     private val statusLimiter = TokenBucketLimiter(deps.limits.statusRate, deps.clock)
     private val clientLimiter = TokenBucketLimiter(deps.limits.requestRate, deps.clock)
-    private val sharedRegistrations = TokenBucketLimiter(deps.limits.sharedRegistrationRate, deps.clock)
+    private val sharedRegistrations = TokenBucketLimiter(deps.limits.sharedUnkeyedRate, deps.clock)
+    private val sharedUnverified = TokenBucketLimiter(deps.limits.sharedUnkeyedRate, deps.clock)
     private val registration = Registration(store, config, deps.limits, minter, deps.clock)
     private val authorization = Authorization(deps, pending, tokens)
 
@@ -99,12 +99,24 @@ class OAuthServer(private val deps: OAuthDeps) {
 
     private fun ApplicationCall.fromSharedEgress(): Boolean = config.sharedEgress.contains(request.origin.remoteHost)
 
-    /** Per client from the shared range; [credential] is what the request names when it has no client id. */
-    private suspend fun ApplicationCall.admittedAsClient(form: Parameters, credential: String?): Boolean {
+    /**
+     * From the shared range, budgeted per client — the client the *stored* [credential] belongs
+     * to, never a `client_id` the form names, so only a holder of a real code or token can spend a
+     * client's budget, and a made-up key earns no bucket of its own. A credential nothing stored
+     * matches shares one budget for the whole range (#538).
+     */
+    private suspend fun ApplicationCall.admittedFromSharedEgress(credential: String?): Boolean {
         if (!fromSharedEgress()) return true
-        val clientId = form["client_id"]?.takeIf { it.isNotBlank() }
-        val key = clientId?.let { "client:$it" } ?: "credential:${TokenHash.of(credential.orEmpty())}"
-        return admitted(clientLimiter, key)
+        val clientId = storedClientOf(credential)
+        return if (clientId != null) admitted(clientLimiter, "client:$clientId") else admitted(sharedUnverified, SHARED_EGRESS_KEY)
+    }
+
+    private suspend fun storedClientOf(credential: String?): String? {
+        if (credential.isNullOrBlank()) return null
+        val hash = TokenHash.of(credential)
+        return store.tokens.findRefresh(hash)?.clientId
+            ?: store.codes.find(hash)?.clientId
+            ?: store.tokens.findAccess(hash)?.clientId
     }
 
     private suspend fun register(call: ApplicationCall) {
@@ -114,7 +126,7 @@ class OAuthServer(private val deps: OAuthDeps) {
 
     private suspend fun token(call: ApplicationCall) {
         val form = call.receiveTextLimited(deps.limits.maxBodyBytes)?.parseUrlEncodedParameters() ?: return
-        if (!call.admittedAsClient(form, form["refresh_token"] ?: form["code"])) return
+        if (!call.admittedFromSharedEgress(form["refresh_token"] ?: form["code"])) return
         val outcome = runSuspendCatching {
             when (form["grant_type"]) {
                 "authorization_code" -> tokens.exchangeCode(form)
@@ -129,7 +141,7 @@ class OAuthServer(private val deps: OAuthDeps) {
 
     private suspend fun revoke(call: ApplicationCall) {
         val form = call.receiveTextLimited(deps.limits.maxBodyBytes)?.parseUrlEncodedParameters() ?: return
-        if (!call.admittedAsClient(form, form["token"])) return
+        if (!call.admittedFromSharedEgress(form["token"])) return
         val token = form["token"]?.takeIf { it.isNotBlank() }
         if (token == null) {
             call.respondOAuthError(OAuthException.invalidRequest("token is required"))
