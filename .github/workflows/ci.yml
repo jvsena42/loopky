@@ -352,7 +352,7 @@ jobs:
             echo "::warning title=Agent skill not touched::This PR changes CLI or import/deck logic and leaves plugins/loopky/skills/loopky/SKILL.md alone. Check whether an agent following the skill would now do the wrong thing, and say so in the PR description."
           fi
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
