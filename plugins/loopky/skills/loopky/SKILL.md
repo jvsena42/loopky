@@ -1,6 +1,6 @@
 ---
 name: loopky
-description: Build and manage Loopky flashcard decks with the `loopky` CLI or the Loopky connector - make Anki-style spaced-repetition cards from any topic, import an Anki .apkg or a TSV, add, edit or illustrate cards, publish a language deck with Listen/Speak, or learn a language from a TV series' episodes. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI.
+description: Build and manage Loopky flashcard decks with the `loopky` CLI or the Loopky connector - make Anki-style spaced-repetition cards from any topic, import an Anki .apkg or a TSV, add, edit or illustrate cards, publish a language deck with Listen/Speak, or learn a language from a TV series' episodes. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI. Also use when a `loopky` command or a Loopky tool returned an error or an exit code.
 ---
 
 # Loopky flashcards through the `loopky` CLI
