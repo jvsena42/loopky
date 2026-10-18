@@ -9,9 +9,28 @@ package com.github.jvsena42.loopky.mcp
 /** Who a verified access token speaks for. The Pubky credential itself never appears here. */
 data class Principal(val pubky: String, val clientId: String)
 
-/** Turns an `Authorization: Bearer` value into a [Principal], or null for anything not live. */
+/** What an `Authorization: Bearer` value is: live, issued here and dead, or never issued here. */
+sealed interface TokenCheck {
+    data class Live(val principal: Principal) : TokenCheck
+
+    /**
+     * Issued by this server and no longer live — expired, revoked, or its link gone. Every user's
+     * expired token arrives from Claude's few egress addresses, so this is always a 401 and never
+     * charged to the address: counting it is what turned one user's refresh signal into a 429 for
+     * the next (#538).
+     */
+    data object Lapsed : TokenCheck
+
+    /** Never issued by this server. The only kind a per-address failure budget counts. */
+    data object Unknown : TokenCheck
+}
+
+/** Turns an `Authorization: Bearer` value into a [TokenCheck]. */
 fun interface AccessTokenVerifier {
-    suspend fun verify(accessToken: String): Principal?
+    suspend fun check(accessToken: String): TokenCheck
+
+    /** The principal [accessToken] speaks for, or null for anything not live. */
+    suspend fun verify(accessToken: String): Principal? = (check(accessToken) as? TokenCheck.Live)?.principal
 }
 
 /**

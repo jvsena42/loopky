@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.mcp.auth
 import com.github.jvsena42.loopky.mcp.AccessTokenVerifier
 import com.github.jvsena42.loopky.mcp.McpConfig
 import com.github.jvsena42.loopky.mcp.Principal
+import com.github.jvsena42.loopky.mcp.TokenCheck
 import com.github.jvsena42.loopky.mcp.store.McpStore
 import java.time.Clock
 import java.time.Duration
@@ -16,14 +17,16 @@ class StoredTokenVerifier(
     private val config: McpConfig,
     private val clock: Clock,
 ) : AccessTokenVerifier {
-    override suspend fun verify(accessToken: String): Principal? {
-        if (!accessToken.startsWith(TokenKind.Access.prefix)) return null
+    override suspend fun check(accessToken: String): TokenCheck {
+        if (!accessToken.startsWith(TokenKind.Access.prefix)) return TokenCheck.Unknown
         val now = clock.instant()
-        val row = store.tokens.findAccess(TokenHash.of(accessToken)) ?: return null
-        if (row.revokedAt != null || !row.expiresAt.isAfter(now) || row.audience != config.resourceUrl) return null
-        val link = store.links.find(row.pubky) ?: return null
+        val row = store.tokens.findAccess(TokenHash.of(accessToken)) ?: return TokenCheck.Unknown
+        if (row.revokedAt != null || !row.expiresAt.isAfter(now) || row.audience != config.resourceUrl) {
+            return TokenCheck.Lapsed
+        }
+        val link = store.links.find(row.pubky) ?: return TokenCheck.Lapsed
         if (Duration.between(link.lastUsedAt, now) >= TOUCH_INTERVAL) store.links.touch(row.pubky, now)
-        return Principal(pubky = row.pubky, clientId = row.clientId)
+        return TokenCheck.Live(Principal(pubky = row.pubky, clientId = row.clientId))
     }
 
     private companion object {
