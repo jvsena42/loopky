@@ -135,16 +135,26 @@ class ToolCatalogTest {
     }
 
     @Test
-    fun `every tool that overwrites or removes is destructive, and reads are read-only`() {
+    fun `every tool says whether it reads, adds, or overwrites`() {
         val annotations = tools.associate { it.name to assertNotNull(it.toTool().annotations) }
+        // Pinned per tool, so a write tool added on the default hints fails here rather than
+        // reaching the directory as additive-only, which is what destructiveHint=false means.
+        val kinds = annotations.mapValues { (_, it) ->
+            when {
+                it.readOnlyHint == true -> "read"
+                it.destructiveHint == true -> "overwrites"
+                else -> "adds"
+            }
+        }
         assertEquals(
-            listOf("deck_edit", "card_edit", "card_remove"),
-            annotations.filterValues { it.destructiveHint == true }.keys.toList(),
+            mapOf(
+                "whoami" to "read", "deck_list" to "read", "deck_show" to "read", "deck_create" to "adds",
+                "deck_edit" to "overwrites", "card_list" to "read", "card_add" to "adds",
+                "card_edit" to "overwrites", "card_remove" to "overwrites", "card_move" to "overwrites",
+                "import" to "adds", "tag_trending" to "read",
+            ),
+            kinds,
         )
-        // The directory flags a tool that is neither read-only nor says whether it is destructive.
-        annotations.forEach { (name, it) -> assertTrue(it.readOnlyHint == true || it.destructiveHint != null, name) }
-        assertEquals(true, annotations.getValue("deck_list").readOnlyHint)
-        assertEquals(false, annotations.getValue("deck_create").readOnlyHint)
         assertEquals(true, annotations.getValue("tag_trending").openWorldHint)
     }
 

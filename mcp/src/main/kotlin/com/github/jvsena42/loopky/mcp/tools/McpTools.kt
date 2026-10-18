@@ -181,7 +181,7 @@ fun mcpTools(): List<McpTool> {
             command("card mv"),
             exposed = setOf("to", "after"),
             refused = emptyMap(),
-            hints = IDEMPOTENT,
+            hints = OVERWRITES,
         ),
         McpTool(
             "import",
