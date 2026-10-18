@@ -1,21 +1,85 @@
-# TLS in front of both deployments. Copy to /etc/caddy/Caddyfile and adjust the hostnames.
+# TLS and the flood guard in front of both deployments (#518). Copy to /etc/caddy/Caddyfile. It
+# needs the Caddy built from mcp/deploy/caddy/Dockerfile: `rate_limit` is not in stock Caddy.
 #
-# A starting point, not a production edge: per-address request limiting, the flood guard the
-# server deliberately leaves to the proxy, is #518. No upstream read timeout on purpose — an MCP
-# event stream sits idle between messages, and one would cut it.
-(mcp_edge) {
-	request_body {
-		max_size 4MB
+# The edge is coarse on purpose. The server keeps the limits that know who a caller is (per-user
+# writes, failed bearers, the OAuth buckets); this layer only stops a flood before it reaches the
+# JVM. The `{$…}` placeholders exist for edge-test.sh, and their defaults are the VPS.
+{
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 30s
+			# No write timeout and no upstream read timeout: an MCP event stream sits idle between
+			# messages, and either would cut it. `idle` only bounds a keep-alive between requests.
+			idle 2m
+		}
+		max_header_size 16KiB
 	}
+}
+
+(mcp_edge) {
 	header -Server
+
+	# The server's own ceilings, refused before the JVM reads a byte: HttpLimits.maxBodyBytes on
+	# /mcp, OAuthDeps' maxBodyBytes everywhere else.
+	@mcp path /mcp /mcp/*
+	@not_mcp not path /mcp /mcp/*
+	request_body @mcp {
+		max_size 2MiB
+	}
+	request_body @not_mcp {
+		max_size 16KiB
+	}
+
+	# Claude's connector calls all leave from Anthropic's published outbound range,
+	# 160.79.104.0/21 (platform.claude.com/docs/en/api/ip-addresses), so an address there stands
+	# for every Loopky user at once. It gets a whole-address ceiling sized for all of them, and a
+	# per-bearer budget inside it; everyone else is limited per address.
+	#
+	# Two handlers in a route, not three zones in one: zones run in no fixed order, so a request
+	# the ceiling refuses would still allocate a per-bearer limiter for a made-up token. Windows are
+	# short because each key holds a buffer of `events` timestamps until it is swept.
+	route {
+		rate_limit {
+			zone per_address {
+				match {
+					not remote_ip {$LOOPKY_MCP_SHARED_EGRESS:160.79.104.0/21}
+				}
+				key {remote_host}
+				ipv6_prefix 64
+				events 50
+				window 10s
+			}
+			zone shared_egress {
+				match {
+					remote_ip {$LOOPKY_MCP_SHARED_EGRESS:160.79.104.0/21}
+				}
+				key {remote_host}
+				events 100
+				window 1s
+			}
+		}
+		rate_limit {
+			# No `log_key`: this key is the token itself.
+			zone per_bearer {
+				match {
+					remote_ip {$LOOPKY_MCP_SHARED_EGRESS:160.79.104.0/21}
+					header Authorization *
+				}
+				key {http.request.header.Authorization}
+				events 50
+				window 5s
+			}
+		}
+	}
 }
 
-mcp.loopky.app {
+{$LOOPKY_MCP_PRODUCTION_SITE:mcp.loopky.app} {
 	import mcp_edge
-	reverse_proxy 127.0.0.1:8081
+	reverse_proxy {$LOOPKY_MCP_PRODUCTION_UPSTREAM:127.0.0.1:8081}
 }
 
-mcp.staging.loopky.app {
+{$LOOPKY_MCP_STAGING_SITE:mcp.staging.loopky.app} {
 	import mcp_edge
-	reverse_proxy 127.0.0.1:8082
+	reverse_proxy {$LOOPKY_MCP_STAGING_UPSTREAM:127.0.0.1:8082}
 }

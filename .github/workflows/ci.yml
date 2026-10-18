@@ -1210,6 +1210,24 @@ jobs:
       - name: Smoke-test the container
         run: bash mcp/deploy/smoke-test.sh loopky-mcp:ci
 
+      # The VPS's Caddyfile in front of the same image (#518): a Caddy edit that stops refusing an
+      # oversized body or a burst, or that puts every Claude user in one bucket, fails here.
+      # Cached: `xcaddy build` compiles Caddy's whole module graph, and the pinned Dockerfile only
+      # changes its output when the Dockerfile itself changes.
+      - name: Build the edge
+        uses: docker/build-push-action@v7
+        with:
+          context: mcp/deploy/caddy
+          target: runtime
+          load: true
+          tags: loopky-caddy:ci
+          provenance: false
+          cache-from: type=gha,scope=mcp-edge-caddy
+          cache-to: type=gha,scope=mcp-edge-caddy,mode=max
+
+      - name: Test the edge
+        run: bash mcp/deploy/edge-test.sh loopky-mcp:ci loopky-caddy:ci
+
       - name: Say which tests failed
         if: failure()
         uses: ./.github/actions/failing-tests

@@ -35,9 +35,52 @@ echo 'LOOPKY_MCP_PUBLIC_URL=https://mcp.staging.loopky.app' > /etc/loopky-mcp/st
 echo 'LOOPKY_MCP_PUBLIC_URL=https://mcp.loopky.app'         > /etc/loopky-mcp/production/env
 ```
 
-Caddy terminates TLS: start from `Caddyfile.example`. Open only 443 and 22 (`ufw allow 22,443/tcp`).
-The example bounds a single request but is **not** a production edge: per-address request
-limiting, which the server leaves to the proxy, is #518 and should be in place before launch.
+Open 22, 80 and 443 (`ufw allow 22/tcp && ufw allow 80,443/tcp`); 80 only redirects, and lets
+Caddy answer an HTTP-01 challenge.
+
+### The edge (Caddy)
+
+Caddy terminates TLS and is the flood guard (#518): body caps, header and body read timeouts,
+and a per-request rate. `Caddyfile.example` needs the `rate_limit` module, which stock Caddy and
+the apt package lack, so install Caddy from its apt repository (for the systemd unit) and swap in
+the build from `caddy/Dockerfile` the way Caddy's docs describe for a custom binary — the apt
+package stays installed, its binary diverted, so an `apt upgrade` cannot put the module-less one
+back:
+
+```sh
+# On the box, with mcp/deploy/caddy/Dockerfile copied to ./caddy/
+docker build --target export --output type=local,dest=caddy/out caddy
+dpkg-divert --divert /usr/bin/caddy.default --rename /usr/bin/caddy
+install -m 0755 caddy/out/caddy /usr/bin/caddy.custom
+update-alternatives --install /usr/bin/caddy caddy /usr/bin/caddy.default 10
+update-alternatives --install /usr/bin/caddy caddy /usr/bin/caddy.custom 50
+caddy list-modules | grep rate_limit                 # http.handlers.rate_limit
+install -m 0644 Caddyfile.example /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile && systemctl restart caddy
+```
+
+A Dependabot bump of `caddy/Dockerfile` reaches CI only: rebuild and re-`install` the binary on
+the box the same way (the `dpkg-divert` and `update-alternatives` lines are once only).
+
+What it limits, and why it keys the way it does:
+
+| | |
+|---|---|
+| Body | 2 MiB on `/mcp`, 16 KiB elsewhere — the server's own ceilings, refused before the JVM reads them |
+| Timeouts | 10s to send headers, 30s for a body, 2 min idle keep-alive; no write or upstream timeout, which would cut an idle MCP stream |
+| Per address | 50 requests/10s (IPv6 per /64), outside Anthropic's outbound range |
+| Anthropic's range | 100 requests/s per address, all callers together, anonymous or not |
+| Per bearer | 50 requests/5s per `Authorization` value, inside that range |
+
+Claude's connector calls all come from Anthropic's published outbound range (`160.79.104.0/21`,
+[IP addresses](https://platform.claude.com/docs/en/api/ip-addresses)), so an address there is
+every Loopky user at once: a per-address limit sized for one caller would let one user throttle
+the rest. The range gets a ceiling sized for all of them instead, which also bounds anonymous
+calls and made-up bearers from Anthropic's infrastructure (any API customer can point a connector
+here), and a per-bearer budget under it. If Anthropic changes the range, update the default in
+`Caddyfile.example`. `edge-test.sh` checks every row in CI against the image, including that two
+bearers do not share a budget. The module is pinned by commit, which no Dependabot ecosystem
+tracks; see `.github/dependabot.yml`.
 
 ### The deploy keys
 

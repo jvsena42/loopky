@@ -7,9 +7,13 @@
 #   docker  for `cli/Dockerfile`: it pins `ubuntu:22.04` for the glibc floor (see the file),
 #           and `debian:bookworm-slim` carries no version Dependabot can compare. Its only
 #           possible PR would be the one that must not merge. `cli/sandbox-sim/Dockerfile.client`
-#           is a local test harness and unpinned on purpose. `mcp/` is covered below.
+#           is a local test harness and unpinned on purpose. `mcp/` and its edge are covered below.
 #   GraalVM `GRAALVM_VERSION` in that Dockerfile and `java-version` in the workflows are plain
 #           strings to Dependabot. They move by hand, together.
+#   caddy-ratelimit  the commit `mcp/deploy/caddy/Dockerfile` hands `xcaddy --with` is a Go module
+#           no ecosystem here sees. It moves by hand: check github.com/mholt/caddy-ratelimit
+#           whenever the `mcp-edge-caddy` PR below arrives, since the module parses every
+#           caller's `Authorization` header.
 version: 2
 
 updates:
@@ -47,6 +51,22 @@ updates:
         update-types: [version-update:semver-major]
     groups:
       mcp-base-images:
+        patterns: ["*"]
+
+  # The edge's Caddy (#518): builder and runtime on one version, since xcaddy builds the builder's
+  # CADDY_VERSION. Merging a bump changes CI only; the VPS takes it when the binary is rebuilt by
+  # hand (mcp/deploy/README.md), so a PR here is also the reminder to do that.
+  - package-ecosystem: docker
+    directory: /mcp/deploy/caddy
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    ignore:
+      - dependency-name: caddy
+        update-types: [version-update:semver-major]
+    groups:
+      mcp-edge-caddy:
         patterns: ["*"]
 
   - package-ecosystem: gradle
