@@ -58,6 +58,10 @@ jq -e '.issuer == "https://mcp.smoke.invalid" and (.code_challenge_methods_suppo
 jq -e '.resource == "https://mcp.smoke.invalid/mcp"' \
   <<<"$(curl -fsS "http://127.0.0.1:$PORT/.well-known/oauth-protected-resource")" >/dev/null
 
+# The icon Claude and the connector directory show: a PNG from the image, not a 404 (#536).
+[[ "$(curl -fsS "http://127.0.0.1:$PORT/favicon.ico" | head -c 4 | od -An -tx1 | tr -d ' \n')" == "89504e47" ]] \
+  || { echo "favicon.ico is not the app icon" >&2; exit 1; }
+
 # No token: a 401 that tells Claude where to start the OAuth dance, never a tool result.
 headers="$(curl -sS -o /dev/null -D - -X POST "http://127.0.0.1:$PORT/mcp" \
   -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \

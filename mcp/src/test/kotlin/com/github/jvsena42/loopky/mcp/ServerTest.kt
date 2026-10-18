@@ -13,6 +13,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.readRawBytes
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -56,6 +57,14 @@ class ServerTest {
             }
             val http = createClient { followRedirects = false }
             assertEquals("ok", http.get("/healthz").bodyAsText())
+            // Claude and the connector directory show the icon at the server's own URL (#536).
+            listOf("/favicon.ico", "/favicon.png").forEach { path ->
+                val icon = http.get(path)
+                assertEquals(HttpStatusCode.OK, icon.status, path)
+                assertEquals(ContentType.Image.PNG, icon.contentType()?.withoutParameters(), path)
+                val bytes = icon.readRawBytes()
+                assertEquals(listOf(0x89, 0x50, 0x4E, 0x47), bytes.take(4).map { it.toInt() and 0xFF }, "$path is a PNG")
+            }
 
             val oauth = OAuthClient(harness, http)
             val clientId = oauth.registerClient()
