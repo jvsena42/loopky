@@ -36,8 +36,10 @@ are running:
   or `/run/.containerenv` exists, the environment is recreated per task, or a proxy sits in
   `HTTPS_PROXY`): **recommend the connector.** The CLI there has to be installed every session,
   needs several hosts on the sandbox's allowlist, and needs the user at their phone for a new
-  sign-in about every hour. If the connector's tools are attached, use them; if not, suggest the
-  user add it, and use the CLI only if they prefer it or need what only the CLI has.
+  sign-in about every hour. If the connector's tools are attached, use them. If they are not,
+  your answer still starts with adding it — the URL, Settings → Connectors, one Ring sign-in —
+  rather than with installing the CLI; use the CLI only if the user prefers it or needs what only
+  the CLI has.
 
 Through the connector:
 
@@ -58,7 +60,9 @@ Through the connector:
 
 ## Workflow
 
-1. **Check the CLI is there:** `loopky --version`. If it fails, **stop** and ask the user to
+1. **In a cloud or sandbox session, or with no shell, read "CLI or connector" above first**: there
+   the connector comes before any install. Otherwise, **check the CLI is there:**
+   `loopky --version`. If it fails, **stop** and ask the user to
    install `loopky`, pointing them at <https://github.com/jvsena42/loopky/tree/main/cli#install>
    (Homebrew, a `.deb`, or the release installer for Linux, macOS and Windows). Do not download or
    install it yourself — this plugin runs only code that was reviewed with it. In a cloud session,
