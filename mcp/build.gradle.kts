@@ -31,7 +31,16 @@ kotlin {
     }
 }
 
-tasks.named("processResources") { dependsOn(copyAgentSkill) }
+/**
+ * The app icon, served as the server's favicon: Claude and the connector directory show the icon
+ * at the server's own URL (#536). The plugin's copy, so there is one image to replace.
+ */
+val copyFavicon = tasks.register<Copy>("copyFavicon") {
+    from(rootProject.file("plugins/loopky/assets/icon.png")) { rename { "favicon.png" } }
+    into(layout.buildDirectory.dir("generated/skill/com/github/jvsena42/loopky/mcp"))
+}
+
+tasks.named("processResources") { dependsOn(copyAgentSkill, copyFavicon) }
 
 application {
     mainClass.set("com.github.jvsena42.loopky.mcp.MainKt")

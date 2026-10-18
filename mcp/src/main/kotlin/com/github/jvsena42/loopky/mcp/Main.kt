@@ -19,6 +19,8 @@ import com.github.jvsena42.loopky.mcp.tenant.TenantPool
 import com.github.jvsena42.loopky.mcp.vault.MasterKey
 import com.github.jvsena42.loopky.mcp.vault.VaultBootstrap
 import com.github.jvsena42.loopky.util.runSuspendCatching
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
@@ -26,7 +28,10 @@ import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
+import io.ktor.server.response.header
+import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.Dispatchers
@@ -110,6 +115,7 @@ fun Application.loopkyMcp(parts: ServerParts) {
     // first is whatever the client sent, once anything but Caddy can reach this port (#518).
     install(XForwardedHeaders) { useLastProxy() }
     routing {
+        favicon()
         // A real read, so a wedged database thread fails the deploy gate and the healthcheck.
         get("/healthz") {
             if (storeLive(parts.oauth.store)) {
@@ -198,3 +204,20 @@ private suspend fun Application.storeLive(store: McpStore): Boolean {
 }
 
 private const val WATCHDOG_FAILURES = 3
+
+/**
+ * What Claude and the connector directory show beside the connector (#536). Public, like the
+ * metadata documents: it is the app's icon and says nothing about anyone.
+ */
+private fun Route.favicon() {
+    val icon = ServerParts::class.java.getResourceAsStream(FAVICON)?.use { it.readBytes() } ?: return
+    listOf("/favicon.ico", "/favicon.png").forEach { path ->
+        get(path) {
+            call.response.header(HttpHeaders.CacheControl, "public, max-age=86400")
+            call.respondBytes(icon, ContentType.Image.PNG)
+        }
+    }
+}
+
+/** Copied from `plugins/loopky/assets/icon.png` by the build's `copyFavicon`. */
+private const val FAVICON = "/com/github/jvsena42/loopky/mcp/favicon.png"
