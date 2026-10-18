@@ -10,6 +10,10 @@
 #           is a local test harness and unpinned on purpose. `mcp/` and its edge are covered below.
 #   GraalVM `GRAALVM_VERSION` in that Dockerfile and `java-version` in the workflows are plain
 #           strings to Dependabot. They move by hand, together.
+#   caddy-ratelimit  the commit `mcp/deploy/caddy/Dockerfile` hands `xcaddy --with` is a Go module
+#           no ecosystem here sees. It moves by hand: check github.com/mholt/caddy-ratelimit
+#           whenever the `mcp-edge-caddy` PR below arrives, since the module parses every
+#           caller's `Authorization` header.
 version: 2
 
 updates:
