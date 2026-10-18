@@ -57,7 +57,17 @@ edge() {
 }
 edge || fail "the server never answered through Caddy"
 
-code() { curl -sS -o /dev/null -w '%{http_code}' "$@"; }
+# The status is what is asserted, never curl's exit: on a 413 Caddy may close the connection
+# before curl has sent the whole body, and curl then fails after printing the code.
+code() { curl -sS -o /dev/null -w '%{http_code}' "$@" 2>/dev/null || true; }
+# N requests at once, one status per line; the ceiling on Anthropic's range is per second, which
+# one request at a time cannot reach.
+burst() {
+  local n="$1"; shift
+  curl -sS -Z --parallel-max 20 "$@" -w '\n%{http_code}\n' "$URL/healthz?n=[1-$n]" 2>/dev/null \
+    | grep -xE '[0-9]{3}' || true
+}
+count() { grep -cx "$1" <<<"$2" || true; }
 
 # A small unauthenticated call still reaches the server and gets its 401. The same call with a
 # body one byte over the limit is a 413, which only the edge gives: the server would say 401.
@@ -70,7 +80,8 @@ head -c $((16 * 1024 + 1)) /dev/zero > "$WORK/form"
 form="$(code -X POST "$URL/token" -H 'Content-Type: application/x-www-form-urlencoded' --data-binary "@$WORK/form")"
 [ "$form" = 413 ] || fail "a 16 KiB + 1 body on /token answered $form, not 413"
 
-# A header that never finishes is dropped at read_header (10s), not held open.
+# A header that never finishes is dropped at read_header (10s), not held open. It also lets the
+# requests above leave the per-address window before the burst below.
 start=$SECONDS
 exec 3<>"/dev/tcp/127.0.0.1/$PORT"
 printf 'GET /healthz HTTP/1.1\r\nHost: x\r\n' >&3
@@ -78,26 +89,25 @@ timeout 30 cat <&3 >/dev/null || true
 exec 3<&-
 [ $((SECONDS - start)) -lt 25 ] || fail "a stalled header was held for $((SECONDS - start))s"
 
-# One address: 300 requests a minute, counting the ones above, then 429 with Retry-After. The
+# One address outside Anthropic's range: 50 requests per 10s, then 429 with Retry-After. The
 # server does not limit /healthz, so the refusal is the edge's.
-first_429=0
-for i in $(seq 1 320); do
-  if [ "$(code "$URL/healthz")" = 429 ]; then first_429=$i; break; fi
-done
-[ "$first_429" -gt 280 ] || fail "the burst was refused at request $first_429, before the 300/min budget"
-curl -sS -o /dev/null -D - "$URL/healthz" | grep -qi '^retry-after:' || fail "a 429 without Retry-After"
+codes="$(for _ in $(seq 1 60); do code "$URL/healthz"; echo; done)"
+ok="$(count 200 "$codes")"
+[ "$ok" -ge 45 ] && [ "$ok" -le 50 ] || fail "$ok of 60 requests from one address got through, not 50"
+[ "$(count 429 "$codes")" -ge 10 ] || fail "a burst from one address was not refused"
+headers="$(curl -sS -o /dev/null -D - "$URL/healthz" 2>/dev/null || true)"
+grep -qi '^retry-after:' <<<"$headers" || fail "a 429 without Retry-After"
 
-# From Anthropic's range the budget is per bearer: one token runs out at 600 a minute, and
-# another is untouched by it. A key that collapsed them would throttle every Claude user at once.
+# Anthropic's range: a ceiling per address, so neither anonymous calls nor made-up bearers are
+# unbounded there, and a budget per bearer inside it. A key that collapsed the bearers would
+# throttle every Claude user at once.
 edge 0.0.0.0/0 || fail "Caddy did not come back with every address as shared egress"
-for i in $(seq 1 299); do
-  [ "$(code "$URL/healthz")" = 200 ] || fail "an anonymous request from shared egress was limited at $i"
-done
-first_429=0
-for i in $(seq 1 620); do
-  if [ "$(code -H 'Authorization: Bearer one' "$URL/healthz")" = 429 ]; then first_429=$i; break; fi
-done
-[ "$first_429" -gt 590 ] || fail "bearer one was refused at request $first_429, not after 600"
+sleep 1
+[ "$(count 429 "$(burst 400)")" -gt 0 ] || fail "400 anonymous requests at once from shared egress were not refused"
+sleep 6
+codes="$(for _ in $(seq 1 60); do code -H 'Authorization: Bearer one' "$URL/healthz"; echo; done)"
+ok="$(count 200 "$codes")"
+[ "$ok" = 50 ] || fail "bearer one got $ok of 60 requests through, not 50"
 [ "$(code -H 'Authorization: Bearer two' "$URL/healthz")" = 200 ] || fail "bearer two shared bearer one's budget"
 
 echo "edge test passed"

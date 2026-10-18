@@ -68,14 +68,19 @@ What it limits, and why it keys the way it does:
 |---|---|
 | Body | 2 MiB on `/mcp`, 16 KiB elsewhere — the server's own ceilings, refused before the JVM reads them |
 | Timeouts | 10s to send headers, 30s for a body, 2 min idle keep-alive; no write or upstream timeout, which would cut an idle MCP stream |
-| Per address | 300 requests/min (IPv6 per /64), **except** Anthropic's outbound range |
-| Per bearer | 600 requests/min per `Authorization` value |
+| Per address | 50 requests/10s (IPv6 per /64), outside Anthropic's outbound range |
+| Anthropic's range | 100 requests/s per address, all callers together, anonymous or not |
+| Per bearer | 50 requests/5s per `Authorization` value, inside that range |
 
 Claude's connector calls all come from Anthropic's published outbound range (`160.79.104.0/21`,
 [IP addresses](https://platform.claude.com/docs/en/api/ip-addresses)), so an address there is
-every Loopky user at once; a per-address limit on it would let one user throttle the rest. If
-Anthropic changes the range, update the default in `Caddyfile.example`. `edge-test.sh` checks
-all four rows in CI against the image, including that two bearers do not share a budget.
+every Loopky user at once: a per-address limit sized for one caller would let one user throttle
+the rest. The range gets a ceiling sized for all of them instead, which also bounds anonymous
+calls and made-up bearers from Anthropic's infrastructure (any API customer can point a connector
+here), and a per-bearer budget under it. If Anthropic changes the range, update the default in
+`Caddyfile.example`. `edge-test.sh` checks every row in CI against the image, including that two
+bearers do not share a budget. The module is pinned by commit, which no Dependabot ecosystem
+tracks; see `.github/dependabot.yml`.
 
 ### The deploy keys
 

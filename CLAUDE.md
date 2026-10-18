@@ -200,8 +200,9 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   environment's reviewers; `mcp/deploy/README.md` is the operator's half. Its `/tmp` must be an
   **exec** tmpfs, or JNA and sqlite-jdbc cannot load their libraries. Architecture.md §13.19.
   The Caddy in front (`mcp/deploy/caddy/`, a build with `caddy-ratelimit`) is the flood guard,
-  and it never limits Anthropic's outbound range per address: every Claude user's calls leave
-  from those few addresses, so it keys them per bearer instead (#518). `edge-test.sh` holds that.
+  and it never limits Anthropic's outbound range with a per-caller budget: every Claude user's
+  calls leave from those few addresses, so the range gets one ceiling sized for all of them and
+  a per-bearer budget under it (#518). `edge-test.sh` holds that.
 - `iosApp/iosApp/` — iOS app. SwiftUI screens in `Views/`, `NavigationStack` in `Navigation/`, Koin bootstrap in `DI/`. Compose Multiplatform UI is **not** used for iOS screens.
 
 ### Non-obvious rules

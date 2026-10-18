@@ -31,28 +31,46 @@
 		max_size 16KiB
 	}
 
-	rate_limit {
-		# Claude's connector calls all leave from Anthropic's published outbound range,
-		# 160.79.104.0/21 (platform.claude.com/docs/en/api/ip-addresses), so an address there
-		# stands for every Loopky user at once: it is limited per bearer, never per address.
-		zone per_address {
-			match {
-				not remote_ip {$LOOPKY_MCP_SHARED_EGRESS:160.79.104.0/21}
+	# Claude's connector calls all leave from Anthropic's published outbound range,
+	# 160.79.104.0/21 (platform.claude.com/docs/en/api/ip-addresses), so an address there stands
+	# for every Loopky user at once. It gets a whole-address ceiling sized for all of them, and a
+	# per-bearer budget inside it; everyone else is limited per address.
+	#
+	# Two handlers in a route, not three zones in one: zones run in no fixed order, so a request
+	# the ceiling refuses would still allocate a per-bearer limiter for a made-up token. Windows are
+	# short because each key holds a buffer of `events` timestamps until it is swept.
+	route {
+		rate_limit {
+			zone per_address {
+				match {
+					not remote_ip {$LOOPKY_MCP_SHARED_EGRESS:160.79.104.0/21}
+				}
+				key {remote_host}
+				ipv6_prefix 64
+				events 50
+				window 10s
 			}
-			key {remote_host}
-			ipv6_prefix 64
-			events 300
-			window 1m
-		}
-		zone per_bearer {
-			match {
-				header Authorization *
+			zone shared_egress {
+				match {
+					remote_ip {$LOOPKY_MCP_SHARED_EGRESS:160.79.104.0/21}
+				}
+				key {remote_host}
+				events 100
+				window 1s
 			}
-			key {http.request.header.Authorization}
-			events 600
-			window 1m
 		}
-		# No `log_key`: the per-bearer key is the token itself.
+		rate_limit {
+			# No `log_key`: this key is the token itself.
+			zone per_bearer {
+				match {
+					remote_ip {$LOOPKY_MCP_SHARED_EGRESS:160.79.104.0/21}
+					header Authorization *
+				}
+				key {http.request.header.Authorization}
+				events 50
+				window 5s
+			}
+		}
 	}
 }
 
