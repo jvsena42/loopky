@@ -24,10 +24,11 @@ import kotlinx.serialization.json.putJsonObject
  */
 fun McpTool.toTool(): Tool = Tool(
     name = name,
+    title = title,
     description = description(),
     inputSchema = ToolSchema(properties = properties(), required = required()),
     annotations = ToolAnnotations(
-        title = command.path,
+        title = title,
         readOnlyHint = !command.writes,
         destructiveHint = hints.destructive,
         idempotentHint = hints.idempotent,

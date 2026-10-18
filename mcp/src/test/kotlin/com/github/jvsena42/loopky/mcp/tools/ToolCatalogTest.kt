@@ -135,9 +135,14 @@ class ToolCatalogTest {
     }
 
     @Test
-    fun `card_remove is the one destructive tool, and reads are read-only`() {
+    fun `every tool that overwrites or removes is destructive, and reads are read-only`() {
         val annotations = tools.associate { it.name to assertNotNull(it.toTool().annotations) }
-        assertEquals(listOf("card_remove"), annotations.filterValues { it.destructiveHint == true }.keys.toList())
+        assertEquals(
+            listOf("deck_edit", "card_edit", "card_remove"),
+            annotations.filterValues { it.destructiveHint == true }.keys.toList(),
+        )
+        // The directory flags a tool that is neither read-only nor says whether it is destructive.
+        annotations.forEach { (name, it) -> assertTrue(it.readOnlyHint == true || it.destructiveHint != null, name) }
         assertEquals(true, annotations.getValue("deck_list").readOnlyHint)
         assertEquals(false, annotations.getValue("deck_create").readOnlyHint)
         assertEquals(true, annotations.getValue("tag_trending").openWorldHint)
@@ -148,7 +153,9 @@ class ToolCatalogTest {
         tools.forEach { tool ->
             val description = tool.toTool().description.orEmpty()
             assertTrue(description.isNotBlank(), tool.name)
-            assertEquals(tool.command.path, tool.toTool().annotations?.title)
+            assertEquals(tool.title, tool.toTool().annotations?.title)
+            assertEquals(tool.title, tool.toTool().title)
+            assertTrue(tool.title.first().isUpperCase(), "${tool.name}: a title is for people, not the CLI path")
         }
     }
 
