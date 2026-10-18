@@ -40,8 +40,10 @@ class Unlinker(
             revokeWithin(secret)
                 .onFailure { log.warn("Revoking the grant for $pubky on the homeserver failed; deleting the link anyway", it) }
         }
-        store.tokens.deleteAllFor(pubky)
+        // The link goes first: a token insert checks for it in its own transaction, so once it is
+        // gone nothing new lands, and the delete after it catches anything that landed before.
         store.links.delete(pubky)
+        store.tokens.deleteAllFor(pubky)
         log.info("Unlinked $pubky")
         return true
     }
