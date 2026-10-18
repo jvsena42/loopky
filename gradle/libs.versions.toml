@@ -18,7 +18,7 @@ androidx-work = "2.11.2"
 # `:shared` has no Compose in it, so the JetBrains build bought nothing and cost an alpha pin.
 composeBom = "2026.08.00"
 junit = "4.13.2"
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 jna = "5.19.1"
