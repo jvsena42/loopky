@@ -171,6 +171,7 @@ The user can always override via the detected-separator chip. The override sheet
 | Case | Behavior |
 |---|---|
 | Single-column paste | Treat every line as front-only. Back is empty, user fills in triage. Show a banner: *"No separator found. Each line became a card front — fill in the backs in the next step."* |
+| Spaced semicolon or pipe (`cat; gato`, `cat \| gato`) | Detected like the unspaced form — it is how most people type a pair. Prose is still single-column: lines that mostly use the delimiter twice (`ls -la \| grep .txt \| head`) or put three-plus words on both sides of it (`She ran quickly; he walked slowly`). A comma followed by a space stays punctuation. |
 | Three or more columns | Only the first two are used, as front and back. Extra columns are dropped silently — nothing in the UI mentions columns, so nothing is claimed about them (§8). |
 | Mismatched row lengths | Rows with fewer fields than the majority show as red in preview with a warning icon. User can edit or discard in triage. |
 | Paste over max size | Soft error (§7). "Next" button disabled. |

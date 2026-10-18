@@ -283,6 +283,28 @@ class ImportRepositoryImplTest {
     }
 
     @Test
+    fun spacedPipeIsRealSeparator() = runBlocking {
+        // `a | b` is how a pipe pair is usually typed (#533)
+        val draft = repo().parse("cat | gato\ndog | cachorro\nbird | p\u00e1ssaro").getOrThrow()
+        assertIs<Separator.Pipe>(draft.separator)
+        assertEquals(listOf("cat", "gato"), draft.rows[0].fields)
+    }
+
+    @Test
+    fun spacedSemicolonIsRealSeparator() = runBlocking {
+        val draft = repo().parse("cat; gato\ndog; cachorro\ngood morning; bom dia").getOrThrow()
+        assertIs<Separator.Semicolon>(draft.separator)
+        assertEquals(listOf("good morning", "bom dia"), draft.rows[2].fields)
+    }
+
+    @Test
+    fun spacedCommaStaysPunctuation(): Unit = runBlocking {
+        val draft = repo().parse("cat, gato\ndog, cachorro").getOrThrow()
+        assertIs<Separator.SingleColumn>(draft.separator)
+        Unit
+    }
+
+    @Test
     fun pipeInShellCommandsNotSeparator(): Unit = runBlocking {
         // Shell pipes — both sides are commands, not front/back pairs
         val text = "ls -la | grep .txt | head\ncat file.log | sort | uniq -c"

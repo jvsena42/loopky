@@ -159,7 +159,7 @@ class ToolDispatcherTest {
     fun `the scratch path never reaches the caller, in a result or in a message`() = runBlocking {
         val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck())))
         val empty = dispatcher.call(alice, "import", args("""{"text":"only a front\n","dry_run":true}""")).envelope()
-        assertEquals("Nothing importable in inline.", empty["error"]!!.jsonObject["message"]!!.jsonPrimitive.content)
+        assertTrue(empty["error"]!!.jsonObject["message"]!!.jsonPrimitive.content.startsWith("Nothing importable in inline:"))
         val blank = dispatcher.call(alice, "card_add", args("""{"deck_id":"d1","text":"# only a comment\n"}""")).envelope()
         assertEquals("inline held no cards.", blank["error"]!!.jsonObject["message"]!!.jsonPrimitive.content)
         assertFalse(scratch.root.toString() in empty.toString() + blank.toString())
