@@ -144,6 +144,7 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
 | 14 | proxy_refused | Allowlist problem. Back to `loopky doctor` and hand the user its host list. Retrying will not help. |
 | 15 | tls_untrusted | A proxy is re-signing TLS. Back to `loopky doctor`; the user must exempt the hosts or name the CA with `SSL_CERT_FILE`. |
 | 16 | homeserver_unresolved | Transient name lookup failure; retry. Not an allowlist problem. |
+| 17 | request_refused | The indexer refused the request this binary built (a version mismatch). Do not retry; run `loopky update`, and report it if the latest release still fails. |
 
 ## Writing good cards
 

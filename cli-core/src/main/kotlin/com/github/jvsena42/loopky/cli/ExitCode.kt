@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.cli
 
+import com.github.jvsena42.loopky.data.nexus.HttpError
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.DeckReorderPendingException
 import com.github.jvsena42.loopky.domain.model.ErrorReason
@@ -164,6 +165,20 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
         "homeserver_unresolved",
         "pkarr could not resolve the homeserver - transient, retry; not an allowlist problem",
     ),
+
+    /**
+     * A web service — in practice the indexer — answered a 4xx to a request this client built
+     * (#532): staging's Nexus dropping a sort order the binary still sent.
+     *
+     * Not [Internal], the code an agent retries: the same request is refused the same way every
+     * time. Usually the client and the service disagree on a version, which `loopky update` may
+     * fix and nothing on the caller's side will.
+     */
+    RequestRefused(
+        17,
+        "request_refused",
+        "the indexer refused the request this client built - retrying will not help; try loopky update",
+    ),
     ;
 
     companion object {
@@ -182,6 +197,7 @@ enum class ExitCode(val code: Int, val json: String, val summary: String) {
             error.toErrorReason() == ErrorReason.HomeserverLookupFailed -> HomeserverUnresolved
             error.isProxyRefusal() -> ProxyRefused
             error.isUntrustedCertificate() -> TlsUntrusted
+            error.isRefusedRequest() -> RequestRefused
             else -> fromReason(error)
         }
 
@@ -248,6 +264,18 @@ private val RUST_TUNNEL_REFUSALS = listOf(
 )
 
 private val PROXY_AUTH_STATUS = Regex("http 407(?![0-9])")
+
+/**
+ * An [HttpError] 4xx that says the request itself is wrong. Not 404 (the thing asked for is
+ * absent), 407 (a proxy, already [ExitCode.ProxyRefused]), 408 or 429 (transient).
+ */
+private fun Throwable.isRefusedRequest(): Boolean =
+    generateSequence(this) { it.cause }.take(MAX_CAUSES).any { error ->
+        error is HttpError && error.statusCode in CLIENT_ERRORS && error.statusCode !in NOT_REFUSALS
+    }
+
+private val CLIENT_ERRORS = 400..499
+private val NOT_REFUSALS = setOf(404, 407, 408, 429)
 
 /**
  * The homeserver answered a 5xx.

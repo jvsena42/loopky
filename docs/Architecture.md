@@ -1710,6 +1710,7 @@ always says which network answered.
 | 14 | a proxy refused the host or its credentials (§13.17) |
 | 15 | the certificate is not trusted — usually a TLS-intercepting proxy (§13.17) |
 | 16 | pkarr could not resolve the homeserver — transient, never an allowlist problem (#389) |
+| 17 | the indexer answered 4xx to a request this client built — a version mismatch, never retried (#532) |
 
 4 is the reason this table is not three rows long. The homeserver session dies after roughly an
 hour and nothing renews it (#165): writes start failing, reads keep working, and from outside it

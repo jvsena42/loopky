@@ -47,6 +47,7 @@ fun asCliError(error: Throwable, injected: Boolean = false): CliError {
         code == ExitCode.TlsUntrusted -> " Run `loopky doctor`: the hosts need exempting from TLS inspection."
         // doctor would find every host reachable (#389); the relays simply did not answer in time.
         code == ExitCode.HomeserverUnresolved -> " Not an allowlist problem: pkarr did not answer in time. Retry the command."
+        code == ExitCode.RequestRefused -> " Retrying will not help; `loopky update` may, if the indexer has moved on."
         code != ExitCode.SessionExpired -> ""
         injected -> " LOOPKY_SESSION is no longer valid; mint a new one with `loopky login --export`."
         else -> " Run `loopky login` again."

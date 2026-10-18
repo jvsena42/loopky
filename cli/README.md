@@ -719,6 +719,7 @@ Sign in on a machine with a phone and hand the sandbox `LOOPKY_SESSION` (see Env
 | | | 14 | a proxy refused the host |
 | | | 15 | the certificate is not trusted |
 | | | 16 | pkarr could not resolve the homeserver |
+| | | 17 | the indexer refused the request (try `loopky update`) |
 
 `loopky commands --json` carries this table — name, number and a line of what to do about it —
 along with the subset each command can actually produce. That last part is worth reading for its
