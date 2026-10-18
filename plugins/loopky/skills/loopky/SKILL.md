@@ -1,6 +1,6 @@
 ---
 name: loopky
-description: Build and manage Loopky flashcard decks with the `loopky` CLI - make Anki-style spaced-repetition cards from any topic, import an Anki .apkg or a TSV, add, edit or illustrate cards, publish a language deck with Listen/Speak, or learn a language from a TV series' episodes. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI.
+description: Build and manage Loopky flashcard decks with the `loopky` CLI or the Loopky connector - make Anki-style spaced-repetition cards from any topic, import a TSV or (with the CLI) an Anki .apkg, add, edit or illustrate cards, publish a language deck with Listen/Speak, or learn a language from a TV series' episodes. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI. Also use when a `loopky` command or a Loopky tool returned an error or an exit code.
 ---
 
 # Loopky flashcards through the `loopky` CLI
@@ -17,13 +17,58 @@ it does not export them.
 codes come from `loopky commands --json` and `loopky <command> --help`. Read them rather than
 guessing, and trust them over anything here.
 
+## CLI or connector
+
+Loopky has two doors onto the same account: the `loopky` CLI, and a hosted connector
+(`https://mcp.loopky.app/mcp`) whose tools — `deck_list`, `deck_create`, `card_add`, `import` and
+the rest — take the CLI's options as inputs (`--front-lang` is `front_lang`). In Claude Code a
+connector's tools show up as `mcp__claude_ai_Loopky__deck_create` and similar. Pick by where you
+are running:
+
+- **No shell at all** (a chat app): the connector is the only door. If its tools are not there,
+  tell the user to add it under Settings → Connectors with that URL, then sign in with Pubky Ring
+  when it asks.
+- **A shell on the user's own machine** (a local terminal): **use the CLI**, with the workflow
+  below. It is the complete client: `.apkg` imports, card files on disk, `--check-images`,
+  `batch` and `card reorder` exist only there. If `loopky` is missing, offer the install; mention
+  the connector only if they would rather not install anything.
+- **A cloud or sandbox session** (Claude Code on the web, Codex cloud, a container — `/.dockerenv`
+  or `/run/.containerenv` exists, or the environment is recreated per task; a proxy in
+  `HTTPS_PROXY` counts only beside one of these, since a laptop behind a company proxy is still
+  the user's own machine): **recommend the connector.** The CLI there has to be installed every session,
+  needs several hosts on the sandbox's allowlist, and needs the user at their phone for a new
+  sign-in about every hour. If the connector's tools are attached, use them. If they are not,
+  your answer still starts with adding it — the URL, Settings → Connectors, one Ring sign-in —
+  rather than with installing the CLI; use the CLI only if the user prefers it or needs what only
+  the CLI has.
+
+Through the connector:
+
+- **Skip the CLI's steps**: no `--version`, `doctor` or `login`. The user signed in when they added
+  the connector. A result carrying `error.reconnect: true` means they have to reconnect it, and
+  nothing else helps.
+- **The workflow is otherwise the same**: show the cards, `dry_run: true` first and fix its
+  advice, publish, then verify with `deck_show` and `card_list`.
+- **Cards go inline**, as `cards` (objects) or `text` (TSV or JSONL), at most 2,000 cards and
+  1 MiB a call. A bigger deck is a `deck_create` and then `card_add` calls, which append.
+- **It refuses what would make the server touch something of its own**: file paths (it cannot see
+  the user's disk), an Anki `.apkg` (point them at the CLI for that), and `check_images` (the
+  server never fetches a caller's URL; the phone fetches pictures).
+- **No `batch`, `card reorder` or deck delete.** One write at a time per account: wait for a call
+  to return before the next.
+- Results are the CLI's `--json` envelope, so the exit-code names below are the `error.code`
+  values the tools return.
+
 ## Workflow
 
-1. **Check the CLI is there:** `loopky --version`. If it fails, **stop** and ask the user to
+1. **In a cloud or sandbox session, or with no shell, read "CLI or connector" above first**: there
+   the connector comes before any install. Otherwise, **check the CLI is there:**
+   `loopky --version`. If it fails, **stop** and ask the user to
    install `loopky`, pointing them at <https://github.com/jvsena42/loopky/tree/main/cli#install>
    (Homebrew, a `.deb`, or the release installer for Linux, macOS and Windows). Do not download or
-   install it yourself — this plugin runs only code that was reviewed with it. In a cloud session,
-   suggest installing it in the environment's setup script so the next session has it. Once they
+   install it yourself — this plugin runs only code that was reviewed with it. If a cloud session's
+   user chose the CLI over the connector, suggest installing it in the environment's setup script
+   so the next session has it. Once they
    have, run `loopky --version` again; if the shell cannot find it, it is usually in
    `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\loopky`), which has to be on `PATH`.
 
@@ -135,7 +180,7 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
 | 5 | network | Retry as-is, a few times with a pause. |
 | 6 | not_found | Check the id with `loopky deck list --json`. |
 | 7 | storage_full | Terminal: the account is out of quota. Never retry; tell the user. |
-| 8 | environment_mismatch | The session belongs to the other network; re-run with the matching `--env`. |
+| 8 | environment_mismatch | The session belongs to the other network; run the next command with the `--env` the message names. From `login` the session is already stored: do not log in again. |
 | 9 | bad_input | Fix the file or operand the message names. Never retry unchanged. |
 | 10 | unsupported_host | No build for this OS/architecture. Nothing to retry. |
 | 11 | update_unsupported | `loopky update` refused and **nothing was updated**; run the command its message names (brew, dpkg…). |
@@ -144,6 +189,7 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
 | 14 | proxy_refused | Allowlist problem. Back to `loopky doctor` and hand the user its host list. Retrying will not help. |
 | 15 | tls_untrusted | A proxy is re-signing TLS. Back to `loopky doctor`; the user must exempt the hosts or name the CA with `SSL_CERT_FILE`. |
 | 16 | homeserver_unresolved | Transient name lookup failure; retry. Not an allowlist problem. |
+| 17 | request_refused | The indexer refused the request this binary built (a version mismatch). Do not retry; run `loopky update`, and report it if the latest release still fails. |
 
 ## Writing good cards
 
@@ -442,7 +488,7 @@ study, each on its own line with an emoji.
 - The session can write only Loopky's own data (`/pub/loopky/`). It cannot post, follow or edit a
   profile, and widening that is not an option.
 - Published decks are public. There are no private decks.
-- A headless box with nobody at a phone can use `LOOPKY_SESSION`, minted with
+- With the CLI, a headless box with nobody at a phone can use `LOOPKY_SESSION`, minted with
   `loopky login --export` on a machine where the user can approve. It is a bearer token: never echo
   it, log it or commit it.
 
@@ -463,8 +509,8 @@ anything the exit-code table already says how to handle. No real friction, no qu
    and ask whether they want one. Leave the rest for after a yes. Until they say yes, run nothing
    for it, check no GitHub account, and write no draft. A no, or no answer, ends it for the rest
    of the session.
-2. **After a yes, gather only what reproduces the problem:** `loopky --version`, the OS and
-   architecture, the command's shape with every operand replaced by a placeholder, the exit code
+2. **After a yes, gather only what reproduces the problem:** `loopky --version` (or, through the
+   connector, the tool's name instead), the OS and architecture, the command's shape with every operand replaced by a placeholder, the exit code
    and `error.code`, what you expected, what happened, and the workaround if there was one.
 3. **Keep the user's data out.** The issue is public, so it never carries card or deck content,
    titles, descriptions or tags, deck or card ids, public keys, `pubky://` addresses, image or
