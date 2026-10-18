@@ -1,6 +1,9 @@
 package com.github.jvsena42.loopky.mcp.tools
 
 import java.net.IDN
+import java.net.Inet4Address
+import java.net.Inet6Address
+import java.net.InetAddress
 import java.net.URI
 
 /**
@@ -30,7 +33,7 @@ fun interface UrlGuard {
 
         fun syntacticRefusal(url: String): String? {
             val uri = runCatching { URI(url) }.getOrElse { return "is not a valid URL" }
-            val host = uri.host?.trim('[', ']')?.lowercase() ?: return "has no host"
+            val host = uri.host?.trim('[', ']')?.lowercase()?.trimEnd('.') ?: return "has no host"
             return when {
                 !uri.scheme.equals("https", ignoreCase = true) -> "must be an https:// address"
                 uri.rawUserInfo != null -> "carries credentials, which an address on a card never should"
@@ -43,19 +46,43 @@ fun interface UrlGuard {
         private val LOCAL_NAMES = setOf("localhost", "localhost.localdomain", "0.0.0.0", "metadata.google.internal")
         private val LOCAL_SUFFIXES = listOf(".localhost", ".local", ".internal", ".home.arpa", ".lan")
 
+        /**
+         * Reads the host the way a browser's URL parser does, so `2130706433`, `0x7f000001` and
+         * `0177.0.0.1` are the loopback they resolve to rather than names (#535): a host whose last
+         * label is a number is an IPv4 address, and one that does not parse as one is refused.
+         */
         private fun String.isNonPublicAddress(): Boolean {
             val ascii = runCatching { IDN.toASCII(this) }.getOrDefault(this)
-            ipv4Octets(ascii)?.let { return it.isNonPublicIpv4() }
             if (':' in ascii) return ascii.isNonPublicIpv6()
-            return false
+            if (!ascii.substringAfterLast('.').isIpv4Number()) return false
+            return ipv4Octets(ascii)?.isNonPublicIpv4() ?: true
         }
 
+        private fun String.isIpv4Number(): Boolean =
+            isNotEmpty() && (all { it.isDigit() } || (startsWith("0x") && drop(2).all { it.isHexDigit() }))
+
+        /** WHATWG's IPv4 parser: up to four parts, each decimal, `0x` hex or leading-zero octal. */
+        @Suppress("MagicNumber", "ReturnCount")
         private fun ipv4Octets(host: String): List<Int>? {
             val parts = host.split('.')
-            if (parts.size != IPV4_OCTETS) return null
-            val octets = parts.map { it.toIntOrNull() ?: return null }
-            return octets.takeIf { octets.all { it in 0..OCTET_MAX } }
+            if (parts.size > IPV4_OCTETS) return null
+            val numbers = parts.map { it.ipv4Part() ?: return null }
+            val leading = numbers.dropLast(1)
+            if (leading.any { it > OCTET_MAX }) return null
+            val last = numbers.last()
+            if (last >= 1L shl (8 * (IPV4_OCTETS - leading.size))) return null
+            val value = leading.foldIndexed(last) { i, acc, octet -> acc + (octet shl (8 * (IPV4_OCTETS - 1 - i))) }
+            return (IPV4_OCTETS - 1 downTo 0).map { ((value shr (8 * it)) and 0xFF).toInt() }
         }
+
+        @Suppress("MagicNumber")
+        private fun String.ipv4Part(): Long? = when {
+            startsWith("0x") -> drop(2).ifEmpty { "0" }.takeIf { it.length <= 8 }?.toLongOrNull(16)
+            length > 1 && startsWith("0") -> drop(1).takeIf { it.length <= 11 }?.toLongOrNull(8)
+            else -> takeIf { it.length <= 10 }?.toLongOrNull()
+        }
+
+        private fun Char.isHexDigit(): Boolean = isDigit() || this in 'a'..'f'
 
         @Suppress("MagicNumber", "CyclomaticComplexMethod")
         private fun List<Int>.isNonPublicIpv4(): Boolean {
@@ -69,11 +96,42 @@ fun interface UrlGuard {
                 a >= 224
         }
 
+        /**
+         * Through [InetAddress], which parses a literal without DNS, so `0:0:0:0:0:0:0:1` is `::1`.
+         * Anything IPv4-mapped or -compatible is refused whatever it embeds, as are local-use NAT64
+         * and Teredo (`2001::/32`); well-known NAT64 and 6to4 (`2002::/16`) when they embed a private
+         * address.
+         */
+        @Suppress("MagicNumber")
         private fun String.isNonPublicIpv6(): Boolean {
-            val lower = lowercase()
-            return lower == "::" || lower == "::1" || lower.startsWith("fe8") || lower.startsWith("fe9") ||
-                lower.startsWith("fea") || lower.startsWith("feb") || lower.startsWith("fc") ||
-                lower.startsWith("fd") || lower.startsWith("::ffff:") || lower.startsWith("ff")
+            val address = runCatching { InetAddress.getByName("[$this]") }.getOrElse { return true }
+            if (address is Inet4Address) return true
+            val bytes = (address as? Inet6Address)?.address ?: return true
+            val first = bytes[0].toInt() and 0xFF
+            val second = bytes[1].toInt() and 0xFF
+            return bytes.take(12).all { it.toInt() == 0 } ||
+                bytes.isNonPublicTunnel() ||
+                (first and 0xFE) == 0xFC ||
+                (first == 0xFE && (second and 0xC0) in setOf(0x80, 0xC0)) ||
+                first == 0xFF
+        }
+
+        /** 64:ff9b::/96, the well-known NAT64 prefix: the IPv4 address it embeds is the one reached. */
+        private val NAT64_PREFIX: List<Byte> = listOf(0, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0).map { it.toByte() }
+
+        /** 64:ff9b:1::/48, local-use NAT64: whatever it translates to is the operator's choice. */
+        private val NAT64_LOCAL_PREFIX: List<Byte> = listOf(0, 0x64, 0xff, 0x9b, 0, 1).map { it.toByte() }
+
+        /** NAT64, 6to4 and Teredo, which carry or reach an IPv4 address of their own. */
+        @Suppress("MagicNumber")
+        private fun ByteArray.isNonPublicTunnel(): Boolean {
+            fun octets(range: IntRange) = slice(range).map { it.toInt() and 0xFF }
+            val first = this[0].toInt() and 0xFF
+            val second = this[1].toInt() and 0xFF
+            return (take(12) == NAT64_PREFIX && octets(12..15).isNonPublicIpv4()) ||
+                take(6) == NAT64_LOCAL_PREFIX ||
+                (first == 0x20 && second == 0x02 && octets(2..5).isNonPublicIpv4()) ||
+                (first == 0x20 && second == 0x01 && this[2].toInt() == 0 && this[3].toInt() == 0)
         }
 
         private const val IPV4_OCTETS = 4

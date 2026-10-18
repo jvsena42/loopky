@@ -283,6 +283,58 @@ class ImportRepositoryImplTest {
     }
 
     @Test
+    fun spacedPipeIsRealSeparator() = runBlocking {
+        // `a | b` is how a pipe pair is usually typed (#533)
+        val draft = repo().parse("cat | gato\ndog | cachorro\nbird | p\u00e1ssaro").getOrThrow()
+        assertIs<Separator.Pipe>(draft.separator)
+        assertEquals(listOf("cat", "gato"), draft.rows[0].fields)
+    }
+
+    @Test
+    fun spacedSemicolonIsRealSeparator() = runBlocking {
+        val draft = repo().parse("cat; gato\ndog; cachorro\ngood morning; bom dia").getOrThrow()
+        assertIs<Separator.Semicolon>(draft.separator)
+        assertEquals(listOf("good morning", "bom dia"), draft.rows[2].fields)
+    }
+
+    @Test
+    fun aSpacedSemicolonInsideADashBackLeavesTheDashToSplit() = runBlocking {
+        val draft = repo().parse("cat - a small animal; a pet\ndog - a loyal animal; a friend").getOrThrow()
+        assertIs<Separator.EmDash>(draft.separator)
+        assertEquals(listOf("cat", "a small animal; a pet"), draft.rows[0].fields)
+    }
+
+    @Test
+    fun aSpacedSemicolonInsideAPipeBackLeavesThePipeToSplit() = runBlocking {
+        val draft = repo().parse("run | correr; huir\nwalk | andar; caminar").getOrThrow()
+        assertIs<Separator.Pipe>(draft.separator)
+        assertEquals(listOf("run", "correr; huir"), draft.rows[0].fields)
+    }
+
+    @Test
+    fun oneProseLineDoesNotRejectASemicolonDeck(): Unit = runBlocking {
+        val text = (1..50).joinToString("\n") { "word$it;translation$it" } + "\nShe ran quickly; he walked slowly"
+        assertIs<Separator.Semicolon>(repo().parse(text).getOrThrow().separator)
+        Unit
+    }
+
+    @Test
+    fun aSpacedPipePhraseDeckIsNotProse() = runBlocking {
+        val draft = repo().parse(
+            "Where is the station | D\u00f3nde est\u00e1 la estaci\u00f3n\nI would like a coffee | Quisiera un caf\u00e9 por favor",
+        ).getOrThrow()
+        assertIs<Separator.Pipe>(draft.separator)
+        assertEquals("Where is the station", draft.rows[0].fields[0])
+    }
+
+    @Test
+    fun spacedCommaStaysPunctuation(): Unit = runBlocking {
+        val draft = repo().parse("cat, gato\ndog, cachorro").getOrThrow()
+        assertIs<Separator.SingleColumn>(draft.separator)
+        Unit
+    }
+
+    @Test
     fun pipeInShellCommandsNotSeparator(): Unit = runBlocking {
         // Shell pipes — both sides are commands, not front/back pairs
         val text = "ls -la | grep .txt | head\ncat file.log | sort | uniq -c"

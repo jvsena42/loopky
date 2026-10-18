@@ -1,11 +1,13 @@
 package com.github.jvsena42.loopky.data.nexus
 
 import com.github.jvsena42.loopky.data.repository.impl.loopkyJson
+import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.encodeUriComponent
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlin.concurrent.Volatile
 
 /**
  * Read-only client for the Pubky Nexus indexer (`/v0` REST API), which aggregates the whole network
@@ -96,6 +98,31 @@ class NexusClient(
         skip: Int = 0,
         sorting: NexusResourceSorting = NexusResourceSorting.TaggersCount,
     ): Result<List<NexusResourceDto>> = runSuspendCatching {
+        val effective = if (taggersCountRefused) NexusResourceSorting.Timeline else sorting
+        runSuspendCatching { streamResources(label, limit, skip, effective) }.getOrElse { error ->
+            if (effective != NexusResourceSorting.TaggersCount || (error as? HttpError)?.statusCode != HTTP_BAD_REQUEST) {
+                throw error
+            }
+            Log.w(TAG, "resourcesByTag: indexer refused taggers_count; sampling by timeline from now on")
+            taggersCountRefused = true
+            streamResources(label, limit, skip, NexusResourceSorting.Timeline)
+        }
+    }
+
+    /**
+     * Set once the indexer has answered `taggers_count` with a 400: newer Nexus builds accept only
+     * `timeline` (staging since October 2026, #532), and asking again would cost every later read
+     * a refused request first.
+     */
+    @Volatile
+    private var taggersCountRefused = false
+
+    private suspend fun streamResources(
+        label: String,
+        limit: Int,
+        skip: Int,
+        sorting: NexusResourceSorting,
+    ): List<NexusResourceDto> {
         val url = buildString {
             append("$baseUrl/v0/stream/resources")
             append("?app=$LOOPKY_APP")
@@ -104,7 +131,7 @@ class NexusClient(
             append("&limit=${limit.coerceIn(1, MAX_RESOURCE_LIMIT)}")
             append("&skip=$skip")
         }
-        withIndexerRetry("resourcesByTag") {
+        return withIndexerRetry("resourcesByTag") {
             val body = http.get(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(NexusResourceDto.serializer()), body)
         }
@@ -212,6 +239,9 @@ class NexusClient(
     }
 
     companion object {
+        private const val TAG = "Loopky/Nexus"
+        private const val HTTP_BAD_REQUEST = 400
+
         /** The `/pub/{app}/tags/` segment Loopky writes deck tag records under. */
         const val LOOPKY_APP = "loopky"
 
@@ -252,7 +282,10 @@ enum class NexusResourceSorting(val wire: String) {
     /** `indexed_at` descending — newest first, and the only order with a stable cursor. */
     Timeline("timeline"),
 
-    /** Distinct taggers summed over every label on the resource. Unstable under paging. */
+    /**
+     * Distinct taggers summed over every label on the resource. Unstable under paging, and gone
+     * from newer Nexus builds, where [NexusClient.resourcesByTag] falls back to [Timeline] (#532).
+     */
     TaggersCount("taggers_count"),
 }
 

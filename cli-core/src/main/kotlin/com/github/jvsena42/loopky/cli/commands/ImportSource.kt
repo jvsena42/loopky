@@ -60,7 +60,13 @@ internal suspend fun parseSource(
 
     if (imports.keptRows().isEmpty()) {
         imports.clear()
-        throw CliError(ExitCode.BadInput, "Nothing importable in $source.")
+        val hint = if (parsed.draft.separator is Separator.SingleColumn) {
+            ": no separator was detected, so every line read as a front with no back. Name the one the " +
+                "lines use with --separator (tab, semicolon, pipe, comma, colon, dash)"
+        } else {
+            ""
+        }
+        throw CliError(ExitCode.BadInput, "Nothing importable in $source$hint.")
     }
     return parsed
 }

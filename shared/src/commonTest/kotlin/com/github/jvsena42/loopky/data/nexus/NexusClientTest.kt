@@ -41,6 +41,19 @@ class NexusClientTest {
     // ── resource + tagger reads (global discovery) ───────────────────────
 
     @Test
+    fun anIndexerThatRefusesTaggerCountIsAskedByTimelineFromThenOn() = runTest {
+        // Staging's Nexus since October 2026: 400 "unknown variant `taggers_count`" (#532).
+        val byCount = "$BASE/v0/stream/resources?app=loopky&tags=loopky-deck&sorting=taggers_count&limit=30&skip=0"
+        val byTime = "$BASE/v0/stream/resources?app=loopky&tags=loopky-deck&sorting=timeline&limit=30&skip=0"
+        http.enqueue(HttpMethod.GET, byCount, HttpResponse(statusCode = 400, body = ""))
+        http.respond(byTime, "[]")
+
+        assertEquals(emptyList(), client.resourcesByTag("loopky-deck", limit = 30).getOrThrow())
+        assertEquals(emptyList(), client.resourcesByTag("loopky-deck", limit = 30).getOrThrow())
+        assertEquals(listOf(byCount, byTime, byTime), http.requestedUrls)
+    }
+
+    @Test
     fun resourcesByTagAsksForLoopkyResourcesSortedByTaggerCount() = runTest {
         val url = "$BASE/v0/stream/resources" +
             "?app=loopky&tags=loopky-deck&sorting=taggers_count&limit=30&skip=0"

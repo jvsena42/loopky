@@ -155,13 +155,20 @@ class OAuthClient(val harness: OAuthHarness, val http: HttpClient) {
     val clock get() = harness.clock
     val server get() = harness.server
 
-    suspend fun register(name: String = "Claude", redirects: List<String> = listOf(CALLBACK), extra: String = ""): HttpResponse =
+    suspend fun register(
+        name: String = "Claude",
+        redirects: List<String> = listOf(CALLBACK),
+        extra: String = "",
+        ip: String? = null,
+    ): HttpResponse =
         http.post("/register") {
+            ip?.let { header("X-Forwarded-For", it) }
             contentType(ContentType.Application.Json)
             setBody("""{"client_name":${Json.encodeToString(String.serializer(), name)},"redirect_uris":${redirects.toJson()}$extra}""")
         }
 
-    suspend fun registerClient(name: String = "Claude"): String = register(name).json()["client_id"]!!.jsonPrimitive.content
+    suspend fun registerClient(name: String = "Claude", ip: String? = null): String =
+        register(name, ip = ip).json()["client_id"]!!.jsonPrimitive.content
 
     suspend fun authorize(
         clientId: String,
@@ -190,8 +197,8 @@ class OAuthClient(val harness: OAuthHarness, val http: HttpClient) {
         }
     }
 
-    suspend fun authorizeTxn(clientId: String, verifier: String = VERIFIER, state: String? = "xyz"): String {
-        val page = authorize(clientId, verifier = verifier, state = state)
+    suspend fun authorizeTxn(clientId: String, verifier: String = VERIFIER, state: String? = "xyz", ip: String = "203.0.113.7"): String {
+        val page = authorize(clientId, verifier = verifier, state = state, ip = ip)
         assertEquals(HttpStatusCode.OK, page.status, page.bodyAsText())
         return txnOf(page.bodyAsText())
     }
@@ -202,10 +209,16 @@ class OAuthClient(val harness: OAuthHarness, val http: HttpClient) {
     }.json()
 
     /** Registers, authorizes, approves in Ring and returns the code the page would redirect with. */
-    suspend fun codeFor(clientId: String, verifier: String = VERIFIER, pubky: String = PUBKY, secret: String = SESSION_SECRET): String {
-        val txn = authorizeTxn(clientId, verifier)
+    suspend fun codeFor(
+        clientId: String,
+        verifier: String = VERIFIER,
+        pubky: String = PUBKY,
+        secret: String = SESSION_SECRET,
+        ip: String = "203.0.113.7",
+    ): String {
+        val txn = authorizeTxn(clientId, verifier, ip = ip)
         ring.approve(pubky, secret)
-        val approved = status(txn)
+        val approved = status(txn, ip)
         assertEquals("approved", approved["status"]?.jsonPrimitive?.content, approved.toString())
         return codeOf(approved["redirect"]!!.jsonPrimitive.content)
     }
@@ -216,6 +229,7 @@ class OAuthClient(val harness: OAuthHarness, val http: HttpClient) {
         verifier: String = VERIFIER,
         redirect: String = CALLBACK,
         resource: String? = null,
+        ip: String? = null,
     ): HttpResponse {
         return http.submitForm(
             "/token",
@@ -227,22 +241,28 @@ class OAuthClient(val harness: OAuthHarness, val http: HttpClient) {
                 append("code_verifier", verifier)
                 resource?.let { append("resource", it) }
             },
-        )
+        ) { ip?.let { header("X-Forwarded-For", it) } }
     }
 
-    suspend fun refresh(token: String, clientId: String) = http.submitForm(
+    suspend fun refresh(token: String, clientId: String, ip: String? = null) = http.submitForm(
         "/token",
         parameters {
             append("grant_type", "refresh_token")
             append("refresh_token", token)
             append("client_id", clientId)
         },
-    )
+    ) { ip?.let { header("X-Forwarded-For", it) } }
 
-    suspend fun revoke(token: String) = http.submitForm("/revoke", parameters { append("token", token) })
+    suspend fun revoke(token: String, ip: String? = null) =
+        http.submitForm("/revoke", parameters { append("token", token) }) { ip?.let { header("X-Forwarded-For", it) } }
 
-    suspend fun tokensFor(clientId: String, verifier: String = VERIFIER): TokenPair {
-        val response = exchange(codeFor(clientId, verifier), clientId, verifier)
+    suspend fun tokensFor(
+        clientId: String,
+        verifier: String = VERIFIER,
+        browserIp: String = "203.0.113.7",
+        backendIp: String? = null,
+    ): TokenPair {
+        val response = exchange(codeFor(clientId, verifier, ip = browserIp), clientId, verifier, ip = backendIp)
         assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
         return response.json().tokens()
     }

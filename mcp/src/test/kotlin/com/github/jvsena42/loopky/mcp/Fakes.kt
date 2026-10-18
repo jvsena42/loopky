@@ -23,9 +23,16 @@ import com.github.jvsena42.loopky.mcp.tenant.TenantFactory
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Tokens to principals. A token absent here is "not live". */
-class FakeVerifier(private val tokens: Map<String, Principal>) : AccessTokenVerifier {
-    override suspend fun verify(accessToken: String): Principal? = tokens[accessToken]
+/** Tokens to principals. A token in [lapsed] was issued and has expired; any other is unknown. */
+class FakeVerifier(
+    private val tokens: Map<String, Principal>,
+    private val lapsed: Set<String> = emptySet(),
+) : AccessTokenVerifier {
+    override suspend fun check(accessToken: String): TokenCheck = when (accessToken) {
+        in tokens -> TokenCheck.Live(tokens.getValue(accessToken))
+        in lapsed -> TokenCheck.Lapsed
+        else -> TokenCheck.Unknown
+    }
 }
 
 /** Pubkys to secrets, and a record of every revocation reported. */

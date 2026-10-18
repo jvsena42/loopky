@@ -53,7 +53,19 @@ data class OAuthLimits(
     val pending: PendingLoginCaps = PendingLoginCaps(),
     val maxBodyBytes: Int = DEFAULT_MAX_BODY_BYTES,
     val maxClientNameLength: Int = DEFAULT_MAX_CLIENT_NAME,
+    /**
+     * Per address — and from [com.github.jvsena42.loopky.mcp.McpConfig.sharedEgress], per client on
+     * `/token` and `/revoke`, the client being the one the stored credential belongs to, since one
+     * address there is every Claude user at once (#538).
+     */
     val requestRate: RateLimitPolicy = RateLimitPolicy.perMinute(count = 20, burst = 10),
+    /**
+     * From the shared range, for what carries nothing verified to key on: `/register`, and a
+     * `/token` or `/revoke` whose credential nothing stored matches. One budget each for the
+     * whole range, sized for every user at once rather than for one caller; the edge's range
+     * ceiling sits above. A registration stores a client row, which is why it is bounded at all.
+     */
+    val sharedUnkeyedRate: RateLimitPolicy = RateLimitPolicy.perMinute(count = 300, burst = 100),
     /** The authorize page polls every two seconds for up to five minutes. */
     val statusRate: RateLimitPolicy = RateLimitPolicy.perMinute(count = 60, burst = 30),
 ) {

@@ -78,7 +78,26 @@ every Loopky user at once: a per-address limit sized for one caller would let on
 the rest. The range gets a ceiling sized for all of them instead, which also bounds anonymous
 calls and made-up bearers from Anthropic's infrastructure (any API customer can point a connector
 here), and a per-bearer budget under it. If Anthropic changes the range, update the default in
-`Caddyfile.example`. `edge-test.sh` checks every row in CI against the image, including that two
+`Caddyfile.example`, in `compose.yml` and in `SharedEgress.ANTHROPIC` together.
+
+The app reads the same `LOOPKY_MCP_SHARED_EGRESS` for its own limits (#538), since an address in
+the range is every user there too:
+
+| Limit | Outside the range | Inside it |
+|---|---|---|
+| `/authorize`, `/authorize/status` | per address | per address — the user's own browser loads these |
+| `/token`, `/revoke` | 20/min per address | 20/min per client — the one the stored code or token belongs to; 300/min for the whole range when it matches nothing stored |
+| `/register` | 20/min per address | 300/min for the whole range: it carries no credential to key on |
+| Failed bearers on `/mcp` | 60/min per address, tokens this server never issued only | the same; an issued token that expired is always the 401, never counted |
+
+Inside the range a client's budget is keyed on the client its stored code or token belongs to,
+never on a `client_id` the form names: only a holder of that credential can spend it, and a made-up
+key earns no bucket of its own. The two whole-range budgets are shared on purpose — anyone calling
+from the range can drain them, which delays new connections (or turns garbage credentials into a
+429) for about a minute — and the edge's range ceiling above is the bound past them. If Claude ever
+shares one client across users, per-client stops meaning per-user.
+
+`edge-test.sh` checks every row in CI against the image, including that two
 bearers do not share a budget. The module is pinned by commit, which no Dependabot ecosystem
 tracks; see `.github/dependabot.yml`.
 

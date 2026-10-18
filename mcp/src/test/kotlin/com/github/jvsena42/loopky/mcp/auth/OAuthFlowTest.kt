@@ -450,6 +450,48 @@ class OAuthFlowTest {
     }
 
     @Test
+    fun `from Claude's shared egress, refreshes are budgeted per client and not per address`() = oauthTest(
+        OAuthLimits(requestRate = RateLimitPolicy(burst = 3, perSecond = 0.0)),
+    ) {
+        // Every Claude user's backend calls leave from Anthropic's range (#538): five users on one
+        // address would have spent a per-address budget of three before the second exchanged a code.
+        val users = (1..5).map { user ->
+            val clientId = registerClient(ip = CLAUDE_EGRESS)
+            clientId to tokensFor(clientId, VERIFIER + user, browserIp = "203.0.113.$user", backendIp = CLAUDE_EGRESS)
+        }
+        val renewed = users.map { (clientId, tokens) ->
+            val response = refresh(tokens.refresh, clientId, ip = CLAUDE_EGRESS)
+            assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
+            clientId to response.json().tokens()
+        }
+        renewed.forEach { (clientId, tokens) ->
+            assertEquals(HttpStatusCode.OK, refresh(tokens.refresh, clientId, ip = CLAUDE_EGRESS).status)
+        }
+        // A client is still bounded on its own: its fourth call is over the budget.
+        val (clientId, tokens) = renewed.first()
+        val limited = refresh(tokens.refresh, clientId, ip = CLAUDE_EGRESS)
+        assertEquals(HttpStatusCode.TooManyRequests, limited.status)
+        assertNotNull(limited.headers[HttpHeaders.RetryAfter])
+        // Outside the range, the per-address budget is unchanged.
+        repeat(3) { assertEquals(HttpStatusCode.Created, register(ip = "198.51.100.1").status) }
+        assertEquals(HttpStatusCode.TooManyRequests, register(ip = "198.51.100.1").status)
+    }
+
+    @Test
+    fun `from the shared egress, naming someone's client_id does not spend their budget`() = oauthTest(
+        OAuthLimits(requestRate = RateLimitPolicy(burst = 2, perSecond = 0.0)),
+    ) {
+        val clientId = registerClient(ip = CLAUDE_EGRESS)
+        val tokens = tokensFor(clientId, backendIp = CLAUDE_EGRESS)
+        repeat(5) {
+            val forged = refresh("lk_rt_" + "A".repeat(43), clientId, ip = CLAUDE_EGRESS)
+            assertNotEquals(HttpStatusCode.OK, forged.status)
+        }
+        // The exchange spent one of two; the owner's refresh still has the other.
+        assertEquals(HttpStatusCode.OK, refresh(tokens.refresh, clientId, ip = CLAUDE_EGRESS).status)
+    }
+
+    @Test
     fun `re-linking stores the new credential and revokes the old grant`() = oauthTest {
         val clientId = registerClient()
         val first = tokensFor(clientId)
@@ -493,3 +535,5 @@ class OAuthFlowTest {
         assertNotNull(server.verifier.verify(first.access))
     }
 }
+
+private const val CLAUDE_EGRESS = "160.79.104.10"

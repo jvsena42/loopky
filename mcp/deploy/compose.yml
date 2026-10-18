@@ -26,6 +26,9 @@ services:
       LOOPKY_MCP_ENV: ${LOOPKY_MCP_ENV}
       LOOPKY_MCP_PUBLIC_URL: ${LOOPKY_MCP_PUBLIC_URL:?}
       LOOPKY_MCP_MASTER_KEY_FILE: /run/secrets/master_key
+      # The same range the edge's Caddyfile treats as Anthropic's; the app keys its OAuth backend
+      # routes per client there (#538). Change the two together.
+      LOOPKY_MCP_SHARED_EGRESS: ${LOOPKY_MCP_SHARED_EGRESS:-160.79.104.0/21}
     volumes:
       - /srv/loopky-mcp/${LOOPKY_MCP_ENV}/data:/data
       - /etc/loopky-mcp/${LOOPKY_MCP_ENV}/master_key:/run/secrets/master_key:ro

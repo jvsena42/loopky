@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.mcp.security
 
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.plugins.origin
 import io.ktor.server.response.header
@@ -79,6 +80,9 @@ class TokenBucketLimiter(
 
 class RateLimitConfig {
     lateinit var limiter: TokenBucketLimiter
+
+    /** Addresses this limit does not apply to, because the route keys them on something else. */
+    var exempt: SharedEgress = SharedEgress.NONE
 }
 
 /**
@@ -88,11 +92,18 @@ class RateLimitConfig {
  */
 val RateLimitByIp = createRouteScopedPlugin("RateLimitByIp", ::RateLimitConfig) {
     val limiter = pluginConfig.limiter
+    val exempt = pluginConfig.exempt
     onCall { call ->
+        if (exempt.contains(call.request.origin.remoteHost)) return@onCall
         val key = ClientKey.of(call.request.origin.remoteHost)
-        if (!limiter.tryAcquire(key)) {
-            call.response.header(HttpHeaders.RetryAfter, limiter.retryAfterSeconds(key).toString())
-            call.respondText("Too many requests", status = HttpStatusCode.TooManyRequests)
-        }
+        call.admitted(limiter, key)
     }
+}
+
+/** Charges [key] on [limiter]; false once the call has been answered 429. */
+suspend fun ApplicationCall.admitted(limiter: TokenBucketLimiter, key: String): Boolean {
+    if (limiter.tryAcquire(key)) return true
+    response.header(HttpHeaders.RetryAfter, limiter.retryAfterSeconds(key).toString())
+    respondText("Too many requests", status = HttpStatusCode.TooManyRequests)
+    return false
 }

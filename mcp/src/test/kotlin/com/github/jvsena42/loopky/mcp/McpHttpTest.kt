@@ -149,6 +149,27 @@ class McpHttpTest {
     }
 
     @Test
+    fun `an expired token is always the 401 that says refresh, however many share its address`() = testApplication {
+        // Every Claude user's expired token arrives from the same few Anthropic addresses (#538).
+        val expired = (1..50).map { "expired-$it" }.toSet()
+        application {
+            installMcp(
+                deps(
+                    limits = HttpLimits(failedAuthRate = RateLimitPolicy(burst = 2, perSecond = 0.0)),
+                    verifier = FakeVerifier(mapOf("token-alice" to Principal("alice", "claude")), lapsed = expired),
+                ),
+            )
+        }
+        repeat(3) { client.rpc(INITIALIZE, token = "made-up-$it") }
+        expired.forEach { token ->
+            val response = client.rpc(INITIALIZE, token = token)
+            assertEquals(HttpStatusCode.Unauthorized, response.status, token)
+            assertNotNull(response.headers[HttpHeaders.WWWAuthenticate], token)
+        }
+        assertEquals(HttpStatusCode.TooManyRequests, client.rpc(INITIALIZE, token = "made-up-again").status)
+    }
+
+    @Test
     fun `a token seen failing is refused again without a lookup`() = testApplication {
         val counting = CountingVerifier(verifier)
         application { installMcp(deps(verifier = counting)) }
@@ -296,8 +317,8 @@ class McpHttpTest {
 private class CountingVerifier(private val delegate: AccessTokenVerifier) : AccessTokenVerifier {
     @Volatile var calls = 0
 
-    override suspend fun verify(accessToken: String): Principal? {
+    override suspend fun check(accessToken: String): TokenCheck {
         calls++
-        return delegate.verify(accessToken)
+        return delegate.check(accessToken)
     }
 }

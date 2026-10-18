@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.mcp
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.mcp.security.SharedEgress
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -27,6 +28,8 @@ data class McpConfig(
     val pubkyClientId: String,
     /** Exact redirect URIs a registered client may use; Claude's callback at launch (#486). */
     val allowedRedirectUris: Set<String>,
+    /** Where one address is many users; the OAuth backend routes key on a credential there (#538). */
+    val sharedEgress: SharedEgress = SharedEgress.parse(SharedEgress.ANTHROPIC),
 ) {
     val resourceUrl: String get() = "$publicUrl/mcp"
 
@@ -54,6 +57,7 @@ data class McpConfig(
                 pubkyClientId = env("LOOPKY_MCP_PUBKY_CLIENT_ID") ?: publicUrl.removePrefix("https://"),
                 allowedRedirectUris = (env("LOOPKY_MCP_REDIRECT_URIS") ?: CLAUDE_CALLBACK)
                     .split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
+                sharedEgress = SharedEgress.parse(env("LOOPKY_MCP_SHARED_EGRESS") ?: SharedEgress.ANTHROPIC),
             )
         }
 

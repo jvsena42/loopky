@@ -215,11 +215,14 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
      *
      * A bearer that verifies is never refused, whatever its address has done: Claude's users share
      * a handful of egress addresses, so refusing by address would lock all of them out together.
-     * A *repeated* failing token is answered from [failedTokens] without a lookup; a fresh one is
-     * still looked up — about what a valid request costs, so nothing is amplified — and charges
-     * its address, which is told to back off (429) once it has spent its bucket. That bucket is a
-     * signal, not a shield: per-address request limiting belongs to the front proxy (#518). A
-     * request with no token at all — RFC 9728 discovery — costs nothing and is never charged.
+     * Nor is one this server issued and has since lapsed — an expired token is the 401 that tells
+     * Claude to refresh, and every user's arrives from those same addresses (#538). A *repeated*
+     * failing token is answered from [failedTokens] without a lookup; a fresh one is still looked
+     * up — about what a valid request costs, so nothing is amplified — and only one this server
+     * never issued charges its address, which is told to back off (429) once it has spent its
+     * bucket. That bucket is a signal, not a shield: per-address request limiting belongs to the
+     * front proxy (#518). A request with no token at all — RFC 9728 discovery — costs nothing and
+     * is never charged.
      */
     private suspend fun authenticated(call: ApplicationCall): Principal? {
         if (!wellFormed(call)) return null
@@ -229,10 +232,15 @@ private class McpSessions(private val deps: McpDeps, private val dispatcher: Too
             return null
         }
         val digest = sha256Hex(token)
-        val principal = if (failedTokens.contains(digest)) null else deps.verifier.verify(token)
+        val check = failedTokens[digest] ?: deps.verifier.check(token)
+        val principal = (check as? TokenCheck.Live)?.principal
         when {
+            check == TokenCheck.Lapsed -> {
+                failedTokens.add(digest, check)
+                call.unauthorized(null)
+            }
             principal == null -> {
-                failedTokens.add(digest)
+                failedTokens.add(digest, TokenCheck.Unknown)
                 val address = ClientKey.of(call.request.origin.remoteHost)
                 if (failedAuth.tryAcquire(address)) {
                     call.unauthorized(null)
@@ -388,14 +396,14 @@ private const val CONNECTION_CLOSED = -32_000
  * failed once never verifies later — tokens are minted random, and a revoked one stays revoked.
  */
 private class FailedTokens(private val capacity: Int) {
-    private val digests = object : LinkedHashMap<String, Unit>(INITIAL_CAPACITY, LOAD_FACTOR, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Unit>?) = size > capacity
+    private val digests = object : LinkedHashMap<String, TokenCheck>(INITIAL_CAPACITY, LOAD_FACTOR, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, TokenCheck>?) = size > capacity
     }
 
-    fun contains(digest: String): Boolean = synchronized(digests) { digests.containsKey(digest) }
+    operator fun get(digest: String): TokenCheck? = synchronized(digests) { digests[digest] }
 
-    fun add(digest: String) {
-        synchronized(digests) { digests[digest] = Unit }
+    fun add(digest: String, check: TokenCheck) {
+        synchronized(digests) { digests[digest] = check }
     }
 
     private companion object {
