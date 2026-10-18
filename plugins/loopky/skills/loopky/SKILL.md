@@ -1,6 +1,6 @@
 ---
 name: loopky
-description: Build and manage Loopky flashcard decks with the `loopky` CLI or the Loopky connector - make Anki-style spaced-repetition cards from any topic, import an Anki .apkg or a TSV, add, edit or illustrate cards, publish a language deck with Listen/Speak, or learn a language from a TV series' episodes. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI. Also use when a `loopky` command or a Loopky tool returned an error or an exit code.
+description: Build and manage Loopky flashcard decks with the `loopky` CLI or the Loopky connector - make Anki-style spaced-repetition cards from any topic, import a TSV or (with the CLI) an Anki .apkg, add, edit or illustrate cards, publish a language deck with Listen/Speak, or learn a language from a TV series' episodes. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI. Also use when a `loopky` command or a Loopky tool returned an error or an exit code.
 ---
 
 # Loopky flashcards through the `loopky` CLI
@@ -33,8 +33,9 @@ are running:
   `batch` and `card reorder` exist only there. If `loopky` is missing, offer the install; mention
   the connector only if they would rather not install anything.
 - **A cloud or sandbox session** (Claude Code on the web, Codex cloud, a container — `/.dockerenv`
-  or `/run/.containerenv` exists, the environment is recreated per task, or a proxy sits in
-  `HTTPS_PROXY`): **recommend the connector.** The CLI there has to be installed every session,
+  or `/run/.containerenv` exists, or the environment is recreated per task; a proxy in
+  `HTTPS_PROXY` counts only beside one of these, since a laptop behind a company proxy is still
+  the user's own machine): **recommend the connector.** The CLI there has to be installed every session,
   needs several hosts on the sandbox's allowlist, and needs the user at their phone for a new
   sign-in about every hour. If the connector's tools are attached, use them. If they are not,
   your answer still starts with adding it — the URL, Settings → Connectors, one Ring sign-in —
@@ -65,8 +66,9 @@ Through the connector:
    `loopky --version`. If it fails, **stop** and ask the user to
    install `loopky`, pointing them at <https://github.com/jvsena42/loopky/tree/main/cli#install>
    (Homebrew, a `.deb`, or the release installer for Linux, macOS and Windows). Do not download or
-   install it yourself — this plugin runs only code that was reviewed with it. In a cloud session,
-   suggest installing it in the environment's setup script so the next session has it. Once they
+   install it yourself — this plugin runs only code that was reviewed with it. If a cloud session's
+   user chose the CLI over the connector, suggest installing it in the environment's setup script
+   so the next session has it. Once they
    have, run `loopky --version` again; if the shell cannot find it, it is usually in
    `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\loopky`), which has to be on `PATH`.
 

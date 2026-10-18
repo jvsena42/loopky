@@ -152,12 +152,14 @@ held in memory to limit request rates, and are not logged.
 **How long it is kept, and how to remove it.** Claude's access tokens last an hour and are renewed
 with a refresh token that lasts 90 days from its last use.
 
-- **Revoke the connector in Pubky Ring**, where it appears as `mcp.loopky.app`. The connector's
-  next request is refused, and it deletes everything above for your key.
+- **Revoke the connector in Pubky Ring**, where it appears as `mcp.loopky.app`. From then on it
+  cannot write anything for you. It finds out the next time Claude uses a Loopky tool, when your
+  homeserver refuses the session, and then deletes everything above for your key. Until that
+  happens the encrypted session stays on the server, though it no longer works.
 - **Disconnect it in Claude.** That stops Claude using it.
-- **Either way, a connection nobody uses for 90 days ends on its own.** The connector revokes the
-  session on your homeserver and deletes everything above.
-- **To have it deleted sooner**, open an issue asking for it.
+- **A connection nobody uses for 90 days ends on its own.** The connector revokes the session on
+  your homeserver and deletes everything above.
+- **To have it deleted now**, open an issue asking for it.
 
 The connector also sends what Claude asks it to the homeserver and to the Nexus indexer, as
 described in section 5. What you say to Claude, and what Claude sends to the connector, is
