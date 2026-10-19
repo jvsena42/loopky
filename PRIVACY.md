@@ -125,7 +125,7 @@ for.
 ## 6. The Loopky connector for Claude
 
 The connector (`https://mcp.loopky.app/mcp`) lets Claude build decks in your account when you add
-it to Claude under Settings → Connectors. It is the one server the Loopky project operates, on a
+it to Claude from its connector directory. It is the one server the Loopky project operates, on a
 virtual server rented from Contabo. **If you never add it, none of this section applies to you.**
 
 **What it stores, for as long as you stay connected:**

@@ -23,7 +23,8 @@ shares decks with your class through one link.
   most-studied deck, the languages you worked on — to keep or to share.
 - **Decks built by Claude**, three ways:
   - **The Loopky connector**, for Claude in the browser, the desktop and mobile apps, or a cloud
-    session. Add `https://mcp.loopky.app/mcp` under Settings → Connectors and sign in once with
+    session. It is in Claude's connector directory: open Settings → Connectors → Browse
+    connectors, find [Loopky](https://claude.ai/directory/loopky), connect, and sign in once with
     Pubky Ring. It can only write Loopky's own data, and it takes cards inline: no local files, and
     no Anki `.apkg` upload.
   - **The agent plugin** for Claude Code and Codex, which teaches the workflow: see
