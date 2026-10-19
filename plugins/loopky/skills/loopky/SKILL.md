@@ -26,8 +26,9 @@ connector's tools show up as `mcp__claude_ai_Loopky__deck_create` and similar. P
 are running:
 
 - **No shell at all** (a chat app): the connector is the only door. If its tools are not there,
-  tell the user to add it under Settings → Connectors with that URL, then sign in with Pubky Ring
-  when it asks.
+  tell the user to add it from Claude's connector directory — Settings → Connectors → Browse
+  connectors, search for Loopky, or open https://claude.ai/directory/loopky — then sign in with
+  Pubky Ring when it asks.
 - **A shell on the user's own machine** (a local terminal): **use the CLI**, with the workflow
   below. It is the complete client: `.apkg` imports, card files on disk, `--check-images`,
   `batch` and `card reorder` exist only there. If `loopky` is missing, offer the install; mention
@@ -38,7 +39,7 @@ are running:
   the user's own machine): **recommend the connector.** The CLI there has to be installed every session,
   needs several hosts on the sandbox's allowlist, and needs the user at their phone for a new
   sign-in about every hour. If the connector's tools are attached, use them. If they are not,
-  your answer still starts with adding it — the URL, Settings → Connectors, one Ring sign-in —
+  your answer still starts with adding it — Loopky in the connector directory, one Ring sign-in —
   rather than with installing the CLI; use the CLI only if the user prefers it or needs what only
   the CLI has.
 
