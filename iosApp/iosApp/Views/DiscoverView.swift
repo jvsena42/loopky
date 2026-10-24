@@ -305,7 +305,7 @@ struct DiscoverView: View {
                     retryBlock(message: message, onRetry: onRetryBrowsePage)
                         .accessibilityIdentifier("discover_browse_page_error")
                 } else if state.browse.hasMore {
-                    loadMoreFooter(isLoading: state.browse.isLoadingMore, onLoadMore: onBrowseEndReached)
+                    LoadMoreFooter(isLoading: state.browse.isLoadingMore, onLoadMore: onBrowseEndReached)
                 }
             }
         }
@@ -348,22 +348,6 @@ struct DiscoverView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-    }
-
-    /// The sentinel at the foot of the grid: asks for the next page as it scrolls into view.
-    ///
-    /// `onAppear` inside a `LazyVGrid`'s enclosing `ScrollView` fires when the row reaches the
-    /// viewport, so *appearing* already means the reader has reached the end. It fires once per
-    /// appearance and the ViewModel guards the rest — see `SectionState.canLoadMore`.
-    private func loadMoreFooter(isLoading: Bool, onLoadMore: @escaping () -> Void) -> some View {
-        HStack {
-            Spacer()
-            if isLoading { ProgressView() }
-            Spacer()
-        }
-        .frame(height: 44)
-        .onAppear(perform: onLoadMore)
-        .accessibilityIdentifier("load_more_footer")
     }
 
     private var browseEmpty: some View {

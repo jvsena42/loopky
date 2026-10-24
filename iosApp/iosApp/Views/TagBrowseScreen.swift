@@ -116,16 +116,7 @@ struct TagBrowseScreen: View {
                 retry(message: ErrorCopy.message(for: failed), action: { viewModel?.onRetryPage() })
                     .accessibilityIdentifier("tag_browse_page_error")
             } else if content.hasMore {
-                // The sentinel: appearing inside the scroll view already means the reader has
-                // reached the end. The ViewModel guards the repeats — see `Content.canLoadMore`.
-                HStack {
-                    Spacer()
-                    if content.isLoadingMore { ProgressView().tint(LoopkyColor.accentPrimary) }
-                    Spacer()
-                }
-                .frame(height: 44)
-                .onAppear { viewModel?.onEndReached() }
-                .accessibilityIdentifier("load_more_footer")
+                LoadMoreFooter(isLoading: content.isLoadingMore, onLoadMore: { viewModel?.onEndReached() })
             }
         }
         .padding(.bottom, 32)
