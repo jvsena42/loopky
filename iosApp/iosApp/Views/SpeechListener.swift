@@ -14,6 +14,13 @@ final class SpeechListener {
     private var recognizer: SFSpeechRecognizer?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    private var silenceTimer: Timer?
+    private var capTimer: Timer?
+
+    /// How long the transcription may stay unchanged before the answer counts as given.
+    private static let pauseInterval: TimeInterval = 1.5
+    /// Matches `AndroidSpeechRecognizer.LISTEN_TIMEOUT`.
+    private static let listenTimeout: TimeInterval = 15
 
     private init() {}
 
@@ -61,17 +68,16 @@ final class SpeechListener {
         }
     }
 
-    /// Tear the session down. Safe to call when nothing is running, which is how the study screen
-    /// uses it — the sheet leaving the listening phase stops the microphone either way.
+    /// Tear the session down, dropping any result still in flight. A no-op when nothing is
+    /// running, so the study screen can call it on every exit from the listening phase without
+    /// deactivating a session Listen is playing through.
     func stop() {
+        guard task != nil || request != nil || audioEngine.isRunning else { return }
         task?.cancel()
         task = nil
         request?.endAudio()
         request = nil
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            audioEngine.inputNode.removeTap(onBus: 0)
-        }
+        stopMicrophone()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
@@ -108,12 +114,11 @@ final class SpeechListener {
         // A nil recogniser and an unavailable one are different failures: the first says iOS has
         // no model for the deck's language — which the reader can install — and the second that
         // recognition is off right now.
+        // `isAvailable` is not consulted: on iOS 26 it reported false for pt-BR and pt-PT while
+        // recognition in them worked, which refused every Speak on those decks (#548). A
+        // recognizer that really is unavailable fails the task, which lands as `.noMatch`.
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: languageTag)) else {
             onFailure(.languageUnavailable)
-            return
-        }
-        guard recognizer.isAvailable else {
-            onFailure(.unavailable)
             return
         }
         self.recognizer = recognizer
@@ -149,7 +154,39 @@ final class SpeechListener {
                 delivered = true
                 self?.stop()
                 onFailure(.noMatch)
+                return
             }
+            if result != nil { self?.restartSilenceTimer() }
+        }
+        capTimer = Timer.scheduledTimer(withTimeInterval: Self.listenTimeout, repeats: false) { [weak self] _ in
+            self?.finishAudio()
+        }
+    }
+
+    /// A buffer request reports `isFinal` only after `endAudio()`, and nothing else ends one: a
+    /// pause after the last partial result is taken as the end of the answer, and the cap as the
+    /// end of an attempt that never produced one. The task then delivers its final result, or an
+    /// error when nothing was heard.
+    private func restartSilenceTimer() {
+        silenceTimer?.invalidate()
+        silenceTimer = Timer.scheduledTimer(withTimeInterval: Self.pauseInterval, repeats: false) { [weak self] _ in
+            self?.finishAudio()
+        }
+    }
+
+    private func finishAudio() {
+        stopMicrophone()
+        request?.endAudio()
+    }
+
+    private func stopMicrophone() {
+        silenceTimer?.invalidate()
+        silenceTimer = nil
+        capTimer?.invalidate()
+        capTimer = nil
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
         }
     }
 }
