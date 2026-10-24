@@ -8,11 +8,8 @@ import Shared
 /// `SpeechSpeaker`, which honours the deck's declared language rather than the reader's locale.
 /// `IosSpeaker` staying a stub only affects the deck editor's voice list.
 ///
-/// **Speak (pronunciation practice) is not available.** It needs a `SpeechRecognizer` binding,
-/// microphone and speech-recognition usage strings in `Info.plist`, and a permission flow. Until
-/// then the button is hidden rather than shown-and-inert — `Deck.speechReady` and the per-deck
-/// opt-ins already make "this deck declares Speak but this device cannot offer it" a supported
-/// state, not a broken one. Tracked in #113.
+/// Speak works the same way: `StartSpeechRecognition` runs through the native `SpeechListener`,
+/// and the answer goes back through `onSpeechResult` / `onSpeechError`.
 struct StudySessionScreen: View {
     /// `nil` studies everything due across the library.
     let deckId: String?
@@ -168,7 +165,13 @@ struct StudySessionScreen: View {
         )
         viewModel = vm
         stateSink = FlowEffectSink(vm.state) { value in
+            // Dismissing the sheet, Continue and Close all move the phase off Listening; any of
+            // them has to close the microphone, or the tap keeps running under the next card.
+            let wasListening = (uiState as? StudySessionUiStateReviewing)?.speakPhase is SpeakPhaseListening
             uiState = value
+            if wasListening, !((value as? StudySessionUiStateReviewing)?.speakPhase is SpeakPhaseListening) {
+                SpeechListener.shared.stop()
+            }
             // Clearing on advance keeps the previous card's answer out of the next card's field.
             if let card = value as? StudySessionUiStateReviewing, card.typedAnswer != typed {
                 typed = card.typedAnswer
