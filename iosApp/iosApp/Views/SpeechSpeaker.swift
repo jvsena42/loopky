@@ -34,8 +34,19 @@ final class SpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         utterance.rate = Self.utteranceRate(multiplier: rate)
         current = utterance
         self.onDone = onDone
+        activateSession()
         synthesizer.speak(utterance)
         return true
+    }
+
+    /// Set on every call, never once at launch. The default `.soloAmbient` is muted by the silent
+    /// switch, and Speak leaves the session in `.record`, which has no output at all: either way
+    /// the utterance "finishes" without a sound. A tap on Listen is a request to hear the card,
+    /// so it plays through silent mode the way a video does.
+    private func activateSession() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
+        try? session.setActive(true)
     }
 
     /// `AVSpeechUtterance.rate` is a 0...1 scale, not a multiplier: the default is normal speed and
@@ -61,6 +72,8 @@ final class SpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
             let done = self.onDone
             self.current = nil
             self.onDone = nil
+            // Lets music the utterance ducked come back up.
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
             done?()
         }
     }
