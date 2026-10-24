@@ -608,9 +608,10 @@ Two things the post record has to get right, both silent when wrong:
   all (`PostAttachments.tsx`). What it *does* render is the first `http(s)` link in the **content**:
   it runs that through an OpenGraph probe and, when the response is an image content-type, shows
   the image inline (`GenericPreview.tsx`, `detectMediaType`). So the cover travels as a plain URL
-  in the body, **ahead of** the deck's `https://loopky.app` link (see the next point but one): the
-  probe takes only the first link, and the deck's own cover is a better preview than the site's
-  generic card.
+  in the body, **after** the deck's `https://loopky.app` link (see the next point but one): a long
+  post is folded behind "see more", and the link is what a reader acts on, so it must not be the
+  thing the fold hides. The probe takes only the first link, so the preview is the site's card for
+  the deck rather than the cover inline — a deliberate trade.
 - **A homeserver-blob cover cannot be shown on the web at all.** Only a web (Unsplash) cover has an
   `http(s)` URL; a gallery upload has only a `pubky://` one, which the OpenGraph probe — an
   ordinary HTTP fetch — cannot follow. Showing those means giving the cover a pubky.app **blob +
