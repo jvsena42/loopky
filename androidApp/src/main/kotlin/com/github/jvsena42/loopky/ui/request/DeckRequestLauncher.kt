@@ -19,7 +19,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -95,11 +94,15 @@ fun DeckRequestHost(launcher: DeckRequestLauncher, onSignIn: () -> Unit) {
 @Composable
 private fun DeckRequestSheet(prefill: String, onDismiss: () -> Unit) {
     val viewModel = koinViewModel<DeckRequestViewModel>()
-    LaunchedEffect(prefill) { viewModel.start(prefill) }
+    // Before the first frame, not in an effect after it: a reopened sheet would otherwise draw the
+    // last one's confirmation or error for a frame.
+    remember(prefill) { viewModel.start(prefill) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lead = stringResource(R.string.deck_request_post_lead)
-    // The field owns its text while typing; the ViewModel is told, never asked back.
-    var text by rememberSaveable(prefill) { mutableStateOf(prefill.trim().take(DeckRequests.MAX_LENGTH)) }
+    // The field owns its text while typing; the ViewModel is told, never asked back. Seeded from
+    // the ViewModel, not from [prefill]: `start` keeps a request still posting, and a field showing
+    // the new prefill would preview one text while a retry posts the other.
+    var text by rememberSaveable(prefill) { mutableStateOf(viewModel.state.value.text) }
     val colors = LoopkyTheme.colors
 
     ModalBottomSheet(
