@@ -24,4 +24,7 @@ enum class SignInReason {
 
     /** Following a person, which writes a record into your own follow graph. */
     FollowPerson,
+
+    /** Asking for a deck nobody has made, which is a post on your own pubky.app feed. */
+    RequestDeck,
 }
