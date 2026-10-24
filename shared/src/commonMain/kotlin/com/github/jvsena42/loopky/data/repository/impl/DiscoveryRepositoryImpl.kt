@@ -29,6 +29,7 @@ import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckAnnouncement
+import com.github.jvsena42.loopky.domain.model.DeckRequests
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
@@ -177,6 +178,28 @@ class DiscoveryRepositoryImpl(
                 .onFailure { Log.w(TAG, "postRecap: tag FAILED — ${it.message}") }
             uri
         }.onFailure { Log.w(TAG, "postRecap: FAILED — ${it.message}", it) }
+
+    override suspend fun postDeckRequest(content: String): Result<PubkyUri> =
+        runSuspendCatching {
+            require(content.isNotBlank()) { "Deck request is empty" }
+            require(content.length <= PostKinds.MAX_CONTENT_LENGTH) { "Deck request is too long" }
+            val owner = session.requireSession().identity.pubky
+            val postId = PostIds.create(epochMillis() * MICROS_PER_MILLI)
+            val body = loopkyJson.encodeToString(PostDto(content = content, kind = PostKinds.SHORT))
+            val path = PubkyPaths.post(owner, postId)
+            this.pubky.putWithSessionRetry(path, body, session, revalidator).getOrThrow()
+            val uri = PubkyUri(path)
+            for (tag in DeckRequests.TAGS) {
+                tagRepository.putTag(uri, tag).onFailure { err ->
+                    // Labels already written stay: a tag on a deleted post indexes nothing.
+                    this.pubky.deleteWithSessionRetry(path, session, revalidator)
+                        .onFailure { Log.w(TAG, "postDeckRequest: rollback FAILED — ${it.message}") }
+                    throw err
+                }
+            }
+            Log.d(TAG, "postDeckRequest -> $path")
+            uri
+        }.onFailure { Log.w(TAG, "postDeckRequest: FAILED — ${it.message}", it) }
 
     /**
      * Label the announcement post with the deck's topics and [ReservedTags.DECK].
