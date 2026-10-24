@@ -42,18 +42,17 @@ data class DeckAnnouncement(
     enum class Kind { Created, Followed, Cloned }
 
     /**
-     * The post body: a headline, the cover's image URL, and the deck's `https://loopky.app` link.
+     * The post body: a headline, the deck's `https://loopky.app` link, and the cover's image URL.
      *
      * **The deck goes in as [deckUrl], not as [deckUri].** pubky.app renders content as markdown
      * and linkifies only `http(s)`, so a `pubky://` address there is inert text; the web link is
      * clickable, opens Loopky as an App Link where it is installed, and a preview page where it is
      * not. [deckUri] still travels in the post's `embed`, for clients that read the record.
      *
-     * **The cover comes before the link, because only the first link is previewed.** pubky.app
-     * resolves `attachments` strictly as its own file records, but runs the first `http(s)` link in
-     * the content through an OpenGraph probe and renders an image content-type inline. The deck's
-     * own cover is a better preview than the site's generic card, which is what a static page can
-     * offer; with no cover, that card is what shows.
+     * **The deck link comes before the cover.** pubky.app folds a long post behind "see more", and
+     * a cover URL ahead of the link pushed the one thing a reader acts on below the fold. The cost:
+     * pubky.app previews only the first `http(s)` link, so the preview is now the site's card for
+     * the deck rather than the cover image inline.
      *
      * **The author is credited as a mention, which is why the key is written out in full.** Nexus
      * scans post content for [MENTION_PREFIX] followed by exactly 52 characters of z-base-32,
@@ -81,7 +80,7 @@ data class DeckAnnouncement(
                 Kind.Cloned -> "$icon Cloned $title$by into my library"
             }
             val cover = coverImageUrl?.let { "\n\n$it" }.orEmpty()
-            return "$headline$cover\n\n$deckUrl"
+            return "$headline\n\n$deckUrl$cover"
         }
 
     companion object {
