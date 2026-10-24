@@ -678,6 +678,25 @@ The CLI refuses a reserved or over-long `--tag` (exit 9) where the apps drop one
 fold as `tags_normalized: [{from, to}]` on `deck create`, `deck edit`, `import` and their dry runs
 — §13.7.
 
+**5b. Deck requests are posts labelled `loopky` and `deck-request`.** A reader who finds no deck
+for what they want to learn can ask for one from an empty Home, a search with no deck matches, a
+topic with no decks and the foot of Discover — one sheet (`DeckRequestViewModel`) behind all four,
+prefilled with the query or topic that came up empty. `DiscoveryRepository.postDeckRequest` writes
+a `short` post (no embed, nothing attached) to the reader's `/pub/pubky.app/posts/` and labels it
+with both of `DeckRequests.TAGS`, so `/v0/search/posts/by_tag/deck-request` is the list of every
+request on the network — the input a deck-building automation reads. Four details:
+
+- **The body is a localized lead, a blank line, then the request verbatim** (`DeckRequests.compose`).
+  Whatever follows the first `\n\n` is the reader's own words, whatever language the lead is in.
+- **Ordinary labels, not reserved ones.** A request is user content, and anyone on pubky.app can
+  ask the same way; a reader of the tag treats every post under it as untrusted, like any label.
+- **The labels are the delivery, so they are not best-effort** — unlike the recap's. A failed label
+  deletes the post again and fails the call, so a retry writes one request rather than an
+  unlabelled one nobody will find plus a second one.
+- **Not gated by `shareOnPubky`**, for the recap's reason: it is only ever reached from "Post
+  request", under a preview of the post and its tags. Guests are stopped by the sign-in prompt
+  (`SignInReason.RequestDeck`) before the sheet opens.
+
 **6. The universal path does not validate or sanitize.** Unlike the pubky.app path it checks
 neither the tag id against the body nor the label's casing
 (`nexus-watcher/src/events/handlers/universal_tag.rs:62`). `TagRepositoryImpl.sanitizeLabel`
