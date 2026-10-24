@@ -1012,4 +1012,21 @@
     <string name="recap_web_link">Mở bản web</string>
     <string name="recap_post_title">Đăng tổng kết của bạn lên Pubky?</string>
     <string name="recap_post_failed">Không đăng được. Hãy thử lại.</string>
+
+    <!-- Deck requests -->
+    <string name="deck_request_cta_title">Không tìm thấy bộ thẻ bạn cần?</string>
+    <string name="deck_request_cta_body">Hãy yêu cầu. Yêu cầu của bạn được đăng lên Pubky, nơi người tạo bộ thẻ có thể thấy.</string>
+    <string name="deck_request_cta_button">Yêu cầu bộ thẻ</string>
+    <string name="deck_request_title">Yêu cầu bộ thẻ</string>
+    <string name="deck_request_body">Cho biết bạn muốn học gì. Nội dung được đăng công khai trên bảng tin Pubky của bạn để bất kỳ ai tạo bộ thẻ cũng thấy.</string>
+    <string name="deck_request_placeholder">vd: hiragana cho người mới</string>
+    <string name="deck_request_preview_label">Bài đăng của bạn</string>
+    <string name="deck_request_post_lead">Mình muốn có một bộ thẻ Loopky về:</string>
+    <string name="deck_request_submit">Đăng yêu cầu</string>
+    <string name="deck_request_sent_title">Đã đăng yêu cầu</string>
+    <string name="deck_request_sent_body">Yêu cầu đã có trên bảng tin Pubky của bạn. Nếu có người tạo bộ thẻ, bạn sẽ thấy nó trong Khám phá.</string>
+    <string name="deck_request_done">Xong</string>
+    <string name="sign_in_prompt_request_deck_title">Yêu cầu bộ thẻ</string>
+    <string name="sign_in_prompt_request_deck_body">Yêu cầu được đăng từ tài khoản của chính bạn để người tạo bộ thẻ biết ai đang hỏi. Cần có tài khoản, nhưng không cần email.</string>
+    <string name="home_request_deck_link">Không tìm thấy? Yêu cầu bộ thẻ</string>
 </resources>

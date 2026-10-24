@@ -44,6 +44,8 @@ import com.github.jvsena42.loopky.presentation.discover.SearchViewModel
 import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
 import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.discover.scanPubky
+import com.github.jvsena42.loopky.ui.request.DeckRequestHost
+import com.github.jvsena42.loopky.ui.request.rememberDeckRequestLauncher
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -129,6 +131,16 @@ fun DiscoverSearchBar(
     }
 
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    val deckRequest = rememberDeckRequestLauncher()
+    DeckRequestHost(
+        launcher = deckRequest,
+        onSignIn = {
+            scope.launch {
+                state.animateToCollapsed()
+                onSignIn()
+            }
+        },
+    )
     val inputField: @Composable () -> Unit = {
         SearchBarDefaults.InputField(
             textFieldState = textFieldState,
@@ -215,6 +227,7 @@ fun DiscoverSearchBar(
             onOpenProfile = viewModel::onOpenProfile,
             onOpenDeck = viewModel::onOpenDeck,
             onFollowToggle = viewModel::onFollowToggle,
+            onRequestDeck = { deckRequest.launch(uiState.query, isGuest = !uiState.isSignedIn) },
             modifier = Modifier
                 .fillMaxSize()
                 .semantics { testTagsAsResourceId = true }

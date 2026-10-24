@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -41,9 +42,11 @@ import com.github.jvsena42.loopky.R
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.presentation.discover.DiscoverDeck
 import com.github.jvsena42.loopky.presentation.discover.DiscoverPerson
+import com.github.jvsena42.loopky.presentation.discover.SectionState
 import com.github.jvsena42.loopky.ui.components.DeckTile
 import com.github.jvsena42.loopky.ui.components.PubkyAvatar
 import com.github.jvsena42.loopky.ui.components.TagFilterChip
+import com.github.jvsena42.loopky.ui.request.DeckRequestCallout
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.label
 import com.github.jvsena42.loopky.ui.util.truncatedPubky
@@ -391,3 +394,24 @@ private fun Modifier.scrollEdgeFade(scrollState: ScrollableState, surface: Color
         }
 
 private val EDGE_FADE_WIDTH = 24.dp
+
+/**
+ * The request offer, where browse has nothing left to show: under a topic nobody has a deck for,
+ * or at the foot of the list once there is truly nothing more — whoever scrolled that far has seen
+ * everything Discover has. Prefilled with the topic, when there is one.
+ */
+internal fun LazyListScope.deckRequestItem(
+    browse: SectionState<DiscoverDeck>,
+    selectedTags: List<Tag>,
+    onRequestDeck: (prefill: String) -> Unit,
+) {
+    val emptyTopic = browse.isEmpty && selectedTags.isNotEmpty()
+    val exhausted = !browse.hasMore && browse.items.isNotEmpty() && browse.pageError == null
+    if (!emptyTopic && !exhausted) return
+    item(key = "browse_request") {
+        DeckRequestCallout(
+            onRequest = { onRequestDeck(selectedTags.joinToString(" ") { it.value }) },
+            modifier = Modifier.testTag("discover_request_deck"),
+        )
+    }
+}

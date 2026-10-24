@@ -60,6 +60,8 @@ import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.deckGridColumns
 import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.request.DeckRequestHost
+import com.github.jvsena42.loopky.ui.request.rememberDeckRequestLauncher
 import com.github.jvsena42.loopky.ui.search.DiscoverSearchBar
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import kotlinx.coroutines.flow.collectLatest
@@ -122,8 +124,11 @@ fun DiscoverRoute(
     }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val deckRequest = rememberDeckRequestLauncher()
+    DeckRequestHost(launcher = deckRequest, onSignIn = onSignIn)
     DiscoverScreen(
         state = state,
+        onRequestDeck = { prefill -> deckRequest.launch(prefill, isGuest = !state.isSignedIn) },
         isGuest = isGuest,
         onSignIn = onSignIn,
         onTagSelected = viewModel::onTagSelected,
@@ -170,6 +175,7 @@ private fun DiscoverScreen(
     onGridColumnsChanged: (Int) -> Unit,
     onRetryBrowse: () -> Unit,
     onRetryBrowsePage: () -> Unit,
+    onRequestDeck: (prefill: String) -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -195,6 +201,7 @@ private fun DiscoverScreen(
                 onEndReached = onBrowseEndReached,
                 onRetry = onRetryBrowse,
                 onRetryPage = onRetryBrowsePage,
+                onRequestDeck = onRequestDeck,
             )
             // A page is counted in rows, so the ViewModel has to know how wide the grid is: twelve
             // tiles is six rows on a phone and three on a tablet. Reported rather than read, because
@@ -361,6 +368,7 @@ private data class BrowseActions(
     val onEndReached: () -> Unit,
     val onRetry: () -> Unit,
     val onRetryPage: () -> Unit,
+    val onRequestDeck: (prefill: String) -> Unit,
 )
 
 private fun LazyListScope.browseSection(
@@ -433,6 +441,7 @@ private fun LazyListScope.browseSection(
             LoadMoreFooter(isLoading = browse.isLoadingMore, onLoadMore = browseActions.onEndReached)
         }
     }
+    deckRequestItem(browse, selectedTags, browseActions.onRequestDeck)
 }
 
 @Composable

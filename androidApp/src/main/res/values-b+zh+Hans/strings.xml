@@ -942,4 +942,21 @@
     <string name="recap_web_link">打开网页版</string>
     <string name="recap_post_title">把年度回顾发布到 Pubky？</string>
     <string name="recap_post_failed">发布失败，请重试。</string>
+
+    <!-- Deck requests -->
+    <string name="deck_request_cta_title">找不到需要的卡组？</string>
+    <string name="deck_request_cta_body">提个需求吧。你的需求会发布到 Pubky，制作卡组的人可以看到并接手。</string>
+    <string name="deck_request_cta_button">请求卡组</string>
+    <string name="deck_request_title">请求卡组</string>
+    <string name="deck_request_body">说说你想学什么。它会公开发布到你的 Pubky 动态，所有制作卡组的人都能看到。</string>
+    <string name="deck_request_placeholder">例如：零基础平假名</string>
+    <string name="deck_request_preview_label">你的帖子</string>
+    <string name="deck_request_post_lead">求一个 Loopky 卡组：</string>
+    <string name="deck_request_submit">发布请求</string>
+    <string name="deck_request_sent_title">请求已发布</string>
+    <string name="deck_request_sent_body">已发布到你的 Pubky 动态。如果有人做出了这个卡组，你会在“发现”中看到它。</string>
+    <string name="deck_request_done">完成</string>
+    <string name="sign_in_prompt_request_deck_title">请求卡组</string>
+    <string name="sign_in_prompt_request_deck_body">请求从你自己的账号发布，制作卡组的人能知道是谁在请求。需要一个账号，但不需要邮箱。</string>
+    <string name="home_request_deck_link">没找到？请求卡组</string>
 </resources>

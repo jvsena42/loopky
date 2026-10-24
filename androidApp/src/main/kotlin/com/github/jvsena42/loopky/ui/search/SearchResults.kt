@@ -44,6 +44,7 @@ import com.github.jvsena42.loopky.ui.discover.SectionSpinner
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.deckGridColumns
+import com.github.jvsena42.loopky.ui.request.DeckRequestCallout
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 
 /**
@@ -61,6 +62,7 @@ internal fun SearchResults(
     onOpenDeck: (String, String) -> Unit,
     onFollowToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onRequestDeck: () -> Unit = {},
 ) {
     val deckColumns = deckGridColumns()
     LazyColumn(
@@ -88,6 +90,14 @@ internal fun SearchResults(
         decksSection(deckColumns, state, onOpenDeck, onOpenProfile)
         if (state.isEmpty) {
             item(key = "empty") { NoMatchesBlock(query = state.query) }
+        }
+        // No deck matched what the reader typed — people may have — which is exactly the deck to
+        // ask for, so the request arrives already naming it.
+        val settled = state.hasSearched && !state.isSearching
+        if (settled && state.directLink == null && state.decks.isEmpty()) {
+            item(key = "request") {
+                DeckRequestCallout(onRequest = onRequestDeck, modifier = Modifier.testTag("search_request_deck"))
+            }
         }
         if (state.query.isBlank()) {
             item(key = "hint") {

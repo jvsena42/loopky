@@ -1,6 +1,6 @@
 # Journeys
 
-29 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
+30 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
 on iOS. The CLI has none — it has no screen — and its equivalent is the `cli-linux` and `cli-binary`
 jobs in `.github/workflows/ci.yml`.
 
@@ -96,6 +96,8 @@ a line when you close it.
   driven: confirming the Pubky post (`recap_post_confirm`), the empty state, the failed-read
   error, TalkBack, and a real `Pixel_Tablet` (the wide layout was reached with `wm density 240`
   on a phone AVD). **All of 29 on iOS**: that half has never been built.
+- **30 — all of it.** Built and unit-tested, never driven on a device: no step of the deck-request
+  sheet has run on Android, and the iOS half does not exist yet.
 - **28 — the password manager, end to end.** On Android, saving, the read-back check and restoring
   all need a device with a credential provider; no emulator here has one, so only the empty path
   (no provider: the save fails, the restore picker returns nothing) has been driven. On iOS the

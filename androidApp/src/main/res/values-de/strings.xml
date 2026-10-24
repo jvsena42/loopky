@@ -937,4 +937,21 @@
     <string name="recap_web_link">Webversion öffnen</string>
     <string name="recap_post_title">Rückblick auf Pubky posten?</string>
     <string name="recap_post_failed">Posten fehlgeschlagen. Versuch es noch einmal.</string>
+
+    <!-- Deck requests -->
+    <string name="deck_request_cta_title">Du findest nicht den Stapel, den du brauchst?</string>
+    <string name="deck_request_cta_body">Frag danach. Deine Anfrage landet auf Pubky, wo Leute, die Stapel erstellen, sie aufgreifen können.</string>
+    <string name="deck_request_cta_button">Stapel anfragen</string>
+    <string name="deck_request_title">Stapel anfragen</string>
+    <string name="deck_request_body">Sag, was du lernen willst. Die Anfrage wird öffentlich in deinem Pubky-Feed gepostet, damit alle, die Stapel erstellen, sie sehen.</string>
+    <string name="deck_request_placeholder">z. B. Hiragana für Anfänger</string>
+    <string name="deck_request_preview_label">Dein Beitrag</string>
+    <string name="deck_request_post_lead">Ich hätte gern einen Loopky-Stapel über:</string>
+    <string name="deck_request_submit">Anfrage posten</string>
+    <string name="deck_request_sent_title">Anfrage gepostet</string>
+    <string name="deck_request_sent_body">Sie steht jetzt in deinem Pubky-Feed. Wenn jemand den Stapel erstellt, findest du ihn unter Entdecken.</string>
+    <string name="deck_request_done">Fertig</string>
+    <string name="sign_in_prompt_request_deck_title">Stapel anfragen</string>
+    <string name="sign_in_prompt_request_deck_body">Eine Anfrage wird von deinem eigenen Konto gepostet, damit man weiß, wer fragt. Dafür brauchst du ein Konto, aber keine E-Mail.</string>
+    <string name="home_request_deck_link">Nichts gefunden? Stapel anfragen</string>
 </resources>

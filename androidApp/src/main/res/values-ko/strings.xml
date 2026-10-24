@@ -949,4 +949,21 @@
     <string name="recap_web_link">웹 버전 열기</string>
     <string name="recap_post_title">리캡을 Pubky에 게시할까요?</string>
     <string name="recap_post_failed">게시하지 못했어요. 다시 시도해 주세요.</string>
+
+    <!-- Deck requests -->
+    <string name="deck_request_cta_title">필요한 덱을 찾지 못했나요?</string>
+    <string name="deck_request_cta_body">요청해 보세요. 요청은 Pubky에 올라가고, 덱을 만드는 사람들이 볼 수 있어요.</string>
+    <string name="deck_request_cta_button">덱 요청하기</string>
+    <string name="deck_request_title">덱 요청하기</string>
+    <string name="deck_request_body">배우고 싶은 것을 적어 주세요. 내 Pubky 피드에 공개로 게시되어 덱을 만드는 누구나 볼 수 있어요.</string>
+    <string name="deck_request_placeholder">예: 초보자를 위한 히라가나</string>
+    <string name="deck_request_preview_label">내 게시물</string>
+    <string name="deck_request_post_lead">이런 Loopky 덱이 있으면 좋겠어요:</string>
+    <string name="deck_request_submit">요청 게시</string>
+    <string name="deck_request_sent_title">요청을 게시했어요</string>
+    <string name="deck_request_sent_body">이제 내 Pubky 피드에 올라갔어요. 누군가 덱을 만들면 탐색에서 찾을 수 있어요.</string>
+    <string name="deck_request_done">완료</string>
+    <string name="sign_in_prompt_request_deck_title">덱 요청하기</string>
+    <string name="sign_in_prompt_request_deck_body">요청은 내 계정으로 게시되어 덱 제작자가 누가 요청했는지 알 수 있어요. 계정이 필요하지만 이메일은 필요 없어요.</string>
+    <string name="home_request_deck_link">못 찾았나요? 덱 요청하기</string>
 </resources>

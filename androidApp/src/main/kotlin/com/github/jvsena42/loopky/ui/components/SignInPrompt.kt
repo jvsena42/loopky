@@ -91,6 +91,7 @@ private val SignInReason.titleRes: Int
         SignInReason.FollowDeck -> R.string.sign_in_prompt_follow_deck_title
         SignInReason.CloneDeck -> R.string.sign_in_prompt_clone_deck_title
         SignInReason.FollowPerson -> R.string.sign_in_prompt_follow_person_title
+        SignInReason.RequestDeck -> R.string.sign_in_prompt_request_deck_title
     }
 
 private val SignInReason.bodyRes: Int
@@ -98,6 +99,7 @@ private val SignInReason.bodyRes: Int
         SignInReason.FollowDeck -> R.string.sign_in_prompt_follow_deck_body
         SignInReason.CloneDeck -> R.string.sign_in_prompt_clone_deck_body
         SignInReason.FollowPerson -> R.string.sign_in_prompt_follow_person_body
+        SignInReason.RequestDeck -> R.string.sign_in_prompt_request_deck_body
     }
 
 /**

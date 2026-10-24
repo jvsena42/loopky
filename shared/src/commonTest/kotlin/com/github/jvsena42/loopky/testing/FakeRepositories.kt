@@ -971,6 +971,15 @@ class FakeDiscoveryRepository : DiscoveryRepository {
         return Result.success(PubkyUri("pubky://author/pub/pubky.app/posts/0032TESTPOST1"))
     }
 
+    val deckRequestPosts = mutableListOf<String>()
+    var deckRequestError: Throwable? = null
+
+    override suspend fun postDeckRequest(content: String): Result<PubkyUri> {
+        deckRequestError?.let { return Result.failure(it) }
+        deckRequestPosts.add(content)
+        return Result.success(PubkyUri("pubky://author/pub/pubky.app/posts/0032TESTPOST2"))
+    }
+
     /** The Loopky accounts each follow list resolves to, keyed by whose list it is. */
     var followingByUser: Map<String, List<PubkyIdentity>> = emptyMap()
     var followersByUser: Map<String, List<PubkyIdentity>> = emptyMap()

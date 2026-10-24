@@ -13,6 +13,7 @@ import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckAnnouncement
 import com.github.jvsena42.loopky.domain.model.DeckCounts
 import com.github.jvsena42.loopky.domain.model.DeckMastery
+import com.github.jvsena42.loopky.domain.model.DeckRequests
 import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.HomeserverLookup
@@ -915,6 +916,19 @@ interface DiscoveryRepository {
      * The post is labelled [ReservedTags.RECAP], best-effort: a failed label never fails the post.
      */
     suspend fun postRecap(content: String, url: String): Result<PubkyUri>
+
+    /**
+     * Post a request for a deck to the user's pubky.app feed: [content] as written (see
+     * [DeckRequests.compose]), labelled with every one of [DeckRequests.TAGS].
+     *
+     * Not gated by [AppPreferences.shareOnPubky], for the same reason as [postRecap]: it is only
+     * reached from an explicit "Post request" button over a preview.
+     *
+     * **The labels are not best-effort here**, unlike the recap's: a request is found by its tags
+     * and by nothing else, so an unlabelled one is a request nobody will ever read. When a label
+     * fails, the post is deleted again and the call fails, so a retry writes one request, not two.
+     */
+    suspend fun postDeckRequest(content: String): Result<PubkyUri>
 
     /**
      * The Loopky accounts [pubky] follows, as resolved profiles — filtered to accounts that

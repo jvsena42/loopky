@@ -1,0 +1,28 @@
+<journey name="Deck requests — asking for a deck nobody has made, from the four places that run out">
+  <description>
+    A reader with nothing to study can post a request to their pubky.app feed, labelled "loopky"
+    and "deck-request" (Architecture.md §7.7 point 5b). One sheet behind four entry points: the
+    empty Home, a search with no deck matches, a topic with no decks, and the foot of Discover once
+    browse has no more pages. Each prefills what came up empty.
+
+    Needs a signed-in session (journey 01 or 20) on an account with NO decks, owned or followed,
+    for the Home step; the rest work on any account. A guest pass needs a signed-out install.
+    Requests are public posts: use a staging account, and delete what you post afterwards.
+  </description>
+  <actions>
+    <action>On an account with no decks, verify Home shows the empty card with "home_discover", "home_create_deck" and, under them, "home_request_deck" reading "Can’t find one? Request a deck"</action>
+    <action>Tap "home_request_deck" and verify a sheet "deck_request_sheet" titled "Request a deck" opens with an EMPTY "deck_request_input", a "0/280" counter, and "deck_request_submit" disabled</action>
+    <action>Type "ab" and verify "deck_request_submit" is still disabled. Type "Japanese hiragana for beginners" instead and verify it enables, the counter follows, and "deck_request_preview" reads "I’d love a Loopky deck about:", a blank line, then exactly what was typed, with "loopky" and "deck-request" chips under it</action>
+    <action>Tap "deck_request_submit" and verify a spinner, then "deck_request_sent" reading "Request posted". Tap "deck_request_done" and verify the sheet closes on Home</action>
+    <action>Verify the post is on the account's pubky.app feed with both tags, and listed by the indexer under /v0/search/posts/by_tag/deck-request</action>
+    <action>Open Discover and type a query no deck matches (e.g. "zzqx hiragana") into "search_input". Verify "search_empty" and, under it, "search_request_deck". Tap its button "deck_request_cta" and verify the sheet opens OVER the search results with the query already in "deck_request_input"</action>
+    <action>Swipe the sheet down and verify nothing was posted and the search results are still there</action>
+    <action>Search for a query that matches PEOPLE but no deck, and verify "search_request_deck" is still offered under the people</action>
+    <action>On Discover, select a topic chip whose browse comes back empty (or two chips no deck shares) and verify "discover_browse_empty" with "discover_request_deck" under it; tapping it prefills the topic label(s)</action>
+    <action>Clear the topic and scroll browse until "browse_more" stops appearing, and verify "discover_request_deck" sits at the very foot of the list, with an empty prefill</action>
+    <action>OFFLINE. With the network cut, post a request and verify "deck_request_error" says why, the text is kept, and "deck_request_submit" is enabled again. Restore the network, tap it, and verify ONE post on the feed, not two</action>
+    <action>GUEST. Signed out, open search or Discover's foot and tap "deck_request_cta": verify "sign_in_prompt" titled "Request a deck" opens INSTEAD of the sheet, and "sign_in_prompt_dismiss" leaves the screen as it was</action>
+    <action>TABLET. At expanded width verify the sheet is width-capped and centred, not 1280dp of text field, and the Discover callout spans the deck grid's pane</action>
+    <action>DARK. With the dark theme verify the callout card, the preview box and the sheet are legible</action>
+  </actions>
+</journey>

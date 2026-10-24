@@ -937,4 +937,21 @@
     <string name="recap_web_link">Abrir a versão web</string>
     <string name="recap_post_title">Publicar sua retrospectiva no Pubky?</string>
     <string name="recap_post_failed">Não foi possível publicar. Tente de novo.</string>
+
+    <!-- Deck requests -->
+    <string name="deck_request_cta_title">Não achou o baralho que precisa?</string>
+    <string name="deck_request_cta_body">Peça. Seu pedido vai para o Pubky, onde quem cria baralhos pode atendê-lo.</string>
+    <string name="deck_request_cta_button">Pedir um baralho</string>
+    <string name="deck_request_title">Pedir um baralho</string>
+    <string name="deck_request_body">Diga o que você quer aprender. O pedido é publicado no seu feed do Pubky, então qualquer pessoa que cria baralhos pode vê-lo.</string>
+    <string name="deck_request_placeholder">ex.: hiragana para iniciantes</string>
+    <string name="deck_request_preview_label">Sua publicação</string>
+    <string name="deck_request_post_lead">Eu adoraria um baralho do Loopky sobre:</string>
+    <string name="deck_request_submit">Publicar pedido</string>
+    <string name="deck_request_sent_title">Pedido publicado</string>
+    <string name="deck_request_sent_body">Já está no seu feed do Pubky. Se alguém criar o baralho, você vai encontrá-lo em Descobrir.</string>
+    <string name="deck_request_done">Concluir</string>
+    <string name="sign_in_prompt_request_deck_title">Pedir um baralho</string>
+    <string name="sign_in_prompt_request_deck_body">O pedido é publicado pela sua própria conta, para quem cria baralhos saber quem está pedindo. Precisa de uma conta, mas não de e-mail.</string>
+    <string name="home_request_deck_link">Não achou? Peça um baralho</string>
 </resources>
