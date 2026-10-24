@@ -120,4 +120,19 @@ class DeckRequestViewModelTest {
         assertNull(vm.state.value.error)
         assertEquals("biology", vm.state.value.text)
     }
+
+    @Test
+    fun `reopening while a request is still posting keeps that request's text`() = runTest(mainDispatcher) {
+        discovery.deckRequestError = PubkyError("network down")
+        val vm = DeckRequestViewModel(discovery)
+        vm.start("Japanese hiragana")
+        vm.onSubmit("Lead:")
+
+        vm.start("biology")
+        advanceUntilIdle()
+
+        // The sheet seeds its field from this, so a retry posts what the preview shows.
+        assertEquals("Japanese hiragana", vm.state.value.text)
+        assertNotNull(vm.state.value.error)
+    }
 }
