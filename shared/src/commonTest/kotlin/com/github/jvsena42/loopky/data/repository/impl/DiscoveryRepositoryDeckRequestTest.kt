@@ -59,7 +59,7 @@ class DiscoveryRepositoryDeckRequestTest {
     }
 
     @Test
-    fun `a deck request is labelled loopky and deck-request, as ordinary tags`() = runTest {
+    fun `a deck request is labelled loopky and deck-request as ordinary tags`() = runTest {
         val uri = repo.postDeckRequest("Japanese hiragana").getOrThrow()
 
         assertEquals(listOf(uri to Tag("loopky"), uri to Tag("deck-request")), tagRepo.putTags)
@@ -67,7 +67,7 @@ class DiscoveryRepositoryDeckRequestTest {
     }
 
     @Test
-    fun `a request whose label fails is deleted again, so a retry is not a second request`() = runTest {
+    fun `a request whose label fails is deleted again so a retry is not a second request`() = runTest {
         tagRepo.failWith = IllegalStateException("tags are down")
 
         val result = repo.postDeckRequest("Japanese hiragana")

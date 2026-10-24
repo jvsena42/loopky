@@ -66,7 +66,7 @@ class DeckRequestViewModelTest {
     }
 
     @Test
-    fun `submitting posts the lead and the request, then shows the confirmation`() = runTest(mainDispatcher) {
+    fun `submitting posts the lead and the request then shows the confirmation`() = runTest(mainDispatcher) {
         val vm = DeckRequestViewModel(discovery)
         vm.start("Japanese hiragana")
 
