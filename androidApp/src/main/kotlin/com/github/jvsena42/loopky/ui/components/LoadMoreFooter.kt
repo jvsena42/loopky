@@ -24,8 +24,8 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
  * have to recompute against the item count on every scroll frame, and would need its own guard for
  * a list whose rows are not a uniform height — the deck grid's are not.
  *
- * [onLoadMore] fires once per composition, not once per frame, and the ViewModel guards the rest —
- * see `SectionState.canLoadMore`.
+ * [onLoadMore] fires when the footer is composed and again each time a page finishes while it still
+ * is, not once per frame; the ViewModel guards the rest — see `SectionState.canLoadMore`.
  */
 @Composable
 fun LoadMoreFooter(
@@ -36,7 +36,11 @@ fun LoadMoreFooter(
     // The lambda changes identity on every recomposition of the caller; keying the effect on it
     // would re-fire the request each time.
     val currentOnLoadMore by rememberUpdatedState(onLoadMore)
-    LaunchedEffect(Unit) { currentOnLoadMore() }
+    // Re-armed by the page finishing, not only by entering composition (#551). A footer still
+    // composed when a page lands, because the page added nothing visible or the list was flung
+    // past it, would otherwise never ask again: the one call it made was dropped while the
+    // previous page was in flight.
+    LaunchedEffect(isLoading) { if (!isLoading) currentOnLoadMore() }
 
     Box(
         modifier = modifier
