@@ -1018,4 +1018,21 @@
     <string name="recap_web_link">Open the web version</string>
     <string name="recap_post_title">Post your recap on Pubky?</string>
     <string name="recap_post_failed">Couldn\'t post your recap. Try again.</string>
+
+    <!-- Deck requests -->
+    <string name="deck_request_cta_title">Can’t find the deck you need?</string>
+    <string name="deck_request_cta_body">Ask for it. Your request goes on Pubky, where deck makers can pick it up.</string>
+    <string name="deck_request_cta_button">Request a deck</string>
+    <string name="deck_request_title">Request a deck</string>
+    <string name="deck_request_body">Say what you want to learn. It’s posted publicly on your Pubky feed, so anyone making decks can see it.</string>
+    <string name="deck_request_placeholder">e.g. Japanese hiragana for beginners</string>
+    <string name="deck_request_preview_label">Your post</string>
+    <string name="deck_request_post_lead">I’d love a Loopky deck about:</string>
+    <string name="deck_request_submit">Post request</string>
+    <string name="deck_request_sent_title">Request posted</string>
+    <string name="deck_request_sent_body">It’s on your Pubky feed now. If someone builds it, you’ll find it in Discover.</string>
+    <string name="deck_request_done">Done</string>
+    <string name="sign_in_prompt_request_deck_title">Request a deck</string>
+    <string name="sign_in_prompt_request_deck_body">A request is posted from your own account, so deck makers know who’s asking. It needs an account, but no email.</string>
+    <string name="home_request_deck_link">Can’t find one? Request a deck</string>
 </resources>

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,12 +33,14 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 
 /**
  * "No decks yet" empty state. Discover is the primary action: a new reader is far likelier to
- * want an existing deck than to author one before they have studied anything.
+ * want an existing deck than to author one before they have studied anything. The request link is
+ * for the reader who already looked and found nothing — the one neither button helps.
  */
 @Composable
 fun HomeEmptyContent(
     onCreateDeckClick: () -> Unit,
     onDiscoverClick: () -> Unit,
+    onRequestDeckClick: () -> Unit = {},
 ) {
     val colors = LoopkyTheme.colors
     Column(
@@ -102,6 +105,20 @@ fun HomeEmptyContent(
                 .testTag("home_create_deck")
                 .fillMaxWidth(),
         )
+        TextButton(
+            onClick = onRequestDeckClick,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .testTag("home_request_deck"),
+        ) {
+            Text(
+                text = stringResource(R.string.home_request_deck_link),
+                color = colors.accentPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 

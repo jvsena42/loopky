@@ -992,4 +992,21 @@
     <string name="recap_web_link">ウェブ版を開く</string>
     <string name="recap_post_title">まとめをPubkyに投稿しますか？</string>
     <string name="recap_post_failed">投稿できませんでした。もう一度お試しください。</string>
+
+    <!-- Deck requests -->
+    <string name="deck_request_cta_title">必要なデッキが見つかりませんか？</string>
+    <string name="deck_request_cta_body">リクエストしましょう。リクエストは Pubky に投稿され、デッキを作る人が見つけられます。</string>
+    <string name="deck_request_cta_button">デッキをリクエスト</string>
+    <string name="deck_request_title">デッキをリクエスト</string>
+    <string name="deck_request_body">学びたいことを書いてください。あなたの Pubky フィードに公開投稿されるので、デッキを作る人なら誰でも見られます。</string>
+    <string name="deck_request_placeholder">例：初心者向けのひらがな</string>
+    <string name="deck_request_preview_label">あなたの投稿</string>
+    <string name="deck_request_post_lead">こんな Loopky デッキがほしい：</string>
+    <string name="deck_request_submit">リクエストを投稿</string>
+    <string name="deck_request_sent_title">リクエストを投稿しました</string>
+    <string name="deck_request_sent_body">Pubky フィードに投稿されました。誰かがデッキを作ったら「見つける」に表示されます。</string>
+    <string name="deck_request_done">完了</string>
+    <string name="sign_in_prompt_request_deck_title">デッキをリクエスト</string>
+    <string name="sign_in_prompt_request_deck_body">リクエストはあなた自身のアカウントから投稿されるので、誰が求めているかが伝わります。アカウントが必要ですが、メールは不要です。</string>
+    <string name="home_request_deck_link">見つからない？デッキをリクエスト</string>
 </resources>

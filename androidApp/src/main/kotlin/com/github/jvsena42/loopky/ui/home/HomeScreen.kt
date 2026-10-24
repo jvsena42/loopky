@@ -41,6 +41,8 @@ import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.screenEdges
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
+import com.github.jvsena42.loopky.ui.request.DeckRequestHost
+import com.github.jvsena42.loopky.ui.request.rememberDeckRequestLauncher
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.labelOrFallback
 import kotlinx.coroutines.flow.collectLatest
@@ -81,8 +83,13 @@ fun HomeRoute(
     }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val deckRequest = rememberDeckRequestLauncher()
+    DeckRequestHost(launcher = deckRequest, onSignIn = currentSignedOut)
     HomeScreen(
         state = state,
+        onRequestDeckClick = {
+            deckRequest.launch(isGuest = (state as? HomeUiState.Empty)?.identity == null)
+        },
         onStartStudyClick = viewModel::onStartStudyClick,
         onCreateDeckClick = viewModel::onCreateDeckClick,
         onDiscoverClick = viewModel::onDiscoverClick,
@@ -106,6 +113,7 @@ fun HomeScreen(
     onRetry: () -> Unit,
     onRecapClick: () -> Unit = {},
     onRecapDismiss: () -> Unit = {},
+    onRequestDeckClick: () -> Unit = {},
 ) {
     val colors = LoopkyTheme.colors
     Box(
@@ -132,6 +140,7 @@ fun HomeScreen(
                     onRetry = onRetry,
                     onRecapClick = onRecapClick,
                     onRecapDismiss = onRecapDismiss,
+                    onRequestDeckClick = onRequestDeckClick,
                 )
             }
         }
@@ -149,6 +158,7 @@ private fun HomeScreenContent(
     onRetry: () -> Unit,
     onRecapClick: () -> Unit,
     onRecapDismiss: () -> Unit,
+    onRequestDeckClick: () -> Unit,
 ) {
     // The empty state centers its card + actions in the space below the greeting,
     // so it gets a non-scrolling full-height layout instead of the shared scroll column.
@@ -157,6 +167,7 @@ private fun HomeScreenContent(
             greetingName = state.identity.labelOrFallback(),
             onCreateDeckClick = onCreateDeckClick,
             onDiscoverClick = onDiscoverClick,
+            onRequestDeckClick = onRequestDeckClick,
         )
         return
     }
@@ -250,6 +261,7 @@ private fun HomeEmptyScreen(
     greetingName: String,
     onCreateDeckClick: () -> Unit,
     onDiscoverClick: () -> Unit,
+    onRequestDeckClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -267,6 +279,7 @@ private fun HomeEmptyScreen(
             HomeEmptyContent(
                 onCreateDeckClick = onCreateDeckClick,
                 onDiscoverClick = onDiscoverClick,
+                onRequestDeckClick = onRequestDeckClick,
             )
         }
     }

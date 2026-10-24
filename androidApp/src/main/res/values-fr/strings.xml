@@ -937,4 +937,21 @@
     <string name="recap_web_link">Ouvrir la version web</string>
     <string name="recap_post_title">Publier ta rétrospective sur Pubky ?</string>
     <string name="recap_post_failed">Impossible de publier. Réessaie.</string>
+
+    <!-- Deck requests -->
+    <string name="deck_request_cta_title">Tu ne trouves pas le paquet qu’il te faut ?</string>
+    <string name="deck_request_cta_body">Demande-le. Ta demande est publiée sur Pubky, où les créateurs de paquets peuvent la voir.</string>
+    <string name="deck_request_cta_button">Demander un paquet</string>
+    <string name="deck_request_title">Demander un paquet</string>
+    <string name="deck_request_body">Dis ce que tu veux apprendre. C’est publié sur ton fil Pubky, pour que tous ceux qui créent des paquets puissent le voir.</string>
+    <string name="deck_request_placeholder">ex. : les hiragana pour débutants</string>
+    <string name="deck_request_preview_label">Ta publication</string>
+    <string name="deck_request_post_lead">J’aimerais un paquet Loopky sur :</string>
+    <string name="deck_request_submit">Publier la demande</string>
+    <string name="deck_request_sent_title">Demande publiée</string>
+    <string name="deck_request_sent_body">Elle est sur ton fil Pubky. Si quelqu’un crée le paquet, tu le trouveras dans Découvrir.</string>
+    <string name="deck_request_done">OK</string>
+    <string name="sign_in_prompt_request_deck_title">Demander un paquet</string>
+    <string name="sign_in_prompt_request_deck_body">Une demande est publiée depuis ton propre compte, pour qu’on sache qui demande. Il faut un compte, mais pas d’e-mail.</string>
+    <string name="home_request_deck_link">Rien trouvé ? Demande un paquet</string>
 </resources>

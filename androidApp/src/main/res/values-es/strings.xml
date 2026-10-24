@@ -937,4 +937,21 @@
     <string name="recap_web_link">Abrir la versión web</string>
     <string name="recap_post_title">¿Publicar tu resumen en Pubky?</string>
     <string name="recap_post_failed">No se pudo publicar. Inténtalo de nuevo.</string>
+
+    <!-- Deck requests -->
+    <string name="deck_request_cta_title">¿No encuentras el mazo que necesitas?</string>
+    <string name="deck_request_cta_body">Pídelo. Tu solicitud se publica en Pubky, donde quien crea mazos puede atenderla.</string>
+    <string name="deck_request_cta_button">Pedir un mazo</string>
+    <string name="deck_request_title">Pedir un mazo</string>
+    <string name="deck_request_body">Di qué quieres aprender. Se publica en tu feed de Pubky, así que cualquiera que cree mazos puede verlo.</string>
+    <string name="deck_request_placeholder">p. ej., hiragana para principiantes</string>
+    <string name="deck_request_preview_label">Tu publicación</string>
+    <string name="deck_request_post_lead">Me encantaría un mazo de Loopky sobre:</string>
+    <string name="deck_request_submit">Publicar solicitud</string>
+    <string name="deck_request_sent_title">Solicitud publicada</string>
+    <string name="deck_request_sent_body">Ya está en tu feed de Pubky. Si alguien crea el mazo, lo encontrarás en Descubrir.</string>
+    <string name="deck_request_done">Listo</string>
+    <string name="sign_in_prompt_request_deck_title">Pedir un mazo</string>
+    <string name="sign_in_prompt_request_deck_body">La solicitud se publica desde tu propia cuenta, para que quien crea mazos sepa quién la pide. Necesitas una cuenta, pero no un correo.</string>
+    <string name="home_request_deck_link">¿No lo encuentras? Pide un mazo</string>
 </resources>
