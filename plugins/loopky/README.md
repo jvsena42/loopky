@@ -43,8 +43,8 @@ following [Install](https://github.com/jvsena42/loopky/tree/main/cli#install) in
 stops and asks you to.
 
 In a cloud environment (Claude Code on the web, Codex), the skill suggests the hosted **Loopky
-connector** instead: add `https://mcp.loopky.app/mcp` under Settings → Connectors and sign in once
-with Pubky Ring, with no install, no allowlist and no hourly phone sign-in. To use the CLI there
+connector** instead: find Loopky under Settings → Connectors → Browse connectors (or open
+<https://claude.ai/directory/loopky>), connect, and sign in once with Pubky Ring, with no install, no allowlist and no hourly phone sign-in. To use the CLI there
 anyway, install `loopky` in the environment's setup script and add the hosts `loopky doctor` lists
 to the environment's allowlist.
 
