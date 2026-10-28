@@ -323,7 +323,9 @@ are one entry instead of three.
 
 - **About 40% of the cards are phrases or full sentences.** Count it per 100 cards across the
   first 500 and per 500 after that, not only over the whole deck: strict frequency order puts every
-  function word first and every phrase last, and a learner meets a word list.
+  function word first and every phrase last, and a learner meets a word list. `composition` splits
+  on spaces, so it counts every Japanese or Chinese answer as a word; count those stretches from
+  the learner's side instead.
 - **Frequency order is the backbone, and each phrase sits right after the rarest word it uses**,
   so a phrase card combines words already met.
 - **Open with a block of about 75 survival phrases learned whole** — greetings, asking for
@@ -343,6 +345,33 @@ where an aside contains a word of its own answer, and where an answer lists alte
 `composition` counts one-word answers against longer ones for each stretch. Fix until both are
 right. Two things no dry run can see are yours to check with a script: no front is a grammar
 label, and the language of each side is the one declared.
+
+**The same deck for learners of another language is a port, not a new deck.** "The German deck
+we have for Brazilians, but for Spanish speakers" keeps the order and the backs and rewrites the
+side the learner reads. Read the source with `card list --json`, keyed by card id, and carry each
+card's picture over by that id. What has to change, and what a plain translation misses:
+
+- **Every note written for the old learner**: the front, and the asides on the back. A
+  pronunciation hint is true only for one learner's sounds (`"j" de "já"` means nothing to a
+  Spanish speaker), so each one is rewritten, not translated.
+- **The false friends**: some stop being traps for the new learner and become ordinary cards, and
+  the new pair has its own, which are added. A card that taught the old learner's language
+  (regional slang, its grammar) is dropped.
+- **Distinctions the new language collapses**: two fronts that translate to the same words get an
+  aside telling them apart, or the rarer one goes.
+- **Repeats the source already had.** Re-check the whole port as a new deck. Source decks often
+  repeat backs under `--reverse`, or carry pictures from per-language Wikipedia paths
+  (`image_advice` names them), and those are fixed in the port, not copied.
+- **A port to the language the source taught from** (Portuguese for Spanish speakers, from a
+  Spanish deck for Portuguese speakers) swaps the sides, so both are rewritten, and an aside
+  that shares a word with the answer is easy to miss between related languages.
+
+Split a large port across parallel agents by chunks of a few hundred cards in deck order, with a
+checker as their exit condition, as for a TV series below. It confirms that every source id
+comes back once, in order, or is dropped with a reason. It flags a front still in the old
+learner's language and repeats across the whole deck. Test it against real cards in the new
+language first: cognates (`permitir` is Spanish and Portuguese) and spellings quoted from the
+language being learned (`«ou»`) are not untranslated text.
 
 **A deck too long to show is shown as evidence.** The user cannot read 5,000 cards, so give them:
 the composition per stretch (words, phrases, sentences), a random sample of about ten cards from
