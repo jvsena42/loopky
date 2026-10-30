@@ -574,6 +574,12 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   *entirely* parenthesized comes back untouched (`matches` refuses an empty target, so stripping
   would make the card unanswerable), and what is *shown* keeps the aside: `SpeakResult.expected`
   and the speak prompt quote the card as written, because the note is the context worth seeing.
+  **One deliberate exception, keyed on the side's declared language (#554):** on a `ja` side a
+  pure-kana aside, and on a `zh` side a tone-marked pinyin one, is a *second* accepted answer —
+  `ねこ` answers `猫（ねこ）`, because a reading is the word in another script, not a note about
+  it. `ja`/`zh`/`ko` sides also compare space-blind, and every side folds width (`１`, `ｶﾀｶﾅ`)
+  by table. With no declared language none of this applies, so `hello (formal)` never accepts
+  `formal`.
 - **Speak also reads spelled-out numbers as digits — in the declared language, and only for
   Speak.** A recognizer picks `"10"` or `"ten"` on its own, so `NumberWords.fold` rewrites number
   words to digits on both sides before `SpeakMatcher` compares (`"twenty-one"`, `"treinta y uno"`,
@@ -581,8 +587,10 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   and folds nothing without one — one merged table would let English `"once"` and `"elf"` answer
   `"11"`, which is Spanish and German. It never folds for **typing**: a deck teaching `"10" → "ten"`
   would accept `"10"` back and stop testing anything. And a form the word list lacks
-  (`"ventotto"`, `"einundzwanzig"`, CJK numerals) is left as written — a miss, never a wrong fold.
-  Adding a language means adding a table, not a grammar.
+  (`"ventotto"`, `"einundzwanzig"`) is left as written — a miss, never a wrong fold. Adding a
+  language means adding a table, not a grammar. Japanese and Chinese fold Han numerals by
+  *character run* instead (`三時` → `3時`), since they sit inside words; Korean's glued
+  Sino-Korean words count only with a unit syllable in them, or `사이` would read as 42.
 - **A reverse card is a second *presentation*, never a second card record — and the pair is graded
   once.** `Deck.reverseEnabled` is the fourth study opt-in (off by default, ungated by the language
   pair, since swapping two sides has no engine to substitute a locale into). It leaves the card list

@@ -175,4 +175,51 @@ class AnswerMatcherTest {
     fun normalizeCollapsesRunsOfWhitespace() {
         assertEquals("el zorro corre", AnswerMatcher.normalize("  el\t zorro\n\ncorre ", Strict))
     }
+
+    @Test
+    fun widthIsFoldedForEveryLanguage() {
+        assertTrue(AnswerMatcher.matches("１２３ ＡＢＣ", "123 abc", Strict))
+        assertTrue(AnswerMatcher.matches("ｶﾀｶﾅ", "カタカナ", Strict))
+        assertTrue(AnswerMatcher.matches("ｶﾞｲﾄﾞ ﾊﾟﾝ", "ガイド パン", Strict))
+        assertTrue(AnswerMatcher.matches("ｳﾞｧｲｵﾘﾝ", "ヴァイオリン", Strict))
+    }
+
+    @Test
+    fun aKanaAsideIsASecondAnswerInJapanese() {
+        assertEquals(Correct, AnswerMatcher.judge("ねこ", "猫（ねこ）", "ja-JP"))
+        assertEquals(Correct, AnswerMatcher.judge("猫", "猫（ねこ）", "ja-JP"))
+        assertEquals(Correct, AnswerMatcher.judge("ぶらじるじんです", "ブラジル人です。（ぶらじるじんです）", "ja"))
+        assertEquals(Wrong, AnswerMatcher.judge("いぬ", "猫（ねこ）", "ja-JP"))
+    }
+
+    @Test
+    fun aReadingAsideNeedsTheDeclaredLanguage() {
+        assertEquals(Wrong, AnswerMatcher.judge("ねこ", "猫（ねこ）", null))
+        assertEquals(Wrong, AnswerMatcher.judge("formal", "hello (formal)", "en-US"))
+        // Only a pure-kana aside is a reading: a note in the learner's language is still a note.
+        assertEquals(Wrong, AnswerMatcher.judge("formal", "こんにちは（formal）", "ja-JP"))
+        assertEquals(Wrong, AnswerMatcher.judge("formal", "你好（formal）", "zh-CN"))
+    }
+
+    @Test
+    fun aPinyinAsideIsASecondAnswerInChineseAndItsTonesAreANearMiss() {
+        assertEquals(Correct, AnswerMatcher.judge("xuéxí", "学习（xuéxí）", "zh-CN"))
+        assertEquals(Correct, AnswerMatcher.judge("xué xí", "学习（xuéxí）", "zh-CN"))
+        assertEquals(NearMiss, AnswerMatcher.judge("xuexi", "学习（xuéxí）", "zh-CN"))
+        assertTrue(AnswerMatcher.matches("xuexi", "学习 (xuéxí)", Lenient, "zh-TW"))
+    }
+
+    @Test
+    fun cjkSidesCompareSpaceBlind() {
+        assertTrue(AnswerMatcher.matches("안녕 하세요", "안녕하세요", Strict, "ko-KR"))
+        assertTrue(AnswerMatcher.matches("할수있어요", "할 수 있어요", Strict, "ko-KR"))
+        assertTrue(AnswerMatcher.matches("我 是 学生", "我是学生", Strict, "zh-CN"))
+        // Elsewhere a space still separates words: "not able" is not "notable".
+        assertFalse(AnswerMatcher.matches("not able", "notable", Strict, "en-US"))
+    }
+
+    @Test
+    fun aKoreanSideHasNoReadingAside() {
+        assertEquals(Wrong, AnswerMatcher.judge("고양이", "猫（고양이）", "ko-KR"))
+    }
 }

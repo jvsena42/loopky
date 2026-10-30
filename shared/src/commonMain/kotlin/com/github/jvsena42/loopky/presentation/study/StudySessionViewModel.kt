@@ -425,7 +425,9 @@ class StudySessionViewModel(
             ?.takeIf { AnswerMatcher.isTypable(it) } ?: return
         val typed = typedAnswer.trim()
         if (typed.isEmpty()) return
-        val outcome = AnswerMatcher.judge(typed, expected)
+        // The answer side's language: it decides whether a reading aside answers and spaces count.
+        val languageTag = (_state.value as? StudySessionUiState.Reviewing)?.backLang
+        val outcome = AnswerMatcher.judge(typed, expected, languageTag)
         if (outcome == TypedAnswerOutcome.Correct) {
             typePhase = TypePhase.Correct(typed)
             revealed = true

@@ -21,8 +21,9 @@ package com.github.jvsena42.loopky.domain.model
  *   `"10" → "ten"` would accept `"10"` back and quietly stop testing anything.
  *
  * Coverage is a word list per language, not a grammar, so a form the list does not carry (Italian
- * `"ventotto"`, German `"einundzwanzig"`, CJK numerals) is simply left as written — a miss, never
- * a wrong fold.
+ * `"ventotto"`, German `"einundzwanzig"`) is simply left as written — a miss, never a wrong fold.
+ * Japanese and Chinese are the exception: their numerals are characters inside a word rather than
+ * words, so they fold by run of characters (`三時` → `3時`, `二十五` → `25`) — see [foldHan].
  */
 object NumberWords {
 
@@ -37,6 +38,7 @@ object NumberWords {
      * not a word boundary once punctuation is stripped.
      */
     fun fold(text: String, languageTag: String?): String {
+        if (baseOf(languageTag) in HAN_LANGUAGES) return foldHan(text)
         val numerals = tableFor(languageTag) ?: return text
         val tokens = tokenize(text)
         val out = StringBuilder()
@@ -99,6 +101,7 @@ object NumberWords {
                 scale != null -> current = maxOf(current, 1L) * scale
                 unit == SCORE && numerals.vigesimal && current in 2L..9L -> current *= SCORE
                 unit != null -> current += unit
+                else -> current += numerals.compound(word) ?: 0L
             }
         }
         return total + current
@@ -136,24 +139,91 @@ object NumberWords {
      * @property scales values that multiply what came before them (`"hundred"`, `"mil"`).
      * @property fillers words that may sit inside a number without ending it (`"and"`, `"y"`).
      * @property vigesimal whether the language counts in twenties above 60, as French does.
+     * @property compound the value of a word the tables cannot list, glued from smaller numbers
+     *  (Korean `삼십`, `열하나`), or null.
      */
     private class Numerals(
         val units: Map<String, Long>,
         val scales: Map<String, Long>,
         val fillers: Set<String>,
         val vigesimal: Boolean = false,
+        val compound: (String) -> Long? = { null },
     ) {
-        fun isNumber(key: String): Boolean = key in units || key in scales
+        fun isNumber(key: String): Boolean = key in units || key in scales || compound(key) != null
     }
 
     private const val THOUSAND = 1_000L
     private const val SCORE = 20L
     private val HYPHENS = charArrayOf('-', '‐', '‑', '–')
 
-    private fun tableFor(languageTag: String?): Numerals? {
-        val base = languageTag?.substringBefore('-')?.trim()?.lowercase() ?: return null
-        return TABLES[base]
+    private fun baseOf(languageTag: String?): String? = languageTag?.substringBefore('-')?.trim()?.lowercase()
+
+    private fun tableFor(languageTag: String?): Numerals? = TABLES[baseOf(languageTag) ?: return null]
+
+    private val HAN_LANGUAGES = setOf("ja", "zh")
+
+    /**
+     * Each maximal run of Han numerals in [text] rewritten as digits; everything else untouched.
+     *
+     * Folds inside words too (`一緒` → `1緒`), which is harmless because both sides of a comparison
+     * fold the same way: it only changes the outcome where one side wrote the number in digits.
+     */
+    private fun foldHan(text: String): String {
+        if (text.none { it in HAN_DIGITS || it in HAN_UNITS }) return text
+        val out = StringBuilder(text.length)
+        var i = 0
+        while (i < text.length) {
+            if (text[i] !in HAN_DIGITS && text[i] !in HAN_UNITS) {
+                out.append(text[i++])
+                continue
+            }
+            val start = i
+            while (i < text.length && (text[i] in HAN_DIGITS || text[i] in HAN_UNITS)) i++
+            out.append(hanValue(text.substring(start, i)))
+        }
+        return out.toString()
     }
+
+    /**
+     * A run with no unit character is read digit by digit (`二〇二六` → `2026`); otherwise
+     * positionally, a digit before `十`/`百`/`千` multiplying it (default one) and `万`/`億`
+     * banking the section before them (`三万五千` → `35000`). `零` is a placeholder (`一百零五`).
+     */
+    private fun hanValue(run: String): String {
+        if (run.none { it in HAN_UNITS }) return run.map { HAN_DIGITS.getValue(it) }.joinToString("")
+        var total = 0L
+        var section = 0L
+        var digit = -1L
+        for (ch in run) {
+            val unit = HAN_UNITS[ch]
+            when {
+                unit == null -> digit = HAN_DIGITS.getValue(ch).takeIf { it != 0L } ?: -1L
+                unit >= HAN_MYRIAD -> {
+                    section += maxOf(digit, 0L)
+                    total += maxOf(section, 1L) * unit
+                    section = 0L
+                    digit = -1L
+                }
+                else -> {
+                    section += (if (digit < 0) 1L else digit) * unit
+                    digit = -1L
+                }
+            }
+        }
+        return (total + section + maxOf(digit, 0L)).toString()
+    }
+
+    private const val HAN_MYRIAD = 10_000L
+
+    private val HAN_DIGITS: Map<Char, Long> = mapOf(
+        '〇' to 0L, '零' to 0L, '一' to 1L, '二' to 2L, '两' to 2L, '兩' to 2L, '三' to 3L,
+        '四' to 4L, '五' to 5L, '六' to 6L, '七' to 7L, '八' to 8L, '九' to 9L,
+    )
+
+    private val HAN_UNITS: Map<Char, Long> = mapOf(
+        '十' to 10L, '百' to 100L, '千' to 1_000L, '万' to 10_000L, '萬' to 10_000L,
+        '億' to 100_000_000L, '亿' to 100_000_000L,
+    )
 
     /** Keys are diacritic-folded and lowercase, because [token] looks them up that way. */
     private val ENGLISH = Numerals(
@@ -262,7 +332,53 @@ object NumberWords {
         fillers = setOf("und"),
     )
 
+    private val SINO_KOREAN_DIGITS = mapOf(
+        '영' to '〇', '공' to '〇', '일' to '一', '이' to '二', '삼' to '三', '사' to '四', '오' to '五',
+        '육' to '六', '칠' to '七', '팔' to '八', '구' to '九',
+    )
+    private val SINO_KOREAN_UNITS = mapOf('십' to '十', '백' to '百', '천' to '千', '만' to '万', '억' to '億')
+
+    private val NATIVE_KOREAN_UNITS = mapOf(
+        "하나" to 1L, "한" to 1L, "둘" to 2L, "두" to 2L, "셋" to 3L, "세" to 3L, "넷" to 4L, "네" to 4L,
+        "다섯" to 5L, "여섯" to 6L, "일곱" to 7L, "여덟" to 8L, "아홉" to 9L,
+    )
+    private val NATIVE_KOREAN_TENS = mapOf(
+        "열" to 10L, "스물" to 20L, "스무" to 20L, "서른" to 30L, "마흔" to 40L, "쉰" to 50L,
+        "예순" to 60L, "일흔" to 70L, "여든" to 80L, "아흔" to 90L,
+    )
+
+    /**
+     * A glued Sino-Korean number (`삼십오`), read through the Han reading it transliterates, or a
+     * glued native one (`열하나`). A Sino-Korean word must carry a unit syllable, or `사이` (between)
+     * and `오이` (cucumber) would read as 42 and 52.
+     */
+    private fun koreanCompound(word: String): Long? {
+        val sino = word.all { it in SINO_KOREAN_DIGITS || it in SINO_KOREAN_UNITS }
+        if (sino && word.length >= 2 && word.any { it in SINO_KOREAN_UNITS }) {
+            val han = word.map { SINO_KOREAN_DIGITS[it] ?: SINO_KOREAN_UNITS.getValue(it) }.joinToString("")
+            return hanValue(han).toLong()
+        }
+        val tens = NATIVE_KOREAN_TENS.entries.firstOrNull { word.startsWith(it.key) && word.length > it.key.length }
+            ?: return null
+        return NATIVE_KOREAN_UNITS[word.removePrefix(tens.key)]?.plus(tens.value)
+    }
+
+    /**
+     * Both counting systems: Sino-Korean (`삼`, `삼십`) and native (`셋`, and the counter forms
+     * `한`/`두`/`세`/`네` of `한 시`). A recognizer writes either as digits (`3시`).
+     */
+    private val KOREAN = Numerals(
+        units = NATIVE_KOREAN_UNITS + NATIVE_KOREAN_TENS + mapOf(
+            "영" to 0L, "공" to 0L, "일" to 1L, "이" to 2L, "삼" to 3L, "사" to 4L, "오" to 5L,
+            "육" to 6L, "칠" to 7L, "팔" to 8L, "구" to 9L,
+        ),
+        scales = mapOf("십" to 10L, "백" to 100L, "천" to 1_000L, "만" to 10_000L, "억" to 100_000_000L),
+        fillers = emptySet(),
+        compound = ::koreanCompound,
+    )
+
     private val TABLES: Map<String, Numerals> = mapOf(
+        "ko" to KOREAN,
         "en" to ENGLISH,
         "es" to SPANISH,
         "pt" to PORTUGUESE,

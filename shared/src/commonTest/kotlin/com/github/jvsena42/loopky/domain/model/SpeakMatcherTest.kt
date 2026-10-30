@@ -102,4 +102,13 @@ class SpeakMatcherTest {
         assertFalse(SpeakMatcher.match("", "").correct)
         assertFalse(SpeakMatcher.match("anything", "").correct)
     }
+
+    @Test
+    fun cjkTranscriptsMatchAcrossDigitsReadingsAndSpacing() {
+        assertTrue(SpeakMatcher.match("3時です", "三時です", "ja-JP").correct)
+        assertTrue(SpeakMatcher.match("ねこ", "猫（ねこ）", "ja-JP").correct)
+        assertTrue(SpeakMatcher.match("3시", "세 시", "ko-KR").correct)
+        assertTrue(SpeakMatcher.match("안녕 하세요", "안녕하세요", "ko-KR").correct)
+        assertTrue(SpeakMatcher.match("xuexi", "学习（xuéxí）", "zh-CN").correct)
+    }
 }

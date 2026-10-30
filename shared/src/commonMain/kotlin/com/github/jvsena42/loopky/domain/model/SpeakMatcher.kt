@@ -41,6 +41,7 @@ object SpeakMatcher {
                 given = NumberWords.fold(spoken, languageTag),
                 expected = NumberWords.fold(expected, languageTag),
                 strictness = AnswerStrictness.Lenient,
+                languageTag = languageTag,
             ),
             heard = spoken.trim(),
             expected = expected.trim(),
