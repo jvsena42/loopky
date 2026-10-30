@@ -164,6 +164,7 @@ loopky doctor                       # every host this needs, through your proxy,
 loopky update --check            # is there a newer release?
 loopky update                    # fetch it, check its digest, replace this binary
 
+loopky deck list --json --compact --query capitais   # small enough for an agent to read
 loopky deck list
 loopky deck create --title "Capitais" --tag geografia --tag "português" --from-file cards.tsv
                                     # stored as geografia, portugues - see "Tags are folded" below
@@ -173,7 +174,7 @@ loopky deck show <deckId> --json
 loopky deck edit <deckId> --cover-url https://…/capitais.jpg --tag geografia --tag capitais
 loopky deck sync <deckId>
 loopky deck compact <deckId>
-loopky deck delete <deckId>
+loopky deck delete <deckId> --confirm-title "Capitais"   # only if that is its title
 
 loopky card list <deckId> --json
 loopky card list <deckId> --json --missing-image --limit 50    # a page, not the whole deck
@@ -846,7 +847,20 @@ in again would fail the same way). Worth checking before starting an hour-long i
 - **`--dry-run` runs the command's own path.** It is on `import`, `deck create` and `card add`, and
   each stops just before its own write. Pre-flighting a `deck create --from-file` through `import
   --dry-run` reads a *different* parser, which is how the two came to disagree about a well-formed
-  four-column TSV.
+  four-column TSV. Each dry run reports `data.content_hash`, a digest of the deck metadata as it
+  would be stored and every card side in order — not of the ids or timestamps a run mints, nor of
+  which rows `card add` would skip. Hand it to the real call as `--expect-hash` and that call
+  refuses, exit 2 with nothing written, any content but the one the dry run checked. Nothing is
+  kept between the two calls; for `import`, give the dry run the same `--title`, since it is part
+  of the hash.
+- **`deck list` reads every manifest, and can still answer small.** `--query` keeps decks whose
+  title contains the text, ignoring case; `--limit`/`--cursor` page in id order, with
+  `data.next_cursor` while there is more and `data.total` counting every match; `--compact`
+  reports each deck as `id`, `title`, `card_count`, `tags`, the language pair, `updated_at` and
+  `incomplete`, without the chunk table. They save the answer, not the reads.
+- **`deck delete --confirm-title "T"` deletes only a deck whose current title is exactly T**, and
+  refuses (exit 9, nothing deleted) otherwise, without naming the real title. Optional here; the
+  hosted connector requires it.
 - **`card edit --from-file` is idempotent too, which is why it has no `--resume`.** A row already
   holding what it asks for is skipped rather than rewritten, so re-running the same file *is* the
   resume: no cursor to keep, nothing to pass, and no `updated_at` churn on rows that did not change.

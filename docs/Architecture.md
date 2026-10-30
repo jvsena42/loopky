@@ -2791,6 +2791,23 @@ blocking and capped below the OAuth half's own pending-login cap, and an LRU ses
 single-flight minting sized to the pool, because two concurrent re-mints of one grant replace each
 other's bearer.
 
+**What a production run cost (#559), and the four answers.** An agent with no binary hit four
+walls, and each fix lives in `:cli-core` so the CLI has it too. *`deck list` grew `--limit`/
+`--cursor`, `--query` and `--compact`*, because ~70 decks answered with ~148k characters, past a
+client's tool-result limit; the manifests are still all read, so these save the answer, not the
+fetch. *A dry run reports `content_hash` and the real call takes it as `--expect-hash`*: the
+digest covers the metadata as stored and every card side in order, never minted ids, timestamps
+or the dedupe outcome, so a retry after a partial write still matches. It does **not** spare the
+resend the issue asked about — that would need a plan stored between two calls, and a server that
+keeps a tenant's pending content is a second store to bound, expire and isolate; the hash only
+guarantees the two payloads are the same one. *`deck_delete` is served, behind `confirm_title`*:
+optional on the CLI, required by the tool (`McpTool.required`), destructive, and a mismatch does
+not name the real title. *`card_reorder` is served with `card_ids` inline*, written to the scratch
+file `cards`/`text` use and run through the same `DeckRepository.reorderCards`, so the crash-safe
+write order (§8.4) is the repository's alone; its count cap is 20,000 rather than 2,000 because a
+reorder names every card. A note field on a card, the issue's fifth item, is a data-model change
+and was left out.
+
 **Deployment.** `mcp/Dockerfile` (jammy for `libpubkycore`'s glibc floor, non-root, read-only
 root) is built and booted on every PR by CI's `mcp` job. `/tmp` must be an **exec** tmpfs: JNA and
 sqlite-jdbc load their native libraries from it, and Docker's default tmpfs is `noexec` — the
