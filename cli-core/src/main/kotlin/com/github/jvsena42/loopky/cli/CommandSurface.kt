@@ -179,6 +179,14 @@ private val DRY_RUN_OPTION = listOf(
     CliOption("dry-run", "report what would be written and write nothing", OptionValue.Switch),
 )
 
+/**
+ * `--expect-hash`, on the same three: the dry run's `content_hash`, so the real call refuses any
+ * content but the one that was checked (#559).
+ */
+private val EXPECT_HASH_OPTION = listOf(
+    CliOption("expect-hash", "the content_hash a dry run reported - refuse to write anything else"),
+)
+
 private val CARD_FIELDS = listOf(
     CliOption("front", "the front text"),
     CliOption("back", "the back text"),
@@ -265,7 +273,7 @@ fun cliCommands(): List<CliCommand> = listOf(
             // No STUDY_OPT_OUTS: `deckCreate` reads these with `flag(name, default = false)`, so
             // `--no-listen` could only restate the default. `deck edit` and `import --resume`
             // overlay an existing deck and genuinely need them.
-            DRY_RUN_OPTION + IMAGE_CHECK_OPTIONS + STUDY_OPT_INS + LANGUAGE_OPTIONS,
+            DRY_RUN_OPTION + EXPECT_HASH_OPTION + IMAGE_CHECK_OPTIONS + STUDY_OPT_INS + LANGUAGE_OPTIONS,
         writes = true,
     ),
     CliCommand(
@@ -302,7 +310,7 @@ fun cliCommands(): List<CliCommand> = listOf(
         path = "card add",
         summary = "add one card, or a file of them",
         operand = Operand.Opaque("deckId"),
-        options = CARD_FIELDS + DRY_RUN_OPTION,
+        options = CARD_FIELDS + DRY_RUN_OPTION + EXPECT_HASH_OPTION,
         writes = true,
     ),
     CliCommand(
@@ -359,7 +367,7 @@ fun cliCommands(): List<CliCommand> = listOf(
             // so the flags it can carry are `deck create`'s rather than a subset (#257, item 5).
             CliOption("cover-url", "https URL for the cover image"),
             CliOption("cover-emoji", "an emoji to use as the cover"),
-        ) + DRY_RUN_OPTION + IMAGE_CHECK_OPTIONS + STUDY_OPT_INS + STUDY_OPT_OUTS + LANGUAGE_OPTIONS,
+        ) + DRY_RUN_OPTION + EXPECT_HASH_OPTION + IMAGE_CHECK_OPTIONS + STUDY_OPT_INS + STUDY_OPT_OUTS + LANGUAGE_OPTIONS,
         writes = true,
     ),
 

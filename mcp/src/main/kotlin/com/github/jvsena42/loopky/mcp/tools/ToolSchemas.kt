@@ -59,6 +59,12 @@ private fun McpTool.description(): String = buildString {
         null -> Unit
     }
     if ("dry-run" in exposed) append(" With `dry_run` nothing is written and the result reports what would be.")
+    if ("expect-hash" in exposed) {
+        append(
+            " A dry run's `content_hash`, passed back as `expect_hash` on the real call, makes that call " +
+                "refuse any content but the one the dry run checked.",
+        )
+    }
 }
 
 private fun McpTool.properties(): JsonObject = buildJsonObject {

@@ -99,6 +99,11 @@ data class CardWriteResult(
      * from the homeserver yet. [skipped] is real: the dedupe read the deck.
      */
     @SerialName("dry_run") val dryRun: Boolean = false,
+    /**
+     * On `card add`, a digest of the deck id and every row the call carries, before the dedupe;
+     * `--expect-hash` takes it back. Null on every other command. See [contentHash].
+     */
+    @SerialName("content_hash") val contentHash: String? = null,
 )
 
 /** What `card mv` did. [position] is 1-based, the way `card list` numbers its lines. */

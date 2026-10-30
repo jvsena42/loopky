@@ -70,8 +70,9 @@ suspend fun cardAdd(
         )
         ).requireBothSides()
 
-    val seen = existing.mapTo(mutableSetOf()) { it.identityOf() }
     val now = System.currentTimeMillis()
+    val hash = args.requireExpectedHash(rows.contentHashOf(deckId, now))
+    val seen = existing.mapTo(mutableSetOf()) { it.identityOf() }
     val planned = mutableListOf<PlannedWrite>()
     val labels = mutableListOf<String>()
     var skipped = 0
@@ -107,13 +108,14 @@ suspend fun cardAdd(
                 cardAdvice = cardNotes,
                 composition = planned.map { it.card }.compositionView(),
                 dryRun = true,
+                contentHash = hash,
             ),
             "Would add ${planned.size} card(s) to $deckId" +
                 (if (skipped > 0) ", skipping $skipped already present" else "") +
                 ". Nothing was written.",
         )
     }
-    return appendBatch(deckId, deck, decks, cards, planned, skipped, checks, log.advice, cardNotes, onProgress)
+    return appendBatch(deckId, deck, decks, cards, planned, skipped, checks, log.advice, cardNotes, onProgress, hash)
 }
 
 /**

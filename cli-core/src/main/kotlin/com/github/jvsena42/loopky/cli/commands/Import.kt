@@ -80,6 +80,8 @@ data class ImportResult(
     @SerialName("card_advice") val cardAdvice: List<CardAdvice> = emptyList(),
     /** Notes about a `--front-lang`/`--back-lang` value a speech engine is unlikely to honour. */
     @SerialName("language_advice") val languageAdvice: List<String> = emptyList(),
+    /** The digest [ImportPreview.contentHash] reported for this content. See [contentHash]. */
+    @SerialName("content_hash") val contentHash: String? = null,
 )
 
 /**
@@ -122,6 +124,11 @@ data class ImportPreview(
     @SerialName("language_advice") val languageAdvice: List<String> = emptyList(),
     /** How each stretch of the file splits between one-word answers and longer ones. See [CompositionView]. */
     val composition: List<CompositionView> = emptyList(),
+    /**
+     * A digest of the deck and cards the real run would write. Pass it as `--expect-hash` there and
+     * any other content is refused. Covers the title, so give the dry run the `--title` too.
+     */
+    @SerialName("content_hash") val contentHash: String? = null,
 )
 
 /** The `--json` spelling of a format, kept beside the enum so the two cannot drift. */
@@ -194,6 +201,7 @@ private suspend fun importLocked(
 
     val parsed = parseSource(args, imports, source, title, keepImageBytes = true)
     val draft = parsed.draft
+    val hash = args.requireExpectedHash(imports.contentHashOf(args, draft))
     parsed.apkg?.let { warnAboutMediaSpend(it, onNote) }
     // Before anything is built, because `remoteImage` refuses an http:// address by throwing an
     // assertion no classifier recognises — so an unrenderable column in someone's file reached the
@@ -270,6 +278,7 @@ private suspend fun importLocked(
             tagsNormalized = tagFolds,
             cardAdvice = cardNotes,
             languageAdvice = languageNotes,
+            contentHash = hash,
         ),
         describeImport(written, title, parsed, resume) + tagFolds.describe(),
     )
@@ -352,6 +361,7 @@ suspend fun importDryRun(
     // 500-image deck should not need the deck's media in heap to answer how big it is.
     val parsed = parseSource(args, imports, source, title, keepImageBytes = false)
     val draft = parsed.draft
+    val hash = args.requireExpectedHash(imports.contentHashOf(args, draft))
     val cards = imports.keptRows().size
     val images = imports.draftImageUrls()
     val log = ImageAdviceLog()
@@ -387,6 +397,7 @@ suspend fun importDryRun(
             cardAdvice = cardNotes,
             languageAdvice = languageNotes,
             composition = adviceCards.compositionView(),
+            contentHash = hash,
         ),
         buildString {
             appendLine("$source would publish $cards ${if (cards == 1) "card" else "cards"}. Nothing was written.")

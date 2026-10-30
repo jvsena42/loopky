@@ -474,7 +474,8 @@ internal val USAGE = """
                                 there is more. --compact drops the chunk table and the links.
       deck show <deckId>
       deck create --title T [--description D] [--tag T]... [--cover-url URL] [--cover-emoji E]
-                  [--from-file F] [--check-images] [--dry-run] [--id DECKID] [--if-not-exists]
+                  [--from-file F] [--check-images] [--dry-run] [--expect-hash HASH]
+                  [--id DECKID] [--if-not-exists]
                   [--listen] [--speak] [--type] [--reverse] [--front-lang BCP47] [--back-lang BCP47]
                                 --id with --if-not-exists is the idempotent form: an existing deck
                                 is returned untouched (created: false). Without --if-not-exists an
@@ -499,7 +500,7 @@ internal val USAGE = """
                                 --limit/--cursor page through large decks; --json carries
                                 next_cursor while there is more.
       card add <deckId> --front F --back B [--front-image URL] [--back-image URL]
-      card add <deckId> --from-file cards.tsv|cards.jsonl [--dry-run]
+      card add <deckId> --from-file cards.tsv|cards.jsonl [--dry-run] [--expect-hash HASH]
                                 Written 100 cards per request.
       card edit <deckId> <cardId> [--front F] [--back B] [--front-image URL] [--back-image URL]
                                   [--clear-front-image] [--clear-back-image]
@@ -532,6 +533,10 @@ internal val USAGE = """
                       An Anki export; the two fields become front and back (numbers are 1-based).
       import <file> --dry-run [--json] [--check-images]
                       Report what would be published. Writes nothing, needs no session.
+
+                                deck create, card add and import: a --dry-run reports content_hash;
+                                hand it to the real call as --expect-hash HASH and that call refuses
+                                (exit 2, nothing written) any content but the one dry-run checked.
 
     DISCOVERY
       tag trending [--limit N]  Read the Nexus indexer. No session needed.

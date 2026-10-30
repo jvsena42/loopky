@@ -131,7 +131,7 @@ fun mcpTools(): List<McpTool> {
             "deck_create",
             "Create a deck",
             command("deck create"),
-            exposed = DECK_METADATA + "id" + "if-not-exists" + "dry-run" + STUDY_OPT_INS + LANGUAGES,
+            exposed = DECK_METADATA + "id" + "if-not-exists" + "dry-run" + "expect-hash" + STUDY_OPT_INS + LANGUAGES,
             refused = mapOf("from-file" to PATH_REFUSAL) + IMAGE_CHECK_OPTIONS,
             inline = InlineInput.CardFile,
         ),
@@ -155,7 +155,7 @@ fun mcpTools(): List<McpTool> {
             "card_add",
             "Add cards",
             command("card add"),
-            exposed = CARD_FIELDS + "dry-run",
+            exposed = CARD_FIELDS + "dry-run" + "expect-hash",
             refused = mapOf("from-file" to PATH_REFUSAL) + IMAGE_CHECK_OPTIONS,
             inline = InlineInput.CardFile,
             hints = IDEMPOTENT,
@@ -189,7 +189,7 @@ fun mcpTools(): List<McpTool> {
             "import",
             "Import a deck from text",
             command("import"),
-            exposed = setOf("title", "description", "tag", "separator", "resume", "cover-url", "cover-emoji", "dry-run") +
+            exposed = setOf("title", "description", "tag", "separator", "resume", "cover-url", "cover-emoji", "dry-run", "expect-hash") +
                 STUDY_OPT_INS + STUDY_OPT_OUTS + LANGUAGES,
             refused = mapOf("front-field" to APKG_REFUSAL, "back-field" to APKG_REFUSAL) + IMAGE_CHECK_OPTIONS,
             inline = InlineInput.ImportSource,
