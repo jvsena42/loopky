@@ -246,7 +246,7 @@ private suspend fun route(
             deckCreate(args, koin.decks(), if (offline) null else sessions.require(identity, environment), note, progress)
         }
         "deck edit" -> authed(sessions, identity, environment) { deckEdit(args, koin.decks(), note) }
-        "deck delete" -> authed(sessions, identity, environment) { deckDelete(args, koin.decks()) }
+        "deck delete" -> authed(sessions, identity, environment) { session -> deckDelete(args, koin.decks(), session) }
         "deck sync" -> authed(sessions, identity, environment) { deckSync(args, koin.decks(), koin.cards()) }
         "deck compact" -> authed(sessions, identity, environment) { deckCompact(args, koin.decks()) }
 
@@ -491,7 +491,9 @@ internal val USAGE = """
                   [--reverse|--no-reverse] [--front-lang BCP47] [--back-lang BCP47]
                                 Metadata only; cards are untouched. An omitted flag leaves its field
                                 alone, `--description=` clears it, --tag replaces the whole set.
-      deck delete <deckId>
+      deck delete <deckId> [--confirm-title T]
+                                With --confirm-title the deck is deleted only when T is its exact
+                                current title.
       deck sync <deckId>
       deck compact <deckId>     Fold away the holes card deletes leave in the chunk table.
 

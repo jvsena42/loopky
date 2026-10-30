@@ -148,7 +148,15 @@ class FakeDeckRepository(
         return readFails?.let { Result.failure(it) } ?: Result.success(deck)
     }
     override suspend fun publish(deck: Deck, cards: List<Card>): Result<Deck> = no("publish")
-    override suspend fun delete(deckId: String): Result<Unit> = no("delete")
+
+    /** Every deck id `delete` was asked for. */
+    val deletes = mutableListOf<String>()
+
+    override suspend fun delete(deckId: String): Result<Unit> {
+        deletes += deckId
+        return Result.success(Unit)
+    }
+
     override suspend fun appendCards(deckId: String, cards: List<Card>): Result<Deck> {
         appended += cards
         appendBatches += cards.size

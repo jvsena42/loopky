@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.DeckLimits
 import com.github.jvsena42.loopky.domain.model.MediaRef
+import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.domain.model.remoteImageRef
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -46,7 +47,12 @@ data class DeckListCompactResult(
 data class DeckShowResult(val deck: DeckView)
 
 @Serializable
-data class DeckDeleteResult(val id: String, val deleted: Boolean)
+data class DeckDeleteResult(
+    val id: String,
+    val deleted: Boolean,
+    /** The title `--confirm-title` matched, or null when none was asked for. */
+    val title: String? = null,
+)
 
 @Serializable
 data class DeckCompactResult(
@@ -132,11 +138,32 @@ private fun DeckView.describe(): String = buildString {
     append("Uri:         $uri")
 }
 
-suspend fun deckDelete(args: Args, decks: DeckRepository): CommandResult {
+/**
+ * Delete a deck, its cards and its media.
+ *
+ * `--confirm-title` is the guard for a caller that cannot be asked "are you sure": the deck is
+ * read first, and deleted only when its current title is exactly the one given. Optional here,
+ * where a person typed the id; the connector's `deck_delete` requires it (#559). A mismatch does
+ * not name the real title, so getting past it takes reading the deck rather than echoing an error.
+ */
+suspend fun deckDelete(args: Args, decks: DeckRepository, session: Session): CommandResult {
     val id = args.requireWord(2, "deckId")
+    val confirmed = args.option(CONFIRM_TITLE_OPTION)?.let { expected ->
+        val deck = decks.fetchRemote(session.identity.pubky, id).getOrElse { throw asCliError(it) }
+        if (deck.title != expected) {
+            throw CliError(
+                ExitCode.BadInput,
+                "--$CONFIRM_TITLE_OPTION is not the current title of deck $id, so nothing was deleted. " +
+                    "Read it with `deck show $id` and make sure this is the deck you mean.",
+            )
+        }
+        deck.title
+    }
     decks.delete(id).getOrElse { throw asCliError(it) }
-    return result(DeckDeleteResult(id, deleted = true), "Deleted $id")
+    return result(DeckDeleteResult(id, deleted = true, title = confirmed), "Deleted $id")
 }
+
+const val CONFIRM_TITLE_OPTION = "confirm-title"
 
 suspend fun deckSync(args: Args, decks: DeckRepository, cards: CardRepository): CommandResult {
     val id = args.requireWord(2, "deckId")

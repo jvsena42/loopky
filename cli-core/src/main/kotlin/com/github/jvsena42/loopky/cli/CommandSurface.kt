@@ -286,7 +286,15 @@ fun cliCommands(): List<CliCommand> = listOf(
         ),
         writes = true,
     ),
-    CliCommand("deck delete", "delete a deck and its cards", Operand.Opaque("deckId"), writes = true),
+    CliCommand(
+        path = "deck delete",
+        summary = "delete a deck and its cards",
+        operand = Operand.Opaque("deckId"),
+        options = listOf(
+            CliOption("confirm-title", "the exact current title of the deck - nothing is deleted unless it matches"),
+        ),
+        writes = true,
+    ),
     CliCommand("deck sync", "re-read a deck from the homeserver", Operand.Opaque("deckId")),
     CliCommand(
         path = "deck compact",
