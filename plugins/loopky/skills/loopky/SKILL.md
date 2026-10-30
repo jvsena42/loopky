@@ -30,8 +30,8 @@ are running:
   connectors, search for Loopky, or open https://claude.ai/directory/loopky — then sign in with
   Pubky Ring when it asks.
 - **A shell on the user's own machine** (a local terminal): **use the CLI**, with the workflow
-  below. It is the complete client: `.apkg` imports, card files on disk, `--check-images`,
-  `batch` and `card reorder` exist only there. If `loopky` is missing, offer the install; mention
+  below. It is the complete client: `.apkg` imports, card files on disk, `--check-images`
+  and `batch` exist only there. If `loopky` is missing, offer the install; mention
   the connector only if they would rather not install anything.
 - **A cloud or sandbox session** (Claude Code on the web, Codex cloud, a container — `/.dockerenv`
   or `/run/.containerenv` exists, or the environment is recreated per task; a proxy in
@@ -55,8 +55,12 @@ Through the connector:
 - **It refuses what would make the server touch something of its own**: file paths (it cannot see
   the user's disk), an Anki `.apkg` (point them at the CLI for that), and `check_images` (the
   server never fetches a caller's URL; the phone fetches pictures).
-- **No `batch`, `card reorder` or deck delete.** One write at a time per account: wait for a call
-  to return before the next.
+- **`deck_list` takes `query` and `compact: true`**: use both to check whether a deck on the topic
+  exists. On a large account the full list is bigger than a tool result can hold.
+- **A deck the user's new one replaces can go with `deck_delete`**, and only once they have said
+  yes. It needs the deck's exact current title as `confirm_title`, read from `deck_show`. A wrong
+  title deletes nothing.
+- **No `batch`.** One write at a time per account: wait for a call to return before the next.
 - **A deck of thousands goes up in calls of about 250 cards**, even though 2,000 fit: you re-type
   every card into the call, a smaller call is one you can re-read, and each `card_add` echoes its
   cards back. Keep a `card_edit` to about 60 cards: a bigger one can time out partway and apply
@@ -65,9 +69,10 @@ Through the connector:
   `card_list` (no `limit`, following the cursor) and compare front, back and picture with your
   local file, in `ord` order. Re-typed text drifts, worst in non-Latin scripts (a Korean `쟤` came
   back as `쟈`), and nothing else catches it. Fix the drifted cards with `card_edit`.
-- **`card_move` reorders a block** one card at a time, each `after` the previous. The `ord`
-  values it returns can jump between calls as the server re-spaces them: only a final
-  `card_list` shows the true order.
+- **To reorder, give `card_reorder` the whole order** as `card_ids`, every card's id once, rather
+  than one `card_move` per card. Keep `card_move` for a card or two; the `ord` values it returns
+  can jump between calls as the server re-spaces them, so only a final `card_list` shows the true
+  order.
 - Results are the CLI's `--json` envelope, so the exit-code names below are the `error.code`
   values the tools return.
 
@@ -112,7 +117,8 @@ Through the connector:
 
    `--dry-run` exists on `deck create`, `card add` and `import`, and runs that command's own
    parser. Read `image_advice`, `card_advice` and `language_advice` in the result and fix what
-   they name: they are advice, so the command still exits 0 with them in it.
+   they name: they are advice, so the command still exits 0 with them in it. Keep the result's
+   `content_hash` for the next step.
 
 7. **Publish:**
 
@@ -120,7 +126,11 @@ Through the connector:
    loopky deck create --title "<Title>" --tag <topic> --from-file cards.tsv --json
    ```
 
-   Add `--id <word> --if-not-exists` when a retry must not publish a second deck. A tag is stored
+   Pass the dry run's hash as `--expect-hash <content_hash>` (`expect_hash` on the connector), so
+   what is published is what was checked: exit 2 saying the content is not what the dry run
+   checked means something changed between the two, so dry-run again. For `import`, give the dry
+   run the same `--title`. Add `--id <word> --if-not-exists` when a retry must not publish a
+   second deck. A tag is stored
    lowercase, without accents and with `-` between words (`Bioquímica Básica` becomes
    `bioquimica-basica`); `tags_normalized` in the result lists each one that changed, and that is
    not an error.
