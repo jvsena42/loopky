@@ -8,8 +8,11 @@ Three decks are published on production and verified card by card:
 | Coreano: O deck definitivo para brasileiros | `coreano-brasileiros` | 4,481 | 0 | 412 (`korean_candidates.jsonl`) |
 | Mandarim: O deck definitivo para brasileiros | `mandarim-brasileiros` | 4,704 | 0 | 401 (`mandarin_candidates.jsonl`) |
 
-The session that built them could not finish the pictures: Wikimedia throttles thumbnail downloads
-from its sandbox (~45 s per image). From a normal connection the work below takes about an hour.
+The session that built them could not finish the pictures: Wikimedia throttled its thumbnail
+downloads (~45 s per image). The cause was the bare User-Agent, not the sandbox: Wikimedia answers
+one with no contact URL with 429 after a couple of requests. `pictures.py` now sends one and waits
+a second between downloads: about 1.3 s per picture, so half an hour of sheets for the Japanese
+deck and under an hour for each of the other two.
 
 ## What is already done
 

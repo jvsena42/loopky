@@ -1,7 +1,7 @@
 """Contact sheets and card edits for the remaining deck pictures.
 
     python3 pictures.py sheets japanese_candidates.jsonl sheets_ja/
-        One JPEG per 6 cards: the card's Portuguese front on the left, up to 4 numbered candidates.
+        One JPEG per 6 cards: the card's Portuguese front on the left, up to 6 numbered candidates.
 
     python3 pictures.py edits japanese_candidates.jsonl picks_ja.jsonl > edits_ja.json
         picks file: one line per card you looked at, {"sheet": 0, "row": 1, "pick": 3}
@@ -12,9 +12,11 @@ Needs Pillow (`pip install pillow`) and the DejaVu font, or edit FONT below.
 import json, os, sys, time, urllib.request, urllib.error
 from PIL import Image, ImageDraw, ImageFont
 
-UA = "LoopkyDeckBuilder/1.0"
+# Wikimedia throttles a User-Agent with no contact URL within a few requests, and any agent
+# fetching faster than about one a second.
+UA = "LoopkyDeckBuilder/1.0 (https://github.com/jvsena42/loopky)"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-CELL, ROWS, COLS, LABEL_W = 200, 6, 4, 260
+CELL, ROWS, COLS, LABEL_W = 200, 6, 6, 260
 
 
 def load(path):
@@ -35,7 +37,7 @@ def fetch(url, cache):
                 time.sleep(int(e.headers.get("Retry-After", 5)) + 1)
             except Exception:
                 time.sleep(2)
-        time.sleep(0.3)
+        time.sleep(1)
     try:
         return Image.open(path).convert("RGB")
     except Exception:
