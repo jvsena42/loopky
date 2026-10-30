@@ -1596,7 +1596,7 @@ emulator, and SRS flush failures that only appear when the network goes away mid
     driving the app (`journeys/README.md`).
 
   Two mechanics worth knowing. The path gating is a `changes` job doing an inline `git diff` rather
-  than GitHub's workflow-wide `paths:` filter or a third-party action, because `macos-14` bills at a
+  than GitHub's workflow-wide `paths:` filter or a third-party action, because `macos-15` bills at a
   10× multiplier and the filter has to be per-job; a range git cannot resolve falls back to running
   everything, which costs minutes and never costs correctness. And every job that runs tests prints
   its JUnit failures into the log through `.github/actions/failing-tests` — the HTML report is still

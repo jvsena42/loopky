@@ -366,7 +366,11 @@ jobs:
     needs: check-version
     # An arm64 runner, and only an arm64 runner: there is one `darwin-aarch64` row of
     # `libpubkycore` and an Intel build would have nothing to load (#54).
-    runs-on: macos-14
+    runs-on: macos-15
+    # The oldest macOS the binary starts on, set in `nativeBuildArgs` in cli/build.gradle.kts and
+    # asserted below: the linker otherwise stamps the runner's own version. 14.0 is v1.8.0's floor.
+    env:
+      MACOS_MINIMUM: '14.0'
     steps:
       - uses: actions/checkout@v7
 
@@ -391,6 +395,9 @@ jobs:
         run: |
           set -euo pipefail
           BIN=cli/build/native/nativeCompile/loopky
+          # The floor above, as built: `minos` is what the loader compares the running macOS to.
+          vtool -show-build "$BIN"
+          vtool -show-build "$BIN" | grep -Eq "minos ${MACOS_MINIMUM}$"
           "$BIN" --version
           set +e; OUT=$("$BIN" whoami --json); CODE=$?; set -e
           echo "$OUT"
