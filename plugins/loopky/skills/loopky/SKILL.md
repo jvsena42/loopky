@@ -1,6 +1,6 @@
 ---
 name: loopky
-description: Build and manage Loopky flashcard decks with the `loopky` CLI or the Loopky connector - make Anki-style spaced-repetition cards from any topic, import a TSV or (with the CLI) an Anki .apkg, add, edit or illustrate cards, publish a language deck with Listen/Speak, or learn a language from a TV series' episodes. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI. Also use when a `loopky` command or a Loopky tool returned an error or an exit code.
+description: Build and manage Loopky flashcard decks with the `loopky` CLI or the Loopky connector - make Anki-style spaced-repetition cards from any topic, import a TSV or (with the CLI) an Anki .apkg, add, edit or illustrate cards, publish a language deck with Listen/Speak, port a published deck to learners of another language, or learn a language from a TV series' episodes. Use whenever the user asks for flashcards, Anki cards, a study, vocabulary or exam deck, spaced repetition, or mentions Loopky, even if they do not name the CLI or only ask for a plan. Also use when a `loopky` command or a Loopky tool returned an error or an exit code.
 ---
 
 # Loopky flashcards through the `loopky` CLI
@@ -351,6 +351,9 @@ we have for Brazilians, but for Spanish speakers" keeps the order and the backs 
 side the learner reads. Read the source with `card list --json`, keyed by card id, and carry each
 card's picture over by that id. What has to change, and what a plain translation misses:
 
+- **The deck itself**: a new deck, never an edit of the source, with its title and description
+  in the new learner's language and the pair declared again, both sides — the learner's side
+  changes, the other stays (`--front-lang es-ES --back-lang de-DE`).
 - **Every note written for the old learner**: the front, and the asides on the back. A
   pronunciation hint is true only for one learner's sounds (`"j" de "já"` means nothing to a
   Spanish speaker), so each one is rewritten, not translated.
