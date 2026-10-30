@@ -101,7 +101,7 @@ class McpHttpTest {
 
         val listed = client.rpc(LIST_TOOLS, session = session).json()
         val tools = listed["result"]!!.jsonObject["tools"]!!.jsonArray.map { it.jsonObject["name"]!!.jsonPrimitive.content }
-        assertEquals(12, tools.size)
+        assertEquals(14, tools.size)
         assertContains(tools, "deck_create")
         assertContains(tools, "card_remove")
 

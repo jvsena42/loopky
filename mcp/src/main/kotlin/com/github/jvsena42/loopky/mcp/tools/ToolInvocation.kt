@@ -34,7 +34,9 @@ class ToolInvocation(
     fun argv(file: Path?): List<String> = buildList {
         addAll(tool.command.path.split(' '))
         addAll(tokens)
-        if (file != null && tool.inline == InlineInput.CardFile) add("--from-file=$file")
+        if (file != null && (tool.inline == InlineInput.CardFile || tool.inline == InlineInput.CardOrder)) {
+            add("--from-file=$file")
+        }
         // `--` ends the options, so an operand may start with a dash without being read as one.
         add("--")
         if (file != null && tool.inline == InlineInput.ImportSource) add(file.toString())
@@ -45,6 +47,7 @@ class ToolInvocation(
         /** Reads [arguments] against [tool]'s schema. A refusal is a [CliError] the caller reports. */
         fun of(tool: McpTool, arguments: JsonObject): ToolInvocation {
             tool.refuseUnknown(arguments)
+            tool.requireGuards(arguments)
             val operands = tool.operandTokens(arguments)
             val tokens = tool.optionTokens(arguments)
             val inline = InlineInputs.of(tool, arguments)
@@ -65,6 +68,14 @@ class ToolInvocation(
             }
         }
 
+        /** The options this tool requires though its command does not — see [McpTool.required]. */
+        private fun McpTool.requireGuards(arguments: JsonObject) {
+            required.map(::propertyName).forEach { key ->
+                val value = (arguments[key] as? JsonPrimitive)?.contentOrNull
+                if (value.isNullOrEmpty()) throw CliError(ExitCode.Usage, "`$name` needs `$key`.")
+            }
+        }
+
         private fun McpTool.acceptedProperties(): Set<String> = buildSet {
             operandNames().forEach { add(propertyName(it)) }
             exposed.forEach { add(propertyName(it)) }
@@ -74,6 +85,7 @@ class ToolInvocation(
                     add(TEXT_PROPERTY)
                 }
                 InlineInput.ImportSource -> add(TEXT_PROPERTY)
+                InlineInput.CardOrder -> add(CARD_IDS_PROPERTY)
                 null -> Unit
             }
         }

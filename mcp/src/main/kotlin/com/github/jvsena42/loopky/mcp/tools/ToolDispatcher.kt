@@ -11,7 +11,9 @@ import com.github.jvsena42.loopky.cli.commands.cardEdit
 import com.github.jvsena42.loopky.cli.commands.cardList
 import com.github.jvsena42.loopky.cli.commands.cardMove
 import com.github.jvsena42.loopky.cli.commands.cardRemove
+import com.github.jvsena42.loopky.cli.commands.cardReorder
 import com.github.jvsena42.loopky.cli.commands.deckCreate
+import com.github.jvsena42.loopky.cli.commands.deckDelete
 import com.github.jvsena42.loopky.cli.commands.deckEdit
 import com.github.jvsena42.loopky.cli.commands.deckList
 import com.github.jvsena42.loopky.cli.commands.deckShow
@@ -131,6 +133,7 @@ class ToolDispatcher(
             }
         }
 
+    @Suppress("CyclomaticComplexMethod") // one arm per served command, as the CLI's `route`
     private suspend fun route(args: Args, tenant: Tenant, notes: MutableList<String>): CommandResult {
         val note: (String) -> Unit = { notes += it }
         // Progress is a counter for a terminal; a tool result carries the totals. Dropped.
@@ -140,11 +143,13 @@ class ToolDispatcher(
             "deck show" -> deckShow(args, tenant.decks)
             "deck create" -> deckCreate(args, tenant.decks, tenant.session, note, progress)
             "deck edit" -> deckEdit(args, tenant.decks, note)
+            "deck delete" -> deckDelete(args, tenant.decks, tenant.session)
             "card list" -> cardList(args, tenant.decks, tenant.cards, note)
             "card add" -> cardAdd(args, tenant.decks, tenant.cards, note, progress)
             "card edit" -> cardEdit(args, tenant.decks, tenant.cards, note, progress)
             "card rm" -> cardRemove(args, tenant.decks)
             "card mv" -> cardMove(args, tenant.decks, tenant.cards)
+            "card reorder" -> cardReorder(args, tenant.decks, tenant.cards, progress)
             "import" -> if (args.has(DRY_RUN_FLAG)) {
                 importDryRun(args, tenant.imports, note)
             } else {

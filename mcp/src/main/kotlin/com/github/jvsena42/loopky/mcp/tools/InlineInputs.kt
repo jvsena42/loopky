@@ -22,6 +22,13 @@ object InlineLimits {
 
     /** The most cards one call may carry — array elements, or non-blank lines of `text`. */
     const val MAX_CARDS = 2_000
+
+    /**
+     * The most ids one `card_reorder` may carry. Not [MAX_CARDS]: a reorder names *every* card of
+     * the deck, so that cap would refuse each deck past 2,000 cards — the decks where one
+     * `card_move` per card costs most. [MAX_BYTES] still bounds the call.
+     */
+    const val MAX_CARD_IDS = 20_000
 }
 
 /**
@@ -36,6 +43,10 @@ object InlineInputs {
 
     @Suppress("ThrowsCount")
     fun of(tool: McpTool, arguments: JsonObject): InlineContent? {
+        if (tool.inline == InlineInput.CardOrder) {
+            val ids = arguments[CARD_IDS_PROPERTY] ?: throw CliError(ExitCode.Usage, "Missing `$CARD_IDS_PROPERTY`.")
+            return cardOrder(ids).checked()
+        }
         val cards = arguments[CARDS_PROPERTY]
         val text = arguments[TEXT_PROPERTY]
         if (tool.inline == null || (cards == null && text == null)) {
@@ -75,6 +86,8 @@ object InlineInputs {
         val separators = when (kind) {
             InlineInput.CardFile -> listOf(TAB)
             InlineInput.ImportSource -> IMPORT_SEPARATORS.filter { it in line }
+            // Card ids, never a picture.
+            InlineInput.CardOrder -> return emptyList()
         }
         return separators.flatMap { separator -> line.split(separator).drop(SIDES) }.map { it.trim() }.filter { it.isNotEmpty() }
     }
@@ -103,6 +116,35 @@ object InlineInputs {
         }
         return card.toString()
     }
+
+    /**
+     * `card_ids` as the order file `card reorder` reads: one id a line. Each id is held to the shape
+     * of one, because the file reader takes the first tab-separated column and skips `#` lines — an
+     * id carrying either would be read as something other than what was sent.
+     */
+    @Suppress("ThrowsCount")
+    private fun cardOrder(ids: JsonElement): InlineContent {
+        val list = ids as? JsonArray ?: throw CliError(ExitCode.Usage, "`$CARD_IDS_PROPERTY` is an array of card ids.")
+        if (list.isEmpty()) throw CliError(ExitCode.Usage, "`$CARD_IDS_PROPERTY` is empty; it names every card of the deck.")
+        if (list.size > InlineLimits.MAX_CARD_IDS) {
+            throw CliError(
+                ExitCode.BadInput,
+                "That is ${list.size} ids; one call takes at most ${InlineLimits.MAX_CARD_IDS}.",
+            )
+        }
+        val lines = list.mapIndexed { index, element ->
+            val id = (element as? JsonPrimitive)?.takeIf { it.isString }?.content
+                ?: throw CliError(ExitCode.BadInput, "`$CARD_IDS_PROPERTY`[$index] is not a string.")
+            if (!id.isCardIdShaped()) {
+                throw CliError(ExitCode.BadInput, "`$CARD_IDS_PROPERTY`[$index] is not a card id: \"$id\".")
+            }
+            id
+        }
+        return InlineContent(lines.joinToString("\n").toByteArray(Charsets.UTF_8), TXT)
+    }
+
+    private fun String.isCardIdShaped(): Boolean =
+        isNotEmpty() && !startsWith('#') && none { it.isWhitespace() || it.isISOControl() }
 
     private fun textContent(text: JsonElement): InlineContent {
         val body = (text as? JsonPrimitive)?.takeIf { it.isString }?.content
