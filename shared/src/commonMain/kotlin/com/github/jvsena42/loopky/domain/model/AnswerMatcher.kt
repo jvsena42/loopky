@@ -242,7 +242,7 @@ object AnswerMatcher {
             !semi && last in VOICEABLE -> last + 1
             else -> return
         }
-        out.setCharAt(out.lastIndex, voiced)
+        out[out.lastIndex] = voiced
     }
 
     private const val FULL_WIDTH_OFFSET = 0xFEE0
