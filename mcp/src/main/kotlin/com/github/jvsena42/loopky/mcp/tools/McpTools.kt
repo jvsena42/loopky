@@ -115,7 +115,7 @@ fun mcpTools(): List<McpTool> {
             "deck_list",
             "List decks",
             command("deck list"),
-            exposed = emptySet(),
+            exposed = setOf("limit", "cursor", "query", "compact"),
             refused = emptyMap(),
             hints = IDEMPOTENT,
         ),

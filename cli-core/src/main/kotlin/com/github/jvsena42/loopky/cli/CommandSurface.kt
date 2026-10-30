@@ -236,7 +236,20 @@ fun cliCommands(): List<CliCommand> = listOf(
         needsSession = false,
     ),
 
-    CliCommand("deck list", "every deck you have published"),
+    CliCommand(
+        path = "deck list",
+        summary = "every deck you have published, or a page of them",
+        options = listOf(
+            CliOption("limit", "how many decks to return"),
+            CliOption("cursor", "carry on from a previous page, as its next_cursor said"),
+            CliOption("query", "only decks whose title contains this, ignoring case"),
+            CliOption(
+                "compact",
+                "each deck as id, title, card count, tags, languages and updated_at - no chunk table",
+                OptionValue.Switch,
+            ),
+        ),
+    ),
     CliCommand("deck show", "one deck and its manifest", Operand.Opaque("deckId")),
     CliCommand(
         path = "deck create",

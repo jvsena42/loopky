@@ -3,11 +3,14 @@ package com.github.jvsena42.loopky.cli.commands
 import com.github.jvsena42.loopky.cli.Args
 import com.github.jvsena42.loopky.cli.CliError
 import com.github.jvsena42.loopky.cli.CommandResult
+import com.github.jvsena42.loopky.cli.DeckSummaryView
 import com.github.jvsena42.loopky.cli.DeckView
 import com.github.jvsena42.loopky.cli.ExitCode
 import com.github.jvsena42.loopky.cli.asCliError
+import com.github.jvsena42.loopky.cli.requireUsableOperand
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.cli.toLine
+import com.github.jvsena42.loopky.cli.toSummaryView
 import com.github.jvsena42.loopky.cli.toView
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
@@ -19,7 +22,25 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class DeckListResult(val decks: List<DeckView>, val count: Int)
+data class DeckListResult(
+    val decks: List<DeckView>,
+    /** Decks in *this* answer. [total] is how many matched `--query` across every page. */
+    val count: Int,
+    val total: Int = count,
+    /** Where to carry on from, or null when this answer reached the end. Opaque, like `card list`'s. */
+    @SerialName("next_cursor") val nextCursor: String? = null,
+    val compact: Boolean = false,
+)
+
+/** `deck list --compact`: the same envelope, each deck cut to what choosing one takes. */
+@Serializable
+data class DeckListCompactResult(
+    val decks: List<DeckSummaryView>,
+    val count: Int,
+    val total: Int = count,
+    @SerialName("next_cursor") val nextCursor: String? = null,
+    val compact: Boolean = true,
+)
 
 @Serializable
 data class DeckShowResult(val deck: DeckView)
@@ -39,12 +60,41 @@ data class DeckCompactResult(
     val complete: Boolean,
 )
 
-suspend fun deckList(decks: DeckRepository): CommandResult {
-    val owned = decks.listOwned().map { it.toView() }
-    return result(
-        DeckListResult(owned, owned.size),
-        if (owned.isEmpty()) "No decks." else owned.joinToString("\n") { it.toLine() },
-    )
+/**
+ * Your decks, all of them or a page, optionally narrowed by title.
+ *
+ * Every manifest is still read — the homeserver lists paths, and a title is inside the record — so
+ * `--limit`, `--query` and `--compact` save the *answer*, not the fetch. That is the cost that
+ * mattered: ~70 decks came back as ~148k characters through the connector, past what a client
+ * holds in one tool result (#559), and the chunk tables are most of it — which `--compact` drops.
+ *
+ * Decks are in id order and the cursor is the last id served, so a deck published or deleted
+ * between two pages neither repeats one nor skips one that was already there.
+ */
+suspend fun deckList(
+    args: Args,
+    decks: DeckRepository,
+    onNote: (String) -> Unit = System.err::println,
+): CommandResult {
+    val limit = args.positiveIntOrNull("limit")
+    val after = args.option("cursor")?.let { requireUsableOperand(it, "cursor") }
+    val query = args.option("query")?.trim()?.takeIf { it.isNotEmpty() }
+    val matching = decks.listOwned()
+        .filter { query == null || it.title.contains(query, ignoreCase = true) }
+        .sortedBy { it.id }
+    val rest = if (after == null) matching else matching.filter { it.id > after }
+    val page = if (limit == null) rest else rest.take(limit)
+    val nextCursor = page.lastOrNull()?.id?.takeIf { page.size < rest.size }
+
+    // stderr, as `card list` does: a trailer on stdout would make the line count lie.
+    nextCursor?.let { onNote("loopky: more decks — carry on with --cursor $it") }
+    val views = page.map { it.toView() }
+    val text = if (views.isEmpty()) "No decks." else views.joinToString("\n") { it.toLine() }
+    return if (args.has("compact")) {
+        result(DeckListCompactResult(page.map { it.toSummaryView() }, page.size, matching.size, nextCursor), text)
+    } else {
+        result(DeckListResult(views, views.size, matching.size, nextCursor), text)
+    }
 }
 
 /**

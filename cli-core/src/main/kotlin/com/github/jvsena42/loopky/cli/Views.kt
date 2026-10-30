@@ -63,6 +63,34 @@ data class DeckView(
     @SerialName("share_url") val shareUrl: String,
 )
 
+/**
+ * A deck as `deck list --compact` reports it: what picking one out of many takes, without the
+ * chunk table, the cover and the links that make a [DeckView] ~2 KB (#559). The names and
+ * meanings are [DeckView]'s, so a caller reading either reads the same fields.
+ */
+@Serializable
+data class DeckSummaryView(
+    val id: String,
+    val title: String,
+    @SerialName("card_count") val cardCount: Int = 0,
+    val tags: List<String> = emptyList(),
+    @SerialName("front_lang") val frontLang: String? = null,
+    @SerialName("back_lang") val backLang: String? = null,
+    @SerialName("updated_at") val updatedAt: Long = 0,
+    val incomplete: Boolean = false,
+)
+
+fun Deck.toSummaryView(): DeckSummaryView = DeckSummaryView(
+    id = id,
+    title = title,
+    cardCount = cardCount,
+    tags = tags.map { it.value },
+    frontLang = frontLang,
+    backLang = backLang,
+    updatedAt = updatedAt,
+    incomplete = incomplete,
+)
+
 /** One card record, as the manifest describes it. */
 @Serializable
 data class ChunkView(

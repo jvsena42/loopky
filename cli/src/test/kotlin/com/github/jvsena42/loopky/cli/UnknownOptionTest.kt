@@ -38,7 +38,7 @@ class UnknownOptionTest {
     /** And the message ends by saying what the command *does* take, which is what to act on. */
     @Test
     fun `the message lists the options the command has`() {
-        val error = assertFailsWith<CliError> { parse("deck", "list", "--limit", "3").requireKnownOptions() }
+        val error = assertFailsWith<CliError> { parse("deck", "list", "--missing-image").requireKnownOptions() }
 
         assertContains(error.message.orEmpty(), "--json")
         assertContains(error.message.orEmpty(), "card list")

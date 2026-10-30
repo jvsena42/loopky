@@ -136,7 +136,7 @@ class ToolDispatcher(
         // Progress is a counter for a terminal; a tool result carries the totals. Dropped.
         val progress: (String) -> Unit = {}
         return when (args.verb) {
-            "deck list" -> deckList(tenant.decks)
+            "deck list" -> deckList(args, tenant.decks, note)
             "deck show" -> deckShow(args, tenant.decks)
             "deck create" -> deckCreate(args, tenant.decks, tenant.session, note, progress)
             "deck edit" -> deckEdit(args, tenant.decks, note)

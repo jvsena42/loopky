@@ -237,7 +237,7 @@ private suspend fun route(
         "whoami" -> whoami(identity, koin.get<PubkyClient>(), koin.get<SecureSessionStore>(), environment)
         "doctor" -> doctor(args, koin.get<PubkyClient>()::resolveHttps, environment)
 
-        "deck list" -> authed(sessions, identity, environment) { deckList(koin.decks()) }
+        "deck list" -> authed(sessions, identity, environment) { deckList(args, koin.decks(), note) }
         "deck show" -> authed(sessions, identity, environment) { deckShow(args, koin.decks()) }
         // A dry run with a minted id reads nothing from the homeserver, so like `import --dry-run`
         // it must not put a sign-in in front of checking a card file (#367).
@@ -468,7 +468,10 @@ internal val USAGE = """
                                 print the allowlist. No session needed. See NETWORK.
 
     DECKS
-      deck list
+      deck list [--limit N] [--cursor TOKEN] [--query TEXT] [--compact]
+                                --query keeps decks whose title contains TEXT, ignoring case.
+                                --limit/--cursor page in id order; --json carries next_cursor while
+                                there is more. --compact drops the chunk table and the links.
       deck show <deckId>
       deck create --title T [--description D] [--tag T]... [--cover-url URL] [--cover-emoji E]
                   [--from-file F] [--check-images] [--dry-run] [--id DECKID] [--if-not-exists]
@@ -559,7 +562,8 @@ internal val USAGE = """
                                   card list   data.cards[], data.count, data.card_count,
                                               data.next_cursor. A card is {"id","front":{"text",
                                               "image":{"url",…}},"back":{…}} — front is an OBJECT.
-                                  deck list   data.decks[], data.count
+                                  deck list   data.decks[], data.count, data.total,
+                                              data.next_cursor, data.compact
                                   deck show   data.deck
                                   card add    data.written, data.skipped, data.cards[],
                                               data.failures[], data.image_checks[],
