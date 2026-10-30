@@ -80,6 +80,29 @@ class StudySessionTypingTest {
     }
 
     @Test
+    fun aKanaReadingAnswersAJapaneseBackOnlyWhenTheBackIsDeclaredJapanese() = runTest {
+        for ((backLang, opens) in listOf("ja-JP" to true, null to false)) {
+            deckRepo.decks["deck1"] = testDeck(
+                id = "deck1",
+                title = "Japanese",
+                typeEnabled = true,
+                frontLang = "pt-BR".takeIf { backLang != null },
+                backLang = backLang,
+            )
+            srsRepo.due = listOf(testCard("c1", front = "gato", back = "猫（ねこ）"))
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.onAnswerChange("ねこ")
+            vm.onCheckAnswer()
+            advanceUntilIdle()
+
+            val state = assertIs<StudySessionUiState.Reviewing>(vm.state.value)
+            assertEquals(opens, state.typePhase is TypePhase.Correct, "back language $backLang")
+        }
+    }
+
+    @Test
     fun aTypingCardStartsWithItsAnswerMaskedAndNoGradesOnOffer() = runTest {
         seedTypingDeck()
         val vm = viewModel()

@@ -48,13 +48,77 @@ object AnswerMatcher {
      *
      * A hyphen or slash makes the word boundary the writer's choice, so when one is present the
      * two sides are compared space-blind as well — see [joinsWords].
+     *
+     * [languageTag] is the declared language of the side being graded. Japanese, Chinese and
+     * Korean compare space-blind, and in Japanese and Chinese a kana or pinyin aside is a second
+     * accepted answer (`ねこ` answers `猫（ねこ）`) — see [readingTargets]. Keyed on the declared
+     * language and nothing else, so `hello (formal)` never accepts `formal` (#554).
      */
-    fun matches(given: String, expected: String, strictness: AnswerStrictness): Boolean {
+    fun matches(
+        given: String,
+        expected: String,
+        strictness: AnswerStrictness,
+        languageTag: String? = null,
+    ): Boolean {
         val target = normalize(stripParentheticals(expected), strictness)
         if (target.isEmpty()) return false
         val answer = normalize(stripParentheticals(given), strictness)
-        if (answer == target) return true
-        return joinsWords(expected, given) && answer.despace() == target.despace()
+        val script = CjkScript.of(languageTag)
+        val spaceBlind = script != null || joinsWords(expected, given)
+        val targets = listOf(target) + readingTargets(expected, script).map { normalize(it, strictness) }
+        return targets.any { it.isNotEmpty() && (answer == it || spaceBlind && answer.despace() == it.despace()) }
+    }
+
+    /**
+     * The asides of [expected] that spell its reading: pure kana in Japanese, pure pinyin in
+     * Chinese — tone-marked, since toneless pinyin cannot be told from a note like `(formal)`. A reading is the word itself in another script, so typing or saying it is
+     * recall — the one deliberate exception to "an aside is never the answer". Korean has none:
+     * Hangul is already phonetic.
+     */
+    private fun readingTargets(expected: String, script: CjkScript?): List<String> {
+        if (script == null || script == CjkScript.Korean) return emptyList()
+        return PARENTHETICAL.findAll(foldWidth(expected))
+            .map { it.value.drop(1).dropLast(1).trim() }
+            .filter { aside ->
+                val toned = script != CjkScript.Chinese || aside.any { it.lowercaseChar() in PINYIN_TONED }
+                toned && aside.any { it.isLetter() } && aside.all { ch ->
+                    ch.isWhitespace() || ch in READING_PUNCTUATION || when (script) {
+                        CjkScript.Japanese -> ch.isKana()
+                        CjkScript.Chinese -> ch.isPinyinLetter()
+                        CjkScript.Korean -> false
+                    }
+                }
+            }
+            .toList()
+    }
+
+    private const val PINYIN_TONED = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
+
+    private val READING_PUNCTUATION = "'’·・。、.,!?！？-".toSet()
+
+    private fun Char.isKana(): Boolean = this in '\u3041'..'\u30FF' && this != '\u30FB'
+
+    private fun Char.isPinyinLetter(): Boolean {
+        val base = stripDiacritic(lowercaseChar())
+        return base in 'a'..'z'
+    }
+
+    /** The CJK languages, whose words are not delimited by spaces the way Latin ones are. */
+    private enum class CjkScript {
+        Japanese,
+        Chinese,
+        Korean,
+        ;
+
+        companion object {
+            fun of(languageTag: String?): CjkScript? =
+                when (languageTag?.substringBefore('-')?.trim()?.lowercase()) {
+                    "ja" -> Japanese
+                    "zh" -> Chinese
+                    "ko" -> Korean
+                    else -> null
+                }
+        }
     }
 
     /**
@@ -87,9 +151,9 @@ object AnswerMatcher {
      * A parenthesized aside on the card is not part of what has to be typed, so `"hello"` answers
      * `"hello (formal)"` outright — see [stripParentheticals].
      */
-    fun judge(typed: String, expected: String): TypedAnswerOutcome = when {
-        matches(typed, expected, AnswerStrictness.Strict) -> TypedAnswerOutcome.Correct
-        matches(typed, expected, AnswerStrictness.Lenient) -> TypedAnswerOutcome.NearMiss
+    fun judge(typed: String, expected: String, languageTag: String? = null): TypedAnswerOutcome = when {
+        matches(typed, expected, AnswerStrictness.Strict, languageTag) -> TypedAnswerOutcome.Correct
+        matches(typed, expected, AnswerStrictness.Lenient, languageTag) -> TypedAnswerOutcome.NearMiss
         else -> TypedAnswerOutcome.Wrong
     }
 
@@ -113,9 +177,12 @@ object AnswerMatcher {
     /** Both ASCII and full-width brackets — CJK decks routinely use the latter. */
     private val PARENTHETICAL = Regex("""\([^()]*\)|（[^（）]*）""")
 
-    /** Lowercase, drop non-alphanumeric chars, collapse whitespace; fold diacritics when lenient. */
+    /**
+     * Fold width, lowercase, drop non-alphanumeric chars, collapse whitespace; fold diacritics when
+     * lenient.
+     */
     fun normalize(text: String, strictness: AnswerStrictness): String = buildString {
-        for (ch in text.lowercase()) {
+        for (ch in foldWidth(text).lowercase()) {
             val base = if (strictness == AnswerStrictness.Lenient) stripDiacritic(ch) else ch
             when {
                 base.isLetterOrDigit() -> append(base)
@@ -136,6 +203,56 @@ object AnswerMatcher {
         'ú', 'ù', 'û', 'ü' -> 'u'
         'ñ' -> 'n'
         'ç' -> 'c'
+        // Pinyin tone marks, so a toneless `xuexi` is a near miss for `xuéxí` rather than wrong.
+        'ā', 'ǎ' -> 'a'
+        'ē', 'ě' -> 'e'
+        'ī', 'ǐ' -> 'i'
+        'ō', 'ǒ' -> 'o'
+        'ū', 'ǔ', 'ǖ', 'ǘ', 'ǚ', 'ǜ' -> 'u'
         else -> ch
     }
+
+    /**
+     * NFKC's width fold, by table: full-width ASCII (`１`, `Ａ`) to ASCII, the ideographic space to
+     * a space, and half-width katakana (`ｶﾞ`) to the standard form, voicing marks merged. A
+     * recognizer or an IME picks the width, never the reader (#554). `commonMain` has no
+     * normalizer — the same reason [TagLabels] folds by table.
+     */
+    fun foldWidth(text: String): String {
+        if (text.none { it == '\u3000' || it in '\uFF01'..'\uFF9F' }) return text
+        val out = StringBuilder(text.length)
+        for (ch in text) {
+            when (ch) {
+                '\u3000' -> out.append(' ')
+                in '\uFF01'..'\uFF5E' -> out.append(ch - FULL_WIDTH_OFFSET)
+                in '\uFF66'..'\uFF9D' -> out.append(HALF_WIDTH_KATAKANA[ch - '\uFF66'])
+                '\uFF9E', '\uFF9F' -> voice(out, semi = ch == '\uFF9F')
+                else -> out.append(ch)
+            }
+        }
+        return out.toString()
+    }
+
+    /** Merge a half-width (semi-)voicing mark into the kana before it; a stray mark is dropped. */
+    private fun voice(out: StringBuilder, semi: Boolean) {
+        val last = out.lastOrNull() ?: return
+        val voiced = when {
+            semi && last in HA_ROW -> last + 2
+            !semi && last == 'ウ' -> 'ヴ'
+            !semi && last in VOICEABLE -> last + 1
+            else -> return
+        }
+        out[out.lastIndex] = voiced
+    }
+
+    private const val FULL_WIDTH_OFFSET = 0xFEE0
+
+    /** U+FF66..U+FF9D in order. */
+    private const val HALF_WIDTH_KATAKANA =
+        "ヲァィゥェォャュョッーアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン"
+
+    private const val HA_ROW = "ハヒフヘホ"
+
+    /** Katakana whose voiced form is the next code point. */
+    private const val VOICEABLE = "カキクケコサシスセソタチツテト" + HA_ROW
 }

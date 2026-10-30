@@ -125,6 +125,8 @@ class Args private constructor(
             // `card list`'s two filters. Opposites, so passing both is a usage error rather than
             // a precedence rule nobody would remember.
             "missing-image", "has-image",
+            // `deck list`'s slim shape.
+            "compact",
             // Opt-in, because it is the one flag here that makes network requests of its own —
             // one HEAD per distinct picture URL, against hosts this client otherwise never talks to.
             "check-images",

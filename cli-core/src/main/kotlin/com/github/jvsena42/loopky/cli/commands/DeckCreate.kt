@@ -10,6 +10,7 @@ import com.github.jvsena42.loopky.cli.requireUsableOperand
 import com.github.jvsena42.loopky.cli.result
 import com.github.jvsena42.loopky.cli.toView
 import com.github.jvsena42.loopky.data.repository.DeckRepository
+import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckSource
 import com.github.jvsena42.loopky.domain.model.Session
@@ -82,7 +83,18 @@ data class DeckCreateResult(
     val composition: List<CompositionView> = emptyList(),
     /** Notes about a `--front-lang`/`--back-lang` value a speech engine is unlikely to honour. */
     @SerialName("language_advice") val languageAdvice: List<String> = emptyList(),
+    /**
+     * A digest of the deck and cards this call writes, or on a dry run would write; `--expect-hash`
+     * takes it back. Null on the branch that found the deck already there. See [contentHash].
+     */
+    @SerialName("content_hash") val contentHash: String? = null,
 )
+
+/** A minted deck id is left out, so a dry run without `--id` and the real call still agree. */
+private fun Args.contentHashOf(cards: List<Card>): String =
+    contentHash(DECK_CREATE, option("id")?.trim(), hashedDeckMetadata(), cards.map { it.hashed() })
+
+private const val DECK_CREATE = "deck create"
 
 /**
  * Create a deck, optionally with its cards in the same call.
@@ -159,6 +171,7 @@ suspend fun deckCreate(
     val cardNotes = cardAdvice(cards, StudyModes(deck), label = { rows[it].adviceLabel(it) })
         .also { it.reportCardAdvice(onNote) }
     val languageNotes = languageAdvice(deck.frontLang, deck.backLang).also { it.reportLanguageAdvice(onNote) }
+    val hash = args.requireExpectedHash(args.contentHashOf(cards))
 
     val idChecked = args.option("id") != null
     if (args.has(DRY_RUN_FLAG)) {
@@ -167,6 +180,7 @@ suspend fun deckCreate(
                 deck.toView(), imageChecks, log.advice,
                 created = true, dryRun = true, idChecked = idChecked, tagsNormalized = tagFolds,
                 cardAdvice = cardNotes, composition = cards.compositionView(), languageAdvice = languageNotes,
+                contentHash = hash,
             ),
             "$deckId would be created — $title (${cards.size} cards). Nothing was written." +
                 (if (idChecked) "" else " No --id was given, so the homeserver was not asked about one.") +
@@ -183,6 +197,7 @@ suspend fun deckCreate(
         DeckCreateResult(
             published.toView(), imageChecks, log.advice,
             idChecked = idChecked, tagsNormalized = tagFolds, cardAdvice = cardNotes, languageAdvice = languageNotes,
+            contentHash = hash,
         ),
         "Created ${published.id} — ${published.title} (${published.cardCount} cards)" + tagFolds.describe(),
     )

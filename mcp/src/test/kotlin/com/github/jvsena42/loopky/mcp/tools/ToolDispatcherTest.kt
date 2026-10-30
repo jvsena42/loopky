@@ -6,6 +6,8 @@ import com.github.jvsena42.loopky.cli.SCHEMA_VERSION
 import com.github.jvsena42.loopky.cli.testDeck
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.pubky.PubkyError
+import com.github.jvsena42.loopky.domain.model.Card
+import com.github.jvsena42.loopky.domain.model.CardSide
 import com.github.jvsena42.loopky.mcp.FakeSecrets
 import com.github.jvsena42.loopky.mcp.FakeTenant
 import com.github.jvsena42.loopky.mcp.FakeTenantFactory
@@ -180,7 +182,7 @@ class ToolDispatcherTest {
     @Test
     fun `an unknown tool and an unknown input are usage errors`() = runBlocking {
         val (dispatcher, factory) = dispatcher(tenantWith(FakeDeckRepository(testDeck())))
-        assertEquals("usage", dispatcher.call(alice, "deck_delete", args("{}")).errorCode())
+        assertEquals("usage", dispatcher.call(alice, "deck_compact", args("{}")).errorCode())
         assertEquals("usage", dispatcher.call(alice, "deck_show", args("""{"deck_id":"d1","from_file":"/x"}""")).errorCode())
         assertEquals(0, factory.opens.get(), "nothing was opened for a call that could not run")
     }
@@ -293,6 +295,76 @@ class ToolDispatcherTest {
         val data = dispatcher.call(alice, "tag_trending", args("""{"limit":1}""")).envelope()["data"]!!.jsonObject
         assertEquals("spanish", data["tags"]!!.jsonArray.single().jsonObject["label"]!!.jsonPrimitive.content)
         assertEquals(PubkyEnvironment.Staging.nexusBaseUrl, data["indexer"]!!.jsonPrimitive.content)
+    }
+
+    // -- #559 ------------------------------------------------------------------------------------
+
+    @Test
+    fun `deck_list pages and slims through the same command`() = runBlocking {
+        val owned = listOf(ownedDeck("alice", "d2"), ownedDeck("alice", "d1"), ownedDeck("alice", "d3"))
+        val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck(), owned = owned)))
+        val data = dispatcher.call(alice, "deck_list", args("""{"limit":2,"compact":true}""")).envelope()["data"]!!.jsonObject
+
+        assertEquals(listOf("d1", "d2"), data["decks"]!!.jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.content })
+        assertFalse("chunks" in data["decks"]!!.jsonArray.first().jsonObject)
+        assertEquals("d2", data["next_cursor"]!!.jsonPrimitive.content)
+        assertEquals(3, data["total"]!!.jsonPrimitive.int)
+    }
+
+    @Test
+    fun `a dry run's content_hash commits the same cards and refuses others`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck("d1"))
+        val (dispatcher, _) = dispatcher(tenantWith(decks))
+        val dry = dispatcher.call(alice, "card_add", args(BATCH.dropLast(1) + ""","dry_run":true}""")).envelope()
+        val hash = dry["data"]!!.jsonObject["content_hash"]!!.jsonPrimitive.content
+
+        val drifted = """{"deck_id":"d1","cards":[{"front":"hola","back":"hi"}],"expect_hash":"$hash"}"""
+        assertEquals("usage", dispatcher.call(alice, "card_add", args(drifted)).errorCode())
+        assertEquals(emptyList(), decks.appended)
+
+        val same = dispatcher.call(alice, "card_add", args(BATCH.dropLast(1) + ""","expect_hash":"$hash"}""")).envelope()
+        assertEquals(true, same["ok"]!!.jsonPrimitive.boolean, same.toString())
+        assertEquals(listOf("hola", "adiós"), decks.appended.map { it.front.text })
+    }
+
+    @Test
+    fun `deck_delete runs only with the deck's exact title`() = runBlocking {
+        val decks = FakeDeckRepository(ownedDeck("alice", "d1"))
+        val (dispatcher, _) = dispatcher(tenantWith(decks))
+
+        assertEquals("usage", dispatcher.call(alice, "deck_delete", args("""{"deck_id":"d1"}""")).errorCode())
+        assertEquals("usage", dispatcher.call(alice, "deck_delete", args("""{"deck_id":"d1","confirm_title":""}""")).errorCode())
+        val wrong = dispatcher.call(alice, "deck_delete", args("""{"deck_id":"d1","confirm_title":"Deck of bob"}"""))
+        assertEquals("bad_input", wrong.errorCode())
+        assertEquals(emptyList(), decks.deletes)
+
+        val deleted = dispatcher.call(alice, "deck_delete", args("""{"deck_id":"d1","confirm_title":"Deck of alice"}""")).envelope()
+        assertEquals(true, deleted["ok"]!!.jsonPrimitive.boolean, deleted.toString())
+        assertEquals(listOf("d1"), decks.deletes)
+        assertEquals(listOf("alice" to "d1", "alice" to "d1"), decks.fetchRemoteCalls, "both titled calls read the deck")
+    }
+
+    @Test
+    fun `card_reorder hands the inline order to the repository, and leaves no file behind`() = runBlocking {
+        val decks = FakeDeckRepository(testDeck("d1", cardCount = 3))
+        val cards = FakeCardRepository(
+            existing = listOf("a", "b", "c").mapIndexed { index, id ->
+                Card(id = id, deckId = "d1", updatedAt = 0, front = CardSide(id), back = CardSide(id), ord = (index + 1) * 1000L)
+            },
+        )
+        val (dispatcher, _) = dispatcher(tenantWith(decks, cards))
+
+        val missing = dispatcher.call(alice, "card_reorder", args("""{"deck_id":"d1","card_ids":["c","b"]}"""))
+        assertEquals("bad_input", missing.errorCode())
+        val injected = dispatcher.call(alice, "card_reorder", args("""{"deck_id":"d1","card_ids":["c\tb","a"]}"""))
+        assertEquals("bad_input", injected.errorCode())
+        assertEquals(emptyList(), decks.reorders)
+
+        val envelope = dispatcher.call(alice, "card_reorder", args("""{"deck_id":"d1","card_ids":["c","b","a"]}""")).envelope()
+        assertEquals(true, envelope["ok"]!!.jsonPrimitive.boolean, envelope.toString())
+        assertEquals(listOf(listOf("c", "b", "a")), decks.reorders)
+        assertEquals(2, envelope["data"]!!.jsonObject["moved"]!!.jsonPrimitive.int)
+        assertEquals(emptyList(), scratch.root.listDirectoryEntries())
     }
 
     private fun io.modelcontextprotocol.kotlin.sdk.types.CallToolResult.envelope(): JsonObject = assertNotNull(structuredContent)

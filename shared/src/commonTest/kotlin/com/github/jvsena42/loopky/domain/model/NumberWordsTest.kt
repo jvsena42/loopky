@@ -97,7 +97,38 @@ class NumberWordsTest {
         // A miss, never a wrong fold: the deck simply keeps grading them as text.
         assertEquals("ventotto", NumberWords.fold("ventotto", "it-IT"))
         assertEquals("einundzwanzig", NumberWords.fold("einundzwanzig", "de-DE"))
-        assertEquals("十", NumberWords.fold("十", "ja-JP"))
+    }
+
+    @Test
+    fun hanNumeralsFoldInJapaneseAndChinese() {
+        assertEquals("3時", NumberWords.fold("三時", "ja-JP"))
+        assertEquals("10", NumberWords.fold("十", "ja-JP"))
+        assertEquals("25歳", NumberWords.fold("二十五歳", "ja-JP"))
+        assertEquals("35000円", NumberWords.fold("三万五千円", "ja-JP"))
+        assertEquals("105", NumberWords.fold("一百零五", "zh-CN"))
+        assertEquals("2个", NumberWords.fold("两个", "zh-CN"))
+        assertEquals("2026年", NumberWords.fold("二〇二六年", "zh-CN"))
+    }
+
+    @Test
+    fun hanNumeralsNeedTheDeclaredLanguage() {
+        assertEquals("三時", NumberWords.fold("三時", null))
+        assertEquals("三時", NumberWords.fold("三時", "ko-KR"))
+    }
+
+    @Test
+    fun koreanFoldsBothCountingSystems() {
+        assertEquals("3 시", NumberWords.fold("세 시", "ko-KR"))
+        assertEquals("30 분", NumberWords.fold("삼십 분", "ko-KR"))
+        assertEquals("35", NumberWords.fold("삼십오", "ko-KR"))
+        assertEquals("11", NumberWords.fold("열하나", "ko-KR"))
+        assertEquals("21 살", NumberWords.fold("스물한 살", "ko-KR"))
+    }
+
+    @Test
+    fun koreanWordsMadeOfDigitSyllablesAloneAreNotNumbers() {
+        assertEquals("사이", NumberWords.fold("사이", "ko-KR"))
+        assertEquals("오이", NumberWords.fold("오이", "ko-KR"))
     }
 
     @Test

@@ -17,11 +17,16 @@ import com.github.jvsena42.loopky.cli.cliCommands
  * added to `deck create` fails the build until somebody decides its fate here, rather than
  * reaching the network with nobody having looked.
  *
- * Out of v1, deliberately (#486): `deck delete`, `deck compact` and `deck sync` (destructive or
- * expensive and not needed to build a deck), `card reorder` and `batch` (file-driven), `card
+ * Out of v1, deliberately (#486): `deck compact` and `deck sync` (expensive and not needed to
+ * build a deck), `batch` (file-driven, and a tool call is already one operation), `card
  * check-images` (the server fetching caller URLs), `.apkg` import (untrusted zip and SQLite
  * parsing on the server, and the one path that uploads bytes), and everything about being a
  * binary — `login`, `logout`, `doctor`, `update`, `completion`, `commands`.
+ *
+ * Admitted later (#559), each with its guard: `deck delete` as `deck_delete`, which **requires**
+ * the deck's exact current title as `confirm_title` and is annotated destructive, so a client
+ * confirms it and an agent cannot delete a deck it has not read; and `card reorder` as
+ * `card_reorder`, with the order given inline as `card_ids` rather than a file.
  */
 @Suppress("LongParameterList") // one per thing the catalog test holds a tool to
 class McpTool(
@@ -38,6 +43,11 @@ class McpTool(
     val hints: ToolHints = ToolHints(),
     /** The command's summary, where the table's says something this tool cannot do. */
     val summary: String? = null,
+    /**
+     * Exposed options this tool will not run without, though the command would: a guard the
+     * command leaves to the person typing it — `deck_delete`'s `confirm_title`.
+     */
+    val required: Set<String> = emptySet(),
 ) {
     init {
         val known = command.options.mapTo(mutableSetOf()) { it.name }
@@ -47,6 +57,7 @@ class McpTool(
         require(undecided.isEmpty()) { "$name leaves options of `${command.path}` undecided: $undecided" }
         val both = exposed intersect refused.keys
         require(both.isEmpty()) { "$name both exposes and refuses: $both" }
+        require(required.all { it in exposed }) { "$name requires options it does not expose: ${required - exposed}" }
     }
 
     val exposedOptions: List<CliOption> get() = command.options.filter { it.name in exposed }
@@ -74,6 +85,9 @@ enum class InlineInput {
 
     /** `text`, standing in for `import`'s positional file. Required. */
     ImportSource,
+
+    /** `card_ids` (strings, every card once, in the order wanted), standing in for `card reorder`'s `--from-file`. Required. */
+    CardOrder,
 }
 
 /** Why every `OptionValue.Path` option is refused. */
@@ -115,7 +129,7 @@ fun mcpTools(): List<McpTool> {
             "deck_list",
             "List decks",
             command("deck list"),
-            exposed = emptySet(),
+            exposed = setOf("limit", "cursor", "query", "compact"),
             refused = emptyMap(),
             hints = IDEMPOTENT,
         ),
@@ -131,7 +145,7 @@ fun mcpTools(): List<McpTool> {
             "deck_create",
             "Create a deck",
             command("deck create"),
-            exposed = DECK_METADATA + "id" + "if-not-exists" + "dry-run" + STUDY_OPT_INS + LANGUAGES,
+            exposed = DECK_METADATA + "id" + "if-not-exists" + "dry-run" + "expect-hash" + STUDY_OPT_INS + LANGUAGES,
             refused = mapOf("from-file" to PATH_REFUSAL) + IMAGE_CHECK_OPTIONS,
             inline = InlineInput.CardFile,
         ),
@@ -142,6 +156,18 @@ fun mcpTools(): List<McpTool> {
             exposed = DECK_METADATA + STUDY_OPT_INS + STUDY_OPT_OUTS + LANGUAGES + "clear-tags" + "clear-cover",
             refused = emptyMap(),
             hints = OVERWRITES,
+        ),
+        McpTool(
+            "deck_delete",
+            "Delete a deck",
+            command("deck delete"),
+            exposed = setOf("confirm-title"),
+            refused = emptyMap(),
+            // Not idempotent: a second call finds no deck and fails, which is the honest answer.
+            hints = ToolHints(destructive = true),
+            summary = "delete a deck, its cards and its pictures, for good - " +
+                "only when `confirm_title` is its exact current title, as `deck_show` reports it",
+            required = setOf("confirm-title"),
         ),
         McpTool(
             "card_list",
@@ -155,7 +181,7 @@ fun mcpTools(): List<McpTool> {
             "card_add",
             "Add cards",
             command("card add"),
-            exposed = CARD_FIELDS + "dry-run",
+            exposed = CARD_FIELDS + "dry-run" + "expect-hash",
             refused = mapOf("from-file" to PATH_REFUSAL) + IMAGE_CHECK_OPTIONS,
             inline = InlineInput.CardFile,
             hints = IDEMPOTENT,
@@ -186,10 +212,20 @@ fun mcpTools(): List<McpTool> {
             hints = OVERWRITES,
         ),
         McpTool(
+            "card_reorder",
+            "Reorder a deck",
+            command("card reorder"),
+            exposed = setOf("dry-run"),
+            refused = mapOf("from-file" to PATH_REFUSAL),
+            inline = InlineInput.CardOrder,
+            hints = OVERWRITES,
+            summary = "put the whole deck in the order `card_ids` gives - every card id once, review history kept",
+        ),
+        McpTool(
             "import",
             "Import a deck from text",
             command("import"),
-            exposed = setOf("title", "description", "tag", "separator", "resume", "cover-url", "cover-emoji", "dry-run") +
+            exposed = setOf("title", "description", "tag", "separator", "resume", "cover-url", "cover-emoji", "dry-run", "expect-hash") +
                 STUDY_OPT_INS + STUDY_OPT_OUTS + LANGUAGES,
             refused = mapOf("front-field" to APKG_REFUSAL, "back-field" to APKG_REFUSAL) + IMAGE_CHECK_OPTIONS,
             inline = InlineInput.ImportSource,

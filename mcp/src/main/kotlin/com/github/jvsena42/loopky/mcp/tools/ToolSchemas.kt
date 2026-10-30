@@ -39,6 +39,7 @@ fun McpTool.toTool(): Tool = Tool(
 
 const val CARDS_PROPERTY = "cards"
 const val TEXT_PROPERTY = "text"
+const val CARD_IDS_PROPERTY = "card_ids"
 
 /** The keys a `cards` object may carry, which are the card-file row's. */
 val CARD_KEYS = setOf("id", "front", "back", "front_image_url", "back_image_url")
@@ -56,9 +57,20 @@ private fun McpTool.description(): String = buildString {
             " The deck's text goes in `text`: one card per line, front and back split by the `separator` " +
                 "(auto-detected by default). An Anki .apkg cannot be imported here.",
         )
+        InlineInput.CardOrder -> append(
+            " `card_ids` names every card of the deck exactly once, as `card_list` reports the ids; a list " +
+                "missing one, or naming one twice, is refused with nothing written. The same list again " +
+                "finishes an interrupted run.",
+        )
         null -> Unit
     }
     if ("dry-run" in exposed) append(" With `dry_run` nothing is written and the result reports what would be.")
+    if ("expect-hash" in exposed) {
+        append(
+            " A dry run's `content_hash`, passed back as `expect_hash` on the real call, makes that call " +
+                "refuse any content but the one the dry run checked.",
+        )
+    }
 }
 
 private fun McpTool.properties(): JsonObject = buildJsonObject {
@@ -84,6 +96,13 @@ private fun McpTool.properties(): JsonObject = buildJsonObject {
             put("type", "string")
             put("description", "The deck as text: one card per line, two columns.")
         }
+        InlineInput.CardOrder -> putJsonObject(CARD_IDS_PROPERTY) {
+            put("type", "array")
+            put("description", "Every card id in the deck, once each, in the study order wanted.")
+            putJsonObject("items") { put("type", "string") }
+            put("minItems", 1)
+            put("maxItems", InlineLimits.MAX_CARD_IDS)
+        }
         null -> Unit
     }
 }
@@ -106,6 +125,8 @@ private fun McpTool.required(): List<String> = buildList {
     (command.operand as? Operand.Opaque)?.required?.forEach { add(propertyName(it)) }
     (command.operand as? Operand.OneOf)?.let { add(propertyName(it.name)) }
     if (inline == InlineInput.ImportSource) add(TEXT_PROPERTY)
+    if (inline == InlineInput.CardOrder) add(CARD_IDS_PROPERTY)
+    exposedOptions.filter { it.name in this@required.required }.forEach { add(propertyName(it.name)) }
 }
 
 private fun JsonObjectBuilder.optionSchema(option: CliOption) {

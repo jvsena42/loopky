@@ -67,16 +67,55 @@ class ToolCatalogTest {
     fun `the commands out of v1 are not served`() {
         val served = tools.map { it.command.path }.toSet()
         listOf(
-            "deck delete", "deck sync", "deck compact", "card reorder", "card check-images", "batch",
+            "deck sync", "deck compact", "card check-images", "batch",
             "login", "logout", "doctor", "update", "completion", "commands",
         ).forEach { assertFalse(it in served, "$it is served") }
         assertEquals(
             listOf(
-                "whoami", "deck_list", "deck_show", "deck_create", "deck_edit", "card_list", "card_add", "card_edit",
-                "card_remove", "card_move", "import", "tag_trending",
+                "whoami", "deck_list", "deck_show", "deck_create", "deck_edit", "deck_delete", "card_list", "card_add",
+                "card_edit", "card_remove", "card_move", "card_reorder", "import", "tag_trending",
             ),
             tools.map { it.name },
         )
+    }
+
+    /** The guard the CLI leaves to a person typing the id, the tool requires (#559). */
+    @Test
+    fun `deck_delete requires the deck's title and says it destroys`() {
+        val delete = schemaOf("deck_delete")
+        assertEquals(listOf("deck_id", "confirm_title"), delete.required)
+        assertEquals("string", delete.properties["confirm_title"].type())
+        val annotations = assertNotNull(tools.first { it.name == "deck_delete" }.toTool().annotations)
+        assertEquals(true, annotations.destructiveHint)
+        assertEquals(false, annotations.idempotentHint)
+        // The command itself still takes the option as optional, so the CLI is unchanged.
+        assertTrue(commands.getValue("deck delete").options.any { it.name == "confirm-title" })
+    }
+
+    @Test
+    fun `card_reorder takes its order inline, as an array of ids`() {
+        val reorder = schemaOf("card_reorder")
+        assertEquals(listOf("deck_id", "card_ids"), reorder.required)
+        assertEquals("array", reorder.properties["card_ids"].type())
+        assertEquals(InlineLimits.MAX_CARD_IDS, reorder.properties["card_ids"]!!.jsonObject["maxItems"]!!.jsonPrimitive.content.toInt())
+        assertFalse("from_file" in reorder.properties)
+    }
+
+    @Test
+    fun `deck_list pages, narrows and slims`() {
+        val list = schemaOf("deck_list")
+        assertEquals("integer", list.properties["limit"].type())
+        assertEquals("string", list.properties["cursor"].type())
+        assertEquals("string", list.properties["query"].type())
+        assertEquals("boolean", list.properties["compact"].type())
+    }
+
+    @Test
+    fun `each write that has a dry run takes its hash back`() {
+        listOf("deck_create", "card_add", "import").forEach { name ->
+            assertEquals("string", schemaOf(name).properties["expect_hash"].type(), name)
+            assertContains(tools.first { it.name == name }.toTool().description.orEmpty(), "content_hash")
+        }
     }
 
     @Test
@@ -149,9 +188,9 @@ class ToolCatalogTest {
         assertEquals(
             mapOf(
                 "whoami" to "read", "deck_list" to "read", "deck_show" to "read", "deck_create" to "adds",
-                "deck_edit" to "overwrites", "card_list" to "read", "card_add" to "adds",
+                "deck_edit" to "overwrites", "deck_delete" to "overwrites", "card_list" to "read", "card_add" to "adds",
                 "card_edit" to "overwrites", "card_remove" to "overwrites", "card_move" to "overwrites",
-                "import" to "adds", "tag_trending" to "read",
+                "card_reorder" to "overwrites", "import" to "adds", "tag_trending" to "read",
             ),
             kinds,
         )

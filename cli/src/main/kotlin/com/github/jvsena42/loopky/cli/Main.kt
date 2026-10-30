@@ -237,7 +237,7 @@ private suspend fun route(
         "whoami" -> whoami(identity, koin.get<PubkyClient>(), koin.get<SecureSessionStore>(), environment)
         "doctor" -> doctor(args, koin.get<PubkyClient>()::resolveHttps, environment)
 
-        "deck list" -> authed(sessions, identity, environment) { deckList(koin.decks()) }
+        "deck list" -> authed(sessions, identity, environment) { deckList(args, koin.decks(), note) }
         "deck show" -> authed(sessions, identity, environment) { deckShow(args, koin.decks()) }
         // A dry run with a minted id reads nothing from the homeserver, so like `import --dry-run`
         // it must not put a sign-in in front of checking a card file (#367).
@@ -246,7 +246,7 @@ private suspend fun route(
             deckCreate(args, koin.decks(), if (offline) null else sessions.require(identity, environment), note, progress)
         }
         "deck edit" -> authed(sessions, identity, environment) { deckEdit(args, koin.decks(), note) }
-        "deck delete" -> authed(sessions, identity, environment) { deckDelete(args, koin.decks()) }
+        "deck delete" -> authed(sessions, identity, environment) { session -> deckDelete(args, koin.decks(), session) }
         "deck sync" -> authed(sessions, identity, environment) { deckSync(args, koin.decks(), koin.cards()) }
         "deck compact" -> authed(sessions, identity, environment) { deckCompact(args, koin.decks()) }
 
@@ -468,10 +468,14 @@ internal val USAGE = """
                                 print the allowlist. No session needed. See NETWORK.
 
     DECKS
-      deck list
+      deck list [--limit N] [--cursor TOKEN] [--query TEXT] [--compact]
+                                --query keeps decks whose title contains TEXT, ignoring case.
+                                --limit/--cursor page in id order; --json carries next_cursor while
+                                there is more. --compact drops the chunk table and the links.
       deck show <deckId>
       deck create --title T [--description D] [--tag T]... [--cover-url URL] [--cover-emoji E]
-                  [--from-file F] [--check-images] [--dry-run] [--id DECKID] [--if-not-exists]
+                  [--from-file F] [--check-images] [--dry-run] [--expect-hash HASH]
+                  [--id DECKID] [--if-not-exists]
                   [--listen] [--speak] [--type] [--reverse] [--front-lang BCP47] [--back-lang BCP47]
                                 --id with --if-not-exists is the idempotent form: an existing deck
                                 is returned untouched (created: false). Without --if-not-exists an
@@ -487,7 +491,9 @@ internal val USAGE = """
                   [--reverse|--no-reverse] [--front-lang BCP47] [--back-lang BCP47]
                                 Metadata only; cards are untouched. An omitted flag leaves its field
                                 alone, `--description=` clears it, --tag replaces the whole set.
-      deck delete <deckId>
+      deck delete <deckId> [--confirm-title T]
+                                With --confirm-title the deck is deleted only when T is its exact
+                                current title.
       deck sync <deckId>
       deck compact <deckId>     Fold away the holes card deletes leave in the chunk table.
 
@@ -496,7 +502,7 @@ internal val USAGE = """
                                 --limit/--cursor page through large decks; --json carries
                                 next_cursor while there is more.
       card add <deckId> --front F --back B [--front-image URL] [--back-image URL]
-      card add <deckId> --from-file cards.tsv|cards.jsonl [--dry-run]
+      card add <deckId> --from-file cards.tsv|cards.jsonl [--dry-run] [--expect-hash HASH]
                                 Written 100 cards per request.
       card edit <deckId> <cardId> [--front F] [--back B] [--front-image URL] [--back-image URL]
                                   [--clear-front-image] [--clear-back-image]
@@ -530,6 +536,10 @@ internal val USAGE = """
       import <file> --dry-run [--json] [--check-images]
                       Report what would be published. Writes nothing, needs no session.
 
+                                deck create, card add and import: a --dry-run reports content_hash;
+                                hand it to the real call as --expect-hash HASH and that call refuses
+                                (exit 2, nothing written) any content but the one dry-run checked.
+
     DISCOVERY
       tag trending [--limit N]  Read the Nexus indexer. No session needed.
 
@@ -559,7 +569,8 @@ internal val USAGE = """
                                   card list   data.cards[], data.count, data.card_count,
                                               data.next_cursor. A card is {"id","front":{"text",
                                               "image":{"url",…}},"back":{…}} — front is an OBJECT.
-                                  deck list   data.decks[], data.count
+                                  deck list   data.decks[], data.count, data.total,
+                                              data.next_cursor, data.compact
                                   deck show   data.deck
                                   card add    data.written, data.skipped, data.cards[],
                                               data.failures[], data.image_checks[],

@@ -41,12 +41,18 @@ object McpInstructions {
         the connected user's own account; they study them on their phone. The tools manage decks and
         cards; they do not study.
 
-        Workflow: `deck_list` to see what exists; `deck_create` or `import` to publish, with
-        `dry_run: true` first and the `card_advice`, `image_advice` and `language_advice` in the
-        result fixed before the real call; then verify from what was stored with `deck_show` and
-        `card_list` — a card's `front` is an object with `text` and `image`. Results are the CLI's
-        `--json` envelope: read `ok`, then `error.code`, then `data`. `error.reconnect: true` means the
-        user has to reconnect this connector; nothing else helps.
+        Workflow: `deck_list` with `compact: true` (and a title `query`, or `limit`/`cursor`) to see
+        what exists; `deck_create` or `import` to publish, with `dry_run: true` first and the
+        `card_advice`, `image_advice` and `language_advice` in the result fixed before the real call,
+        which passes the dry run's `content_hash` as `expect_hash` so it refuses anything else; then
+        verify from what was stored with `deck_show` and `card_list` — a card's `front` is an object
+        with `text` and `image`. Results are the CLI's `--json` envelope: read `ok`, then
+        `error.code`, then `data`. `error.reconnect: true` means the user has to reconnect this
+        connector; nothing else helps.
+
+        `card_reorder` puts a whole deck in the order of `card_ids`, every id once; `card_move` is for
+        one or two cards. `deck_delete` removes a deck for good and needs its exact `confirm_title`
+        from `deck_show`: use it only for a deck the user agreed to remove.
 
         Several cards go in `cards` (an array of objects) or `text` (TSV or JSONL) — at most
         ${InlineLimits.MAX_CARDS} cards and 1 MiB per call; split a bigger deck across `card_add`
