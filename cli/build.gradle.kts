@@ -205,6 +205,9 @@ graalvmNative {
  * no `libjnidispatch`, and no URL protocol handlers — and `checkNativeImageIsOneFile` passes,
  * because it *is* one file.
  */
+/** Keep in step with the `minos` the macOS rows of ci.yml and release.yml assert. */
+val MACOS_MINIMUM = "14.0"
+
 fun nativeBuildArgs(): List<String> {
     val row = hostNativeRow ?: return emptyList()
     return listOf(
@@ -258,6 +261,11 @@ fun nativeBuildArgs(): List<String> {
         // `win32-x86-64` as of `linux-x86-64`; `darwin-aarch64` is the only row it cannot apply to.
         // Reading this as a Linux concern is what left Windows on the v3 default (#301).
         *(if (row.jnaPrefix.endsWith("x86-64")) arrayOf("-march=compatibility") else emptyArray()),
+        // The oldest macOS the binary starts on. Left alone, the linker stamps the macOS it ran on,
+        // so moving the runner from macos-14 to macos-15 raised `minos` to 15.0 and every macOS 14
+        // user's download would have refused to launch. `MACOSX_DEPLOYMENT_TARGET` does not reach
+        // native-image's link step (measured). ci.yml and release.yml assert it with `vtool`.
+        *(if (row.jnaPrefix.startsWith("darwin")) arrayOf("-H:NativeLinkerOption=-mmacosx-version-min=$MACOS_MINIMUM") else emptyArray()),
         // **No static-CRT option on Windows, and that is not an omission** (#301). `loopky.exe`
         // imports `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll` — the only two of its 23 imports not
         // in-box on Windows 10+, the `api-ms-win-crt-*` entries being the Universal CRT — so it
