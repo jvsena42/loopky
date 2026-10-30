@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   changes:
-    # **Per-job path filtering, because two of the jobs below run on `macos-14`** — which bills at
+    # **Per-job path filtering, because two of the jobs below run on `macos-15`** — which bills at
     # a 10× minute multiplier, and GitHub's own `paths:` filter is workflow-wide. So one cheap
     # ubuntu job works out what the push or the PR actually touched and publishes two booleans the
     # expensive jobs gate on.
@@ -75,7 +75,7 @@ jobs:
           CLI='^(cli/|cli-core/|shared/src/jvmMain/|shared/src/jvmSharedMain/|(shared/)?build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle/(libs\.versions\.toml|wrapper/)|\.github/(workflows/ci\.yml|actions/))'
           # **What can break a *test* row, which `CLI` deliberately does not cover.**
           # `shared/src/jvmTest/` reaches no native image, so adding it to `CLI` would put a
-          # `macos-14` `nativeCompile` on the 10× multiplier behind a change that cannot affect it.
+          # `macos-15` `nativeCompile` on the 10× multiplier behind a change that cannot affect it.
           # It does reach `cli-windows`, and a job skipped by `if:` still satisfies a required check
           # — so without this a jvmTest-only PR goes green having run the Windows arm nowhere. That
           # matters for exactly one shape, and it is the shape this stack is building toward: a test
@@ -988,14 +988,19 @@ jobs:
     # that drags in AWT, any dependency that reaches `javax.imageio` can be clean on Linux and
     # broken here.
     #
-    # `macos-14` bills at a 10× multiplier, hence the `changes` gate rather than running it on
+    # `macos-15` bills at a 10× multiplier, hence the `changes` gate rather than running it on
     # every PR.
     name: CLI as a native binary (macOS aarch64)
     needs: changes
     if: needs.changes.outputs.cli == 'true'
     # arm64 and only arm64: there is one `darwin-aarch64` row of `libpubkycore` and an Intel build
     # would have nothing to load (#54).
-    runs-on: macos-14
+    runs-on: macos-15
+    # The linker stamps the binary with the macOS it was built on unless told otherwise, so a
+    # runner upgrade silently drops every user one version behind it. 14.0 is the floor v1.8.0
+    # shipped with, from the `macos-14` runner this used to be.
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
     steps:
       - uses: actions/checkout@v7
 
@@ -1024,6 +1029,9 @@ jobs:
           BIN=cli/build/native/nativeCompile/loopky
           ls -la cli/build/native/nativeCompile
           test "$(ls cli/build/native/nativeCompile | wc -l)" -eq 1
+          # The floor above, as built: `minos` is what the loader compares the running macOS to.
+          vtool -show-build "$BIN"
+          vtool -show-build "$BIN" | grep -Eq "minos ${MACOSX_DEPLOYMENT_TARGET}$"
 
           "$BIN" --version
           "$BIN" --help > /dev/null
@@ -1133,7 +1141,7 @@ jobs:
     name: iOS compiles, and its Swift lints
     needs: changes
     if: needs.changes.outputs.ios == 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
 
@@ -1163,7 +1171,7 @@ jobs:
 
       # `lintSwift` no-ops with a friendly hint when SwiftLint is absent, which is right for a
       # contributor and wrong for CI: it would turn this into a step that always passes and
-      # checks nothing. `macos-14` ships SwiftLint, so this is a guard rather than an install.
+      # checks nothing. The runner image ships SwiftLint, so this is a guard rather than an install.
       - name: SwiftLint is present, so the next step is not a no-op
         run: command -v swiftlint || brew install swiftlint
 
