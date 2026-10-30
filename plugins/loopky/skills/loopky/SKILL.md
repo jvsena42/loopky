@@ -57,6 +57,17 @@ Through the connector:
   server never fetches a caller's URL; the phone fetches pictures).
 - **No `batch`, `card reorder` or deck delete.** One write at a time per account: wait for a call
   to return before the next.
+- **A deck of thousands goes up in calls of about 250 cards**, even though 2,000 fit: you re-type
+  every card into the call, a smaller call is one you can re-read, and each `card_add` echoes its
+  cards back. Keep a `card_edit` to about 60 cards: a bigger one can time out partway and apply
+  only the first part. After a timeout, `card_list` before retrying anything.
+- **Verify a large upload by diffing, not by sampling.** Read every stored card back with
+  `card_list` (no `limit`, following the cursor) and compare front, back and picture with your
+  local file, in `ord` order. Re-typed text drifts, worst in non-Latin scripts (a Korean `쟤` came
+  back as `쟈`), and nothing else catches it. Fix the drifted cards with `card_edit`.
+- **`card_move` reorders a block** one card at a time, each `after` the previous. The `ord`
+  values it returns can jump between calls as the server re-spaces them: only a final
+  `card_list` shows the true order.
 - Results are the CLI's `--json` envelope, so the exit-code names below are the `error.code`
   values the tools return.
 
@@ -198,9 +209,11 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   (`vegetariano / vegetariana`): split it, or keep one form. Short fronts, short backs.
 - **Fix a card before showing the list, never annotate it.** If you notice a card breaks a rule
   here, rewrite it; the user reviews cards, not caveats about them.
-- **Parenthesized asides are notes, not answers.** `hola (informal)`, `猫（ねこ）`: the card shows
-  the note, but typing and Speak grade only `hola`/`猫`. Unbracketed, the note becomes part of the
-  expected answer.
+- **Parenthesized asides are notes, not answers.** `hola (informal)`: the card shows the note,
+  but typing and Speak grade only `hola`. Unbracketed, the note becomes part of the expected
+  answer. **A reading is the one exception**: on a side declared Japanese, a kana aside is also
+  accepted (`ねこ` answers `猫（ねこ）`), and on a side declared Chinese a tone-marked pinyin one
+  is (`学习（xuéxí）`). Both need the side's language declared.
 - **Language decks declare their pair.** `--front-lang en-US --back-lang es-ES` (BCP-47) is what
   makes `--listen` and `--speak` work, and it also tags the deck `language` and `spanish` so learners
   find it. Without the pair the phone would read Spanish in an English voice, so `loopky` refuses
@@ -217,7 +230,8 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   `começar (formal) → commence`); give two senses
   of one word an aside on the back (`bank (money)`, `bank (river)`), or keep the commoner sense.
 - **An aside never holds the answer or part of it**, in either language: a note that names the
-  target word turns the card into reading practice.
+  target word turns the card into reading practice. A kana or pinyin reading on the answer side
+  is not such a note; it is the answer in another script.
 - **Do not pad.** Make the cards the user asked for, at the count they asked for.
 
 ## Where to find pictures
@@ -256,6 +270,19 @@ picture: a near miss teaches the wrong thing.
    domain) or `haswbstatement:P275=Q6938433` (CC0), with the same `prop=imageinfo` on the end.
    Search one request every 3 seconds and wait out a `Retry-After`; four at once get 429.
 
+   **From a cloud sandbox**, the API answers 429 with a 30–50 s `Retry-After` almost every time,
+   because the sandbox shares its address with everyone else's. Search the HTML page instead,
+   which is not throttled the same way:
+   `commons.wikimedia.org/w/index.php?title=Special:Search&ns6=1&search=<words> haswbstatement:P275=Q6938433|P6216=Q19652 filetype:bitmap`.
+   The filter already keeps to CC0 and public domain, so no licence lookup is needed, and a
+   thumbnail address follows from the file name:
+   `upload.wikimedia.org/wikipedia/commons/thumb/<a>/<ab>/<Name>/330px-<Name>`, where `<a>` and
+   `<ab>` are the first one and two hex characters of the MD5 of the name with spaces as `_`.
+   Thumbnails nobody has asked for before are rendered on demand and throttled per address, about
+   one every 18 seconds, so looking at hundreds of candidates takes hours: **publish the deck's
+   text first and add pictures afterwards** with `card edit` in batches, updating the
+   description's picture count as you go. Never hold the deck back for its pictures.
+
 3. **Openverse**, which searches Flickr, museums and other open collections, with no key:
    `api.openverse.org/v1/images/?q=…&license=cc0,pdm` keeps to pictures that need no credit (add
    `,by,by-sa` only when the credit fits, below). Each result's `url` goes on the card; its
@@ -276,7 +303,9 @@ contact sheets: paste a few candidates per card, a handful of cards per sheet, i
 pick from that. It costs far less than opening pictures one by one and still catches near misses.
 Keep each chosen picture against its card's `id`, never its position, which moves whenever cards
 are added or reordered. Reject a single thing for a plural
-word, a part standing for the whole, a brand or mascot, and alcohol on a children's deck. Fetch
+word, a part standing for the whole, a brand or mascot, alcohol on a children's deck, a rude
+gesture (a "finger" card's candidate can be a middle finger), and a file whose *name* is
+inappropriate even when the picture is not, since the address is public. Fetch
 from one host a few at a time; Wikimedia's thumbnails answer 429 at eight parallel requests.
 
 **Licences.** Public domain, PDM and CC0 need nothing. CC BY and CC BY-SA need a credit, and the
@@ -319,6 +348,37 @@ the language and pass it through a CEFR-graded word list, weighting by level: ra
 are full of names, interjections and film vocabulary. Rank by lemma, so `go`, `went` and `going`
 are one entry instead of three.
 
+When no graded list is reachable, the subtitle list alone will do, with two corrections. Its
+entries are **word forms, not lemmas**, which matters most in agglutinative languages: lemmatize
+before ranking (`pip install kiwipiepy` for Korean ships its own model and turns `했습니다` and
+`공부했어` into `하다` and `공부하다`). For Japanese, the JLPT N5–N1 lists
+(`jamsinclair/open-anki-jlpt-decks`) and `wordfreq.get_frequency_dict('ja')` work without a
+tokenizer. And **expect 15–25% of the top lemmas to be unusable**: character names, plot
+vocabulary (ranks, crime, a royal court), vulgarity, subtitle credits (`번역`, `배포`), and
+mis-splits. Tell whoever writes the cards to skip those, and over-provision each slice by about
+10% so the deck still lands at its size.
+
+**A target in another script changes the deck's shape** — Japanese, Chinese, Korean, Russian,
+Arabic and the rest. A beginner cannot read `ありがとうございます` on day one, so:
+
+- **The script comes first**, before the survival phrases: one card per letter or kana, with a
+  sound hint in the learner's language where the spelling would mislead
+  (`ha (hiragana, h soprado)` → `は`, `g (consoante, entre g e k)` → `ㄱ`).
+- **The answer is written the way a recognizer writes it**: the standard adult spelling, with
+  kanji or kana chosen from frequency data rather than habit (`安い`, `ご飯`, but `ありがとう`,
+  `わかる`). A kana form's count can belong to a homophone: `やすい` is inflated by the 〜やすい
+  suffix, and `に` is the particle, not 二.
+- **Readings go in a full-width bracket aside**, `猫（ねこ）`, katakana kept as katakana inside it
+  (`ブラジル人です。（ブラジルじんです）`). Typing and Speak accept the reading too, so `--type`
+  stays on. Chinese takes tone-marked pinyin the same way, `学习（xuéxí）`. Korean takes no
+  reading and no romanization, since Hangul is already phonetic, and standard spacing
+  (띄어쓰기).
+- **Register and number system change the answer**, so the front names them: Japanese keigo and
+  Korean honorific, humble and 반말 forms (`comer (honorífico)`), and Korean native or
+  Sino-Korean numbers (`três (número nativo)`, `três (número sino-coreano)`). Without the note a
+  correct plain answer is graded wrong. Writers miss this even when told, so **check every
+  verb and number card for it before publishing**.
+
 **Compose it as words and phrases together, and measure that before publishing.**
 
 - **About 40% of the cards are phrases or full sentences.** Count it per 100 cards across the
@@ -329,7 +389,8 @@ are one entry instead of three.
 - **Frequency order is the backbone, and each phrase sits right after the rarest word it uses**,
   so a phrase card combines words already met.
 - **Open with a block of about 75 survival phrases learned whole** — greetings, asking for
-  something, not understanding, numbers in use — before the ranked list starts.
+  something, not understanding, numbers in use — before the ranked list starts, and after the
+  script block when the language has one.
 - **A word with no clear one-word translation gets a short sentence, never a label.** Articles,
   auxiliaries, most prepositions and inflected forms (`will`, `went`, `the`, `at`) are learned in
   use: `Eu vou ligar para você → I will call you`, not `auxiliar de futuro → will`. A front that
