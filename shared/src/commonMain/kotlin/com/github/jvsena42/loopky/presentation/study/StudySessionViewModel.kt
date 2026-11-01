@@ -476,6 +476,7 @@ class StudySessionViewModel(
         // "10" may be spoken as, and the two sides of a card rarely share one.
         val result = SpeakMatcher.match(text, target.expected, target.languageTag)
         haptic(if (result.correct) StudyHaptic.Success else StudyHaptic.Warning)
+        if (result.correct) _effects.tryEmit(StudySessionEffect.SpeakCorrectChime)
         setSpeakPhase(
             if (result.correct) {
                 SpeakPhase.Correct(result.heard)
@@ -1090,6 +1091,13 @@ sealed interface StudySessionEffect {
      * for one of those tells the reader something happened when nothing did.
      */
     data class Haptic(val pattern: StudyHaptic) : StudySessionEffect
+
+    /**
+     * A correct Speak attempt, and nothing else: the reader is looking at the phone rather than
+     * the card while speaking, so the verdict is heard as well as felt. Typing and grading stay
+     * silent. `tryEmit`ed like a haptic, for the same reason.
+     */
+    data object SpeakCorrectChime : StudySessionEffect
 }
 
 /**

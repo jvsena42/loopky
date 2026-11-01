@@ -246,6 +246,30 @@ class StudySessionHapticsTest {
     }
 
     @Test
+    fun onlyACorrectSpokenAttemptChimes() = runTest {
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", frontLang = "es-ES", backLang = "en-US")
+        srsRepo.due = listOf(testCard("c1", front = "hola", back = "hello"))
+        val vm = viewModel()
+        advanceUntilIdle()
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+        runCurrent()
+
+        vm.onSpeakTest()
+        vm.onSpeechResult("adios")
+        vm.onSpeakRetry()
+        vm.onSpeechError(SpeechError.NoMatch)
+        advanceUntilIdle()
+        assertEquals(0, effects.count { it == StudySessionEffect.SpeakCorrectChime })
+
+        vm.onSpeakRetry()
+        vm.onSpeechResult("hola")
+        advanceUntilIdle()
+        assertEquals(1, effects.count { it == StudySessionEffect.SpeakCorrectChime })
+        job.cancel()
+    }
+
+    @Test
     fun aLateSpeechErrorAfterTheSheetIsGoneIsSilent() = runTest {
         deckRepo.decks["deck1"] = testDeck(id = "deck1", frontLang = "es-ES", backLang = "en-US")
         srsRepo.due = listOf(testCard("c1", front = "hola", back = "hello"))
