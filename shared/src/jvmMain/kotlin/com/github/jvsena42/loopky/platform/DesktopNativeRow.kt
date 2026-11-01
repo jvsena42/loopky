@@ -51,9 +51,15 @@ fun unsupportedDesktopHostMessage(
     return "loopky has no build for $osName ($cpu). $advice"
 }
 
+/**
+ * Where Windows users are sent instead of a build. Also written by hand in `cli/install.sh`,
+ * `cli/install.ps1` and the agent skill; `ConnectorUrlTest` holds all of them to this value.
+ */
+const val CONNECTOR_URL = "https://mcp.loopky.app/mcp"
+
 private const val WINDOWS_ADVICE =
-    "There is no Windows build. On Windows, use the Loopky connector for Claude instead — " +
-        "https://claude.ai/directory/loopky, or https://mcp.loopky.app/mcp as a custom connector — " +
+    "On Windows, use the Loopky connector for Claude instead — " +
+        "https://claude.ai/directory/loopky, or $CONNECTOR_URL as a custom connector — " +
         "or run the Linux build inside WSL."
 
 /**

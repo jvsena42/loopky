@@ -1,6 +1,5 @@
 package com.github.jvsena42.loopky.cli
 
-import org.junit.jupiter.api.Assumptions.assumeTrue
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -67,7 +66,6 @@ class InstallTest {
 
     @Test
     fun `a Cellar path is Homebrew's, on either prefix`() {
-        assumePosixPaths()
         assertEquals(
             InstallMethod.Homebrew,
             detect(path = "/opt/homebrew/Cellar/loopky/0.8.0/bin/loopky").method,
@@ -80,16 +78,9 @@ class InstallTest {
 
     @Test
     fun `usr bin is dpkg's, and usr local bin is not`() {
-        assumePosixPaths()
         assertEquals(InstallMethod.Debian, detect(path = "/usr/bin/loopky").method)
         assertEquals(InstallMethod.Binary, detect(path = "/usr/local/bin/loopky").method)
     }
-
-    /** `detectInstallation` matches POSIX path segments, so these rows need a POSIX `Path`. */
-    private fun assumePosixPaths() = assumeTrue(
-        Path.of("/usr/bin/loopky").toString().startsWith("/"),
-        "needs POSIX path separators",
-    )
 
     @Test
     fun `a binary that cannot find itself is unknown rather than guessed at`() {

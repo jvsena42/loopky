@@ -293,13 +293,12 @@ val checkNativeImageIsOneFile = tasks.register("checkNativeImageIsOneFile") {
     group = "verification"
     description = "Fails if `nativeCompile` emitted anything beside the binary."
     val outputDir = layout.buildDirectory.dir("native/nativeCompile")
-    val binaryName = "loopky"
     doLast {
         // Every entry, not just `isFile`. A stray *directory* — `reports/`, which a diagnostic
         // flag produces — used to pass here and then fail CI's `ls | wc -l` instead, which is a
         // bare exit code with none of the explanation below.
         val strays = outputDir.get().asFile.listFiles().orEmpty()
-            .filter { it.name != binaryName }
+            .filter { it.name != "loopky" }
             .map { if (it.isDirectory) "${it.name}/" else it.name }
             .sorted()
         check(strays.isEmpty()) {
