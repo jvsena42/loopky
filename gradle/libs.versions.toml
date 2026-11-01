@@ -20,7 +20,7 @@ composeBom = "2026.08.00"
 junit = "4.13.2"
 kotlin = "2.4.21"
 kotlinx-coroutines = "1.11.0"
-kotlinx-serialization = "1.11.0"
+kotlinx-serialization = "1.12.0"
 jna = "5.19.1"
 # The JVM component of the `rustls-platform-verifier` Rust crate. Must match the crate version
 # pubky-core-ffi-fork depends on (Cargo.toml: rustls-platform-verifier = "0.7.0"), which vendors
