@@ -188,6 +188,8 @@ struct StudySessionScreen: View {
                 startListening(languageTag: listen.languageTag, vm: vm)
             case let haptic as StudySessionEffectHaptic:
                 Haptics.play(haptic.pattern)
+            case is StudySessionEffectSpeakCorrectChime:
+                SpeakChime.shared.play()
             case is StudySessionEffectClose:
                 onClose()
             case is StudySessionEffectNavigateSignIn:
