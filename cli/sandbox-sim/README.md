@@ -43,7 +43,7 @@ cli/sandbox-sim/check.sh jar offline                          # just the profile
 ```
 
 The `cli-sandbox-sim` job in `.github/workflows/ci.yml` runs both on every change under `cli/`, on
-Linux only — the macOS and Windows native binaries stay unverified behind a proxy. A profile that
+Linux only — the macOS native binary stays unverified behind a proxy. A profile that
 drifts is run a second time before it fails, because `doctor` reads one slow production host as
 unreachable (#369). A change that moves an exit code on purpose changes `expected.tsv` in the same
 PR.

@@ -203,8 +203,7 @@ class DesktopSessionStoreTest {
      * state in which the file holds the credential — and the old two-way branch reported the item
      * for it, because it distinguished only "answering" from "not answering".
      *
-     * Latent on macOS, where it needs a failed write followed by a healthy-but-empty Keychain;
-     * deterministic on the DPAPI row, whose `exists()` is a file check and never answers null.
+     * It needs a failed write followed by a healthy-but-empty Keychain.
      */
     @Test
     fun `an item that holds nothing reports the file, not the item`() = runTest {
@@ -344,9 +343,7 @@ class DesktopSessionStoreTest {
      */
     @Test
     fun `a security that never answers is cut off rather than waited on`() {
-        // The stand-in is a shebang script, so this needs a POSIX shell to run it at all (#301).
-        // On Windows the spawn fails for its own reason and the assertion below would be checking
-        // the wrong failure.
+        // The stand-in is a shebang script, so this needs a POSIX shell to run it at all.
         assumeTrue("needs a POSIX shell to stand in for security(1)", Files.isExecutable(Paths.get("/bin/sh")))
         val sleeper = Files.createTempFile("fake-security", ".sh")
         sleeper.toFile().writeText("#!/bin/sh\nsleep 30\n")

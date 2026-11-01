@@ -24,20 +24,6 @@ enum class InstallMethod(val json: String) {
     /** A downloaded single file, in a directory the user owns. The only row that can self-update. */
     Binary("binary"),
 
-    /**
-     * A downloaded `loopky.exe`, which **can** now self-update (#301).
-     *
-     * Still its own row rather than [Binary], for the reason that made it one: the POSIX branches
-     * in [detectInstallation] match `/Cellar/` and `/usr/bin/` against `Path.toString()`, which
-     * Windows spells with backslashes, so folding this back into [Binary] would re-open the hole
-     * where every Windows path fell through to the one value that lets `update` write over a file.
-     *
-     * How it replaces itself differs too, and that is the other reason to keep the distinction
-     * legible: Windows refuses to rename *over* a running image, so `replaceInPlace` moves the live
-     * binary aside and sweeps it on the next run.
-     */
-    WindowsBinary("windows-binary"),
-
     /** A Homebrew Cellar file, reached through a symlink in `bin`. */
     Homebrew("homebrew"),
 
@@ -55,7 +41,7 @@ enum class InstallMethod(val json: String) {
     ;
 
     /** Whether `loopky update` may replace this installation in place. */
-    val canSelfUpdate: Boolean get() = this == Binary || this == WindowsBinary
+    val canSelfUpdate: Boolean get() = this == Binary
 }
 
 /** What was found: the method, and the file to replace when there is one. */
@@ -76,7 +62,6 @@ fun detectInstallation(
     property: (String) -> String? = System::getProperty,
     exists: (String) -> Boolean = { Files.exists(Paths.get(it)) },
     executable: () -> Path? = ::currentExecutable,
-    osName: String = System.getProperty("os.name").orEmpty(),
 ): Installation {
     // `org.graalvm.nativeimage.imagecode` is `runtime` inside a native image and unset on a JVM.
     // The jar distribution is a `lib/` of jars plus a generated start script, so there is no one
@@ -94,15 +79,6 @@ fun detectInstallation(
 
     val path = executable() ?: return Installation(InstallMethod.Unknown, null)
     val text = path.toString()
-
-    // **Windows is its own row, and the POSIX branches below are not merely inapplicable there —
-    // they are wrong.** They match `/Cellar/` and `/usr/bin/` against `Path.toString()`, which
-    // Windows spells with backslashes, so every path falls through to [InstallMethod.Binary]: the
-    // one value that lets `update` write over a file. Harmless only while no `.exe` was published
-    // and every Windows install resolved to [InstallMethod.Jar]; publishing one is what arms it.
-    if (osName.startsWith("Windows", ignoreCase = true)) {
-        return Installation(InstallMethod.WindowsBinary, path)
-    }
 
     return when {
         // Homebrew installs into `<prefix>/Cellar/loopky/<version>/bin` and links from

@@ -114,6 +114,12 @@ merge commit.
    commits deserves one sentence rather than six, note that now — step 9 is where you rewrite it,
    after the release exists, so there is one writer and no race.
 
+   **The first release without the Windows binary (the one after 1.9.0) needs a hand-written
+   paragraph**, because its commit is a `refactor` the script drops: say that `loopky` no longer
+   ships for Windows, that Windows users should use the Loopky connector for Claude
+   (`https://mcp.loopky.app/mcp`) or WSL, and that an existing `loopky.exe` cannot update itself —
+   point at "Coming from the Windows build" in `cli/README.md`. Delete this paragraph afterwards.
+
 8. **Confirm, then tag**. Show the user the previewed notes and state plainly what pushing the tag
    does: it builds and **publishes a public GitHub release**, and it **pushes a container image to
    `ghcr.io`**. Say both out loud. A registry push cannot be taken back the way an unpublished
@@ -130,9 +136,8 @@ merge commit.
    ```
 
    It takes roughly fifteen minutes. When it is green the release is complete and verified — the
-   workflow asserts every asset name the two installers fetch, downloads the published Linux binary
-   over its public URL and runs `--version` on it, installs the Windows one on `windows-latest`
-   using the published `install.ps1`, and only then moves `latest` from `mark-latest`. Do not
+   workflow asserts every asset name the installer fetches, downloads the published Linux binary
+   over its public URL and runs `--version` on it, and only then moves `latest` from `mark-latest`. Do not
    re-check those by hand; read the run summary, which prints the release URL, the image tag and
    the two remaining manual steps.
 

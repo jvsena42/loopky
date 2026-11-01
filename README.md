@@ -30,7 +30,8 @@ shares decks with your class through one link.
   - **The agent plugin** for Claude Code and Codex, which teaches the workflow: see
     [`plugins/loopky/`](./plugins/loopky/).
   - **A desktop command line tool** to manage decks and cards in bulk, for you or an agent on your
-    own machine: see [`cli/README.md`](./cli/README.md).
+    own machine — Linux and macOS: see [`cli/README.md`](./cli/README.md). On Windows, use the
+    connector.
 - **No ads and no analytics.**
 
 ## Guides

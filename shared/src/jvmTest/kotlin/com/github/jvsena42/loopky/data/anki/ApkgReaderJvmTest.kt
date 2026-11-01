@@ -65,10 +65,6 @@ class ApkgReaderJvmTest {
      * stray 0-byte file, `%` fails `SQLITE_CANTOPEN`, and a **space needs no escaping at all**. So
      * trimming `"loopky apkg #dir"` to `"loopky apkg dir"` would leave a test that passes against
      * the defect, which is the exact failure this file exists to prevent.
-     *
-     * Not a Windows test, despite the fix being motivated by it: running `data.anki` on
-     * `windows-latest` against the old form came back green, because a plain temp path there
-     * carries none of the three characters that break it.
      */
     @Test
     fun `opens a collection whose path needs escaping`() {

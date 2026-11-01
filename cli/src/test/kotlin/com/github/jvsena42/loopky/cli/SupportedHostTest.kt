@@ -10,20 +10,12 @@ import kotlin.test.assertTrue
 class SupportedHostTest {
 
     @Test
-    fun `the three shipped rows are recognised`() {
+    fun `the two shipped rows are recognised`() {
         assertEquals(SupportedHost.LinuxX64, hostSupport("Linux", "amd64"))
         assertEquals(SupportedHost.LinuxX64, hostSupport("Linux", "x86_64"))
         assertEquals(SupportedHost.MacArm64, hostSupport("Mac OS X", "aarch64"))
         // A JVM that reports arm64 rather than aarch64 is the same machine and the same row.
         assertEquals(SupportedHost.MacArm64, hostSupport("Mac OS X", "arm64"))
-        assertEquals(SupportedHost.WinX64, hostSupport("Windows 11", "amd64"))
-        assertEquals(SupportedHost.WinX64, hostSupport("Windows Server 2022", "x86_64"))
-    }
-
-    /** The asset name is what `loopky update` downloads by, so the suffix is part of the contract. */
-    @Test
-    fun `the windows asset keeps its exe suffix`() {
-        assertEquals("loopky-windows-x86-64.exe", SupportedHost.WinX64.asset)
     }
 
     /**
@@ -54,8 +46,7 @@ class SupportedHostTest {
         // Each absence is a decision rather than a gap — see shared/src/jvmMain/resources/README.md.
         assertNull(hostSupport("Mac OS X", "x86_64"))
         assertNull(hostSupport("Linux", "aarch64"))
-        // ARM64 Windows: the x64 binary runs there under emulation, but a JVM reporting aarch64
-        // cannot load an x64 DLL into its own process.
+        assertNull(hostSupport("Windows 11", "amd64"))
         assertNull(hostSupport("Windows 11", "aarch64"))
     }
 
@@ -66,15 +57,14 @@ class SupportedHostTest {
         assertTrue("Rosetta" in message, message)
     }
 
-    /**
-     * The refusal that survived the row landing. x64 Windows is shipped, so the only Windows host
-     * still refused is ARM64 — and telling it "Windows is not a target" would now be false.
-     */
+    /** Windows has no build; its users are sent to the hosted connector, on either architecture. */
     @Test
-    fun `arm64 windows is told which builds exist, not that windows is unsupported`() {
-        val message = unsupportedHostMessage("Windows 11", "aarch64")
-        assertTrue("Windows x86_64" in message, message)
-        assertTrue("not a target" !in message, message)
+    fun `windows is pointed at the connector`() {
+        listOf("amd64", "aarch64").forEach { arch ->
+            val message = unsupportedHostMessage("Windows 11", arch)
+            assertTrue("mcp.loopky.app" in message, message)
+            assertTrue("WSL" in message, message)
+        }
     }
 
     /**

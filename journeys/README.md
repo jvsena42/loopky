@@ -122,7 +122,7 @@ a line when you close it.
 - **A phone in landscape cannot type on a card** — at `h411dp` the keyboard leaves the card a
   ~40 px strip. A height problem, not a width-class one.
 - **CLI:** `card edit` clearing an image and `card check-images`, against staging (#453, #454); a
-  write behind a refusing proxy from the macOS and Windows binaries; a host without AVX2; a
+  write behind a refusing proxy from the macOS binary; a host without AVX2; a
   **failed** remote revoke on `signOut`, which tells the user "Signed out" while the token is live.
 
 ## Seen once, not explained

@@ -345,11 +345,8 @@ cd ../pubky-core-ffi-fork
 cp -R ../pubky-core-ffi-fork/bindings/desktop/. shared/src/jvmMain/resources/
 ```
 
-**`all` does not mean all three.** Linux builds natively or cross-builds in a container; macOS
-needs an Apple Silicon Mac; and **Windows cannot be produced from either** — `x86_64-pc-windows-msvc`
-wants the Microsoft linker and the Windows SDK, so that row comes from the fork's
-`desktop-windows.yml` and nowhere else. Take `win32-x86-64/pubkycore.dll` from that workflow's
-artifact rather than expecting a local build to make one.
+**`all` means both rows this host can produce.** Linux builds natively or cross-builds in a
+container; macOS needs an Apple Silicon Mac.
 
 A future Gradle task can automate this; not worth building until the fork stabilises.
 
@@ -1846,35 +1843,19 @@ nothing above it changes — `desktopSecureSessionStore` returns `SecureItemSess
 still under the directory, and an agent debugging a box that has lost its session needs to be told
 which of the two to look at. `login`'s `stored_at` is the store, not the directory.
 
-**Windows is the third row: the file store, with a different lock on the door** (#301).
-`desktopSecureSessionStore` hands it `FileSecureSessionStore`, so nothing above the binding changes
-— what differs is what "0600" can mean on a filesystem that has no POSIX mode.
-`Files.setPosixFilePermissions` throws `UnsupportedOperationException` there and was being swallowed
-by a `runCatching`, so all four owner-only sites were quietly no-ops while `Identity.kt` went on
-printing "owner-readable only", and `--qr-out` — which *is* a live `pubkyauth://` credential — was
-world-readable. `OwnerOnly` now rewrites the ACL to a single owner-`FULL` entry plus SYSTEM and
-returns **false rather than degrading**, because a claim that cannot be kept should not be made. It
-names the *current user* rather than `Files.getOwner()`: under elevation the owner is
-`BUILTIN\Administrators`, and an ACL granting only that would lock the ordinary user out of their
-own session file.
-
-The directory is `%LOCALAPPDATA%\loopky` — **not** `%APPDATA%`, and not `~/.config`. A roaming
-profile is copied to a domain server at logoff, so a session secret placed in one is replicated off
-the machine to somewhere this tool cannot revoke it. Setting `LOOPKY_CONFIG_HOME` or
-`XDG_CONFIG_HOME` at a roaming location puts it back, which is the user's choice to make and is
-said in `--help`.
-
-There is **no keystore on this row yet**. DPAPI (`CryptProtectData`, `CurrentUser` scope, through
-`Function.getFunction` rather than a mapped `Library` interface, so the image stays one file) is the
-intended successor and is not built — so the honest statement today is the Linux one: the secret is
-protected by an ACL and nothing else, and what is stored is a capability-scoped, expiring session
-rather than a secret key.
+**There is no Windows row.** Windows users reach Loopky through the hosted MCP connector (§13.19),
+which needs no install. A native Windows row existed briefly (#301) — a DPAPI session store, ACL
+owner-only files, `%LOCALAPPDATA%` as the config home, a rename-aside self-update and a VC++
+redistributable precondition — and was removed because it cost a `windows-latest` runner on every
+PR and a third set of host-specific code paths for an audience the connector already serves.
+`git log` holds that code if the decision is ever revisited. Windows is refused at all three ends
+below, with a message pointing at the connector and at WSL.
 
 The same issue closes the other half of the macOS row. Only `darwin-aarch64` is built — one row
 rather than two and a `lipo`, because no part of the workload that motivated this runs on an Intel
 Mac — and an x86-64 Mac used to get *no message*: the JNA lookup missed and the first homeserver
 call failed as a transport error, a wrong diagnosis pointing at the user's network. The refusal
-now exists at all three ends. `cli/install.sh` refuses `Darwin:x86_64` before downloading;
+now exists at all three ends. `cli/install.sh` refuses `Darwin:x86_64` (and Windows shells) before downloading;
 `SupportedHost` refuses at the CLI's command boundary with exit 12; and
 `requireSupportedDesktopHost` refuses in `jvmPlatformModule` before `UniffiPubkyClient` is
 constructed, which is the end every *other* desktop consumer of `:shared` arrives by. The host
@@ -2303,61 +2284,18 @@ exist, on a machine that could never read one. `SupportedHost` checks the pair b
 and says which host it is and why there is no build for it. It matters most for the *jar*
 distribution, which is architecture-blind and runs anywhere a JRE does.
 
-The jar distributions remain, and are **per row**: `linuxDistTar`, `macosDistTar` and now
-`windowsDistZip` each carry one `libpubkycore`, where `distTar` carried both and a Linux box hauled
-11 MB of macOS dylib it could never load. They need a JRE 17, but they can be built for **any** row
-from **any** host, which a binary cannot — `native-image` does not cross-compile, so the release
-runs one job per host and the Linux one runs in a container. That asymmetry is why Windows can be a
-jar row the day its library lands while its binary waits on a `windows-latest` job.
+The jar distributions remain, and are **per row**: `linuxDistTar` and `macosDistTar` each carry
+one `libpubkycore`, where `distTar` carried both and a Linux box hauled 11 MB of macOS dylib it
+could never load. They need a JRE 17, but they can be built for **any** row from **any** host,
+which a binary cannot — `native-image` does not cross-compile, so the release runs one job per host
+and the Linux one runs in a container.
 
-**Windows builds as a binary, and that binary needs the Visual C++ redistributable** (#301).
-`win32-x86-64/pubkycore.dll` is in the jar, `SupportedHost` has a third row, and the whole shared
-suite — `UniffiPubkyClientJvmTest` included, which is the only test that can tell a shipped row from
-a missing one — runs on `windows-latest`, where CI also builds `loopky.exe` with `nativeCompile` on
-every PR. Publishing it as a release asset is what is still outstanding.
+`-march=compatibility` is gated on `jnaPrefix.endsWith("x86-64")` rather than on the Linux row by
+name: its reason is arch-shaped — a *downloaded* x64 binary must not SIGILL on a host without AVX2.
 
-`loopky.exe` imports `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll` — the only two of its 23 imports
-that are not in-box on Windows 10+, the `api-ms-win-crt-*` entries being the Universal CRT. That is
-an **accepted gap rather than an unfixed bug**, and it is recorded here because the obvious first
-move fails in a way that reads as a missing flag. GraalVM's prebuilt Windows JDK libraries are
-compiled against the dynamic CRT and `native-image`'s own link line carries `/MD` and
-`/NODEFAULTLIB:LIBCMT`, so the toolchain *excludes* the static CRT rather than merely not choosing
-it; `--static` and `-H:+StaticExecutableWithDynamicLibC` are Linux-only; and
-`-H:NativeLinkerOption=/MT` is rejected outright with `LNK1146`, because `/MT` is a `cl.exe` switch
-selecting the CRT each object compiles against rather than a `link.exe` one. Forcing the static CRT
-underneath GraalVM's own objects would link two CRTs — two heaps, two `FILE*` tables — into one
-image, which is worse than the dependency it removes.
-
-Unlike the `pubkycore.dll` case below, this one cannot be misclassified: Windows refuses to start
-the process and names the missing DLL, so nothing of ours runs to report a wrong exit code. CI pins
-the **whole** import list by set equality rather than banning two names — a ban goes green on any
-*other* new non-in-box DLL, and on a parse that returns nothing — and asserts the delay-load import
-directory is empty, since a delay-loaded library appears in neither. The remedy `cli/README.md`
-gives is the unpinned `aka.ms/vc14/` permalink, because the installed runtime must be at least as
-new as the MSVC toolset that linked the binary, and a version-pinned link already serves an older
-one.
-
-That row is the one nobody can rebuild here: `x86_64-pc-windows-msvc` needs the Microsoft linker
-and the Windows SDK, so unlike Linux there is no container that cross-builds it from a Mac. It
-comes from the fork's `desktop-windows.yml`, which also asserts the DLL imports no VC runtime —
-load-bearing rather than tidy, because a Rust MSVC cdylib links `vcruntime140.dll` dynamically by
-default, that library is not part of Windows, and a machine without the redistributable fails
-`LoadLibrary` in a way JNA reports as "not found" and the classifier reads as a 404. A CI runner has
-the redistributable, so the build is green either way.
-
-**Both things left open when the binary row landed are now settled.** `-march=compatibility` is
-gated on `jnaPrefix.endsWith("x86-64")` rather than on the Linux row by name: its reason is
-arch-shaped — a *downloaded* x64 binary must not SIGILL on a host without AVX2 — and reading it as
-a Linux concern is exactly what left Windows on the v3 default. And `checkNativeImageIsOneFile`
-expects `loopky.exe` on that host, where GraalVM emits the binary and nothing beside it; that is
-measured now rather than assumed, which matters because this check has twice caught the opposite on
-the other two rows.
-
-Two hosts are still refused, for different reasons. An **Intel Mac**: one `darwin-aarch64` row and
-no `lipo`, deliberately (#54). **ARM64 Windows**: the x64 binary runs there under emulation, but a
-JVM reporting `aarch64` cannot load an x64 DLL into its own process — so the library exists and
-this host still cannot use it, which is why the refusal names the builds that do exist rather than
-saying one is missing.
+Two hosts are refused, both by decision. An **Intel Mac**: one `darwin-aarch64` row and no `lipo`
+(#54). **Windows**: no row at all; the refusal points at the hosted connector and at WSL, where the
+Linux build runs unchanged.
 
 ### 13.12 Knowing the client is stale, and one command to stop being it
 
@@ -2417,33 +2355,11 @@ prevent. The image sets `LOOPKY_CONTAINER=1` so it says what it is rather than b
 and the *check* still runs there — an image pinned to an old tag in a long-lived sandbox is
 precisely the stale-client problem, and naming the right command beats silence.
 
-**Two rows may self-update, and both are a downloaded file in a directory the user owns.**
+**Only a downloaded file in a directory the user owns may self-update.**
 `Installation.canSelfUpdate` also requires a known path: `/proc/self/exe` first, `ProcessHandle`
 for macOS, and null rather than a guess — the consumer of that answer writes 60 MB over a file.
 
-`InstallMethod.WindowsBinary` is the second, and it stays a separate value because *how* it replaces
-itself differs (#301). Windows will not let a running image be written over, but it will let one be
-renamed **away** — the handle follows the file rather than the name — so `replaceInPlace` moves the
-live binary to `<self>.old`, puts the new one at the installed name, and rolls that rename back if
-the second move fails. A failed update has to leave a working binary, not a working one under a
-different name. The superseded copy cannot be deleted while the process executing it is alive, so
-`sweepSupersededBinary` removes it at the next start-up — silently, because the file is inert and
-failing somebody's actual command over a leftover copy of a binary they already replaced would be
-the wrong trade in every direction.
-
-Keeping it a separate `install` value also protects the classifier. The POSIX branches match
-`/Cellar/` and `/usr/bin/` against `Path.toString()`, which Windows spells with backslashes, so
-folding it back into `binary` would re-open the hole where every Windows path fell through to the
-one value that lets `update` write over a file. `--json` consumers should read `can_self_update`
-rather than matching `binary` as a prefix.
-
-**Two things had to be right before that row could update itself**, and neither is visible from the
-call site. The staged file is deliberately **not** `OwnerOnly` on Windows: `MoveFileEx` carries the
-source's DACL onto the destination, so an owner-only temp installs a `loopky.exe` that only the
-updating account can run — and under elevation that account is `BUILTIN\Administrators`, whose SID
-the same human's filtered token holds as `SE_GROUP_USE_FOR_DENY_ONLY` and is granted nothing by. A
-plain temp inherits the install directory's ACL, which is what an executable everyone may run should
-carry. And the bytes are **re-hashed from disk** before the swap rather than carried over from
+The bytes are **re-hashed from disk** before the swap rather than carried over from
 memory: `fetchVerifiedBinary` proved the download matched its published digest, and this proves what
 *landed* is what was downloaded — which is what catches a short write, a directory somebody else can
 write to, or an anti-malware product that quarantines a freshly written executable in the moment

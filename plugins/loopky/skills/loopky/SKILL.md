@@ -32,7 +32,9 @@ are running:
 - **A shell on the user's own machine** (a local terminal): **use the CLI**, with the workflow
   below. It is the complete client: `.apkg` imports, card files on disk, `--check-images`
   and `batch` exist only there. If `loopky` is missing, offer the install; mention
-  the connector only if they would rather not install anything.
+  the connector only if they would rather not install anything. **Windows is the exception:**
+  there is no Windows build, so recommend the connector there — or the Linux build inside WSL
+  if they need what only the CLI has.
 - **A cloud or sandbox session** (Claude Code on the web, Codex cloud, a container — `/.dockerenv`
   or `/run/.containerenv` exists, or the environment is recreated per task; a proxy in
   `HTTPS_PROXY` counts only beside one of these, since a laptop behind a company proxy is still
@@ -82,12 +84,12 @@ Through the connector:
    the connector comes before any install. Otherwise, **check the CLI is there:**
    `loopky --version`. If it fails, **stop** and ask the user to
    install `loopky`, pointing them at <https://github.com/jvsena42/loopky/tree/main/cli#install>
-   (Homebrew, a `.deb`, or the release installer for Linux, macOS and Windows). Do not download or
+   (Homebrew, a `.deb`, or the release installer for Linux and macOS). Do not download or
    install it yourself — this plugin runs only code that was reviewed with it. If a cloud session's
    user chose the CLI over the connector, suggest installing it in the environment's setup script
    so the next session has it. Once they
    have, run `loopky --version` again; if the shell cannot find it, it is usually in
-   `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\loopky`), which has to be on `PATH`.
+   `~/.local/bin`, which has to be on `PATH`.
 
 2. **Read the surface:** `loopky commands --json`. No session, no network.
 
