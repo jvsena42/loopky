@@ -242,13 +242,17 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   anyway); `-march=compatibility` is there because the default targets x86-64-v3 and a downloaded
   binary dies with SIGILL on a host without AVX2; and the Linux build runs inside `ubuntu:22.04`
   because a native image links against its builder's glibc and `libpubkycore.so`'s floor is 2.34,
-  not the runner's. **The three rows fail differently, which is why all three are built on every
-  PR**: that JNA entry left Linux clean and macOS at eleven files, and nobody saw it until the row
-  was built on a Mac. Windows then failed in a way neither of the others can — `loopky.exe` is one
-  file and still refuses to start without the Visual C++ redistributable, which every runner has
-  and a user may not — so its guard is a **pinned import list** rather than a file count, and the
-  binary's requirement is stated in `cli/README.md` rather than fixed (#301). Treat a metadata
-  change as unverified until every row has compiled it.
+  not the runner's. **The two rows fail differently, which is why both are built on every PR**:
+  that JNA entry left Linux clean and macOS at eleven files, and nobody saw it until the row was
+  built on a Mac. Treat a metadata change as unverified until both rows have compiled it.
+- **There is no Windows build of `loopky`, and that is a decision, not a gap.** Windows users are
+  sent to the hosted MCP connector (`https://mcp.loopky.app/mcp`) — or WSL, where the Linux build
+  runs unchanged — by `install.sh`, by the binary's own unsupported-host refusal and by the skill.
+  A native row existed (#301) and was removed: a `windows-latest` runner on every PR, a DPAPI
+  session store, ACL owner-only files, a rename-aside self-update and a VC++ redistributable
+  precondition, all for an audience the connector already serves. Do not re-add a `win32-x86-64`
+  library or a Windows branch to `OwnerOnly`/`ConfigHome` piecemeal; the whole row comes back
+  together or not at all, and `git log` holds it.
 - **On macOS the CLI's session is in the Keychain, and the Linux row's reasoning does not reach
   it.** `desktopSecureSessionStore` picks by OS behind `SecureSessionStore`, so nothing above the
   binding changes (#213). Five things not to undo. It shells out to **`security(1)`** rather than

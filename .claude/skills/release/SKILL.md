@@ -130,9 +130,8 @@ merge commit.
    ```
 
    It takes roughly fifteen minutes. When it is green the release is complete and verified — the
-   workflow asserts every asset name the two installers fetch, downloads the published Linux binary
-   over its public URL and runs `--version` on it, installs the Windows one on `windows-latest`
-   using the published `install.ps1`, and only then moves `latest` from `mark-latest`. Do not
+   workflow asserts every asset name the installer fetches, downloads the published Linux binary
+   over its public URL and runs `--version` on it, and only then moves `latest` from `mark-latest`. Do not
    re-check those by hand; read the run summary, which prints the release URL, the image tag and
    the two remaining manual steps.
 
