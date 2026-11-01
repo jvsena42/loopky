@@ -57,6 +57,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -90,8 +91,6 @@ import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.platform.SpeakOutcome
 import com.github.jvsena42.loopky.platform.Speaker
-import com.github.jvsena42.loopky.platform.SpeechError
-import com.github.jvsena42.loopky.platform.SpeechEvent
 import com.github.jvsena42.loopky.platform.SpeechRecognizer
 import com.github.jvsena42.loopky.presentation.study.GoalCelebration
 import com.github.jvsena42.loopky.presentation.study.SpeakPhase
@@ -114,7 +113,6 @@ import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.toast
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -146,6 +144,8 @@ fun StudySessionRoute(
     val currentSignIn by rememberUpdatedState(onSignIn)
     val context = LocalContext.current
     val hapticPlayer = remember(context, haptics) { StudyHapticPlayer(context, haptics) }
+    val chimePlayer = remember(context) { SpeakChimePlayer(context) }
+    DisposableEffect(chimePlayer) { onDispose { chimePlayer.release() } }
     val scope = rememberCoroutineScope()
     val recognitionJob = remember { mutableStateOf<Job?>(null) }
 
@@ -174,24 +174,11 @@ fun StudySessionRoute(
                 is StudySessionEffect.StartSpeechRecognition -> {
                     val previous = recognitionJob.value
                     recognitionJob.value = scope.launch {
-                        // Joined, not just cancelled: the previous recogniser is destroyed in the
-                        // flow's awaitClose, and creating a second one before that lands is
-                        // answered with ERROR_RECOGNIZER_BUSY — which is what a fast Try again is.
-                        previous?.cancelAndJoin()
-                        if (!speechRecognizer.isAvailable()) {
-                            viewModel.onSpeechError(SpeechError.Unavailable)
-                            return@launch
-                        }
-                        speechRecognizer.listen(effect.languageTag).collect { event ->
-                            when (event) {
-                                is SpeechEvent.Result -> viewModel.onSpeechResult(event.text)
-                                is SpeechEvent.Error -> viewModel.onSpeechError(event.reason)
-                                else -> Unit
-                            }
-                        }
+                        listenForAnswer(previous, speechRecognizer, effect.languageTag, viewModel)
                     }
                 }
                 is StudySessionEffect.Haptic -> hapticPlayer.play(effect.pattern)
+                StudySessionEffect.SpeakCorrectChime -> chimePlayer.play()
 
                 StudySessionEffect.Close -> currentClose()
                 StudySessionEffect.NavigateSignIn -> currentSignIn()
