@@ -33,7 +33,7 @@ class AgentPromptTest {
         assertTrue("/plugin marketplace add jvsena42/loopky\n" in prompt)
         assertTrue("/plugin install loopky@loopky\n" in prompt)
         assertTrue("plugins/loopky/skills/loopky/SKILL.md" in prompt)
-        assertTrue(prompt.endsWith("releases/latest/download/install.ps1"))
+        assertTrue(prompt.endsWith("releases/latest/download/install.sh"))
     }
 
     @Test

@@ -48,12 +48,6 @@ actual object ApkgReader {
  * **create** a file while asking to open one read-only. A space needs no escaping and was never
  * affected.
  *
- * **On Windows it was not broken, and saying otherwise was a guess.** A plain temp path carries no
- * `?`, `#` or `%`, and `winFullPathname` takes both `C:\Users\…` and the `/C:/…` form `toURI()`
- * produces. Checked by running `data.anki` on `windows-latest` against the old form: green. The
- * drive-letter colon and backslashes still are not a URI, so this was never *safe* there — but the
- * defect this fixes is the POSIX one above (#301).
- *
  * A function rather than an expression inside the opener so it can be tested directly. The file
  * this is called with is always a `createTempFile` spool, so the awkward path is the *system temp
  * directory's*, which no test driving `readNotes` can influence — that is why the obvious test,

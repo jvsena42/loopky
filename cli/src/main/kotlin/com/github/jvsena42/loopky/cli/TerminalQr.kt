@@ -109,10 +109,7 @@ object TerminalQr {
      *
      * Best-effort on the restriction, like the session store: a host that can express neither a
      * POSIX mode nor an ACL is real, and refusing to write there would cost a capability it was
-     * never going to give. [OwnerOnly] decides which spelling this host uses (#301) — before, this
-     * asked only for a mode, so on Windows the file holding a live `pubkyauth://` credential landed
-     * at whatever the parent directory happened to allow while `login` printed "owner-readable
-     * only".
+     * never going to give.
      */
     private fun createOwnerOnly(path: Path): OwnerOnly.Created {
         Files.deleteIfExists(path)

@@ -26,11 +26,7 @@ class QrCredentialTest {
         "pubkyauth://signin?caps=%2Fpub%2Floopky%2F%3Arw&relay=https%3A%2F%2Fhttprelay.pubky.app" +
             "%2Finbox&secret=zSFFp0nyJ_kZINkVgxnC2tTUc02n9oDxBm_KdUP9SQY"
 
-    /**
-     * Skipped rather than passed where there are no POSIX modes (#301). A green test that asserted
-     * nothing is how the four `setPosixFilePermissions` sites came to be silent no-ops on Windows
-     * in the first place; the ACL that replaces them there gets its own assertion.
-     */
+    /** Skipped rather than passed where there are no POSIX modes: a green no-op proves nothing. */
     @Test
     fun `the png is owner-only`() {
         assumeTrue(

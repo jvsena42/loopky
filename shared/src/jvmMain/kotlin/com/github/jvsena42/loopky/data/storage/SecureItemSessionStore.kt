@@ -65,9 +65,8 @@ internal class SecureItemSessionStore(
             // a false claim about where a credential lives, on the field `--json` offers as its
             // verification channel. It is also right when nobody is signed in at all.
             //
-            // This branch used to be folded into `true`, which was latent on macOS — an empty but
-            // healthy Keychain after a failed write reports the same — and became *deterministic*
-            // with the DPAPI row, whose `exists()` is a file check and can never answer null (#301).
+            // Not folded into `true`: an empty but healthy Keychain after a failed write reports the
+            // same, and the session is in the file.
             false -> fallback.location
             true -> item.location
         }

@@ -46,21 +46,9 @@ internal fun desktopSecureSessionStore(
  * Linux falls through to null and gets the file store, which is the default rather than a fallback
  * there: libsecret is usually absent on the headless box the row targets, so a keyring default would
  * fail exactly where the tool is meant to work.
- *
- * The two branches are gated differently and it is not an inconsistency — see [DpapiSecureItem] for
- * why the DPAPI blob has no config-home condition where the Keychain needs one.
  */
-internal fun defaultSecureItem(
-    configHome: Path,
-    // Injectable so the asymmetry below can be *tested* rather than only asserted in prose: a temp
-    // config home is never the platform default, so a DPAPI branch that grew a config-home gate
-    // would start returning null here and say so.
-    osName: String = System.getProperty("os.name").orEmpty(),
-): SecureItem? = when {
-    keychainEligible(configHome) -> SecurityCliKeychain()
-    dpapiEligible(osName) -> DpapiSecureItem(configHome.resolve(SESSION_BLOB_FILE))
-    else -> null
-}
+internal fun defaultSecureItem(configHome: Path): SecureItem? =
+    if (keychainEligible(configHome)) SecurityCliKeychain() else null
 
 /** Whether this host and this [configHome] are the pair the Keychain is used for. */
 internal fun keychainEligible(

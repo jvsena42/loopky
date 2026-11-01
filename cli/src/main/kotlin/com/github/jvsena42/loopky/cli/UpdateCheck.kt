@@ -284,9 +284,6 @@ fun updateNotice(update: UpdateAvailable, installation: Installation, repo: Stri
 fun updateAdvice(installation: Installation, version: String, repo: String = UpdateChecker.DEFAULT_REPO): String =
     when (installation.method) {
         InstallMethod.Binary -> "Run `loopky update`."
-        // Same instruction as [InstallMethod.Binary]: this row self-updates now, it just gets there
-        // by renaming the running image aside rather than by writing over it.
-        InstallMethod.WindowsBinary -> "Run `loopky update`."
         InstallMethod.Unknown ->
             "This binary's own path could not be determined, so `loopky update` cannot replace it — " +
                 "re-run the installer: https://github.com/$repo/releases/latest"

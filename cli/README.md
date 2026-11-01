@@ -41,27 +41,14 @@ alongside the binaries it fetches. `raw.githubusercontent.com/.../main/cli/insta
 obvious URL and the wrong one: it pipes whatever `main` is at that second into `sh`, which is a
 moving target for the one command here that runs unreviewed shell as the user.
 
-On Windows, the same thing in PowerShell:
+**On Windows there is no `loopky` build.** Use the **Loopky connector for Claude** instead: it
+runs the same commands on a hosted server, so there is nothing to install. Add
+[Loopky](https://claude.ai/directory/loopky) from Claude's connector directory (Settings →
+Connectors → Browse connectors), or `https://mcp.loopky.app/mcp` as a custom connector, and sign
+in once with Pubky Ring. If you need the CLI itself on a Windows machine, run the Linux build
+inside WSL — `install.sh` works there unchanged.
 
-```powershell
-irm https://github.com/jvsena42/loopky/releases/latest/download/install.ps1 | iex
-```
-
-That installs to `%LOCALAPPDATA%\Programs\loopky` — `Local`, not `Roaming`, so a 66 MB binary is
-not replicated to a domain server at logoff — verifies the digest, and **tells** you about `PATH`
-rather than editing it. Two differences from `install.sh` worth knowing. The digest check is
-mandatory here instead of best-effort: `install.sh` degrades on a minimal host with no `sha256sum`
-because the alternative there is a bare `curl` with no check at all, whereas `Get-FileHash` has
-shipped with PowerShell since 4.0, so skipping it would be a choice rather than a limitation. And it
-refuses *before* downloading if the Visual C++ redistributable is missing, because `loopky.exe`
-cannot start without it and installing something unrunnable while reporting success is worse than
-refusing.
-
-There is deliberately no `-ExecutionPolicy Bypass` in that line. `irm | iex` never consults the
-execution policy — that gates *files* on disk — so adding it would buy nothing, while training the
-reader to disable a safety control for anything that calls itself an installer.
-
-Homebrew serves both POSIX rows:
+Homebrew serves both rows:
 
 ```shell
 brew install jvsena42/loopky/loopky
@@ -85,13 +72,14 @@ curl -fsSL https://github.com/jvsena42/loopky/releases/latest/download/loopky-li
 | Container | `docker run --rm -e LOOPKY_SESSION ghcr.io/jvsena42/loopky deck list --json` |
 | Debian/Ubuntu | `loopky_<version>_amd64.deb` on the release page — `dpkg -i`. Depends on `libc6 (>= 2.34)` and `zlib1g`, which is the whole of it: no JRE, and nothing else |
 | Homebrew | `brew install jvsena42/loopky/loopky` — above |
-| Windows x86_64 | `loopky-windows-x86-64.exe` · needs the [Visual C++ redistributable](https://aka.ms/vc14/vc_redist.x64.exe), which is not part of Windows — see below. `loopky update` works here too: Windows will not let a running `.exe` be written over, so it renames the old one aside and removes it on the next run (#301) |
+| Windows | no build — use the [Loopky connector](https://claude.ai/directory/loopky) (`https://mcp.loopky.app/mcp`), or the Linux build inside WSL |
 
 **An Intel Mac is not a target**, by decision rather than omission (#54): there is one
-`darwin-aarch64` row of `libpubkycore` and no `lipo`. **ARM64 Windows** is not one either — the x64
-binary runs there under emulation, but a JVM reporting `aarch64` cannot load an x64 DLL into its own
-process. Both are refused with a message naming the builds that do exist, rather than failing at the
-first homeserver call with something that reads as "that deck does not exist".
+`darwin-aarch64` row of `libpubkycore` and no `lipo`. **Windows** is not one either: the hosted
+connector serves it with nothing to install, and a third native row cost a `windows-latest` runner
+on every PR, a DPAPI session store and a Visual C++ redistributable precondition of its own. Both
+are refused with a message naming what to use instead, rather than failing at the first homeserver
+call with something that reads as "that deck does not exist".
 
 There is **no hosted apt repository today**, so the `.deb` is a file rather than a source: nothing
 tracks it and `apt upgrade` will never move it — a new version means downloading the next one, which
@@ -107,7 +95,6 @@ trade-off is unsettled rather than closed: **#247** holds what it would take and
 ./gradlew :cli:installDist          # -> cli/build/install/loopky/bin/loopky, jar + start script
 ./gradlew :cli:linuxDistTar         # -> cli/build/distributions/loopky-linux-x86-64.tar
 ./gradlew :cli:macosDistTar         # -> cli/build/distributions/loopky-darwin-aarch64.tar
-./gradlew :cli:windowsDistZip       # -> cli/build/distributions/loopky-win32-x86-64.zip
 ./gradlew :cli-core:test            # the commands' unit tests (deck, card, import, tag)
 ./gradlew :cli:test                 # the binary's own: dispatch, login, update, completions
 ./gradlew :shared:jvmTest           # the whole shared suite on the jvm() target, plus the
@@ -130,18 +117,14 @@ built it, and the floor is not ours to choose — `libpubkycore.so` already need
 newer runner produces a binary that will not start on hosts the library is perfectly happy on.
 
 The jar distributions are still built and are still worth having: they need a JRE 17, but they are
-produced for **any** row from **any** host, where a binary cannot be. `installDist` carries all
-three native rows because cross-row is the point of a developer build; `linuxDistTar`,
-`macosDistTar` and `windowsDistZip` carry one each, so a Linux box no longer hauls 11 MB of macOS
+produced for **any** row from **any** host, where a binary cannot be. `installDist` carries both
+native rows because cross-row is the point of a developer build; `linuxDistTar` and
+`macosDistTar` carry one each, so a Linux box no longer hauls 11 MB of macOS
 dylib it can never load. None of them is published as a release asset.
 
 The native library ships inside the jar under JNA's resource layout, so nothing is installed by
-hand. Rebuild it in the fork with `./build_desktop.sh linux|macos|windows|all` and copy
+hand. Rebuild it in the fork with `./build_desktop.sh linux|macos|all` and copy
 `bindings/desktop/` into `shared/src/jvmMain/resources/`; see the README there.
-
-**`all` cannot produce the Windows row here.** `x86_64-pc-windows-msvc` needs the Microsoft linker
-and the Windows SDK, so unlike Linux there is no container that cross-builds it from a Mac — that
-row comes from the fork's `desktop-windows.yml` and nowhere else.
 
 ## Use
 
@@ -603,7 +586,7 @@ file never has the problem.
 | --- | --- |
 | `LOOPKY_SESSION` | A session secret — a **bearer token**, see the note below. Read **before** the stored session, and the only way in on a sandbox that has no stored one. Mint it with `loopky login --export` on a machine with a human at it, and revoke it with `loopky logout` while it is set. |
 | `LOOPKY_ENV` | `staging` or `production`. `--env` wins. Defaults to production. |
-| `LOOPKY_CONFIG_HOME` | Where state lives. Defaults to `$XDG_CONFIG_HOME/loopky`, then `~/.config/loopky` (`~/Library/Application Support/loopky` on macOS, `%LOCALAPPDATA%\loopky` on Windows — `Local`, not `Roaming`, so a session secret is not copied to a domain profile server at logoff). Setting it also moves the session out of the macOS Keychain and back into a file — and on Windows, pointing either it or `XDG_CONFIG_HOME` at a roaming location (`%APPDATA%`, `%USERPROFILE%\.config`) puts the session back in the roaming profile. |
+| `LOOPKY_CONFIG_HOME` | Where state lives. Defaults to `$XDG_CONFIG_HOME/loopky`, then `~/.config/loopky` (`~/Library/Application Support/loopky` on macOS). Setting it also moves the session out of the macOS Keychain and back into a file. |
 | `LOOPKY_NO_UPDATE_CHECK` | Set to anything to never look for a newer release. The check is cached for a day, runs alongside the command, and can never fail it — but a pipeline that wants no surprises can switch it off. `--no-update-check` does the same for one invocation. |
 | `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY` | The proxy to go through, read by **both** HTTP stacks in the process, in reqwest's order: uppercase first, and a set-but-empty variable counts as set (falling back to `ALL_PROXY`). Credentials in the URL work, and are sent only on the tunnel's `CONNECT`. Only `http://` proxies: a `socks5://` or `https://` one is refused with a warning. See "Behind a proxy" below. |
 | `RUST_LOG` | The pubky SDK's own tracing, defaulted to `warn` — by the start script in the jar distribution and through libc in the binary, which has no start script. `RUST_LOG=debug` is the first thing to try when a homeserver call fails for no visible reason. |
@@ -1008,26 +991,3 @@ otherwise, which needs AVX2; this binary is *downloaded*, onto a sandbox whose C
 and a v3 binary on a host without it dies with SIGILL. Irrelevant to a client that spends its life
 waiting on a homeserver.
 
-**Windows builds as one `loopky.exe`, and it needs the Visual C++ redistributable.** CI compiles the
-image on `windows-latest` on every PR; publishing it as a release asset is what is still missing
-(#301). The redistributable is a **stated gap rather than an oversight**: `VCRUNTIME140.dll` and
-`VCRUNTIME140_1.dll` are the only two of the binary's 23 imports that are not in-box on Windows 10+,
-the `api-ms-win-crt-*` entries being the Universal CRT, which is. Without those two Windows refuses
-to start the process and names the missing DLL, rather than failing somewhere inside loopky. Install
-it once from [Microsoft](https://aka.ms/vc14/vc_redist.x64.exe); most machines already have it,
-which makes this fail for the unlucky rather than for everyone.
-
-**That link is the unpinned "latest supported v14" one on purpose.** Microsoft's rule is that the
-installed redistributable must be the same version as the MSVC build tools that produced the
-executable **or later** — and this binary is linked by whatever toolset the `windows-latest` runner
-ships, 14.51 at the time of writing. A version-pinned permalink such as `aka.ms/vs/17/release/…`
-currently serves 14.44, so a reader who followed it would install a runtime that is *older* than the
-one required and be refused anyway, having done what the documentation asked.
-
-It is not fixable here. GraalVM's prebuilt Windows JDK libraries are compiled against the *dynamic*
-CRT, `--static` and `-H:+StaticExecutableWithDynamicLibC` are Linux-only, and
-`-H:NativeLinkerOption=/MT` is rejected outright (`LNK1146`) because `/MT` is a `cl.exe` switch
-rather than a `link.exe` one — forcing the static CRT underneath GraalVM's own objects would link
-two CRTs, with two heaps and two `FILE*` tables, into one image. So CI pins the **whole** import
-list: a new dependency fails the build in either direction, redistributable or not, instead of
-arriving unnoticed in an artifact that a runner with the redistributable installed cannot test.

@@ -12,8 +12,7 @@ internal sealed interface SecureItemRead {
  *
  * The contract is deliberately small and host-agnostic, because [SecureItemSessionStore] is written
  * against *it* rather than against any one platform: the file-first ordering, the migration and the
- * two-place `clear()` are the same argument whether the item lives in the macOS Keychain or in a
- * DPAPI blob, and they were hard enough to get right once (#213) that a second copy of them would be
+ * two-place `clear()` were hard enough to get right once (#213) that a second copy of them would be
  * the actual risk in adding a second host.
  *
  * Three things an implementation owes its caller.

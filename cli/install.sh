@@ -49,16 +49,13 @@ target — see cli/README.md. (If this *is* an Apple Silicon Mac, you are in a R
         Linux:aarch64|Linux:arm64)
             die "no Linux arm64 build yet. What is missing is a libpubkycore for that host, not
 this client — see shared/src/jvmMain/resources/README.md." ;;
-        # Reached under Git Bash, MSYS or Cygwin, where `uname -s` answers with one of these rather
-        # than the Windows anyone would type. There *is* a Windows build and this is not how you
-        # get it: a POSIX shell here says nothing about where the binary will be run from, and the
-        # install directory, the PATH advice and the digest check all differ. Named rather than
-        # dropped into the catch-all, which would say no build exists at all.
+        # Git Bash, MSYS or Cygwin. Named rather than left to the catch-all, because there is a
+        # route for Windows — just not this binary.
         MINGW*|MSYS*|CYGWIN*)
-            die "there is a Windows build, and PowerShell installs it:
-    irm https://github.com/$REPO/releases/latest/download/install.ps1 | iex
-This script installs the POSIX rows only — see cli/README.md (#301)." ;;
-        *) die "no build for $os $arch. The builds are Linux x86_64, macOS on Apple Silicon and Windows x86_64." ;;
+            die "there is no Windows build of loopky. On Windows, use the Loopky connector for
+Claude instead: https://claude.ai/directory/loopky (or add https://mcp.loopky.app/mcp as a
+custom connector). WSL also works — run this installer inside it." ;;
+        *) die "no build for $os $arch. The builds are Linux x86_64 and macOS on Apple Silicon." ;;
     esac
 }
 

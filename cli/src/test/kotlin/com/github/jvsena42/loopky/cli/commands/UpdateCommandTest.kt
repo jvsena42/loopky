@@ -141,26 +141,6 @@ class UpdateCommandTest {
         }
     }
 
-    /**
-     * The row this used to refuse. It now self-updates, and `--json` has to say so: an agent that
-     * read `can_self_update: false` was being told to go and run an installer, and the value is the
-     * one it branches on. `install` stays `windows-binary` — the distinction is still real, because
-     * *how* the file is replaced differs — so a consumer must read the capability rather than infer
-     * it from the method's name.
-     */
-    @Test
-    fun `--check on windows reports a row that can update itself`() = runTest {
-        val result = update(
-            Args.parse(arrayOf("update", "--check")),
-            checker("""{"version":"0.9.0","schema":1}"""),
-            Installation(InstallMethod.WindowsBinary, Path.of("""C:\Users\agent\loopky.exe""")),
-        )
-        assertEquals("windows-binary", field(result, "install"))
-        assertTrue(field(result, "can_self_update").toBoolean())
-        assertTrue(field(result, "advice").contains("loopky update"))
-        assertFalse(field(result, "advice").contains("install.ps1"), "it no longer sends you to the installer")
-    }
-
     @Test
     fun `a binary that cannot locate itself refuses rather than writing over a guess`() = runTest {
         val error = assertFailsWith<CliError> {
@@ -240,20 +220,11 @@ class ReplaceInPlaceTest {
         val target = dir.resolve("loopky")
         Files.writeString(target, "the old binary")
 
-        // **Pinned to the write-over row rather than left to the host** (#301). This asserted the
-        // directory ends up holding exactly one file, which is true of that row and false of the
-        // rename-aside — so once `replaceInPlace` started choosing by `os.name`, this passed here
-        // and failed on `windows-latest`, for a behaviour difference no machine I can run would
-        // show. The branch is a parameter precisely so both rows are exercised everywhere; the
-        // other one is the test below.
-        replaceInPlace(target, "the new binary".toByteArray(), windows = false)
+        replaceInPlace(target, "the new binary".toByteArray())
 
         assertEquals("the new binary", Files.readString(target))
-        // Only this line is guarded, not the whole test (#301). `replaceInPlace` sets the mode
-        // through a deliberately-swallowed `setPosixFilePermissions`, so on Windows this asserts
-        // nothing — NTFS grants FILE_EXECUTE on a file the runner just created, and the assertion
-        // passes while saying nothing about the thing it names. The two either side of it are
-        // exactly as meaningful there, so skipping the whole test would trade real coverage away.
+        // Only this line is guarded: the mode is set through a deliberately-swallowed
+        // `setPosixFilePermissions`, and the assertions either side hold on any filesystem.
         if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
             assertTrue(Files.isExecutable(target))
         }
@@ -265,132 +236,13 @@ class ReplaceInPlaceTest {
     }
 
     /**
-     * **The Windows path, driven on any host.** `replaceInPlace` takes the branch as a parameter
-     * rather than reading `os.name`, so the choreography — which is ordinary file work, and only
-     * *why* it is needed is Windows-specific — is exercised everywhere instead of on one runner.
-     *
-     * What it must do: leave the new bytes at the installed name, and leave the previous image
-     * beside it rather than deleted, because the OS will not free a file it is executing.
-     */
-    @Test
-    fun `on windows the running binary is renamed aside rather than written over`() {
-        val dir = Files.createTempDirectory("loopky-aside")
-        val target = dir.resolve("loopky.exe")
-        Files.writeString(target, "the old binary")
-
-        replaceInPlace(target, "the new binary".toByteArray(), windows = true)
-
-        assertEquals("the new binary", Files.readString(target))
-        assertEquals(
-            "the old binary",
-            Files.readString(supersededPath(target)),
-            "the previous image has to survive the swap — it is still running",
-        )
-        // The other half of what the write-over test asserts: the staging file is cleaned up on
-        // this row too. Stated as "nothing but these two" so a future third artifact has to be
-        // argued for rather than appearing quietly beside a binary people install by copying.
-        assertEquals(
-            listOf(target, supersededPath(target)).sorted(),
-            Files.list(dir).use { it.toList() }.sorted(),
-            "the new-binary staging file must not survive either",
-        )
-    }
-
-    /**
-     * **The first move's failure, which is the only test that reaches the `CliError` route.**
-     *
-     * `renameAside`'s destination here — `<self>.old` — is the one it does *not* vacate: the
-     * `deleteIfExists` before it is deliberately guarded, and a guarded delete cannot remove a
-     * non-empty directory. So a directory there fails the move deterministically on every row:
-     * `rename(2)` onto a non-empty directory is `ENOTEMPTY`, and `MoveFileEx(MOVEFILE_REPLACE_EXISTING)`
-     * refuses an existing directory. No permissions games, no held handles.
-     *
-     * It exercises three things at once, and the third is the reason it matters most: the crafted
-     * message, the guarded temp cleanup under a real failure, and — uniquely — the
-     * `if (it is CliError) throw it` pass-through. Without that line `replaceFailed` re-wraps this
-     * into "could not replace …: Nothing was changed, and the old binary is untouched", so the two
-     * absence assertions below are the only check on the fix they belong to.
-     */
-    @Test
-    fun `a held superseded name fails the first move and keeps its own message`() {
-        val dir = Files.createTempDirectory("loopky-first-move")
-        val target = Files.writeString(dir.resolve("loopky.exe"), "the old binary")
-        // Occupied and un-deletable: the guarded `deleteIfExists` leaves it, so the move must fail.
-        Files.createDirectory(supersededPath(target))
-        Files.createFile(supersededPath(target).resolve("occupied"))
-
-        val error = assertFailsWith<CliError> {
-            replaceInPlace(target, "the new binary".toByteArray(), windows = true)
-        }
-
-        val message = error.message.orEmpty()
-        assertTrue("another process is holding it" in message, message)
-        assertTrue("run `loopky update` again" in message, message)
-        // Not re-wrapped: these two are the whole test of the pass-through.
-        assertFalse("could not replace" in message, message)
-        assertFalse("old binary is untouched" in message, message)
-        // Nothing was changed, exactly as the message promises.
-        assertEquals("the old binary", Files.readString(target))
-        assertEquals(
-            listOf(target, supersededPath(target)).sorted(),
-            Files.list(dir).use { it.toList() }.sorted(),
-            "the staging file must not survive a failed first move",
-        )
-    }
-
-    /**
-     * **The rollback path has no test, and that is a statement rather than an omission.**
-     *
-     * It runs only when the *second* move fails — and `renameAside` vacates that destination itself
-     * one statement earlier, so nothing an external fixture puts there survives to block it.
-     * Provoking it needs a held file handle, which is Windows behaviour and not reproducible on the
-     * rows this suite runs on. So the crafted message at that site rests on reading the code rather
-     * than on evidence, as does the on-disk re-hash rejection.
-     *
-     * The first move is a different matter and *is* covered — see above. An earlier version of this
-     * note claimed the whole function was untestable, which was wrong: it generalised from a
-     * fixture that blocked the wrong step.
-     */
-    @Test
-    fun `the superseded copy is swept on the next run`() {
-        val dir = Files.createTempDirectory("loopky-sweep")
-        val target = dir.resolve("loopky.exe")
-        Files.writeString(target, "current")
-        Files.writeString(supersededPath(target), "previous")
-
-        sweepSupersededBinary(Installation(InstallMethod.WindowsBinary, target), windows = true)
-
-        assertFalse(Files.exists(supersededPath(target)))
-        assertEquals("current", Files.readString(target), "and the live binary is untouched")
-    }
-
-    /**
-     * The sweep runs before every command, so its failure modes are everyone's. None of these may
-     * throw: nothing to remove, no path to look at, and a row that never leaves one behind.
-     */
-    @Test
-    fun `sweeping is silent when there is nothing to sweep, or nowhere to look`() {
-        val dir = Files.createTempDirectory("loopky-sweep-none")
-        val target = dir.resolve("loopky.exe")
-        Files.writeString(target, "current")
-
-        sweepSupersededBinary(Installation(InstallMethod.WindowsBinary, target), windows = true)
-        sweepSupersededBinary(Installation(InstallMethod.WindowsBinary, null), windows = true)
-        sweepSupersededBinary(Installation(InstallMethod.Binary, target), windows = false)
-
-        assertEquals("current", Files.readString(target), "the sweep must never touch the live binary")
-    }
-
-    /**
      * A read-only directory is the container layer and the root-owned `/usr/bin` case, and it has
      * to arrive as the same honest refusal as a package-managed install — not as an internal
      * error, and never as a partially written executable.
      */
     @Test
     fun `an unwritable directory refuses without touching anything`() {
-        // The directory is made unwritable through POSIX modes, which Windows does not have (#301).
-        // Refusing to replace a *running* `.exe` is the case that matters there, and it is its own
-        // test rather than this one wearing a second hat.
+        // The directory is made unwritable through POSIX modes.
         assumeTrue(
             FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
             "needs POSIX file permissions",

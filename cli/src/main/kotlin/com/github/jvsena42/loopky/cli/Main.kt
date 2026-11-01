@@ -27,7 +27,6 @@ import com.github.jvsena42.loopky.cli.commands.importDryRun
 import com.github.jvsena42.loopky.cli.commands.login
 import com.github.jvsena42.loopky.cli.commands.logout
 import com.github.jvsena42.loopky.cli.commands.requireImageCheckOptions
-import com.github.jvsena42.loopky.cli.commands.sweepSupersededBinary
 import com.github.jvsena42.loopky.cli.commands.tagTrending
 import com.github.jvsena42.loopky.cli.commands.update
 import com.github.jvsena42.loopky.cli.commands.whoami
@@ -86,11 +85,6 @@ private fun run(argv: Array<String>): ExitCode {
     val environment = CliEnvironment.resolve(args)
     val installation = detectInstallation()
     val updates = Updates(UpdateChecker(environment.configHome), installation)
-    // The first moment the previous image is no longer running, which is the only moment it can be
-    // deleted — Windows holds the file for as long as a process is executing it, so `update` has to
-    // leave it behind and somebody has to come back for it. Silent and best-effort by construction:
-    // see [sweepSupersededBinary] for why a leftover copy must never fail the command in hand.
-    sweepSupersededBinary(installation)
 
     // One `runBlocking` around the whole command rather than around `dispatch` alone, so the
     // update check can run *concurrently* with the work (#209). On the one invocation a day that
@@ -141,7 +135,7 @@ private fun run(argv: Array<String>): ExitCode {
             fail(args, environment, args.verb, error, updates.notice(update.await()))
             error.exitCode
         } catch (@Suppress("TooGenericExceptionCaught") error: Throwable) {
-            // `Throwable`, not `Exception`. An x86-64 Mac or a Windows box fails at `Native.load`
+            // `Throwable`, not `Exception`. An x86-64 Mac or a Windows box running the jar fails at `Native.load`
             // with `UnsatisfiedLinkError` / `ExceptionInInitializerError` — both `Error`s — and
             // catching only `Exception` let them past `fail()` to a bare exit 1 with **nothing on
             // stdout**. That breaks the "results and failures both go there as --json" contract for

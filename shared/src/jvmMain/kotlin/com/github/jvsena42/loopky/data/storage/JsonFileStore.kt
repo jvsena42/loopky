@@ -65,8 +65,7 @@ internal class JsonFileStore(internal val file: Path) {
      *
      * The temp file used to be created with no attributes and narrowed after `writeString`, so the
      * secret existed at the ambient mode for the length of a write. That was only ever safe by
-     * accident — `createTempFile` happens to make 0600 on POSIX — and on Windows, where nothing
-     * narrowed it at all, the accident was the whole guarantee. Same order `TerminalQr.writePng`
+     * accident — `createTempFile` happens to make 0600 on POSIX. Same order `TerminalQr.writePng`
      * states: permissions first, content second, so the readable window never exists.
      */
     private fun persist(map: Map<String, String>) {
