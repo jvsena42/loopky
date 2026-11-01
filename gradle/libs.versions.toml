@@ -5,18 +5,18 @@ android-minSdk = "29"
 android-targetSdk = "36"
 androidx-activity = "1.13.0"
 androidx-appcompat = "1.8.0"
-androidx-core = "1.19.0"
+androidx-core = "1.19.1"
 androidx-core-splashscreen = "1.2.0"
 androidx-credentials = "1.6.0"
 androidx-espresso = "3.7.0"
 androidx-lifecycle = "2.11.0"
 androidx-testExt = "1.3.0"
-androidx-work = "2.11.2"
+androidx-work = "2.12.0"
 # AndroidX Compose. One BOM pins the whole family — runtime, foundation, ui, material3,
 # material3-adaptive, the icon pack — to a set Google released together, so the artifacts below
 # carry no version of their own. Loopky left Compose Multiplatform at #273: iOS is SwiftUI, and
 # `:shared` has no Compose in it, so the JetBrains build bought nothing and cost an alpha pin.
-composeBom = "2026.08.00"
+composeBom = "2026.09.00"
 junit = "4.13.2"
 kotlin = "2.4.21"
 kotlinx-coroutines = "1.11.0"
@@ -36,7 +36,7 @@ graalvmNative = "1.1.14"
 # taking it means taking detekt 2.0.0-alpha with it. Move both together or neither.
 detektComposeRules = "0.4.28"
 koin = "4.2.2"
-navigationCompose = "2.10.0"
+navigationCompose = "2.10.2"
 kvault = "1.12.0"
 # JDBC SQLite for reading an Anki `.apkg` collection on the desktop JVM target, where SQLite is
 # not in the platform the way it is on Android. Ships native libraries for linux-x86-64 and
