@@ -13,7 +13,7 @@ runbook that walks it.
 | `Loopky-<version>.aab` | the **`play-bundle` workflow artifact** on the run — never a release asset, because an AAB cannot be installed. Download it from the run page and upload it to the Play Console. |
 | `loopky-linux-x86-64`, `loopky-macos-aarch64`, their `.sha256`s | attached to the release |
 | `loopky_<version>_amd64.deb` | attached to the release |
-| `install.sh`, `latest.json` | attached to the release — the installer *at this tag*, and the manifest every installed `loopky` reads to learn it is stale |
+| `install.sh`, `install.ps1`, `latest.json` | attached to the release — the installer *at this tag*, the Windows tombstone that tells an old `irm … \| iex` link where Windows went, and the manifest every installed `loopky` reads to learn it is stale |
 | `ghcr.io/<owner>/loopky:<version>` | pushed to the registry |
 | `Formula/loopky.rb` in `<owner>/homebrew-loopky` | pushed, if `HOMEBREW_TAP_TOKEN` is set |
 | The `plugin` branch | moved to this release's `plugins/loopky/`, for a final version only. It is what Anthropic's plugin directory downloads: the repository's own archive (~112 MiB) is over its 50 MiB limit. the same job checks the pushed branch against the tag and validates the archive GitHub serves |

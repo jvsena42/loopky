@@ -269,8 +269,19 @@ jobs:
 
       # The same argument as the step above, one file over: `install.sh` is the file this project
       # asks strangers to pipe into a shell, so a syntax error must not first surface at a release.
-      - name: The installer parses
-        run: sh -n cli/install.sh
+      - name: The installers parse
+        run: |
+          set -euo pipefail
+          sh -n cli/install.sh
+          # The Windows tombstone. A positive precondition, so the day this image stops shipping
+          # pwsh the step fails rather than going quietly vacuous.
+          command -v pwsh > /dev/null || { echo "::error::pwsh is not on this image"; exit 1; }
+          pwsh -NoProfile -Command '
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path ./cli/install.ps1), [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) { $errors | ForEach-Object { Write-Host "::error file=cli/install.ps1::$($_.Message)" }; exit 1 }
+          '
 
       # Which test failed and why, in the log. The artifact below is still uploaded; this is so
       # that reading the failure does not require downloading it (#239).

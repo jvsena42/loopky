@@ -48,6 +48,13 @@ Connectors → Browse connectors), or `https://mcp.loopky.app/mcp` as a custom c
 in once with Pubky Ring. If you need the CLI itself on a Windows machine, run the Linux build
 inside WSL — `install.sh` works there unchanged.
 
+**Coming from the Windows build** (1.9.0 and earlier)? It cannot update itself any more: it will
+keep reporting a newer version, and `loopky update` answers that the download does not exist. Delete
+it — `loopky.exe` in `%LOCALAPPDATA%\Programs\loopky` — and its state, `%LOCALAPPDATA%\loopky`,
+which holds the signed-in session (`session.v1.dpapi`) and nothing else you need. Then revoke the
+old CLI session in Pubky Ring and use the connector. The old `install.ps1` URL now only prints this
+advice.
+
 Homebrew serves both rows:
 
 ```shell

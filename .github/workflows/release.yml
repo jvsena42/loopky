@@ -564,8 +564,12 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Add the tagged installer to the assets
-        run: cp cli/install.sh dist/install.sh
+      # `install.ps1` is a tombstone, not an installer: 1.9.0 and earlier hand out its
+      # `releases/latest/download/` URL, and it tells whoever follows one where Windows went.
+      - name: Add the tagged installers to the assets
+        run: |
+          cp cli/install.sh dist/install.sh
+          cp cli/install.ps1 dist/install.ps1
 
       # Mechanical, from the conventional-commit subjects. It is a floor rather than a ceiling:
       # `gh release edit <tag> --notes-file …` rewrites it afterwards, and the same script run
@@ -638,7 +642,7 @@ jobs:
           for want in \
             "loopky-linux-x86-64" "loopky-linux-x86-64.sha256" \
             "loopky-macos-aarch64" "loopky-macos-aarch64.sha256" \
-            "loopky_${NUM}_amd64.deb" "install.sh" "latest.json" \
+            "loopky_${NUM}_amd64.deb" "install.sh" "install.ps1" "latest.json" \
             "Loopky-${NUM}.apk"
           do
             printf '%s\n' "$HAVE" | grep -qxF "$want" ||
