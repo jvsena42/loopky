@@ -221,9 +221,10 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   (`vegetariano / vegetariana`): split it, or keep one form. Short fronts, short backs.
 - **Fix a card before showing the list, never annotate it.** If you notice a card breaks a rule
   here, rewrite it; the user reviews cards, not caveats about them.
-- **Parenthesized asides are notes, not answers.** `hola (informal)`: the card shows the note,
-  but typing and Speak grade only `hola`. Unbracketed, the note becomes part of the expected
-  answer. **A reading is the one exception**: on a side declared Japanese, a kana aside is also
+- **Bracketed asides are notes, not answers.** `hola (informal)`, `hello [ˈhɛloʊ]`: the card
+  shows the note, but typing and Speak grade only `hola`/`hello`. Unbracketed, the note becomes
+  part of the expected answer. A square bracket counts only after a space or at the start:
+  `arr[0]` is all answer, so `hello[ˈhɛloʊ]` would have to be typed whole. **A reading is the one exception**: on a side declared Japanese, a kana aside is also
   accepted (`ねこ` answers `猫（ねこ）`), and on a side declared Chinese a tone-marked pinyin one
   is (`学习（xuéxí）`). Both need the side's language declared.
 - **Language decks declare their pair.** `--front-lang en-US --back-lang es-ES` (BCP-47) is what
