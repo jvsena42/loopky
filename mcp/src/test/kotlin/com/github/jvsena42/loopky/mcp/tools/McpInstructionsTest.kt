@@ -14,7 +14,7 @@ class McpInstructionsTest {
         assertTrue(instructions.isNotBlank())
         assertContains(instructions, "## Writing good cards")
         assertContains(instructions, "One fact per card")
-        assertContains(instructions, "Parenthesized asides are notes, not answers")
+        assertContains(instructions, "Bracketed asides are notes, not answers")
         assertContains(instructions, "## Where to find pictures")
     }
 

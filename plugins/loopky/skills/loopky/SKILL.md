@@ -221,11 +221,15 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   (`vegetariano / vegetariana`): split it, or keep one form. Short fronts, short backs.
 - **Fix a card before showing the list, never annotate it.** If you notice a card breaks a rule
   here, rewrite it; the user reviews cards, not caveats about them.
-- **Parenthesized asides are notes, not answers.** `hola (informal)`: the card shows the note,
-  but typing and Speak grade only `hola`. Unbracketed, the note becomes part of the expected
-  answer. **A reading is the one exception**: on a side declared Japanese, a kana aside is also
-  accepted (`ねこ` answers `猫（ねこ）`), and on a side declared Chinese a tone-marked pinyin one
-  is (`学习（xuéxí）`). Both need the side's language declared.
+- **Bracketed asides are notes, not answers.** `hola (informal)`, `hello [ˈhɛloʊ]`: the card
+  shows the note, but typing and Speak grade only `hola`/`hello`. Unbracketed, the note becomes
+  part of the expected answer. Square brackets count only at the very end (or start) of the side,
+  after a space, holding no digits or symbols: `hello [ˈhɛloʊ][noun]` grades `hello`, but
+  `hello[ˈhɛloʊ]`, `arr[0]` and `pH = -log [H+]` are all answer. Prefer `( )` for a note.
+  **A reading is the one exception**, and only in **round brackets**: on a side declared Japanese
+  a kana aside is also accepted (`ねこ` answers `猫（ねこ）`, never `猫［ねこ］`), and on a side
+  declared Chinese a tone-marked pinyin one is (`学习（xuéxí）`). Both need the side's language
+  declared.
 - **Language decks declare their pair.** `--front-lang en-US --back-lang es-ES` (BCP-47) is what
   makes `--listen` and `--speak` work, and it also tags the deck `language` and `spanish` so learners
   find it. Without the pair the phone would read Spanish in an English voice, so `loopky` refuses

@@ -92,6 +92,14 @@ class CardChecksTest {
     }
 
     @Test
+    fun aSquareBracketedAsideCanHoldTheAnswerToo() {
+        assertEquals(
+            listOf(CardRule.AsideHoldsAnswer to listOf(0)),
+            rules(plain, card("começar [start, not commence]", "start"), card("casa [noun]", "house")),
+        )
+    }
+
+    @Test
     fun anAsideOnTheBackLeaksOnlyWhenTheDeckReverses() {
         val leak = card("gato", "cat (gato, masculine)")
         assertEquals(emptyList(), rules(plain, leak))
