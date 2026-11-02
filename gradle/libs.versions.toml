@@ -50,9 +50,9 @@ coil = "3.6.3"
 zxing = "3.5.4"
 # The hosted MCP server (#214). Ktor is pinned to what the MCP Kotlin SDK compiles against, so the
 # two cannot resolve to different Ktor majors.
-mcpKotlinSdk = "0.15.0"
-ktor = "3.6.0"
-logback = "1.6.5"
+mcpKotlinSdk = "0.16.0"
+ktor = "3.6.1"
+logback = "1.6.6"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
