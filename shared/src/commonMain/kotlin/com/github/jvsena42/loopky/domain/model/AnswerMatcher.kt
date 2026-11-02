@@ -158,8 +158,8 @@ object AnswerMatcher {
     }
 
     /**
-     * Drop parenthesized and square-bracketed asides, so `"hello (formal)"` and `"hello [formal]"`
-     * are graded as `"hello"`.
+     * Drop parenthesized and bracketed asides, so `"hello (formal)"` and `"hello [formal]"` are
+     * graded as `"hello"` — see [Asides] for when an ASCII `[…]` counts.
      *
      * A parenthetical on a card is a note to the reader — a register, a disambiguation, a part of
      * speech — not part of the phrase itself. Nobody says it out loud, and nobody should have to
@@ -171,21 +171,23 @@ object AnswerMatcher {
      * parenthesized still has to be answerable.
      */
     fun stripParentheticals(text: String): String {
-        val stripped = text.replace(ASIDE, " ").replace(WHITESPACE, " ").trim()
+        val asides = Asides.ranges(text)
+        if (asides.isEmpty()) return text
+        val kept = buildString {
+            var from = 0
+            for (range in asides) {
+                if (range.last < from) continue // nested inside an aside already dropped
+                append(text, from, maxOf(from, range.first)).append(' ')
+                from = range.last + 1
+            }
+            append(text, from, text.length)
+        }
+        val stripped = kept.replace(WHITESPACE, " ").trim()
         return if (normalize(stripped, AnswerStrictness.Strict).isEmpty()) text else stripped
     }
 
     /** Both ASCII and full-width brackets — CJK decks routinely use the latter. */
     private val PARENTHETICAL = Regex("""\([^()]*\)|（[^（）]*）""")
-
-    /**
-     * What [stripParentheticals] drops: [PARENTHETICAL] plus square brackets, which carry the same
-     * kind of note (`[ˈhɛloʊ]`, `[informal]`). An ASCII `[` counts only at the start or after a
-     * space, so an index or a concentration (`arr[0]`, `-log[H+]`) stays part of the answer — and
-     * so does Anki's furigana, `日本[にほん]語[ご]`, which is why a bracket is never a reading for
-     * [readingTargets] either. Full-width `［］` is never code, so it counts anywhere.
-     */
-    internal val ASIDE = Regex("""\([^()]*\)|（[^（）]*）|(?:^|\s)\[[^\[\]]*]|［[^［］]*］""")
 
     /**
      * Fold width, lowercase, drop non-alphanumeric chars, collapse whitespace; fold diacritics when

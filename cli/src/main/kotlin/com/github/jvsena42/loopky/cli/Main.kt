@@ -634,6 +634,8 @@ internal val USAGE = """
       A bracketed aside, ( ) or [ ], is shown but never part of the answer — typing, Speak and
       Listen all drop it:   hola (informal)     hello [ˈhɛloʊ]     ねこ (neko)     猫（ねこ）
       Put a register, sense or reading in brackets; otherwise it becomes part of the answer.
+      [ ] counts only at the end or start of a side, after a space, with no digits or symbols in
+      it — hello[ˈhɛloʊ] and pH = -log [H+] are all answer. A reading needs ( ), never [ ].
 
     CARD IMAGES
       A picture is an https URL; nothing is uploaded and nothing is fetched.

@@ -120,13 +120,44 @@ class AnswerMatcherTest {
     @Test
     fun stripParentheticalsDropsSquareBracketedAsides() {
         assertEquals("hello", AnswerMatcher.stripParentheticals("hello [ˈhɛloʊ]"))
-        assertEquals("hello there", AnswerMatcher.stripParentheticals("hello [formal] there"))
         assertEquals("猫", AnswerMatcher.stripParentheticals("猫［ねこ］"))
         assertEquals("hola", AnswerMatcher.stripParentheticals("hola (informal [es-MX])"))
         assertEquals("hola", AnswerMatcher.stripParentheticals("hola [informal (es-MX)]"))
         assertEquals("[formal]", AnswerMatcher.stripParentheticals("[formal]"))
         assertEquals("hello [formal", AnswerMatcher.stripParentheticals("hello [formal"))
         assertEquals("hola", AnswerMatcher.stripParentheticals("[informal] hola"))
+    }
+
+    @Test
+    fun aRunOfSquareBracketsAtTheEndIsDroppedWhole() {
+        assertEquals("hello", AnswerMatcher.stripParentheticals("hello [ˈhɛloʊ][noun]"))
+        assertEquals("hello", AnswerMatcher.stripParentheticals("hello [ˈhɛloʊ] [noun]"))
+        assertEquals("hello", AnswerMatcher.stripParentheticals("hello [semi-formal, US]"))
+        assertEquals(Correct, AnswerMatcher.judge("hello", "hello [ˈhɛloʊ][noun]"))
+    }
+
+    @Test
+    fun anyUnicodeSpaceSetsASquareBracketOff() {
+        assertEquals("猫", AnswerMatcher.stripParentheticals("猫\u3000[ねこ]"))
+        assertEquals("hello", AnswerMatcher.stripParentheticals("hello\u00A0[formal]"))
+    }
+
+    @Test
+    fun aSquareBracketInsideTheTextIsPartOfTheAnswer() {
+        assertEquals("hello [formal] there", AnswerMatcher.stripParentheticals("hello [formal] there"))
+    }
+
+    @Test
+    fun spacedMathsAndChemistryStayWhole() {
+        listOf(
+            "Ka = [H+][A-] / [HA]",
+            "pH = -log [H+]",
+            "x ∈ [0, 1]",
+            "x = [1, 2]",
+            "rate = k [A]",
+            "[H+] = 10^-pH",
+        ).forEach { assertEquals(it, AnswerMatcher.stripParentheticals(it), it) }
+        assertEquals(Wrong, AnswerMatcher.judge("x", "x ∈ [0, 1]"))
     }
 
     @Test

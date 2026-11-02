@@ -579,9 +579,10 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   *entirely* parenthesized comes back untouched (`matches` refuses an empty target, so stripping
   would make the card unanswerable), and what is *shown* keeps the aside: `SpeakResult.expected`
   and the speak prompt quote the card as written, because the note is the context worth seeing.
-  An ASCII `[` is an aside only at the start or after a space, so `arr[0]`, `-log[H+]` and Anki
-  furigana (`日本[にほん]語[ご]`) stay answer text; and no square bracket is ever a reading, or
-  `ご` would answer 日本語.
+  An ASCII `[…]` is an aside only as a run at the very end or start of a side, set off by a space,
+  holding no digit or operator, on a side with no operator anywhere (`Asides`) — square brackets
+  are often the answer (`arr[0]`, `pH = -log [H+]`, `x ∈ [0, 1]`, Anki furigana
+  `日本[にほん]語[ご]`). And no square bracket is ever a reading, or `ご` would answer 日本語.
   **One deliberate exception, keyed on the side's declared language (#554):** on a `ja` side a
   pure-kana aside, and on a `zh` side a tone-marked pinyin one, is a *second* accepted answer —
   `ねこ` answers `猫（ねこ）`, because a reading is the word in another script, not a note about

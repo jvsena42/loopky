@@ -322,8 +322,9 @@ neither) is removed by that edit, and named in `tags_dropped` and in a note on s
 
 **Brackets are notes, not answer.** Typing, Speak and Listen all drop a parenthesized aside —
 ASCII `( )` and full-width `（ ）`, and square brackets `[ ]`/`［ ］` the same way — while the card
-still shows it. An ASCII `[` counts only at the start of the side or after a space (`hello [ˈhɛloʊ]`),
-so `arr[0]` and `-log[H+]` stay part of the answer. That makes it the place for a
+still shows it. An ASCII `[…]` counts only as a run at the very end or start of the side, set off
+by a space, holding no digit or operator, on a side with no operator anywhere: `hello [ˈhɛloʊ][noun]`
+grades `hello`, while `hello[ˈhɛloʊ]`, `arr[0]`, `pH = -log [H+]` and `x ∈ [0, 1]` are all answer. That makes it the place for a
 register, a sense, a romanization or a kana reading: `hola (informal)`, `ねこ (neko)`, `猫（ねこ）`.
 Written without brackets, the note becomes part of the expected answer, and a spoken "hola" misses
 "hola informal". A side that is *entirely* parenthesized is kept whole, or it would have no answer.

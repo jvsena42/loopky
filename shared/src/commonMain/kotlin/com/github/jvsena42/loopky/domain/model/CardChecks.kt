@@ -140,7 +140,7 @@ object CardChecks {
     private fun asideHoldsAnswer(prompt: String, answer: String): Boolean {
         val wanted = tokens(AnswerMatcher.stripParentheticals(answer)).filter { it.length >= MIN_LEAKED_WORD }.toSet()
         if (wanted.isEmpty()) return false
-        return AnswerMatcher.ASIDE.findAll(prompt).any { aside -> tokens(aside.value).any { it in wanted } }
+        return Asides.of(prompt).any { aside -> tokens(aside).any { it in wanted } }
     }
 
     private fun listsAlternatives(answer: String): Boolean {
