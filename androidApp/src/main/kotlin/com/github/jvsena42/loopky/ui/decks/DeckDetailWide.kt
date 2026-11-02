@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -42,7 +44,9 @@ import com.github.jvsena42.loopky.ui.components.DeckFeatureChips
 import com.github.jvsena42.loopky.ui.components.StatsBar
 import com.github.jvsena42.loopky.ui.components.TagChip
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.ScreenBottomInsetSpacer
 import com.github.jvsena42.loopky.ui.layout.contentPane
+import com.github.jvsena42.loopky.ui.layout.screenBottom
 
 /**
  * Everything above the card list: cover, title, author, tags, stats and the keep/study actions.
@@ -262,6 +266,7 @@ internal fun WideDeckDetail(
                     modifier = Modifier
                         .width(paneWidth.coerceIn(MIN_DETAIL_PANE_WIDTH, maxPaneWidth))
                         .verticalScroll(rememberScrollState())
+                        .windowInsetsPadding(WindowInsets.screenBottom)
                         .padding(bottom = 20.dp),
                 )
                 // The split is the reader's to set: a deck whose description runs long wants a wider
@@ -311,6 +316,7 @@ internal fun WideDeckDetail(
                             )
                         }
                     }
+                    item(key = "bottom_inset") { ScreenBottomInsetSpacer() }
                 }
             }
         }

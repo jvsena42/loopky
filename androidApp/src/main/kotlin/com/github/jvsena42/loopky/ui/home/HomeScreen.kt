@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,9 +36,12 @@ import com.github.jvsena42.loopky.presentation.home.HomeUiState
 import com.github.jvsena42.loopky.presentation.home.HomeViewModel
 import com.github.jvsena42.loopky.ui.components.LoopkyErrorBlock
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
+import com.github.jvsena42.loopky.ui.components.LoopkyPullToRefreshBox
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.StatusBarScrim
 import com.github.jvsena42.loopky.ui.layout.contentPane
-import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.layout.screenSides
+import com.github.jvsena42.loopky.ui.layout.screenTopBottom
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.request.DeckRequestHost
 import com.github.jvsena42.loopky.ui.request.rememberDeckRequestLauncher
@@ -120,12 +122,12 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.surfacePrimary)
-            .windowInsetsPadding(WindowInsets.screenEdges),
+            .windowInsetsPadding(WindowInsets.screenSides),
     ) {
         if (state is HomeUiState.Loading) {
             LoopkyLoadingScreen(message = stringResource(R.string.home_loading))
         } else {
-            PullToRefreshBox(
+            LoopkyPullToRefreshBox(
                 isRefreshing = false,
                 onRefresh = onRetry,
                 modifier = Modifier.fillMaxSize(),
@@ -144,6 +146,7 @@ fun HomeScreen(
                 )
             }
         }
+        StatusBarScrim(color = colors.surfacePrimary)
     }
 }
 
@@ -177,6 +180,7 @@ private fun HomeScreenContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .windowInsetsPadding(WindowInsets.screenTopBottom)
             // Wide enough for two panes side by side; on narrower windows the due-today hero is a
             // number and its caption, and unbounded they drift to opposite ends of the card and
             // read as two unrelated things.
@@ -266,6 +270,7 @@ private fun HomeEmptyScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.screenTopBottom)
             .padding(PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp)),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {

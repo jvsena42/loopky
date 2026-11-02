@@ -107,7 +107,9 @@ import com.github.jvsena42.loopky.ui.components.rememberReorderableListState
 import com.github.jvsena42.loopky.ui.components.reorderableHandle
 import com.github.jvsena42.loopky.ui.components.speechLanguageOptions
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.ScreenBottomInsetSpacer
 import com.github.jvsena42.loopky.ui.layout.contentPane
+import com.github.jvsena42.loopky.ui.layout.withoutBottom
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.toast
 import kotlinx.coroutines.flow.collectLatest
@@ -373,7 +375,9 @@ fun DeckEditorScreen(
                 // Without this the scroll container keeps its full height behind the keyboard,
                 // so the field being typed into stays hidden and there is nothing left to scroll.
                 .imePadding()
-                .padding(innerPadding)
+                // The bottom inset is the list's trailing item, so the list runs under the navigation
+                // bar — and, coming after imePadding, it drops to zero while the keyboard is up.
+                .padding(innerPadding.withoutBottom())
                 .contentPane(PaneWidth.Reading),
             // Extra bottom room so the FAB never covers the last card.
             contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 96.dp),
@@ -441,6 +445,8 @@ fun DeckEditorScreen(
                     DeckEditorErrorRow(error = error, onSignInAgain = onSignInAgain)
                 }
             }
+
+            item(key = "bottom_inset") { ScreenBottomInsetSpacer() }
         }
     }
 

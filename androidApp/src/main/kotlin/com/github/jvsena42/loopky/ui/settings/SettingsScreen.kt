@@ -85,9 +85,12 @@ import com.github.jvsena42.loopky.presentation.settings.SettingsUiState
 import com.github.jvsena42.loopky.presentation.settings.SettingsViewModel
 import com.github.jvsena42.loopky.presentation.settings.UnsplashKeyStatus
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
+import com.github.jvsena42.loopky.ui.layout.BringIntoViewClearOfStatusBar
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.StatusBarScrim
 import com.github.jvsena42.loopky.ui.layout.contentPane
-import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.layout.screenSides
+import com.github.jvsena42.loopky.ui.layout.screenTopBottom
 import com.github.jvsena42.loopky.ui.nav.Routes
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.LICENSE_URL
@@ -204,255 +207,261 @@ private fun SettingsScreen(
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.surfacePrimary)
-            .windowInsetsPadding(WindowInsets.screenEdges)
-            // Without this the scroll container keeps its full height behind the keyboard, and
-            // the Unsplash key editor's Save button is unreachable while the user is typing into
-            // the field right above it.
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            // A settings row is a label and its control; at full tablet width the two end up at
-            // opposite edges and stop reading as one row. See ProfileScreen for why this sits
-            // after the background rather than before it.
-            .contentPane(PaneWidth.Reading)
-            .padding(PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 100.dp)),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // --- Header: back + title ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FilledIconButton(
-                onClick = onBack,
-                modifier = Modifier.size(40.dp),
-                shape = CircleShape,
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = colors.surfaceCard,
-                    contentColor = colors.foregroundPrimary,
-                ),
+    Box(modifier = Modifier.fillMaxSize()) {
+        BringIntoViewClearOfStatusBar {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.surfacePrimary)
+                    .windowInsetsPadding(WindowInsets.screenSides)
+                    // Without this the scroll container keeps its full height behind the keyboard, and
+                    // the Unsplash key editor's Save button is unreachable while the user is typing into
+                    // the field right above it.
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .windowInsetsPadding(WindowInsets.screenTopBottom)
+                    // A settings row is a label and its control; at full tablet width the two end up at
+                    // opposite edges and stop reading as one row. See ProfileScreen for why this sits
+                    // after the background rather than before it.
+                    .contentPane(PaneWidth.Reading)
+                    .padding(PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 100.dp)),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.settings_back_content_description),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            Text(
-                text = stringResource(R.string.settings_title),
-                fontSize = 28.sp,
-                lineHeight = 34.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = colors.foregroundPrimary,
-            )
-        }
-
-        // --- Identity section ---
-        SettingsSectionLabel(text = stringResource(R.string.settings_section_identity))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(colors.surfaceSecondary),
-        ) {
-            SettingsValueRow(
-                label = stringResource(R.string.settings_pubky_label),
-                value = if (state.pubky.isNotBlank()) {
-                    truncatedPubky(state.pubky)
-                } else {
-                    stringResource(R.string.settings_not_signed_in)
-                },
-                trailing = {
-                    if (state.pubky.isNotBlank()) {
-                        FilledTonalButton(
-                            onClick = onCopyPubkyClick,
-                            modifier = Modifier.testTag("settings_copy_pubky"),
-                            shape = RoundedCornerShape(50),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = colors.surfaceCard,
-                                contentColor = colors.foregroundMuted,
-                            ),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.settings_copy),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
+                // --- Header: back + title ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FilledIconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(40.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = colors.surfaceCard,
+                            contentColor = colors.foregroundPrimary,
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.settings_back_content_description),
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
-                },
-            )
-            SettingsDivider()
-            // Truncated and copyable, like the pubky directly above it. Shown whole it was a
-            // 52-character key wrapped over two lines that nobody can read and nobody could copy.
-            SettingsValueRow(
-                label = stringResource(R.string.settings_homeserver_label),
-                value = if (state.homeserver.isNotBlank()) {
-                    truncatedPubky(state.homeserver)
-                } else {
-                    stringResource(R.string.settings_homeserver_unknown)
-                },
-                trailing = {
-                    if (state.homeserver.isNotBlank()) {
-                        FilledTonalButton(
-                            onClick = onCopyHomeserverClick,
-                            modifier = Modifier.testTag("settings_copy_homeserver"),
-                            shape = RoundedCornerShape(50),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = colors.surfaceCard,
-                                contentColor = colors.foregroundMuted,
-                            ),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.settings_copy),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
+                    Text(
+                        text = stringResource(R.string.settings_title),
+                        fontSize = 28.sp,
+                        lineHeight = 34.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = colors.foregroundPrimary,
+                    )
+                }
+
+                // --- Identity section ---
+                SettingsSectionLabel(text = stringResource(R.string.settings_section_identity))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colors.surfaceSecondary),
+                ) {
+                    SettingsValueRow(
+                        label = stringResource(R.string.settings_pubky_label),
+                        value = if (state.pubky.isNotBlank()) {
+                            truncatedPubky(state.pubky)
+                        } else {
+                            stringResource(R.string.settings_not_signed_in)
+                        },
+                        trailing = {
+                            if (state.pubky.isNotBlank()) {
+                                FilledTonalButton(
+                                    onClick = onCopyPubkyClick,
+                                    modifier = Modifier.testTag("settings_copy_pubky"),
+                                    shape = RoundedCornerShape(50),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = colors.surfaceCard,
+                                        contentColor = colors.foregroundMuted,
+                                    ),
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.settings_copy),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+                        },
+                    )
+                    SettingsDivider()
+                    // Truncated and copyable, like the pubky directly above it. Shown whole it was a
+                    // 52-character key wrapped over two lines that nobody can read and nobody could copy.
+                    SettingsValueRow(
+                        label = stringResource(R.string.settings_homeserver_label),
+                        value = if (state.homeserver.isNotBlank()) {
+                            truncatedPubky(state.homeserver)
+                        } else {
+                            stringResource(R.string.settings_homeserver_unknown)
+                        },
+                        trailing = {
+                            if (state.homeserver.isNotBlank()) {
+                                FilledTonalButton(
+                                    onClick = onCopyHomeserverClick,
+                                    modifier = Modifier.testTag("settings_copy_homeserver"),
+                                    shape = RoundedCornerShape(50),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = colors.surfaceCard,
+                                        contentColor = colors.foregroundMuted,
+                                    ),
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.settings_copy),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+                        },
+                    )
+                    // A permanent way back into the backup flow, for as long as Loopky holds the key.
+                    //
+                    // The card on Profile is not enough on its own: it disappears the moment one method is
+                    // done, which made the whole flow unreachable afterwards — no second method, no
+                    // encrypted file to add later, and no route at all for a restored account, which is
+                    // marked backed-up the moment it signs in. Backup methods accumulate deliberately, so
+                    // the door has to stay open.
+                    //
+                    // [SettingsUiState.holdsOwnKey], not a bare custody check: the key in the vault is not
+                    // always the signed-in account's.
+                    if (state.holdsOwnKey) {
+                        SettingsDivider()
+                        SettingsLinkRow(
+                            label = stringResource(R.string.settings_back_up_account),
+                            onClick = onBackUpNow,
+                            modifier = Modifier.testTag("settings_back_up_account"),
+                        )
                     }
-                },
-            )
-            // A permanent way back into the backup flow, for as long as Loopky holds the key.
-            //
-            // The card on Profile is not enough on its own: it disappears the moment one method is
-            // done, which made the whole flow unreachable afterwards — no second method, no
-            // encrypted file to add later, and no route at all for a restored account, which is
-            // marked backed-up the moment it signs in. Backup methods accumulate deliberately, so
-            // the door has to stay open.
-            //
-            // [SettingsUiState.holdsOwnKey], not a bare custody check: the key in the vault is not
-            // always the signed-in account's.
-            if (state.holdsOwnKey) {
-                SettingsDivider()
-                SettingsLinkRow(
-                    label = stringResource(R.string.settings_back_up_account),
-                    onClick = onBackUpNow,
-                    modifier = Modifier.testTag("settings_back_up_account"),
+                }
+
+                // --- Sharing section ---
+                SettingsSectionLabel(text = stringResource(R.string.settings_section_sharing))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colors.surfaceSecondary),
+                ) {
+                    SettingsSwitchRow(
+                        label = stringResource(R.string.settings_share_on_pubky_label),
+                        description = stringResource(R.string.settings_share_on_pubky_description),
+                        checked = state.shareOnPubky,
+                        onCheckedChange = onShareOnPubkyChange,
+                        testTag = "settings_share_on_pubky",
+                    )
+                }
+
+                // --- Appearance section ---
+                SettingsSectionLabel(text = stringResource(R.string.settings_section_appearance))
+                AppearanceSection(selected = state.themeMode, onThemeChange = onThemeModeChange)
+
+                // --- Language section ---
+                SettingsSectionLabel(text = stringResource(R.string.settings_section_language))
+                LanguageSection()
+
+                // --- Studying section ---
+                SettingsSectionLabel(text = stringResource(R.string.settings_section_studying))
+                StudySettingsSection(
+                    settings = state.studySettings,
+                    enabled = state.canEditStudySettings,
+                    onGoalChange = onNewCardsGoalChange,
+                    onIntervalChange = onIntervalChange,
                 )
+
+                // --- Image search section ---
+                SettingsSectionLabel(text = stringResource(R.string.settings_section_image_search))
+                UnsplashKeySection(
+                    status = state.unsplashKeyStatus,
+                    isVerifying = state.isVerifyingUnsplashKey,
+                    error = state.unsplashKeyError,
+                    startExpanded = focusUnsplashKey,
+                    onSave = onSaveUnsplashKey,
+                    onRemove = onRemoveUnsplashKey,
+                    onErrorDismissed = onUnsplashKeyErrorDismissed,
+                    onGetKey = onGetUnsplashKeyClick,
+                )
+
+                // --- About section ---
+                SettingsSectionLabel(text = stringResource(R.string.settings_section_about))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colors.surfaceSecondary),
+                ) {
+                    SettingsValueRow(
+                        label = stringResource(R.string.settings_app_version_label),
+                        value = state.appVersion.ifBlank { stringResource(R.string.settings_app_version_unknown) },
+                    )
+                    SettingsDivider()
+                    SettingsLinkRow(
+                        label = stringResource(R.string.settings_privacy_policy),
+                        onClick = onPrivacyPolicyClick,
+                        modifier = Modifier.testTag("settings_privacy_policy"),
+                    )
+                    SettingsDivider()
+                    SettingsLinkRow(
+                        label = stringResource(R.string.settings_license),
+                        onClick = onLicenseClick,
+                        modifier = Modifier.testTag("settings_license"),
+                    )
+                }
+
+                // --- Sign out ---
+                FilledTonalButton(
+                    onClick = { showSignOutDialog = true },
+                    modifier = Modifier
+                        .testTag("settings_signout")
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = colors.dangerSoft,
+                        contentColor = colors.srsAgain,
+                    ),
+                ) {
+                    Icon(
+                        painter = painterResource(id = android.R.drawable.ic_menu_close_clear_cancel),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.settings_sign_out),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+
+                // --- Delete account ---
+                // A text button rather than a second filled one: two adjacent red blocks read as a pair
+                // of equals, and only one of these destroys anything.
+                TextButton(
+                    onClick = onDeleteAccountClick,
+                    modifier = Modifier
+                        .testTag("settings_delete_account")
+                        .fillMaxWidth(),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_delete_account),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.W600,
+                        color = colors.srsAgain,
+                    )
+                }
             }
         }
-
-        // --- Sharing section ---
-        SettingsSectionLabel(text = stringResource(R.string.settings_section_sharing))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(colors.surfaceSecondary),
-        ) {
-            SettingsSwitchRow(
-                label = stringResource(R.string.settings_share_on_pubky_label),
-                description = stringResource(R.string.settings_share_on_pubky_description),
-                checked = state.shareOnPubky,
-                onCheckedChange = onShareOnPubkyChange,
-                testTag = "settings_share_on_pubky",
-            )
-        }
-
-        // --- Appearance section ---
-        SettingsSectionLabel(text = stringResource(R.string.settings_section_appearance))
-        AppearanceSection(selected = state.themeMode, onThemeChange = onThemeModeChange)
-
-        // --- Language section ---
-        SettingsSectionLabel(text = stringResource(R.string.settings_section_language))
-        LanguageSection()
-
-        // --- Studying section ---
-        SettingsSectionLabel(text = stringResource(R.string.settings_section_studying))
-        StudySettingsSection(
-            settings = state.studySettings,
-            enabled = state.canEditStudySettings,
-            onGoalChange = onNewCardsGoalChange,
-            onIntervalChange = onIntervalChange,
-        )
-
-        // --- Image search section ---
-        SettingsSectionLabel(text = stringResource(R.string.settings_section_image_search))
-        UnsplashKeySection(
-            status = state.unsplashKeyStatus,
-            isVerifying = state.isVerifyingUnsplashKey,
-            error = state.unsplashKeyError,
-            startExpanded = focusUnsplashKey,
-            onSave = onSaveUnsplashKey,
-            onRemove = onRemoveUnsplashKey,
-            onErrorDismissed = onUnsplashKeyErrorDismissed,
-            onGetKey = onGetUnsplashKeyClick,
-        )
-
-        // --- About section ---
-        SettingsSectionLabel(text = stringResource(R.string.settings_section_about))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(colors.surfaceSecondary),
-        ) {
-            SettingsValueRow(
-                label = stringResource(R.string.settings_app_version_label),
-                value = state.appVersion.ifBlank { stringResource(R.string.settings_app_version_unknown) },
-            )
-            SettingsDivider()
-            SettingsLinkRow(
-                label = stringResource(R.string.settings_privacy_policy),
-                onClick = onPrivacyPolicyClick,
-                modifier = Modifier.testTag("settings_privacy_policy"),
-            )
-            SettingsDivider()
-            SettingsLinkRow(
-                label = stringResource(R.string.settings_license),
-                onClick = onLicenseClick,
-                modifier = Modifier.testTag("settings_license"),
-            )
-        }
-
-        // --- Sign out ---
-        FilledTonalButton(
-            onClick = { showSignOutDialog = true },
-            modifier = Modifier
-                .testTag("settings_signout")
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = colors.dangerSoft,
-                contentColor = colors.srsAgain,
-            ),
-        ) {
-            Icon(
-                painter = painterResource(id = android.R.drawable.ic_menu_close_clear_cancel),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.settings_sign_out),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-
-        // --- Delete account ---
-        // A text button rather than a second filled one: two adjacent red blocks read as a pair
-        // of equals, and only one of these destroys anything.
-        TextButton(
-            onClick = onDeleteAccountClick,
-            modifier = Modifier
-                .testTag("settings_delete_account")
-                .fillMaxWidth(),
-        ) {
-            Text(
-                text = stringResource(R.string.settings_delete_account),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.W600,
-                color = colors.srsAgain,
-            )
-        }
+        StatusBarScrim(color = colors.surfacePrimary)
     }
 
     // --- Delete account confirmation ---

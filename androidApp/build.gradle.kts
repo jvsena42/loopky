@@ -194,5 +194,6 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.testJunit)
 }
 

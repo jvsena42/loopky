@@ -77,8 +77,10 @@ import com.github.jvsena42.loopky.ui.components.PubkyAppProfileCta
 import com.github.jvsena42.loopky.ui.components.ShareLinkSheetHost
 import com.github.jvsena42.loopky.ui.components.ShareLinkTarget
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.StatusBarScrim
 import com.github.jvsena42.loopky.ui.layout.contentPane
-import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.layout.screenSides
+import com.github.jvsena42.loopky.ui.layout.screenTopBottom
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.label
@@ -246,60 +248,83 @@ private fun ProfileScreen(
     }
 
     val wide = windowWidthClass().isExpanded
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.surfacePrimary)
-            .windowInsetsPadding(WindowInsets.screenEdges)
-            .verticalScroll(rememberScrollState())
-            // After the background and the scroll, so the surface still reaches both edges and
-            // only the content inside is bounded. A stat band stretched to a landscape tablet put
-            // "Decks" and "Followers" a hand's width apart with nothing in between.
-            .contentPane(if (wide) PaneWidth.Wide else PaneWidth.Reading)
-            .padding(PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp)),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // --- Nav title + settings entry point ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colors.surfacePrimary)
+                .windowInsetsPadding(WindowInsets.screenSides)
+                .verticalScroll(rememberScrollState())
+                .windowInsetsPadding(WindowInsets.screenTopBottom)
+                // After the background and the scroll, so the surface still reaches both edges and
+                // only the content inside is bounded. A stat band stretched to a landscape tablet put
+                // "Decks" and "Followers" a hand's width apart with nothing in between.
+                .contentPane(if (wide) PaneWidth.Wide else PaneWidth.Reading)
+                .padding(PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp)),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                text = stringResource(R.string.profile_title),
-                fontSize = 28.sp,
-                lineHeight = 34.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = colors.foregroundPrimary,
-            )
-            OutlinedIconButton(
-                onClick = onOpenSettings,
-                modifier = Modifier
-                    .testTag("profile_settings")
-                    .size(40.dp),
-                shape = CircleShape,
-                colors = IconButtonDefaults.outlinedIconButtonColors(
-                    containerColor = colors.surfaceCard,
-                    contentColor = colors.foregroundSecondary,
-                ),
-                border = BorderStroke(1.dp, colors.borderSubtle),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = stringResource(R.string.profile_settings_content_description),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-
-        if (wide) {
-            // Who you are on the left, what that adds up to on the right. Stacked, this screen is
-            // a column of full-width bands: at tablet width a three-number stat card puts "Decks"
-            // and "Due" a hand's width apart with a strip of empty card between them.
+            // --- Nav title + settings entry point ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(28.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                Text(
+                    text = stringResource(R.string.profile_title),
+                    fontSize = 28.sp,
+                    lineHeight = 34.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = colors.foregroundPrimary,
+                )
+                OutlinedIconButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier
+                        .testTag("profile_settings")
+                        .size(40.dp),
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.outlinedIconButtonColors(
+                        containerColor = colors.surfaceCard,
+                        contentColor = colors.foregroundSecondary,
+                    ),
+                    border = BorderStroke(1.dp, colors.borderSubtle),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = stringResource(R.string.profile_settings_content_description),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+
+            if (wide) {
+                // Who you are on the left, what that adds up to on the right. Stacked, this screen is
+                // a column of full-width bands: at tablet width a three-number stat card puts "Decks"
+                // and "Due" a hand's width apart with a strip of empty card between them.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(28.dp),
+                ) {
+                    ProfileIdentityPane(
+                        state = state,
+                        onCopyPubky = onCopyPubky,
+                        onEditProfileClick = onEditProfileClick,
+                        onDismissNameNudge = onDismissNameNudge,
+                        onDismissAvatarNudge = onDismissAvatarNudge,
+                        onEditAvatarClick = { explainAvatar = true },
+                        onOpenOnPubkyApp = onOpenOnPubkyApp,
+                        onShareClick = onShareClick,
+                        modifier = Modifier.width(PROFILE_PANE_WIDTH),
+                    )
+                    ProfileDetailsPane(
+                        state = state,
+                        onOpenFollows = onOpenFollows,
+                        onOpenOnPubkyApp = onOpenOnPubkyApp,
+                        onBackUpNow = onBackUpNow,
+                        onSignOutRequest = { confirmSignOut = true },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
                 ProfileIdentityPane(
                     state = state,
                     onCopyPubky = onCopyPubky,
@@ -309,7 +334,6 @@ private fun ProfileScreen(
                     onEditAvatarClick = { explainAvatar = true },
                     onOpenOnPubkyApp = onOpenOnPubkyApp,
                     onShareClick = onShareClick,
-                    modifier = Modifier.width(PROFILE_PANE_WIDTH),
                 )
                 ProfileDetailsPane(
                     state = state,
@@ -317,28 +341,10 @@ private fun ProfileScreen(
                     onOpenOnPubkyApp = onOpenOnPubkyApp,
                     onBackUpNow = onBackUpNow,
                     onSignOutRequest = { confirmSignOut = true },
-                    modifier = Modifier.weight(1f),
                 )
             }
-        } else {
-            ProfileIdentityPane(
-                state = state,
-                onCopyPubky = onCopyPubky,
-                onEditProfileClick = onEditProfileClick,
-                onDismissNameNudge = onDismissNameNudge,
-                onDismissAvatarNudge = onDismissAvatarNudge,
-                onEditAvatarClick = { explainAvatar = true },
-                onOpenOnPubkyApp = onOpenOnPubkyApp,
-                onShareClick = onShareClick,
-            )
-            ProfileDetailsPane(
-                state = state,
-                onOpenFollows = onOpenFollows,
-                onOpenOnPubkyApp = onOpenOnPubkyApp,
-                onBackUpNow = onBackUpNow,
-                onSignOutRequest = { confirmSignOut = true },
-            )
         }
+        StatusBarScrim(color = colors.surfacePrimary)
     }
 
     // --- Error snackbar ---
