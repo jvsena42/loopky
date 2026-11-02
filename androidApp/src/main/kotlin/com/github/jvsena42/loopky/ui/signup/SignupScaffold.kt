@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.ui.signup
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,8 +27,10 @@ import com.github.jvsena42.loopky.presentation.signup.SignupError
 import com.github.jvsena42.loopky.ui.components.signupErrorMessage
 import com.github.jvsena42.loopky.ui.components.signupErrorTitle
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.StatusBarScrim
 import com.github.jvsena42.loopky.ui.layout.contentPane
-import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.layout.screenSides
+import com.github.jvsena42.loopky.ui.layout.screenTopBottom
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 
 /**
@@ -46,63 +49,67 @@ fun SignupScaffold(
     content: @Composable () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.screenEdges)
-            // On a landscape tablet the keyboard covers the submit button under the field, and
-            // without this there is nothing to scroll it back with.
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .contentPane(PaneWidth.Focused)
-            .padding(horizontal = 24.dp),
-    ) {
-        TextButton(onClick = onBack, modifier = Modifier.testTag("signup_back")) {
-            Text(text = stringResource(R.string.deck_detail_back), color = colors.accentSecondary, fontSize = 14.sp)
-        }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = title,
-            modifier = Modifier.testTag("signup_title"),
-            color = colors.foregroundPrimary,
-            fontSize = 28.sp,
-            lineHeight = 34.sp,
-            fontWeight = FontWeight.ExtraBold,
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = subtitle,
-            modifier = Modifier.testTag("signup_subtitle"),
-            color = colors.foregroundSecondary,
-            fontSize = 15.sp,
-            lineHeight = 22.sp,
-        )
-        Spacer(Modifier.height(28.dp))
-
-        content()
-
-        if (error != null) {
-            Spacer(Modifier.height(20.dp))
-            Column(
-                modifier = Modifier.fillMaxWidth().testTag("signup_error"),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = signupErrorTitle(error),
-                    modifier = Modifier.testTag("signup_error_title"),
-                    color = colors.danger,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = signupErrorMessage(error),
-                    modifier = Modifier.testTag("signup_error_message"),
-                    color = colors.foregroundSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                )
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.screenSides)
+                // On a landscape tablet the keyboard covers the submit button under the field, and
+                // without this there is nothing to scroll it back with.
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .windowInsetsPadding(WindowInsets.screenTopBottom)
+                .contentPane(PaneWidth.Focused)
+                .padding(horizontal = 24.dp),
+        ) {
+            TextButton(onClick = onBack, modifier = Modifier.testTag("signup_back")) {
+                Text(text = stringResource(R.string.deck_detail_back), color = colors.accentSecondary, fontSize = 14.sp)
             }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = title,
+                modifier = Modifier.testTag("signup_title"),
+                color = colors.foregroundPrimary,
+                fontSize = 28.sp,
+                lineHeight = 34.sp,
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = subtitle,
+                modifier = Modifier.testTag("signup_subtitle"),
+                color = colors.foregroundSecondary,
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
+            )
+            Spacer(Modifier.height(28.dp))
+
+            content()
+
+            if (error != null) {
+                Spacer(Modifier.height(20.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth().testTag("signup_error"),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = signupErrorTitle(error),
+                        modifier = Modifier.testTag("signup_error_title"),
+                        color = colors.danger,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = signupErrorMessage(error),
+                        modifier = Modifier.testTag("signup_error_message"),
+                        color = colors.foregroundSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                    )
+                }
+            }
+            Spacer(Modifier.height(32.dp))
         }
-        Spacer(Modifier.height(32.dp))
+        StatusBarScrim(color = colors.surfacePrimary)
     }
 }

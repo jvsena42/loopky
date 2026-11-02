@@ -29,7 +29,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,10 +61,13 @@ import com.github.jvsena42.loopky.ui.components.DeckTile
 import com.github.jvsena42.loopky.ui.components.LoopkyErrorBlock
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingBlock
 import com.github.jvsena42.loopky.ui.components.LoopkyPrimaryButton
+import com.github.jvsena42.loopky.ui.components.LoopkyPullToRefreshBox
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.StatusBarScrim
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.deckGridColumns
-import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.layout.screenSides
+import com.github.jvsena42.loopky.ui.layout.screenTopBottom
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.label
 import kotlinx.coroutines.flow.collectLatest
@@ -127,12 +129,12 @@ fun DecksScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.surfacePrimary)
-            .windowInsetsPadding(WindowInsets.screenEdges),
+            .windowInsetsPadding(WindowInsets.screenSides),
     ) {
         // The loader sits where the grid will be, never over the whole screen: importing a deck
         // is the one thing you can do here that needs nothing loaded, and a first launch on a slow
         // homeserver hid its CTA behind a spinner for as long as the fetch took.
-        PullToRefreshBox(
+        LoopkyPullToRefreshBox(
             isRefreshing = false,
             onRefresh = onRetry,
             modifier = Modifier.fillMaxSize(),
@@ -148,6 +150,7 @@ fun DecksScreen(
                 onSortChanged = onSortChanged,
             )
         }
+        StatusBarScrim(color = colors.surfacePrimary)
     }
 }
 
@@ -172,6 +175,7 @@ private fun DecksScreenContent(
             // desktop window's full width.
             .contentPane(PaneWidth.Wide)
             .verticalScroll(rememberScrollState())
+            .windowInsetsPadding(WindowInsets.screenTopBottom)
             .padding(PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp)),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {

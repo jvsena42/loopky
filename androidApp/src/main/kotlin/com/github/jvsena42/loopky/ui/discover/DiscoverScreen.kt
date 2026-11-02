@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -21,7 +24,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,12 +56,16 @@ import com.github.jvsena42.loopky.presentation.discover.SectionState
 import com.github.jvsena42.loopky.ui.components.GuestSignInBanner
 import com.github.jvsena42.loopky.ui.components.LoadMoreFooter
 import com.github.jvsena42.loopky.ui.components.LoopkyErrorBlock
+import com.github.jvsena42.loopky.ui.components.LoopkyPullToRefreshBox
 import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
 import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.ScreenBottomInsetSpacer
+import com.github.jvsena42.loopky.ui.layout.StatusBarScrim
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.deckGridColumns
-import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.layout.screenSides
+import com.github.jvsena42.loopky.ui.layout.screenTopBottom
 import com.github.jvsena42.loopky.ui.request.DeckRequestHost
 import com.github.jvsena42.loopky.ui.request.rememberDeckRequestLauncher
 import com.github.jvsena42.loopky.ui.search.DiscoverSearchBar
@@ -182,9 +188,9 @@ private fun DiscoverScreen(
             .fillMaxSize()
             .testTag("discover_screen")
             .background(LoopkyTheme.colors.surfacePrimary)
-            .windowInsetsPadding(WindowInsets.screenEdges),
+            .windowInsetsPadding(WindowInsets.screenSides),
     ) {
-        PullToRefreshBox(
+        LoopkyPullToRefreshBox(
             isRefreshing = state.isRefreshing,
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize(),
@@ -208,6 +214,7 @@ private fun DiscoverScreen(
             // the width class is an Android concern and it changes on rotation and split-screen.
             val reportColumns by rememberUpdatedState(onGridColumnsChanged)
             LaunchedEffect(deckColumns) { reportColumns(deckColumns) }
+            val statusBarTop = WindowInsets.screenTopBottom.asPaddingValues().calculateTopPadding()
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -215,12 +222,13 @@ private fun DiscoverScreen(
                 // The box floats over this list rather than sitting above it, so the top padding
                 // is what keeps the first row from starting underneath it. Everything below simply
                 // passes behind the pill on the way up, which is the point: the way in stays put
-                // and costs no height.
+                // and costs no height. The bottom inset is the trailing spacer item, which the
+                // 20dp arrangement already separates from the last row.
                 contentPadding = PaddingValues(
                     start = 20.dp,
                     end = 20.dp,
-                    top = SEARCH_BAR_CLEARANCE,
-                    bottom = 24.dp,
+                    top = SEARCH_BAR_CLEARANCE + statusBarTop,
+                    bottom = 4.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
@@ -245,11 +253,14 @@ private fun DiscoverScreen(
                 if (state.selectedTags.isEmpty()) {
                     browseSection(state, deckColumns, tileActions, browseActions)
                 }
+                item(key = "bottom_inset") { ScreenBottomInsetSpacer() }
             }
         }
+        StatusBarScrim(color = LoopkyTheme.colors.surfacePrimary)
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                .windowInsetsPadding(WindowInsets.screenTopBottom.only(WindowInsetsSides.Top))
                 .contentPane(PaneWidth.Wide)
                 .padding(horizontal = 20.dp),
         ) {

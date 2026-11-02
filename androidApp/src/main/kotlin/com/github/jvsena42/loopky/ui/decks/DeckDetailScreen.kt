@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -74,9 +75,12 @@ import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
 import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.components.errorTitle
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.StatusBarScrim
 import com.github.jvsena42.loopky.ui.layout.contentPane
+import com.github.jvsena42.loopky.ui.layout.horizontalOnly
 import com.github.jvsena42.loopky.ui.layout.screenEdges
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
+import com.github.jvsena42.loopky.ui.layout.withoutBottom
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.label
 import com.github.jvsena42.loopky.ui.util.toast
@@ -415,16 +419,20 @@ private fun DeckDetailContent(
                 onEditClick = onEditClick,
                 onDeleteClick = onDeleteClick,
                 onToggleFollow = onToggleFollow,
-                modifier = Modifier.padding(innerPadding),
+                // The header bar stays pinned below the status bar; the panes under it run to the
+                // bottom edge and pad for the navigation bar themselves.
+                modifier = Modifier.padding(innerPadding.withoutBottom()),
             )
             return@Scaffold
         }
         // A LazyColumn rather than a scrolling Column: the card list below is as long as the
         // deck, and a 500-card deck would otherwise compose every row up front.
+        // The insets go in contentPadding, not around the list, so the list runs under the bars.
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding.horizontalOnly())
+                .consumeWindowInsets(innerPadding)
                 // Card rows are front-and-back pairs. Given a landscape tablet's full width they
                 // put the prompt at one edge and the answer at the other, which is unreadable as
                 // a pair — and the cover art above them becomes a letterbox.
@@ -432,7 +440,12 @@ private fun DeckDetailContent(
                 .testTag("deck_detail_content"),
             // The floating button reserves no height of its own, so the list has to leave it
             // room — without this the last card row sits under the pill and cannot be read.
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = STUDY_CTA_CLEARANCE),
+            contentPadding = PaddingValues(
+                start = 20.dp,
+                end = 20.dp,
+                top = 8.dp + innerPadding.calculateTopPadding(),
+                bottom = STUDY_CTA_CLEARANCE + innerPadding.calculateBottomPadding(),
+            ),
         ) {
             // Everything above the card list is a fixed set of sections that are on screen
             // together anyway, so they stay in one item and keep their shared 20.dp rhythm.
@@ -488,6 +501,7 @@ private fun DeckDetailContent(
                 }
             }
         }
+        StatusBarScrim(color = colors.surfacePrimary)
     }
 }
 
