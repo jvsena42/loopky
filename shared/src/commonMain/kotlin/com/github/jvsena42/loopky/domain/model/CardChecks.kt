@@ -140,7 +140,7 @@ object CardChecks {
     private fun asideHoldsAnswer(prompt: String, answer: String): Boolean {
         val wanted = tokens(AnswerMatcher.stripParentheticals(answer)).filter { it.length >= MIN_LEAKED_WORD }.toSet()
         if (wanted.isEmpty()) return false
-        return ASIDE.findAll(prompt).any { aside -> tokens(aside.value).any { it in wanted } }
+        return AnswerMatcher.ASIDE.findAll(prompt).any { aside -> tokens(aside.value).any { it in wanted } }
     }
 
     private fun listsAlternatives(answer: String): Boolean {
@@ -154,7 +154,6 @@ object CardChecks {
     private fun tokens(text: String): List<String> =
         AnswerMatcher.normalize(text, AnswerStrictness.Lenient).split(' ').filter { it.isNotEmpty() }
 
-    private val ASIDE = Regex("""\([^()]*\)|（[^（）]*）""")
     private val SPACES = Regex("""\s+""")
     private val SPACED_SLASH = Regex("""\S\s+/\s+\S""")
     private val WORD_SLASH_WORD = Regex("""\p{L}{2,}/\p{L}{2,}""")

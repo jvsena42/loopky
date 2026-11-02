@@ -631,8 +631,8 @@ internal val USAGE = """
              can be read, edited with jq and written back.
 
     CARD TEXT
-      A parenthesized aside is shown but never part of the answer — typing, Speak and Listen all
-      drop it:   hola (informal)     ねこ (neko)     猫（ねこ）
+      A bracketed aside, ( ) or [ ], is shown but never part of the answer — typing, Speak and
+      Listen all drop it:   hola (informal)     hello [ˈhɛloʊ]     ねこ (neko)     猫（ねこ）
       Put a register, sense or reading in brackets; otherwise it becomes part of the answer.
 
     CARD IMAGES

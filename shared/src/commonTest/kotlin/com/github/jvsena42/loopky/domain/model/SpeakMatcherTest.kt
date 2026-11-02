@@ -45,6 +45,14 @@ class SpeakMatcherTest {
     }
 
     @Test
+    fun ignoresSquareBracketedAsideOnTheCard() {
+        assertTrue(SpeakMatcher.match("hello", "hello [ˈhɛloʊ]").correct)
+        assertTrue(SpeakMatcher.match("neko", "neko ［猫］").correct)
+        assertFalse(SpeakMatcher.match("goodbye", "hello [formal]").correct)
+        assertTrue(SpeakMatcher.match("formal", "[formal]").correct)
+    }
+
+    @Test
     fun ignoresParentheticalInTheTranscript() {
         assertTrue(SpeakMatcher.match("hello (formal)", "hello").correct)
     }

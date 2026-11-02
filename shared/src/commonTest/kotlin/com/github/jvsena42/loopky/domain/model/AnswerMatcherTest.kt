@@ -118,6 +118,40 @@ class AnswerMatcherTest {
     }
 
     @Test
+    fun stripParentheticalsDropsSquareBracketedAsides() {
+        assertEquals("hello", AnswerMatcher.stripParentheticals("hello [ˈhɛloʊ]"))
+        assertEquals("hello there", AnswerMatcher.stripParentheticals("hello [formal] there"))
+        assertEquals("猫", AnswerMatcher.stripParentheticals("猫［ねこ］"))
+        assertEquals("hola", AnswerMatcher.stripParentheticals("hola (informal [es-MX])"))
+        assertEquals("hola", AnswerMatcher.stripParentheticals("hola [informal (es-MX)]"))
+        assertEquals("[formal]", AnswerMatcher.stripParentheticals("[formal]"))
+        assertEquals("hello [formal", AnswerMatcher.stripParentheticals("hello [formal"))
+        assertEquals("hola", AnswerMatcher.stripParentheticals("[informal] hola"))
+    }
+
+    @Test
+    fun aSquareBracketAgainstAWordIsPartOfTheAnswer() {
+        assertEquals("arr[0]", AnswerMatcher.stripParentheticals("arr[0]"))
+        assertEquals("-log[H+]", AnswerMatcher.stripParentheticals("-log[H+]"))
+        assertEquals(Wrong, AnswerMatcher.judge("arr", "arr[0]"))
+        assertEquals(Correct, AnswerMatcher.judge("arr[0]", "arr[0]"))
+    }
+
+    @Test
+    fun aSquareBracketedAsideIsNotPartOfATypedAnswer() {
+        assertEquals(Correct, AnswerMatcher.judge("hello", "hello [formal]"))
+        assertEquals(Wrong, AnswerMatcher.judge("formal", "hello [formal]", languageTag = "en"))
+    }
+
+    @Test
+    fun aSquareBracketIsNeverAReading() {
+        // Anki furigana is per segment: `ご` must not answer 日本語.
+        assertEquals(Wrong, AnswerMatcher.judge("ご", "日本[にほん]語[ご]", languageTag = "ja"))
+        assertEquals(Wrong, AnswerMatcher.judge("ねこ", "猫[ねこ]", languageTag = "ja"))
+        assertEquals(Correct, AnswerMatcher.judge("ねこ", "猫（ねこ）", languageTag = "ja"))
+    }
+
+    @Test
     fun stripParentheticalsKeepsTextWithNoAside() {
         assertEquals("el zorro", AnswerMatcher.stripParentheticals("el zorro"))
         // An unclosed bracket is not an aside — leave it to the punctuation stripping.
