@@ -29,7 +29,7 @@ rustlsPlatformVerifier = "0.1.1"
 detekt = "1.23.8"
 # GraalVM `native-image` Gradle plugin (#210). Builds `loopky` as a single self-contained binary
 # so the machine it lands on needs no JRE — see cli/build.gradle.kts.
-graalvmNative = "1.1.14"
+graalvmNative = "1.1.18"
 # Compose rules for detekt. **0.4.28 is the ceiling while detekt is on 1.x**: from 0.5.0 the
 # artifact compiles against `dev.detekt:detekt-core`, the detekt 2 group id, which has published
 # nothing but alphas. #273 listed 0.6.6 as the latest stable of this library, and it is — but
@@ -41,7 +41,7 @@ kvault = "1.12.0"
 # JDBC SQLite for reading an Anki `.apkg` collection on the desktop JVM target, where SQLite is
 # not in the platform the way it is on Android. Ships native libraries for linux-x86-64 and
 # macos-aarch64 inside the jar, so the CLI needs nothing installed (#54).
-sqliteJdbc = "3.53.4.0"
+sqliteJdbc = "3.54.1.0"
 playServicesCodeScanner = "16.1.0"
 playAppUpdate = "2.1.0"
 coil = "3.6.3"
