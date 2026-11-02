@@ -234,7 +234,9 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   language's dictionary convention (see "Pronunciation on language cards") as an aside on the
   side being learned. A dictionary's slashes become brackets: `hello /həˈloʊ/` makes the slashes
   and the IPA part of the typed answer. A note with a digit or a `/` (`[1]`, `[nei5 hou2]`,
-  `[가치/가티]`) goes in `( )`, or you pick one form.
+  `[가치/가티]`) goes in `( )`, or you pick one form. So does any pronunciation on a side with a
+  `/`, `+`, `=`, `~` or `→` anywhere, a round aside included: `look up (sth/sb) [lʊk ʌp]` grades
+  `look up [lʊk ʌp]`, but `look up (sth/sb) (lʊk ʌp)` grades `look up`.
 - **Language decks declare their pair.** `--front-lang en-US --back-lang es-ES` (BCP-47) is what
   makes `--listen` and `--speak` work, and it also tags the deck `language` and `spanish` so learners
   find it. Without the pair the phone would read Spanish in an English voice, so `loopky` refuses
@@ -480,8 +482,9 @@ description (`IPA, US English`), and put it on the side being learned:
 | English | IPA as in Cambridge and Oxford, `ˈ`/`ˌ` stress, US or UK to match the declared region. Not Merriam-Webster's respelling | `water [ˈwɑːtɚ]` (en-US), `water [ˈwɔːtə]` (en-GB) |
 | French, German, Italian, Portuguese, other Latin-script languages | IPA, as Le Robert, Larousse and Duden print it. Spanish spelling is regular, so mark only the irregular words | `Wasser [ˈvasɐ]` |
 | Italian open/closed vowels | Dictionaries write `pèsca`/`pésca`, which is not the spelling | IPA or an aside, never in the answer: `pesca [ˈpɛska]` (strict typing grades `pèsca` against a typed `pesca` wrong) |
-| Russian, Ukrainian, Belarusian | Stress acute on the stressed vowel, as dictionaries and learner books print it, plus `ё` | In the answer itself: `молоко́`, `за́мок`. Use the combining mark U+0301, never a Latin `ó`. Typing ignores U+0301 |
-| Arabic, Persian, Hebrew | Full vowel marks: ḥarakāt/tashkīl, niqqud | In the answer itself: `كِتَاب`, `שָׁלוֹם`. Typing ignores the marks, so the learner types without vowels. Romanization (ALA-LC, DIN 31635) only if asked, in `( )` |
+| Russian, Ukrainian, Belarusian | Stress acute on the stressed vowel, as dictionaries and learner books print it, plus `ё` | In the answer itself: `молоко́`, `за́мок`. Use the combining mark U+0301, never a Latin `ó`. Typing ignores U+0301, but not `ё`: a typed `еще` against `ещё` is wrong, so on a `--type` deck write `ё` only when the user wants it typed |
+| Arabic, Persian | Full vowel marks: ḥarakāt/tashkīl | In the answer itself: `كِتَاب`. Typing ignores the marks, so the learner types without vowels. Romanization (ALA-LC, DIN 31635) only if asked, in `( )` |
+| Hebrew | Niqqud, on the defective spelling (ktiv haser) | In an aside after the everyday spelling: `חודש (חֹדֶשׁ)`. Not in the answer itself: unpointed Hebrew adds vav and yod (ktiv male), so a typed `חודש` is wrong against `חֹדֶשׁ` |
 | Japanese | Kana reading. Pitch accent as the NHK and Daijirin drop number. Romaji is modified Hepburn | Reading as above. Accent only if asked, in `( )` because it is a digit: `箸（はし）(1)`, `橋（はし）(2)`. Romaji only if asked, after the kana and never instead of it: `学校（がっこう）(gakkō)` |
 | Mandarin | Hanyu Pinyin with tone marks (现代汉语词典, ISO 7098). Taiwan's dictionaries print Zhuyin | `学习（xuéxí）` as above. For Taiwan learners who ask, `學習（ㄒㄩㄝˊ ㄒㄧˊ）`, shown but not accepted as a typed answer. Tone marks, never tone numbers |
 | Cantonese | Jyutping (LSHK), tone digits | `你好 (nei5 hou2)`, round brackets because of the digits |
@@ -490,9 +493,9 @@ description (`IPA, US English`), and put it on the side being learned:
 | Thai | The official RTGS romanization drops tone and vowel length, so it cannot show pronunciation | IPA with tone diacritics if asked: `ขอบคุณ [kʰɔ̀ːp kʰun]` |
 | Greek, Vietnamese, Turkish, Polish, Czech | Spelling already marks stress or tone | Nothing. IPA only if asked |
 
-An aside is never read aloud and never graded. Only a reading in `（ ）` is ever accepted as a
-typed answer. Marks inside the answer itself (U+0301, ḥarakāt, niqqud) are dropped before
-grading, but Listen reads them. On a reversed card the pronunciation shows on the prompt; that
+An aside is never read aloud and never graded. Only a reading in round brackets, `( )` or
+`（ ）`, is ever accepted as a typed answer. Marks inside the answer itself (U+0301, ḥarakāt)
+are dropped before grading, but Listen reads them. On a reversed card the pronunciation shows on the prompt; that
 is fine, because it does not name the answer in the learner's language.
 
 ## Decks from a TV series
