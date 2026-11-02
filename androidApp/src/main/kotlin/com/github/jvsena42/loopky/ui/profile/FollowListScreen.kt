@@ -7,12 +7,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -46,7 +45,8 @@ import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.ScreenBottomInsetSpacer
 import com.github.jvsena42.loopky.ui.layout.contentPane
-import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.layout.screenSides
+import com.github.jvsena42.loopky.ui.layout.screenTop
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -84,7 +84,7 @@ private fun FollowListScreen(
             .fillMaxSize()
             .background(colors.surfacePrimary)
             // The header stays put; only the list runs under the navigation bar.
-            .windowInsetsPadding(WindowInsets.screenEdges.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            .windowInsetsPadding(WindowInsets.screenTop.union(WindowInsets.screenSides))
             .padding(PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp)),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

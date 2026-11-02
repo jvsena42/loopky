@@ -3,10 +3,8 @@ package com.github.jvsena42.loopky.ui.importflow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -42,7 +40,7 @@ import com.github.jvsena42.loopky.domain.model.frontBackOf
 import com.github.jvsena42.loopky.ui.components.CardSideEditor
 import com.github.jvsena42.loopky.ui.components.ImagePickerSheet
 import com.github.jvsena42.loopky.ui.components.ImageSelection
-import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.layout.screenBottom
 import com.github.jvsena42.loopky.ui.layout.withoutBottom
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import org.koin.compose.koinInject
@@ -156,7 +154,7 @@ private fun TriageEditCardScreen(
                 // so the field being typed into stays hidden and there is nothing left to scroll.
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .windowInsetsPadding(WindowInsets.screenEdges.only(WindowInsetsSides.Bottom))
+                .windowInsetsPadding(WindowInsets.screenBottom)
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {

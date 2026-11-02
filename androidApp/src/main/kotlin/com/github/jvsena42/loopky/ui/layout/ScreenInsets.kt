@@ -47,14 +47,32 @@ val WindowInsets.Companion.screenSides: WindowInsets
 val WindowInsets.Companion.screenTopBottom: WindowInsets
     @Composable get() = screenEdges.only(WindowInsetsSides.Vertical)
 
+/** The top edge of [screenEdges]: what a header pinned above a scroll pads for. */
+val WindowInsets.Companion.screenTop: WindowInsets
+    @Composable get() = screenEdges.only(WindowInsetsSides.Top)
+
+/** The bottom edge of [screenEdges]: what a scroll under a pinned header pads for. */
+val WindowInsets.Companion.screenBottom: WindowInsets
+    @Composable get() = screenEdges.only(WindowInsetsSides.Bottom)
+
 /**
- * A lazy list's trailing item: the bottom inset as a spacer. Not `contentPadding`, because
- * `asPaddingValues()` ignores consumption and the tab screens' bottom edge is already consumed
- * by `MainScreen`.
+ * A lazy list's leading item, or the top of its first one: the top inset as a spacer. Not
+ * `contentPadding`, because `asPaddingValues()` ignores consumption — an edge an ancestor already
+ * padded for would be counted twice.
+ */
+@Composable
+fun ScreenTopInsetSpacer(modifier: Modifier = Modifier) {
+    Spacer(modifier.windowInsetsPadding(WindowInsets.screenTop))
+}
+
+/**
+ * A lazy list's trailing item; see [ScreenTopInsetSpacer]. The tab screens' bottom edge is
+ * consumed by `MainScreen`, and an `imePadding()` above the list consumes it while the keyboard
+ * is up — both of which `contentPadding` would miss.
  */
 @Composable
 fun ScreenBottomInsetSpacer(modifier: Modifier = Modifier) {
-    Spacer(modifier.windowInsetsPadding(WindowInsets.screenEdges.only(WindowInsetsSides.Bottom)))
+    Spacer(modifier.windowInsetsPadding(WindowInsets.screenBottom))
 }
 
 /**

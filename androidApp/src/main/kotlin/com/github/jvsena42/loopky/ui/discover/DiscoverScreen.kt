@@ -5,14 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -61,11 +59,12 @@ import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
 import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.ScreenBottomInsetSpacer
+import com.github.jvsena42.loopky.ui.layout.ScreenTopInsetSpacer
 import com.github.jvsena42.loopky.ui.layout.StatusBarScrim
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.deckGridColumns
 import com.github.jvsena42.loopky.ui.layout.screenSides
-import com.github.jvsena42.loopky.ui.layout.screenTopBottom
+import com.github.jvsena42.loopky.ui.layout.screenTop
 import com.github.jvsena42.loopky.ui.request.DeckRequestHost
 import com.github.jvsena42.loopky.ui.request.rememberDeckRequestLauncher
 import com.github.jvsena42.loopky.ui.search.DiscoverSearchBar
@@ -214,7 +213,6 @@ private fun DiscoverScreen(
             // the width class is an Android concern and it changes on rotation and split-screen.
             val reportColumns by rememberUpdatedState(onGridColumnsChanged)
             LaunchedEffect(deckColumns) { reportColumns(deckColumns) }
-            val statusBarTop = WindowInsets.screenTopBottom.asPaddingValues().calculateTopPadding()
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -227,12 +225,19 @@ private fun DiscoverScreen(
                 contentPadding = PaddingValues(
                     start = 20.dp,
                     end = 20.dp,
-                    top = SEARCH_BAR_CLEARANCE + statusBarTop,
+                    top = SEARCH_BAR_CLEARANCE,
                     bottom = 4.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                item(key = "header") { DiscoverHeader() }
+                // The top inset rides in the first item rather than in contentPadding, which would
+                // ignore an edge an ancestor had already consumed.
+                item(key = "header") {
+                    Column {
+                        ScreenTopInsetSpacer()
+                        DiscoverHeader()
+                    }
+                }
 
                 // Above the topics, below the search bar: first thing on the page, and it scrolls
                 // away with everything else rather than pinning itself over the content a visitor
@@ -260,7 +265,7 @@ private fun DiscoverScreen(
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .windowInsetsPadding(WindowInsets.screenTopBottom.only(WindowInsetsSides.Top))
+                .windowInsetsPadding(WindowInsets.screenTop)
                 .contentPane(PaneWidth.Wide)
                 .padding(horizontal = 20.dp),
         ) {

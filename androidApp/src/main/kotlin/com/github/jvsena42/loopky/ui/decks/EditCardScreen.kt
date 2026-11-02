@@ -5,11 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -58,7 +56,7 @@ import com.github.jvsena42.loopky.ui.components.ImageSelection
 import com.github.jvsena42.loopky.ui.components.formErrorMessage
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
-import com.github.jvsena42.loopky.ui.layout.screenEdges
+import com.github.jvsena42.loopky.ui.layout.screenBottom
 import com.github.jvsena42.loopky.ui.layout.withoutBottom
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import kotlinx.coroutines.flow.collectLatest
@@ -191,7 +189,7 @@ fun EditCardScreen(
                 // so the field being typed into stays hidden and there is nothing left to scroll.
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .windowInsetsPadding(WindowInsets.screenEdges.only(WindowInsetsSides.Bottom))
+                .windowInsetsPadding(WindowInsets.screenBottom)
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
