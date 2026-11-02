@@ -108,6 +108,7 @@ import com.github.jvsena42.loopky.ui.components.reorderableHandle
 import com.github.jvsena42.loopky.ui.components.speechLanguageOptions
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.contentPane
+import com.github.jvsena42.loopky.ui.layout.withoutBottom
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.toast
 import kotlinx.coroutines.flow.collectLatest
@@ -373,10 +374,16 @@ fun DeckEditorScreen(
                 // Without this the scroll container keeps its full height behind the keyboard,
                 // so the field being typed into stays hidden and there is nothing left to scroll.
                 .imePadding()
-                .padding(innerPadding)
+                // The bottom inset goes in contentPadding, so the list runs under the navigation bar.
+                .padding(innerPadding.withoutBottom())
                 .contentPane(PaneWidth.Reading),
             // Extra bottom room so the FAB never covers the last card.
-            contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(
+                start = 20.dp,
+                top = 8.dp,
+                end = 20.dp,
+                bottom = 96.dp + innerPadding.calculateBottomPadding(),
+            ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             // 1. Metadata card

@@ -42,8 +42,10 @@ import com.github.jvsena42.loopky.ui.components.LoopkyErrorBlock
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
 import com.github.jvsena42.loopky.ui.discover.DeckRow
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
+import com.github.jvsena42.loopky.ui.layout.ScreenBottomInsetSpacer
 import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.deckGridColumns
+import com.github.jvsena42.loopky.ui.layout.withoutBottom
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
@@ -122,7 +124,8 @@ private fun TagBrowseScreen(
             )
         },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        // The bottom inset is the grid's trailing item, so the grid runs under the navigation bar.
+        Box(modifier = Modifier.fillMaxSize().padding(padding.withoutBottom())) {
             when (state) {
                 TagBrowseUiState.Loading -> LoopkyLoadingScreen()
                 TagBrowseUiState.Empty -> EmptyBlock(label = label)
@@ -188,6 +191,7 @@ private fun DeckGrid(
                 LoadMoreFooter(isLoading = content.isLoadingMore, onLoadMore = onEndReached)
             }
         }
+        item(key = "bottom_inset") { ScreenBottomInsetSpacer() }
     }
 }
 
