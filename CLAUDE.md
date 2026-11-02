@@ -398,11 +398,14 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
     cover, so the tab screens use the same value as everything else. Not `safeDrawing` — it
     includes the keyboard, which the study screen must not be padded for.
     A screen that **scrolls** splits it: `screenSides` on the root, `screenTopBottom` *after*
-    `verticalScroll` (or a trailing `ScreenBottomInsetSpacer` item in a lazy list),
+    `verticalScroll` (or `ScreenTopInsetSpacer`/`ScreenBottomInsetSpacer` items in a lazy list),
     plus a `StatusBarScrim` drawn over it and `LoopkyPullToRefreshBox` for pull-to-refresh —
     padding the root with all of `screenEdges` clips the content at the bars instead of letting
     it pass under them. Never a lazy list's `contentPadding` from `asPaddingValues()`: it ignores
-    the bottom edge `MainScreen` already consumed under the tab bar.
+    consumption, so it misses the bottom edge `MainScreen` consumed under the tab bar and the one
+    an `imePadding()` consumes while the keyboard is up. And a scrolling screen with a **text
+    field** goes inside `BringIntoViewClearOfStatusBar`, or focusing a field sitting under the
+    clock scrolls nothing — the default spec counts it as already on screen.
 
   Three traps. **Never ask "is this a tablet"** (`userInterfaceIdiom`, screen size, a build
   config): split-screen and rotation change the answer while the app is running, which is exactly
