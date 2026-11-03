@@ -61,7 +61,7 @@ class FriendProfileBlockTest {
         assertTrue(vm.state.value.isConfirmingBlock)
         assertTrue(discovery.blocks.isEmpty())
 
-        vm.onDismissBlock()
+        vm.onBlockConfirmation(confirmed = false)
         assertFalse(vm.state.value.isConfirmingBlock)
         assertTrue(discovery.blocks.isEmpty())
     }
@@ -75,7 +75,7 @@ class FriendProfileBlockTest {
         val job = launch { vm.effects.toList(effects) }
 
         vm.onBlockClick()
-        vm.onConfirmBlock()
+        vm.onBlockConfirmation(confirmed = true)
         advanceUntilIdle()
         job.cancel()
 
@@ -107,7 +107,7 @@ class FriendProfileBlockTest {
         advanceUntilIdle()
 
         vm.onBlockClick()
-        vm.onConfirmBlock()
+        vm.onBlockConfirmation(confirmed = true)
         advanceUntilIdle()
 
         assertFalse(vm.state.value.isBlocked)

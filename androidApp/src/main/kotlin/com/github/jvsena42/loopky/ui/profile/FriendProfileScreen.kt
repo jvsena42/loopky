@@ -151,8 +151,8 @@ fun FriendProfileRoute(
     if (state.isConfirmingBlock) {
         BlockConfirmDialog(
             name = state.identity.label(),
-            onConfirm = viewModel::onConfirmBlock,
-            onDismiss = viewModel::onDismissBlock,
+            onConfirm = { viewModel.onBlockConfirmation(confirmed = true) },
+            onDismiss = { viewModel.onBlockConfirmation(confirmed = false) },
         )
     }
 

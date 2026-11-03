@@ -232,13 +232,10 @@ class FriendProfileViewModel(
         if (current.isBlocked) setBlocked(false) else _state.update { it.copy(isConfirmingBlock = true) }
     }
 
-    fun onConfirmBlock() {
+    /** The answer to the block confirmation; false writes nothing. */
+    fun onBlockConfirmation(confirmed: Boolean) {
         _state.update { it.copy(isConfirmingBlock = false) }
-        setBlocked(true)
-    }
-
-    fun onDismissBlock() {
-        _state.update { it.copy(isConfirmingBlock = false) }
+        if (confirmed) setBlocked(true)
     }
 
     private fun setBlocked(block: Boolean) {
