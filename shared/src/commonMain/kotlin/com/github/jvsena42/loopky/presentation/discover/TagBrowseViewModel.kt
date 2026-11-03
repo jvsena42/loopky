@@ -54,6 +54,16 @@ class TagBrowseViewModel(
 
     init {
         load()
+        viewModelScope.launch {
+            discoveryRepository.blockChanges.collect { change ->
+                if (!change.isBlocked) return@collect
+                _state.update { current ->
+                    if (current !is TagBrowseUiState.Content) return@update current
+                    val decks = current.decks.filterNot { it.authorPubky == change.pubky }
+                    if (decks.isEmpty() && !current.hasMore) TagBrowseUiState.Empty else current.copy(decks = decks)
+                }
+            }
+        }
     }
 
     fun onRetry() = load()

@@ -84,6 +84,17 @@ class SearchViewModel(
                 .distinctUntilChanged()
                 .collectLatest { query -> search(query) }
         }
+        viewModelScope.launch {
+            discoveryRepository.blockChanges.collect { change ->
+                if (!change.isBlocked) return@collect
+                _state.update { current ->
+                    current.copy(
+                        people = current.people.filterNot { it.identity.pubky == change.pubky },
+                        decks = current.decks.filterNot { it.authorPubky == change.pubky },
+                    )
+                }
+            }
+        }
     }
 
     fun onQueryChange(raw: String) {

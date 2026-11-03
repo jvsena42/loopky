@@ -879,6 +879,9 @@ data class PeoplePage(
     }
 }
 
+/** One [DiscoveryRepository.blockUser] or [DiscoveryRepository.unblockUser] that went through. */
+data class BlockChange(val pubky: String, val isBlocked: Boolean)
+
 /**
  * Social graph + discovery. Follows use the pubky.app native primitive; the repo owns follow/unfollow
  * and feed building. [decksByTag] is a local filter over decks the user can already reach;
@@ -890,6 +893,40 @@ interface DiscoveryRepository {
     suspend fun isFollowing(pubky: String): Boolean
     suspend fun followUser(pubky: String): Result<Unit>
     suspend fun unfollowUser(pubky: String): Result<Unit>
+
+    /**
+     * Pubkys the signed-in user has blocked; empty for a guest.
+     *
+     * A block is pubky.app's mute record (`/pub/pubky.app/mutes/{pubky}`), so the list is shared
+     * with pubky.app in both directions. Every read on this interface leaves a blocked account
+     * out — its decks, its profile and its place in anyone's follow list — so a screen never has
+     * to filter for itself (#577).
+     *
+     * Throws when the homeserver cannot be read, like [following]. The filtering reads inside this
+     * repository degrade to "nobody blocked" instead, so an outage cannot empty Discover.
+     */
+    suspend fun blocked(): Set<String>
+    suspend fun isBlocked(pubky: String): Boolean
+
+    /**
+     * Block [pubky]: write the mute record, then unfollow them and every deck of theirs the user
+     * follows, so nothing of theirs is left on Home or in Library.
+     *
+     * The unfollows are best-effort and come **after** the record: the block is what was asked
+     * for, and a failed unfollow must not undo it. They are not restored by [unblockUser].
+     * Refuses the signed-in account's own pubky.
+     */
+    suspend fun blockUser(pubky: String): Result<Unit>
+    suspend fun unblockUser(pubky: String): Result<Unit>
+
+    /** The accounts [blocked] names, as profiles — a bare pubky where one does not resolve. */
+    suspend fun blockedProfiles(): List<PubkyIdentity>
+
+    /**
+     * Emits after every successful [blockUser] and [unblockUser], so a screen already showing a
+     * blocked account's decks can drop them without reloading.
+     */
+    val blockChanges: SharedFlow<BlockChange>
 
     /**
      * Write [announcement] to the user's pubky.app feed as a post, returning the post's URI.

@@ -6,6 +6,7 @@ import com.github.jvsena42.loopky.data.homegate.MethodAvailability
 import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.CardChunking
 import com.github.jvsena42.loopky.data.repository.AuthFlowHandle
+import com.github.jvsena42.loopky.data.repository.BlockChange
 import com.github.jvsena42.loopky.data.repository.CachedDecks
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.CompactionOutcome
@@ -949,6 +950,39 @@ class FakeDiscoveryRepository : DiscoveryRepository {
         followError?.let { return Result.failure(it) }
         follows.remove(pubky)
         return Result.success(Unit)
+    }
+
+    val blocks = mutableSetOf<String>()
+
+    /** When set, block/unblock fails. */
+    var blockError: Throwable? = null
+
+    /** Profiles [blockedProfiles] resolves to; anyone missing comes back as a bare pubky. */
+    var profiles: Map<String, PubkyIdentity> = emptyMap()
+
+    private val _blockChanges = MutableSharedFlow<BlockChange>(extraBufferCapacity = 8)
+    override val blockChanges: SharedFlow<BlockChange> = _blockChanges
+
+    override suspend fun blocked(): Set<String> = blocks.toSet()
+    override suspend fun isBlocked(pubky: String): Boolean = pubky in blocks
+
+    override suspend fun blockUser(pubky: String): Result<Unit> {
+        blockError?.let { return Result.failure(it) }
+        blocks.add(pubky)
+        follows.remove(pubky)
+        _blockChanges.tryEmit(BlockChange(pubky, isBlocked = true))
+        return Result.success(Unit)
+    }
+
+    override suspend fun unblockUser(pubky: String): Result<Unit> {
+        blockError?.let { return Result.failure(it) }
+        blocks.remove(pubky)
+        _blockChanges.tryEmit(BlockChange(pubky, isBlocked = false))
+        return Result.success(Unit)
+    }
+
+    override suspend fun blockedProfiles(): List<PubkyIdentity> = blocks.sorted().map { pubky ->
+        profiles[pubky] ?: PubkyIdentity(pubky, displayName = null, avatarUrl = null, bio = null)
     }
 
     /** Announcements written, in order — the assertion surface for the #39 consent prompt. */

@@ -60,6 +60,7 @@ import com.github.jvsena42.loopky.presentation.recap.RecapViewModel
 import com.github.jvsena42.loopky.presentation.request.DeckRequestViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
+import com.github.jvsena42.loopky.presentation.settings.BlockedUsersViewModel
 import com.github.jvsena42.loopky.presentation.settings.SettingsViewModel
 import com.github.jvsena42.loopky.presentation.signup.InviteCodeViewModel
 import com.github.jvsena42.loopky.presentation.signup.LightningVerificationViewModel
@@ -233,6 +234,7 @@ fun sharedModule(): Module = module {
         )
     }
     viewModel { DeckRequestViewModel(discoveryRepository = get()) }
+    viewModel { BlockedUsersViewModel(discoveryRepository = get()) }
     viewModel { DecksLibraryViewModel(deckRepository = get(), identityRepository = get()) }
     viewModel { params ->
         DeckDetailViewModel(

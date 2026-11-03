@@ -73,6 +73,17 @@ internal object PubkyPaths {
         "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/follows/$followeePubky"
 
     /**
+     * Blocks are pubky.app's **mute** record, `/pub/pubky.app/mutes/{mutee}`, so a block made in
+     * Loopky mutes on pubky.app as well, and one made there hides that person here (#577). Public,
+     * like every record under `/pub/`.
+     */
+    fun mutesRoot(ownerPubky: String): String =
+        "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/mutes/"
+
+    fun mute(ownerPubky: String, muteePubky: String): String =
+        "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/mutes/$muteePubky"
+
+    /**
      * Decks the owner follows, on the **follower's** homeserver — existence-as-truth, like
      * [follow], so listing your subscriptions is one [PubkyClient.list] on [subscriptionsRoot].
      *
