@@ -39,6 +39,9 @@ import kotlinx.coroutines.launch
  * reader to care about a distinction the author caption already makes. What tells them apart is
  * the name under each tile, which is why it is a name rather than a tag.
  */
+// Over the function ceiling since #577 added Block: follow, block, share and four ways off the
+// screen are each one tap on it, and splitting them would split the one state they share.
+@Suppress("TooManyFunctions")
 class FriendProfileViewModel(
     private val targetPubky: String,
     private val identityRepository: IdentityRepository,
