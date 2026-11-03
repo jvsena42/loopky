@@ -400,6 +400,21 @@
     <string name="friend_profile_copy_pubky">pubky 복사</string>
     <string name="friend_profile_no_decks">아직 덱이 없어요.</string>
     <string name="friend_profile_share">프로필 공유</string>
+    <string name="friend_profile_more">더보기</string>
+    <string name="block_action">차단</string>
+    <string name="unblock_action">차단 해제</string>
+    <string name="block_cancel">취소</string>
+    <string name="block_confirm_title">%1$s 님을 차단할까요?</string>
+    <string name="block_confirm_body">Loopky 어디에서도 이 사람의 덱과 프로필이 보이지 않고, 이 사람과 그 덱의 팔로우도 해제돼요. 상대에게는 알리지 않아요. pubky.app에서도 뮤트돼요.</string>
+    <string name="block_done">차단했어요</string>
+    <string name="unblock_done">차단을 해제했어요</string>
+    <string name="unblock_failed">차단을 해제하지 못했어요. 다시 시도해 주세요.</string>
+    <string name="friend_profile_blocked_title">이 사람을 차단했어요</string>
+    <string name="friend_profile_blocked_body">Loopky에서 이 사람의 덱과 프로필이 숨겨져 있어요. 다시 보려면 차단을 해제하세요.</string>
+    <string name="settings_blocked_users">차단한 사용자</string>
+    <string name="blocked_users_caption">Loopky에서 차단했거나 pubky.app에서 뮤트한 사람들이에요. 이 사람들의 덱과 프로필은 숨겨져요.</string>
+    <string name="blocked_users_loading">차단한 사용자를 불러오는 중…</string>
+    <string name="blocked_users_empty">차단한 사람이 없어요.</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">팔로잉</string>

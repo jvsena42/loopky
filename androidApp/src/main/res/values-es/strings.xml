@@ -393,6 +393,21 @@
     <string name="friend_profile_copy_pubky">Copiar pubky</string>
     <string name="friend_profile_no_decks">Aún no hay mazos.</string>
     <string name="friend_profile_share">Compartir perfil</string>
+    <string name="friend_profile_more">Más opciones</string>
+    <string name="block_action">Bloquear</string>
+    <string name="unblock_action">Desbloquear</string>
+    <string name="block_cancel">Cancelar</string>
+    <string name="block_confirm_title">¿Bloquear a %1$s?</string>
+    <string name="block_confirm_body">No verás sus mazos ni su perfil en ninguna parte de Loopky y dejarás de seguir a esta persona y sus mazos. No se le avisará. También la silencia en pubky.app.</string>
+    <string name="block_done">Bloqueado</string>
+    <string name="unblock_done">Desbloqueado</string>
+    <string name="unblock_failed">No se pudo desbloquear. Inténtalo de nuevo.</string>
+    <string name="friend_profile_blocked_title">Bloqueaste a esta persona</string>
+    <string name="friend_profile_blocked_body">Sus mazos y su perfil están ocultos para ti en Loopky. Desbloquéala para volver a verlos.</string>
+    <string name="settings_blocked_users">Usuarios bloqueados</string>
+    <string name="blocked_users_caption">Personas que bloqueaste en Loopky o silenciaste en pubky.app. Sus mazos y perfiles están ocultos para ti.</string>
+    <string name="blocked_users_loading">Cargando usuarios bloqueados…</string>
+    <string name="blocked_users_empty">No has bloqueado a nadie.</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">Siguiendo</string>

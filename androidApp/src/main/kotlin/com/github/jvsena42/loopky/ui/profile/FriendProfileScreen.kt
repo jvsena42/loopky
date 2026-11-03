@@ -16,14 +16,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +44,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -75,6 +84,7 @@ import com.github.jvsena42.loopky.ui.layout.screenTopBottom
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.label
 import com.github.jvsena42.loopky.ui.util.openUrl
+import com.github.jvsena42.loopky.ui.util.toast
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -117,6 +127,8 @@ fun FriendProfileRoute(
                     ),
                     chooserTitle = R.string.share_profile_chooser_title,
                 )
+                FriendProfileEffect.Blocked -> context.toast(R.string.block_done)
+                FriendProfileEffect.Unblocked -> context.toast(R.string.unblock_done)
             }
         }
     }
@@ -136,11 +148,20 @@ fun FriendProfileRoute(
         )
     }
 
+    if (state.isConfirmingBlock) {
+        BlockConfirmDialog(
+            name = state.identity.label(),
+            onConfirm = viewModel::onConfirmBlock,
+            onDismiss = viewModel::onDismissBlock,
+        )
+    }
+
     FriendProfileScreen(
         state = state,
         onBack = onBack,
         onRefresh = viewModel::onRefresh,
         onToggleFollow = viewModel::onToggleFollow,
+        onBlockClick = viewModel::onBlockClick,
         onCopyPubky = viewModel::onCopyPubky,
         onShare = viewModel::onShareClick,
         onOpenOnPubkyApp = viewModel::onOpenOnPubkyApp,
@@ -158,6 +179,7 @@ private fun FriendProfileScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onToggleFollow: () -> Unit,
+    onBlockClick: () -> Unit,
     onCopyPubky: () -> Unit,
     onShare: () -> Unit,
     onOpenOnPubkyApp: () -> Unit,
@@ -220,21 +242,32 @@ private fun FriendProfileScreen(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(colors.surfaceCard)
-                        .clickable(onClick = onShare)
-                        .testTag("friend_profile_share"),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Share,
-                        contentDescription = stringResource(R.string.friend_profile_share),
-                        tint = colors.foregroundPrimary,
-                        modifier = Modifier.size(18.dp),
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(colors.surfaceCard)
+                            .clickable(onClick = onShare)
+                            .testTag("friend_profile_share"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Share,
+                            contentDescription = stringResource(R.string.friend_profile_share),
+                            tint = colors.foregroundPrimary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    // A block is a record under the reader's own pubky, so a guest has nowhere
+                    // to write one, and blocking yourself is not a thing.
+                    if (state.isSignedIn && !state.isSelf) {
+                        ProfileOverflowMenu(
+                            isBlocked = state.isBlocked,
+                            enabled = !state.isProcessingBlock,
+                            onBlockClick = onBlockClick,
+                        )
+                    }
                 }
             }
 
@@ -246,6 +279,22 @@ private fun FriendProfileScreen(
                 onPubkyClick = onCopyPubky,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            if (state.isBlocked) {
+                BlockedNotice(
+                    isProcessing = state.isProcessingBlock,
+                    onUnblock = onBlockClick,
+                )
+                state.errorReason?.let { reason ->
+                    Text(
+                        text = errorMessage(reason),
+                        color = colors.danger,
+                        fontSize = 13.sp,
+                        modifier = Modifier.fillMaxWidth().testTag("friend_profile_error"),
+                    )
+                }
+                return@Column
+            }
 
             // Following yourself is not a thing, and editing lives on the Profile tab — but
             // copying and sharing still are, so the row stays and only loses the Follow button.
@@ -338,6 +387,152 @@ private fun FriendProfileScreen(
         }
         StatusBarScrim(color = colors.surfacePrimary)
     }
+}
+
+@Composable
+private fun ProfileOverflowMenu(
+    isBlocked: Boolean,
+    enabled: Boolean,
+    onBlockClick: () -> Unit,
+) {
+    val colors = LoopkyTheme.colors
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(colors.surfaceCard)
+                .clickable { expanded = true }
+                .testTag("friend_profile_more"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.friend_profile_more),
+                tint = colors.foregroundPrimary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.semantics { testTagsAsResourceId = true },
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(if (isBlocked) R.string.unblock_action else R.string.block_action),
+                        color = if (isBlocked) colors.foregroundPrimary else colors.danger,
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Block,
+                        contentDescription = null,
+                        tint = if (isBlocked) colors.foregroundPrimary else colors.danger,
+                    )
+                },
+                enabled = enabled,
+                onClick = {
+                    expanded = false
+                    onBlockClick()
+                },
+                modifier = Modifier.testTag("friend_profile_block"),
+            )
+        }
+    }
+}
+
+/** Stands in for everything below the hero once the reader has blocked this person. */
+@Composable
+private fun BlockedNotice(
+    isProcessing: Boolean,
+    onUnblock: () -> Unit,
+) {
+    val colors = LoopkyTheme.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(colors.surfaceCard)
+            .padding(20.dp)
+            .testTag("friend_profile_blocked"),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Block,
+            contentDescription = null,
+            tint = colors.foregroundMuted,
+            modifier = Modifier.size(28.dp),
+        )
+        Text(
+            text = stringResource(R.string.friend_profile_blocked_title),
+            color = colors.foregroundPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.W700,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = stringResource(R.string.friend_profile_blocked_body),
+            color = colors.foregroundSecondary,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center,
+        )
+        LoopkySecondaryButton(
+            text = stringResource(R.string.unblock_action),
+            onClick = { if (!isProcessing) onUnblock() },
+            modifier = Modifier.fillMaxWidth().testTag("friend_profile_unblock"),
+        )
+    }
+}
+
+@Composable
+private fun BlockConfirmDialog(
+    name: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = LoopkyTheme.colors
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.semantics { testTagsAsResourceId = true },
+        containerColor = colors.surfaceCard,
+        title = {
+            Text(
+                text = stringResource(R.string.block_confirm_title, name),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = colors.foregroundPrimary,
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.block_confirm_body),
+                fontSize = 14.sp,
+                color = colors.foregroundSecondary,
+                lineHeight = 20.sp,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, modifier = Modifier.testTag("block_confirm")) {
+                Text(
+                    text = stringResource(R.string.block_action),
+                    color = colors.danger,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("block_cancel")) {
+                Text(
+                    text = stringResource(R.string.block_cancel),
+                    color = colors.foregroundSecondary,
+                )
+            }
+        },
+    )
 }
 
 /**
@@ -468,6 +663,7 @@ private fun FriendProfileScreenPreview() {
             onBack = {},
             onRefresh = {},
             onToggleFollow = {},
+            onBlockClick = {},
             onCopyPubky = {},
             onShare = {},
             onOpenOnPubkyApp = {},
@@ -487,6 +683,27 @@ private fun FriendProfileScreenFollowingPreview() {
             onBack = {},
             onRefresh = {},
             onToggleFollow = {},
+            onBlockClick = {},
+            onCopyPubky = {},
+            onShare = {},
+            onOpenOnPubkyApp = {},
+            onOpenFollows = {},
+            onOpenDeck = { _, _ -> },
+            onOpenAuthor = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun FriendProfileScreenBlockedPreview() {
+    LoopkyTheme {
+        FriendProfileScreen(
+            state = previewState(isFollowing = false).copy(isBlocked = true),
+            onBack = {},
+            onRefresh = {},
+            onToggleFollow = {},
+            onBlockClick = {},
             onCopyPubky = {},
             onShare = {},
             onOpenOnPubkyApp = {},
@@ -506,6 +723,7 @@ private fun FriendProfileScreenSelfPreview() {
             onBack = {},
             onRefresh = {},
             onToggleFollow = {},
+            onBlockClick = {},
             onCopyPubky = {},
             onShare = {},
             onOpenOnPubkyApp = {},

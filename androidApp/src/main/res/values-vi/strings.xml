@@ -412,6 +412,21 @@
     <string name="friend_profile_copy_pubky">Sao chép pubky</string>
     <string name="friend_profile_no_decks">Chưa có bộ thẻ nào.</string>
     <string name="friend_profile_share">Chia sẻ hồ sơ</string>
+    <string name="friend_profile_more">Tùy chọn khác</string>
+    <string name="block_action">Chặn</string>
+    <string name="unblock_action">Bỏ chặn</string>
+    <string name="block_cancel">Hủy</string>
+    <string name="block_confirm_title">Chặn %1$s?</string>
+    <string name="block_confirm_body">Bạn sẽ không thấy bộ thẻ hay hồ sơ của họ ở bất kỳ đâu trong Loopky, và bạn sẽ ngừng theo dõi họ cùng các bộ thẻ của họ. Họ sẽ không được thông báo. Việc này cũng tắt tiếng họ trên pubky.app.</string>
+    <string name="block_done">Đã chặn</string>
+    <string name="unblock_done">Đã bỏ chặn</string>
+    <string name="unblock_failed">Không thể bỏ chặn. Hãy thử lại.</string>
+    <string name="friend_profile_blocked_title">Bạn đã chặn người này</string>
+    <string name="friend_profile_blocked_body">Bộ thẻ và hồ sơ của họ bị ẩn với bạn trong Loopky. Bỏ chặn để xem lại.</string>
+    <string name="settings_blocked_users">Người dùng bị chặn</string>
+    <string name="blocked_users_caption">Những người bạn đã chặn trong Loopky hoặc tắt tiếng trên pubky.app. Bộ thẻ và hồ sơ của họ bị ẩn với bạn.</string>
+    <string name="blocked_users_loading">Đang tải người dùng bị chặn…</string>
+    <string name="blocked_users_empty">Bạn chưa chặn ai.</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">Đang theo dõi</string>

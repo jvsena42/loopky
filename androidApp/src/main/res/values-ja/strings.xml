@@ -407,6 +407,21 @@
     <string name="friend_profile_copy_pubky">pubky をコピー</string>
     <string name="friend_profile_no_decks">まだデッキがありません。</string>
     <string name="friend_profile_share">プロフィールを共有</string>
+    <string name="friend_profile_more">その他のオプション</string>
+    <string name="block_action">ブロック</string>
+    <string name="unblock_action">ブロックを解除</string>
+    <string name="block_cancel">キャンセル</string>
+    <string name="block_confirm_title">%1$sさんをブロックしますか？</string>
+    <string name="block_confirm_body">Loopky のどこでもこの人のデッキやプロフィールが表示されなくなり、この人とそのデッキのフォローも解除されます。相手には通知されません。pubky.app でもミュートされます。</string>
+    <string name="block_done">ブロックしました</string>
+    <string name="unblock_done">ブロックを解除しました</string>
+    <string name="unblock_failed">ブロックを解除できませんでした。もう一度お試しください。</string>
+    <string name="friend_profile_blocked_title">この人をブロックしています</string>
+    <string name="friend_profile_blocked_body">この人のデッキとプロフィールは Loopky で非表示になっています。再び表示するにはブロックを解除してください。</string>
+    <string name="settings_blocked_users">ブロック中のユーザー</string>
+    <string name="blocked_users_caption">Loopky でブロックした人、または pubky.app でミュートした人です。その人たちのデッキとプロフィールは非表示になります。</string>
+    <string name="blocked_users_loading">ブロック中のユーザーを読み込んでいます…</string>
+    <string name="blocked_users_empty">ブロックしている人はいません。</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">フォロー中</string>

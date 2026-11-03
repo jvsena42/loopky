@@ -393,6 +393,21 @@
     <string name="friend_profile_copy_pubky">Copier le pubky</string>
     <string name="friend_profile_no_decks">Aucun paquet pour l’instant.</string>
     <string name="friend_profile_share">Partager le profil</string>
+    <string name="friend_profile_more">Plus d’options</string>
+    <string name="block_action">Bloquer</string>
+    <string name="unblock_action">Débloquer</string>
+    <string name="block_cancel">Annuler</string>
+    <string name="block_confirm_title">Bloquer %1$s ?</string>
+    <string name="block_confirm_body">Tu ne verras plus ses paquets ni son profil nulle part dans Loopky, et tu ne suivras plus cette personne ni ses paquets. Elle n’en sera pas informée. Elle sera aussi masquée sur pubky.app.</string>
+    <string name="block_done">Bloqué</string>
+    <string name="unblock_done">Débloqué</string>
+    <string name="unblock_failed">Impossible de débloquer. Réessaie.</string>
+    <string name="friend_profile_blocked_title">Tu as bloqué cette personne</string>
+    <string name="friend_profile_blocked_body">Ses paquets et son profil te sont masqués dans Loopky. Débloque-la pour les revoir.</string>
+    <string name="settings_blocked_users">Utilisateurs bloqués</string>
+    <string name="blocked_users_caption">Les personnes que tu as bloquées dans Loopky ou masquées sur pubky.app. Leurs paquets et profils te sont masqués.</string>
+    <string name="blocked_users_loading">Chargement des utilisateurs bloqués…</string>
+    <string name="blocked_users_empty">Tu n’as bloqué personne.</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">Abonnements</string>

@@ -39,6 +39,7 @@ import com.github.jvsena42.loopky.ui.recap.RecapRoute
 import com.github.jvsena42.loopky.ui.restore.RestoreFileRoute
 import com.github.jvsena42.loopky.ui.restore.RestorePhraseRoute
 import com.github.jvsena42.loopky.ui.restore.RestoreStartRoute
+import com.github.jvsena42.loopky.ui.settings.BlockedUsersRoute
 import com.github.jvsena42.loopky.ui.settings.SettingsRoute
 import com.github.jvsena42.loopky.ui.signup.InviteCodeRoute
 import com.github.jvsena42.loopky.ui.signup.LightningVerificationRoute
@@ -202,6 +203,13 @@ internal fun LoopkyNavHost(
                 },
                 onBackUpNow = { navController.navigateTo(Routes.BACKUP_START) },
                 focus = entry.arguments?.getString("focus"),
+                onOpenBlockedUsers = { navController.navigateTo(Routes.BLOCKED_USERS) },
+            )
+        }
+        composable(Routes.BLOCKED_USERS) {
+            BlockedUsersRoute(
+                onBack = { navController.popBackStack() },
+                onOpenProfile = { person -> navController.navigateTo(Routes.friendProfile(person)) },
             )
         }
         composable(

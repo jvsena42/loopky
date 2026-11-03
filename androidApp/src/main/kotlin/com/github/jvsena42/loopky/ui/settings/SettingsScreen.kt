@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -111,6 +112,7 @@ fun SettingsRoute(
     onBackUpNow: () -> Unit = {},
     /** Which row to open and focus on arrival — see [Routes.SETTINGS_FOCUS_UNSPLASH]. */
     focus: String? = null,
+    onOpenBlockedUsers: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val appVersion = rememberAppVersion()
@@ -144,6 +146,7 @@ fun SettingsRoute(
         onCopyPubkyClick = viewModel::onCopyPubkyClick,
         onCopyHomeserverClick = viewModel::onCopyHomeserverClick,
         onShareOnPubkyChange = viewModel::onShareOnPubkyChange,
+        onBlockedUsersClick = onOpenBlockedUsers,
         onThemeModeChange = viewModel::onThemeModeChange,
         onNewCardsGoalChange = viewModel::onNewCardsGoalChange,
         onIntervalChange = viewModel::onIntervalChange,
@@ -172,6 +175,7 @@ private fun SettingsScreen(
     onCopyPubkyClick: () -> Unit,
     onCopyHomeserverClick: () -> Unit,
     onShareOnPubkyChange: (Boolean) -> Unit,
+    onBlockedUsersClick: () -> Unit,
     onThemeModeChange: (AppTheme) -> Unit,
     onNewCardsGoalChange: (Int) -> Unit,
     onIntervalChange: (SrsGrade, Int) -> Unit,
@@ -359,6 +363,16 @@ private fun SettingsScreen(
                         onCheckedChange = onShareOnPubkyChange,
                         testTag = "settings_share_on_pubky",
                     )
+                    // A block is a record under the signed-in account, so there is no list
+                    // without one.
+                    if (state.pubky.isNotBlank()) {
+                        SettingsDivider()
+                        SettingsNavRow(
+                            label = stringResource(R.string.settings_blocked_users),
+                            onClick = onBlockedUsersClick,
+                            modifier = Modifier.testTag("settings_blocked_users"),
+                        )
+                    }
                 }
 
                 // --- Appearance section ---
@@ -1040,6 +1054,36 @@ private fun DeleteAccountProgress(done: Int, total: Int) {
     }
 }
 
+/** A row that opens another Loopky screen — a chevron, where [SettingsLinkRow] has open-in-new. */
+@Composable
+private fun SettingsNavRow(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LoopkyTheme.colors
+    ListItem(
+        headlineContent = {
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.W500,
+                color = colors.foregroundPrimary,
+            )
+        },
+        modifier = modifier.clickable(onClick = onClick),
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = colors.foregroundMuted,
+            )
+        },
+        colors = settingsRowColors(),
+    )
+}
+
 /**
  * A row that leaves the app. Distinct from [SettingsValueRow], which shows a fact: the trailing
  * open-in-new glyph is the only signal that a tap here hands the user to a browser.
@@ -1098,6 +1142,7 @@ private fun SettingsScreenPreview() {
             onCopyPubkyClick = {},
             onCopyHomeserverClick = {},
             onShareOnPubkyChange = {},
+            onBlockedUsersClick = {},
             onThemeModeChange = {},
             onNewCardsGoalChange = {},
             onIntervalChange = { _, _ -> },
