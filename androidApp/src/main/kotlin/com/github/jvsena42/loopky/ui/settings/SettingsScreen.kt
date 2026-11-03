@@ -25,7 +25,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -862,7 +861,7 @@ private fun SettingsValueRow(
 
 /** Transparent, so the section's own rounded background shows through every row in it. */
 @Composable
-private fun settingsRowColors(): ListItemColors = ListItemDefaults.colors(
+internal fun settingsRowColors(): ListItemColors = ListItemDefaults.colors(
     containerColor = Color.Transparent,
 )
 
@@ -1052,36 +1051,6 @@ private fun DeleteAccountProgress(done: Int, total: Int) {
             color = colors.foregroundSecondary,
         )
     }
-}
-
-/** A row that opens another Loopky screen — a chevron, where [SettingsLinkRow] has open-in-new. */
-@Composable
-private fun SettingsNavRow(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LoopkyTheme.colors
-    ListItem(
-        headlineContent = {
-            Text(
-                text = label,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.W500,
-                color = colors.foregroundPrimary,
-            )
-        },
-        modifier = modifier.clickable(onClick = onClick),
-        trailingContent = {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = colors.foregroundMuted,
-            )
-        },
-        colors = settingsRowColors(),
-    )
 }
 
 /**
