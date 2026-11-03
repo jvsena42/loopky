@@ -1,0 +1,33 @@
+<journey name="Blocking a user — hidden everywhere, unblocked from Settings (#577)">
+  <description>
+    A block is pubky.app's mute record (/pub/pubky.app/mutes/{pubky}), so it is shared with
+    pubky.app both ways. Blocking hides the person's decks and profile from Discover, tag browse,
+    search, follow lists and the decks a third person follows, unfollows them and every deck of
+    theirs the reader follows, and leaves their own profile showing only a "You blocked this
+    person" card with Unblock. Settings lists every block, including mutes made on pubky.app.
+
+    Needs a signed-in session (journey 01 or 20) and a second staging account B that has
+    published at least one deck and self-tagged as a Loopky user. Follow B and one of B's decks
+    first, so the unfollow half has something to undo. Use staging accounts only.
+  </description>
+  <actions>
+    <action>Open Discover and note B's deck tile in browse and B in the people strip. Tap B's name to open "friend_profile_screen"</action>
+    <action>Verify the nav row shows "friend_profile_share" and, beside it, "friend_profile_more". Tap "friend_profile_more" and verify a menu with one item "friend_profile_block" reading "Block" in the danger colour</action>
+    <action>Tap "friend_profile_block" and verify an alert titled "Block {B's name}?" saying their decks and profile will be hidden, that you will stop following them and their decks, that they are not told, and that this also mutes them on pubky.app. Tap "block_cancel" and verify nothing changed — Follow still reads "Following"</action>
+    <action>Open the menu again, tap "friend_profile_block", then "block_confirm". Verify a "Blocked" toast, and that the screen now shows the hero, then "friend_profile_blocked" reading "You blocked this person" with "friend_profile_unblock" — no Follow button, no stats, no deck grid</action>
+    <action>Verify on the homeserver that /pub/pubky.app/mutes/{B} exists with a microsecond created_at, and that /pub/pubky.app/follows/{B} and the subscription record for B's deck are gone</action>
+    <action>Go back to Discover WITHOUT pulling to refresh, and verify B's tile and B's person card are gone. Pull to refresh and verify they stay gone</action>
+    <action>Verify B's deck is no longer on Home or in Library</action>
+    <action>Open a tag chip that B's deck carries (journey 13) and verify B's deck is not in the grid. Search B's name and B's deck title (search_input) and verify neither comes back</action>
+    <action>Open Settings and verify, in the Sharing section under "Share on Pubky", a row "settings_blocked_users" reading "Blocked users". Tap it and verify B is listed as "blocked_row_0" with "blocked_unblock_0"</action>
+    <action>Tap "blocked_row_0" and verify B's profile opens in the blocked state. Back, then tap "blocked_unblock_0" and verify the row leaves the list and "blocked_users_empty" reads "You haven't blocked anyone."</action>
+    <action>Pull to refresh Discover and verify B's deck and person card are back. Verify B and B's deck are NOT followed again — unblocking restores nothing</action>
+    <action>PUBKY.APP. Mute B on pubky.app (staging), then reopen Loopky's "Blocked users" and verify B is listed, and B's profile in Loopky opens blocked. Unblock in Loopky and verify B is unmuted on pubky.app</action>
+    <action>UNBLOCK FROM PROFILE. Block B again, then on B's profile tap "friend_profile_unblock" and verify an "Unblocked" toast with no confirmation, and the full profile — Follow, stats, decks — comes back</action>
+    <action>GUEST. Signed out, open any profile and verify there is no "friend_profile_more", and Settings has no "settings_blocked_users"</action>
+    <action>SELF. Open your own profile through a link and verify there is no "friend_profile_more"</action>
+    <action>OFFLINE. With the network cut, try to block and verify "friend_profile_error" says why and the profile is not shown as blocked</action>
+    <action>TABLET. At expanded width verify the blocked card is pane-capped like the rest of the profile, and the Blocked users list is a reading-width column</action>
+    <action>DARK. With the dark theme verify the menu, the alert and the blocked card are legible, and Block reads in the danger colour</action>
+  </actions>
+</journey>

@@ -17,7 +17,7 @@ A fresh session has none of this in context, so establish it before the first ed
   iOS is the XcodeBuildMCP CLI / `xcodebuildmcp` MCP server (see Build & run below), never bare
   `xcodebuild`, `xcrun` or `simctl`. Their skills — `android-cli` and `xcodebuildmcp-cli` — are
   installed; invoke the relevant one rather than reconstructing commands from memory.
-- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 30 numbered
+- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 31 numbered
   `journeys/*.xml` scripts (onboarding, import, study, discovery, signup/restore …) driven by hand
   on a device. Read `journeys/README.md` first — the driving traps, and what has never been run on
   a device, neither of which a green build says anything about — then re-run the journeys your
@@ -450,6 +450,17 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   never written, and the old one is never cleaned up. And the **reserved check runs on the folded
   label** — `loopky_deck` is not reserved as typed and is once stored. Architecture.md §7.7 point 5a.
 - **Announcing a deck is opt-in, per action.** `DiscoveryRepository.announceDeck` writes a `pubky.app` post so a create/follow/clone reaches the user's followers, gated by `AppPreferences.shareOnPubky` (default on) *and* a confirm prompt each time. Off means never asked and never posted — the gate is on the write itself, not only in the ViewModels. **"Share" here means announcing, never visibility**: published decks are public either way (spec §11), and copy that blurs the two describes a privacy control Loopky does not have. Announcing is best-effort: a failed post must never roll back the deck, follow or clone. See Architecture.md §7.7 for the two things the post record has to get right.
+- **A block is pubky.app's mute record, and `DiscoveryRepository` is the only thing that applies it
+  (#577).** `blockUser` writes `/pub/pubky.app/mutes/{pubky}` (`created_at` in **microseconds**, as
+  pubky-app-specs encodes it), so a block in Loopky mutes on pubky.app and a mute there hides that
+  person here; the Blocked users screen says so. Three things not to undo. Every discovery read on
+  the repository drops blocked accounts itself — browse, search, the people strip, follow lists —
+  so a screen never filters, and a new read added there has to as well; the one exception is
+  `listFollowedBy` on `DeckRepository`, which `FriendProfileViewModel` filters. An **unreadable
+  mute list hides nobody** in those reads rather than failing them, while `blocked()` itself
+  throws like `following()`. And a block **unfollows** the person and their decks *after* the
+  record is written, best-effort — the block is what was asked for — and an unblock restores none
+  of it. Blocking needs an account; a guest has nowhere to write the record.
 - **Pubky is the source of truth for published decks.** The app is not offline-first in v1 — repos talk directly to `PubkyClient` and keep only an in-memory cache for the session. A persistent SQLDelight cache may come later. There are no private/local-only decks in v1 (spec §11).
 - **Homeserver layout is fixed.** Decks published under `/pub/loopky/decks/{deckId}/{manifest.json, cards/{n}.json, media/{sha256}.{ext}}`. Cards are stored in **chunk records** (~100 per record, `CHUNK_SIZE` in `DeckDtos.kt`), and the manifest carries a chunk table + `card_count` — **not** a per-card index. Study order is the card's own sparse `ord`, not manifest position. Sync diffs `chunks[].updated_at`. Single-card writes go through `DeckRepository.upsertCard`/`deleteCard`, which own the chunk write and the manifest patch together — never write a chunk without patching the manifest. Full schemas in `docs/Architecture.md §8.0`. Binary media is written raw via the FFI's `put_bytes_with_session`; reads come back Base64-encoded from the FFI transport and are decoded in `MediaRepositoryImpl`.
 - **Card deletes leave holes; a background pass folds them away, and it leaves gaps in the chunk numbering.** `deleteCard` shrinks a chunk's `count` rather than resequencing every later card, so `DeckRepository.compactDeck` reclaims the density off the critical path — one pair of neighbouring chunks at a time, asked for via `BackgroundTasks.scheduleDeckCompaction`, never performed inline. Two traps: a merge is the one chunk write that goes **landing record → manifest → source record** (every other one is chunk-then-manifest), because emptying the source first would leave the manifest pointing at a 404; and folding a pair drops its higher `n`, so the chunk table is **not contiguous** — anything that walks it must read `chunks[].n`, never `0 until chunks.size`. See Architecture.md §8.4.
