@@ -126,6 +126,12 @@ class DeckDetailViewModel(
                 _state.update { DeckDetailUiState.Error(ErrorReason.NotFound, canRetry = false) }
                 return@launch
             }
+            // A link still reaches a blocked author's deck; nothing of it is shown (#577).
+            val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
+            if (deck.authorPubky != session?.identity?.pubky && deck.authorPubky in blocked) {
+                _state.update { DeckDetailUiState.Blocked }
+                return@launch
+            }
 
             // Must be a fetch, not a cache read: nothing has loaded this deck's cards yet on a
             // cold launch, and for a deck you don't own nothing ever will.
@@ -730,6 +736,9 @@ class DeckDetailViewModel(
 
 sealed interface DeckDetailUiState {
     data object Loading : DeckDetailUiState
+
+    /** The deck's author is blocked: nothing of the deck is shown. Unblocking lives in Settings. */
+    data object Blocked : DeckDetailUiState
     data class Content(
         val deckId: String,
         val title: String,

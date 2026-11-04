@@ -513,6 +513,11 @@ class FakeDeckRepository : DeckRepository {
         return Result.success(Unit)
     }
 
+    override suspend fun unfollowDecksBy(authorPubky: String): Result<Unit> {
+        followedDecks.values.filter { it.authorPubky == authorPubky }.forEach { unfollowDeck(it.authorPubky, it.id) }
+        return Result.success(Unit)
+    }
+
     override suspend fun isFollowingDeck(deckId: String): Boolean = deckId in followedDecks
 
     /** `author to deckId`, as [rememberFollowForSignIn] left it; null once followed or forgotten. */

@@ -75,6 +75,7 @@ class DiscoveryRepositoryImpl(
     private val identityRepository: IdentityRepository,
     private val nexus: NexusClient,
     private val preferences: AppPreferences,
+    private val blockedAccounts: BlockedAccounts = BlockedAccounts(pubky, session),
 ) : DiscoveryRepository {
 
     /** Followee pubkys for the session, or null until first loaded from the homeserver. */
@@ -129,31 +130,10 @@ class DiscoveryRepositoryImpl(
         Unit
     }
 
-    /** Muted pubkys for the session, or null until first loaded. Guarded by [blockLock]. */
-    private var blockCache: MutableSet<String>? = null
-    private val blockLock = Mutex()
-    private val blockAccount = AccountStamp(session)
-
     private val _blockChanges = MutableSharedFlow<BlockChange>(extraBufferCapacity = 8)
     override val blockChanges: SharedFlow<BlockChange> = _blockChanges.asSharedFlow()
 
-    override suspend fun blocked(): Set<String> {
-        blockLock.withLock {
-            if (blockAccount.changed()) blockCache = null
-            blockCache
-        }?.let { return it.toSet() }
-        val owner = session.current()?.identity?.pubky ?: return emptySet()
-        // Paged for the same reason as `following()`: the directory is pubky.app's, and an account
-        // muting there can pass one page.
-        val entries = pubky.listAllEntries(PubkyPaths.mutesRoot(owner))
-            .getOrElse { if (it.isNotFound()) null else throw it }
-        val muted = entries?.let { parseIds(it, MUTES_MARKER) }.orEmpty().toSet()
-        blockLock.withLock {
-            blockCache = muted.toMutableSet()
-            blockAccount.mark()
-        }
-        return muted
-    }
+    override suspend fun blocked(): Set<String> = blockedAccounts.load()
 
     override suspend fun isBlocked(pubky: String): Boolean = pubky in blocked()
 
@@ -163,10 +143,7 @@ class DiscoveryRepositoryImpl(
         val body = loopkyJson.encodeToString(MuteDto(created_at = epochMillis() * MICROS_PER_MILLI))
         this.pubky.putWithSessionRetry(PubkyPaths.mute(owner, pubky), body, session, revalidator)
             .getOrThrow()
-        // Loaded first if it was not, so the new entry joins the real list rather than standing in
-        // for it — the trap `followUser` fell into with a one-element follow set.
-        runSuspendCatching { blocked() }
-        blockLock.withLock { blockCache?.add(pubky) }
+        blockedAccounts.add(pubky)
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = true))
         dropFollowsOf(pubky)
         Unit
@@ -176,7 +153,7 @@ class DiscoveryRepositoryImpl(
         val owner = session.requireSession().identity.pubky
         this.pubky.deleteWithSessionRetry(PubkyPaths.mute(owner, pubky), session, revalidator)
             .getOrThrow()
-        blockLock.withLock { blockCache?.remove(pubky) }
+        blockedAccounts.remove(pubky)
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = false))
         Unit
     }.onFailure { Log.w(TAG, "unblockUser: FAILED — ${it.message}", it) }
@@ -195,24 +172,11 @@ class DiscoveryRepositoryImpl(
         if (runSuspendCatching { isFollowing(pubky) }.getOrDefault(false)) {
             unfollowUser(pubky).onFailure { Log.w(TAG, "blockUser: unfollow FAILED — ${it.message}") }
         }
-        val theirs = runSuspendCatching { deckRepository.listFollowed() }
-            .onFailure { Log.w(TAG, "blockUser: listFollowed FAILED — ${it.message}") }
-            .getOrElse { emptyList() }
-            .filter { it.authorPubky == pubky }
-        for (deck in theirs) {
-            deckRepository.unfollowDeck(deck.authorPubky, deck.id)
-                .onFailure { Log.w(TAG, "blockUser: unfollowDeck ${deck.id} FAILED — ${it.message}") }
-        }
+        deckRepository.unfollowDecksBy(pubky)
+            .onFailure { Log.w(TAG, "blockUser: unfollowDecksBy FAILED — ${it.message}") }
     }
 
-    /**
-     * [blocked] for the filtering reads: an unreadable mute list hides nobody rather than failing
-     * Discover, search or a follow list over it.
-     */
-    private suspend fun blockedOrEmpty(): Set<String> =
-        runSuspendCatching { blocked() }
-            .onFailure { Log.w(TAG, "blocked: FAILED, filtering nobody — ${it.message}") }
-            .getOrElse { emptySet() }
+    private suspend fun blockedOrEmpty(): Set<String> = blockedAccounts.loadOrEmpty()
 
     override suspend fun announceDeck(announcement: DeckAnnouncement): Result<PubkyUri> =
         runSuspendCatching {
@@ -738,11 +702,9 @@ class DiscoveryRepositoryImpl(
      * like `friend1","pubky:`. `followUser` seeds the cache optimistically, so that only surfaced on
      * a cold cache — after a restart, when the whole follow feed silently emptied.
      */
-    private fun parseFollowees(entries: List<String>): List<String> = parseIds(entries, FOLLOWS_MARKER)
-
-    private fun parseIds(entries: List<String>, marker: String): List<String> =
+    private fun parseFollowees(entries: List<String>): List<String> =
         entries.mapNotNull { url ->
-            url.substringAfter(marker, missingDelimiterValue = "")
+            url.substringAfter(FOLLOWS_MARKER, missingDelimiterValue = "")
                 .substringBefore('/')
                 .takeIf { it.isNotEmpty() }
         }.distinct()
@@ -752,7 +714,6 @@ class DiscoveryRepositoryImpl(
 
         /** The segment a follow record's url carries just before the followee's pubky. */
         private const val FOLLOWS_MARKER = "/pub/pubky.app/follows/"
-        private const val MUTES_MARKER = "/pub/pubky.app/mutes/"
 
         /** pubky-app-specs post ids are microsecond timestamps; commonMain's clock is millis. */
         private const val MICROS_PER_MILLI = 1_000L

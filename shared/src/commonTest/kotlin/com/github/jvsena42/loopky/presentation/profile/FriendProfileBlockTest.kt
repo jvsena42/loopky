@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.presentation.profile
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
 import com.github.jvsena42.loopky.testing.FakeDiscoveryRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
@@ -86,18 +87,22 @@ class FriendProfileBlockTest {
     }
 
     @Test
-    fun `unblock needs no confirmation`() = runTest {
+    fun `a blocked profile loads nothing of theirs and offers no unblock`() = runTest {
         discovery.blocks.add(stranger)
+        decks.decks["d0"] = testDeck(id = "d0", authorPubky = stranger)
+        identity.profiles[stranger] = PubkyIdentity(stranger, "Troll", null, null)
         val vm = viewModel()
         advanceUntilIdle()
+
         assertTrue(vm.state.value.isBlocked)
+        assertTrue(vm.state.value.decks.isEmpty())
+        assertEquals(null, vm.state.value.identity.displayName)
 
         vm.onBlockClick()
         advanceUntilIdle()
 
         assertFalse(vm.state.value.isConfirmingBlock)
-        assertFalse(vm.state.value.isBlocked)
-        assertTrue(discovery.blocks.isEmpty())
+        assertEquals(setOf(stranger), discovery.blocks)
     }
 
     @Test

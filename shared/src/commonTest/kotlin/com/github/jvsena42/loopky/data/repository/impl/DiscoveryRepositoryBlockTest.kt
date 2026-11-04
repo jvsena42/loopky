@@ -40,6 +40,7 @@ class DiscoveryRepositoryBlockTest {
     private val pubky = FakePubkyClient()
     private val session = signedInProvider()
     private val revalidator = CountingRevalidator()
+    private val blockedAccounts = BlockedAccounts(pubky, session)
     private val deckRepo = DeckRepositoryImpl(
         pubky = pubky,
         session = session,
@@ -51,6 +52,7 @@ class DiscoveryRepositoryBlockTest {
         deckCache = FakeDeckCacheStore(),
         preferences = FakeAppPreferences(),
         scope = CoroutineScope(SupervisorJob()),
+        blockedAccounts = blockedAccounts,
     )
     private val tagRepo = RecordingTagRepository()
     private val repo = DiscoveryRepositoryImpl(
@@ -62,6 +64,7 @@ class DiscoveryRepositoryBlockTest {
         identityRepository = identityRepository(pubky = pubky, sessionProvider = session, tagRepository = tagRepo),
         nexus = NexusClient(http = FakeHttpFetcher(), baseUrl = "https://nexus.test"),
         preferences = FakeAppPreferences(),
+        blockedAccounts = blockedAccounts,
     )
 
     private fun muteUrl(mutee: String) = "pubky://$TEST_PUBKY/pub/pubky.app/mutes/$mutee"
@@ -137,6 +140,32 @@ class DiscoveryRepositoryBlockTest {
 
         assertFalse(repo.isFollowing("trollpk"))
         assertEquals(listOf("kept"), deckRepo.listFollowed().map { it.id })
+    }
+
+    @Test
+    fun `a deck you follow by an account muted on pubky app is hidden but stays followed`() = runTest {
+        putRemoteManifest(author = "mutedpk", deckId = "theirs")
+        putRemoteManifest(author = "friendpk", deckId = "kept")
+        deckRepo.followDeck(deckRepo.fetchRemote("mutedpk", "theirs").getOrThrow()).getOrThrow()
+        deckRepo.followDeck(deckRepo.fetchRemote("friendpk", "kept").getOrThrow()).getOrThrow()
+        pubky.store[muteUrl("mutedpk")] = """{"created_at":1}"""
+
+        assertEquals(listOf("kept"), deckRepo.listFollowed().map { it.id })
+        // Hidden, not unfollowed: only a block made here unfollows anything.
+        assertTrue(deckRepo.isFollowingDeck("theirs"))
+    }
+
+    @Test
+    fun `the cached library leaves out a blocked author once the block is known`() = runTest {
+        putRemoteManifest(author = "trollpk", deckId = "theirs")
+        deckRepo.followDeck(deckRepo.fetchRemote("trollpk", "theirs").getOrThrow()).getOrThrow()
+        deckRepo.listFollowed()
+        assertEquals(listOf("theirs"), deckRepo.listCached()?.followed?.map { it.id })
+
+        // The list is a session cache, like follows: a block made here lands through `add`.
+        blockedAccounts.add("trollpk")
+
+        assertEquals(emptyList(), deckRepo.listCached()?.followed?.map { it.id })
     }
 
     @Test

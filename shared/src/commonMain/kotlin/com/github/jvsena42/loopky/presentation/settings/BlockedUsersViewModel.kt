@@ -19,7 +19,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The accounts the signed-in user has blocked, reached from Settings, each with an Unblock.
+ * The accounts the signed-in user has blocked, reached from Settings, each with an Unblock — the
+ * only place one is offered. A row does not open the profile: a blocked account is not shown.
  *
  * The list is pubky.app's mute list, so it also shows people muted on pubky.app — the screen's
  * caption says so, or a name the reader never blocked in Loopky reads as a bug (#577).
@@ -75,10 +76,6 @@ class BlockedUsersViewModel(
         }
     }
 
-    fun onOpenProfile(pubky: String) {
-        viewModelScope.launch { _effects.emit(BlockedUsersEffect.OpenProfile(pubky)) }
-    }
-
     companion object {
         private const val TAG = "Loopky/BlockedUsersVM"
     }
@@ -95,6 +92,5 @@ data class BlockedUsersUiState(
 }
 
 sealed interface BlockedUsersEffect {
-    data class OpenProfile(val pubky: String) : BlockedUsersEffect
     data class ShowError(val reason: ErrorReason) : BlockedUsersEffect
 }

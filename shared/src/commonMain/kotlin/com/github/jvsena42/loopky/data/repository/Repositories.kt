@@ -499,6 +499,13 @@ interface DeckRepository {
      */
     suspend fun unfollowDeck(authorPubky: String, deckId: String): Result<Unit>
 
+    /**
+     * Unfollow every deck by [authorPubky], read off the subscription records rather than
+     * [listFollowed] — which hides a blocked author's decks, the very ones a block has to drop.
+     * Each deck on its own: one failed delete does not keep the rest.
+     */
+    suspend fun unfollowDecksBy(authorPubky: String): Result<Unit>
+
     suspend fun isFollowingDeck(deckId: String): Boolean
 
     /**
@@ -521,6 +528,10 @@ interface DeckRepository {
      * Decks you follow, from their authors' homeservers. An unreadable deck is dropped rather than
      * failing the call — an author deleting a deck must not empty your library — but a listing that
      * resolved nothing at all still throws.
+     *
+     * A blocked author's decks are left out (#577), here, in [listFollowedBy] and in [listCached],
+     * so Home, Library, Profile, the recap and the study queue never show one — including a block
+     * made as a mute on pubky.app, which unfollowed nothing.
      */
     suspend fun listFollowed(): List<Deck>
 

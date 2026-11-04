@@ -18,6 +18,7 @@ import com.github.jvsena42.loopky.data.repository.SrsRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.impl.AccountEraser
 import com.github.jvsena42.loopky.data.repository.impl.CardRepositoryImpl
+import com.github.jvsena42.loopky.data.repository.impl.BlockedAccounts
 import com.github.jvsena42.loopky.data.repository.impl.DeckRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.DiscoveryRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.IdentityRepositoryImpl
@@ -143,8 +144,14 @@ fun sharedModule(): Module = module {
     single<SessionRevalidator> { SessionRevalidatorImpl(get(), get(), get(), get()) }
 
     single<CardRepository> { CardRepositoryImpl(get(), get(), get()) }
+    // One instance for both repositories, or a block made in one is invisible to the other.
+    single { BlockedAccounts(pubky = get(), session = get()) }
     single<DeckRepository> {
-        DeckRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get(), get(), scope = get(REPOSITORY_SCOPE))
+        DeckRepositoryImpl(
+            get(), get(), get(), get(), get(), get(), get(), get(), get(),
+            scope = get(REPOSITORY_SCOPE),
+            blockedAccounts = get(),
+        )
     }
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ImportRepository> { ImportRepositoryImpl() }
@@ -178,7 +185,7 @@ fun sharedModule(): Module = module {
         )
     }
     single<DiscoveryRepository> {
-        DiscoveryRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get())
+        DiscoveryRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get(), blockedAccounts = get())
     }
 
     single<TagRepository> {

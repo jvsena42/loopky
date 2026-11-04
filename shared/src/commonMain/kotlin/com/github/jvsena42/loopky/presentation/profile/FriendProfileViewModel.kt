@@ -82,6 +82,16 @@ class FriendProfileViewModel(
                 if (silent) it.copy(isRefreshing = true) else it.copy(isLoading = true)
             }
 
+            // Checked before anything of theirs is read: a blocked account is not shown at all —
+            // not its name, not its decks — however the screen was reached (#577).
+            val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
+            if (targetPubky in blocked) {
+                _state.update {
+                    it.copy(isLoading = false, isRefreshing = false, isBlocked = true, decks = emptyList())
+                }
+                return@launch
+            }
+
             val profile = identityRepository.fetchProfile(targetPubky, forceRefresh).getOrNull()
             // Concurrent: each is a directory listing plus a manifest fetch per deck, so running
             // them one after the other would double the wait before anything renders. Each
@@ -104,7 +114,6 @@ class FriendProfileViewModel(
             }
             val isFollowing = runSuspendCatching { discoveryRepository.isFollowing(targetPubky) }
                 .getOrDefault(false)
-            val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
             // Pasting your own pubky into the add-friend sheet used to open this screen with a
             // live Follow button — you could follow yourself.
             val myPubky = runSuspendCatching { identityRepository.currentSession()?.identity?.pubky }
@@ -125,7 +134,6 @@ class FriendProfileViewModel(
                     isRefreshing = false,
                     identity = identity,
                     isFollowing = isFollowing,
-                    isBlocked = targetPubky in blocked,
                     isSignedIn = myPubky != null,
                     isSelf = isSelf,
                     decks = merged.map { it.toCard() },
@@ -225,44 +233,34 @@ class FriendProfileViewModel(
     }
 
     /**
-     * Raises the confirmation for a block, or unblocks straight away: unblocking hides nothing and
-     * restores nothing, so it has nothing to confirm. Block is offered only to a signed-in reader —
-     * the record lives under their own pubky — and never on their own profile.
+     * Raises the block confirmation. Offered only to a signed-in reader — the record lives under
+     * their own pubky — never on their own profile, and never once blocked: unblocking lives in
+     * Settings → Blocked accounts and nowhere else (#577).
      */
     fun onBlockClick() {
         val current = _state.value
-        if (blockJob?.isActive == true || current.isSelf || !current.isSignedIn) return
-        if (current.isBlocked) setBlocked(false) else _state.update { it.copy(isConfirmingBlock = true) }
+        if (blockJob?.isActive == true || current.isSelf || !current.isSignedIn || current.isBlocked) return
+        _state.update { it.copy(isConfirmingBlock = true) }
     }
 
-    /** The answer to the block confirmation; false writes nothing. */
+    /**
+     * The answer to the block confirmation; false writes nothing. A block that lands emits
+     * [FriendProfileEffect.Blocked], on which the screen closes — the profile is not to be seen.
+     */
     fun onBlockConfirmation(confirmed: Boolean) {
         _state.update { it.copy(isConfirmingBlock = false) }
-        if (confirmed) setBlocked(true)
-    }
-
-    private fun setBlocked(block: Boolean) {
+        if (!confirmed) return
         blockJob = viewModelScope.launch {
             _state.update { it.copy(isProcessingBlock = true, errorReason = null) }
-            val result = if (block) {
-                discoveryRepository.blockUser(targetPubky)
-            } else {
-                discoveryRepository.unblockUser(targetPubky)
-            }
-            result
+            discoveryRepository.blockUser(targetPubky)
                 .onSuccess {
-                    // A block also unfollows them, so the Follow state has to follow it here.
                     _state.update {
-                        it.copy(
-                            isBlocked = block,
-                            isFollowing = if (block) false else it.isFollowing,
-                            isProcessingBlock = false,
-                        )
+                        it.copy(isBlocked = true, isFollowing = false, isProcessingBlock = false, decks = emptyList())
                     }
-                    _effects.emit(if (block) FriendProfileEffect.Blocked else FriendProfileEffect.Unblocked)
+                    _effects.emit(FriendProfileEffect.Blocked)
                 }
                 .onFailure { err ->
-                    Log.e(TAG, "setBlocked($block): FAILED — ${err.message}", err)
+                    Log.e(TAG, "block: FAILED — ${err.message}", err)
                     _state.update { it.copy(isProcessingBlock = false, errorReason = err.toErrorReason()) }
                 }
         }
@@ -347,8 +345,8 @@ data class FriendProfileUiState(
     val isFollowing: Boolean = false,
     val isProcessingFollow: Boolean = false,
     /**
-     * The reader blocked this person. The screen then shows only who they are and the way back
-     * (Unblock) — no decks, no Follow — so a blocked profile reached by a link stays hidden (#577).
+     * The reader blocked this person. Nothing of theirs is loaded or shown — not even the name —
+     * and there is no Unblock here: that lives in Settings → Blocked accounts (#577).
      */
     val isBlocked: Boolean = false,
     val isConfirmingBlock: Boolean = false,
@@ -410,6 +408,6 @@ sealed interface FriendProfileEffect {
     /** [identity] names the person in the shared message; [uri] is what opens Loopky on them. */
     data class ShareProfile(val identity: PubkyIdentity, val uri: String) : FriendProfileEffect
 
+    /** A block just landed: confirm it and close the profile. */
     data object Blocked : FriendProfileEffect
-    data object Unblocked : FriendProfileEffect
 }
