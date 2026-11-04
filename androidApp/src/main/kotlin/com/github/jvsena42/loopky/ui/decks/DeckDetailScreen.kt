@@ -63,8 +63,8 @@ import com.github.jvsena42.loopky.presentation.decks.CardPreviewModel
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailEffect
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailUiState
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailViewModel
-import com.github.jvsena42.loopky.ui.components.BlockedAccountNotice
 import com.github.jvsena42.loopky.ui.components.AuthorRow
+import com.github.jvsena42.loopky.ui.components.BlockedAccountNotice
 import com.github.jvsena42.loopky.ui.components.CardPreviewRow
 import com.github.jvsena42.loopky.ui.components.ExpandableLinkedText
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen

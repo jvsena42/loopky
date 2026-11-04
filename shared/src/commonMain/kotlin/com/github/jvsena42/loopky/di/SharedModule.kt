@@ -17,8 +17,8 @@ import com.github.jvsena42.loopky.data.repository.SignupRepository
 import com.github.jvsena42.loopky.data.repository.SrsRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.impl.AccountEraser
-import com.github.jvsena42.loopky.data.repository.impl.CardRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.BlockedAccounts
+import com.github.jvsena42.loopky.data.repository.impl.CardRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.DeckRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.DiscoveryRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.IdentityRepositoryImpl

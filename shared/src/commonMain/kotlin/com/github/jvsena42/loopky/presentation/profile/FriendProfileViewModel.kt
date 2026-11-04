@@ -238,8 +238,7 @@ class FriendProfileViewModel(
      * Settings → Blocked accounts and nowhere else (#577).
      */
     fun onBlockClick() {
-        val current = _state.value
-        if (blockJob?.isActive == true || current.isSelf || !current.isSignedIn || current.isBlocked) return
+        if (blockJob?.isActive == true || !_state.value.canBlock) return
         _state.update { it.copy(isConfirmingBlock = true) }
     }
 
@@ -373,7 +372,10 @@ data class FriendProfileUiState(
     /** Null until the follow graph resolves, and after it fails — never a stand-in zero. */
     val followingCount: Int? = null,
     val followerCount: Int? = null,
-)
+) {
+    /** Block is offered to a signed-in reader, on someone else's profile, not yet blocked. */
+    val canBlock: Boolean get() = isSignedIn && !isSelf && !isBlocked
+}
 
 data class FriendDeck(
     val id: String,
