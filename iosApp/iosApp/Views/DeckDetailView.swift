@@ -4,6 +4,8 @@ enum DeckDetailViewState {
     case loading
     case content(DeckDetailContent)
     case error(String)
+    /// The deck's author is blocked: nothing of the deck is drawn (#577).
+    case blocked
 }
 
 struct DeckDetailContent {
@@ -93,6 +95,21 @@ struct DeckDetailView: View {
                         .font(.system(size: 14))
                         .foregroundColor(LoopkyColor.foregroundMuted)
                         .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .contentPane(PaneWidth.reading)
+            case .blocked:
+                VStack(spacing: 12) {
+                    // Back only: there is nothing here to share or edit.
+                    HStack {
+                        Button(action: onBack) { circleIcon(systemName: "chevron.left") }
+                        Spacer()
+                    }
+                    Spacer()
+                    BlockedAccountNotice()
+                        .accessibilityIdentifier("deck_detail_blocked")
                     Spacer()
                 }
                 .padding(.horizontal, 20)

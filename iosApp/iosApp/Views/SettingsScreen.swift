@@ -9,6 +9,7 @@ import Shared
 struct SettingsScreen: View {
     var onSignedOut: () -> Void = {}
     var onBackUpNow: () -> Void = {}
+    var onOpenBlockedUsers: () -> Void = {}
 
     @Environment(\.openURL) private var openURL
 
@@ -42,6 +43,7 @@ struct SettingsScreen: View {
             onDismissDeleteAccount: { viewModel?.onDeleteAccountDismissed() },
             onOpenUrl: { if let url = URL(string: $0) { openURL(url) } },
             onBackUpNow: onBackUpNow,
+            onOpenBlockedUsers: onOpenBlockedUsers,
             onOpenAppSettings: {
                 if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
             }

@@ -20,6 +20,7 @@ struct SettingsView: View {
     var onOpenUrl: (String) -> Void = { _ in }
     var onBackUpNow: () -> Void = {}
     var onOpenAppSettings: () -> Void = {}
+    var onOpenBlockedUsers: () -> Void = {}
 
     @State private var unsplashKey = ""
 
@@ -249,6 +250,20 @@ struct SettingsView: View {
                 Text("settings_share_on_pubky_label")
             }
             .tint(LoopkyColor.accentPrimary)
+            // A block is a record under the signed-in account, so there is no list without one.
+            if !state.pubky.isEmpty {
+                Button(action: onOpenBlockedUsers) {
+                    HStack {
+                        Text("settings_blocked_users")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(LoopkyColor.foregroundMuted)
+                    }
+                }
+                .tint(LoopkyColor.foregroundPrimary)
+                .accessibilityIdentifier("settings_blocked_users")
+            }
         } header: {
             Text("settings_section_sharing")
         } footer: {

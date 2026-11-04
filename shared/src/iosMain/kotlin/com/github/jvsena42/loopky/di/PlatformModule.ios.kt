@@ -75,6 +75,7 @@ import com.github.jvsena42.loopky.presentation.profile.ProfileViewModel
 import com.github.jvsena42.loopky.presentation.recap.RecapViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
+import com.github.jvsena42.loopky.presentation.settings.BlockedUsersViewModel
 import com.github.jvsena42.loopky.presentation.settings.SettingsViewModel
 import com.github.jvsena42.loopky.presentation.signup.InviteCodeViewModel
 import com.github.jvsena42.loopky.presentation.signup.LightningVerificationViewModel
@@ -281,6 +282,8 @@ object IosDependencies {
 
     fun friendProfileViewModel(pubky: String): FriendProfileViewModel =
         koin.get { parametersOf(pubky) }
+
+    fun blockedUsersViewModel(): BlockedUsersViewModel = koin.get()
 
     /**
      * Both parameters are mandatory — the Koin binding reads them with `params.get()`, not

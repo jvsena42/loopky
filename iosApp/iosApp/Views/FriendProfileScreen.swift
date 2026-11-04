@@ -25,6 +25,8 @@ struct FriendProfileScreen: View {
             state: viewState,
             onBack: onBack,
             onToggleFollow: { viewModel?.onToggleFollow() },
+            onBlockClick: { viewModel?.onBlockClick() },
+            onBlockConfirmation: { viewModel?.onBlockConfirmation(confirmed: $0) },
             onCopyPubky: { viewModel?.onCopyPubky() },
             onShare: { viewModel?.onShareClick() },
             onOpenOnPubkyApp: { viewModel?.onOpenOnPubkyApp() },
@@ -51,6 +53,9 @@ struct FriendProfileScreen: View {
             isFollowing: state.isFollowing,
             isProcessingFollow: state.isProcessingFollow,
             isSelf: state.isSelf,
+            isBlocked: state.isBlocked,
+            isConfirmingBlock: state.isConfirmingBlock,
+            isProcessingBlock: state.isProcessingBlock,
             isSignedIn: state.isSignedIn,
             signInReason: state.signInPrompt,
             deckCount: Int(state.deckCount),
@@ -89,6 +94,9 @@ struct FriendProfileScreen: View {
                 UIPasteboard.general.string = copy.text
             case let url as FriendProfileEffectOpenUrl:
                 if let link = URL(string: url.url) { openURL(link) }
+            case is FriendProfileEffectBlocked:
+                // The profile is not to be seen once blocked, so it closes (#577).
+                onBack()
             default:
                 break
             }
@@ -123,6 +131,10 @@ struct FriendProfileViewState {
     var isFollowing: Bool = false
     var isProcessingFollow: Bool = false
     var isSelf: Bool = false
+    /// The reader blocked this person: nothing of theirs is drawn, and there is no Unblock here (#577).
+    var isBlocked: Bool = false
+    var isConfirmingBlock: Bool = false
+    var isProcessingBlock: Bool = false
     var isSignedIn: Bool = true
     /// Which action ran into the wall, so the prompt can say what signing in unlocks.
     var signInReason: SignInReason?

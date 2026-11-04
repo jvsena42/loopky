@@ -18,6 +18,7 @@ enum DeckRoute: Hashable, Identifiable {
     case settings
     case friendProfile(String)
     case followList(String, FollowSource)
+    case blockedUsers
     case tagBrowse(String)
     case recap(Int)
 
@@ -37,6 +38,7 @@ enum DeckRoute: Hashable, Identifiable {
         case .settings: return "settings"
         case .friendProfile(let pubky): return "friend-\(pubky)"
         case .followList(let pubky, let source): return "follows-\(pubky)-\(source.name)"
+        case .blockedUsers: return "blocked-users"
         case .tagBrowse(let tag): return "tag-\(tag)"
         case .recap(let year): return "recap-\(year)"
         }
@@ -231,8 +233,11 @@ struct RootView: View {
         case .settings:
             SettingsScreen(
                 onSignedOut: { signOut() },
-                onBackUpNow: { isBackingUp = true }
+                onBackUpNow: { isBackingUp = true },
+                onOpenBlockedUsers: { deckPath.append(.blockedUsers) }
             )
+        case .blockedUsers:
+            BlockedUsersScreen()
         case .study(let deckId):
             StudySessionScreen(
                 deckId: deckId,
