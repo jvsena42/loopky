@@ -420,14 +420,13 @@
     <string name="block_confirm_title">Block %1$s?</string>
     <string name="block_confirm_body">You won\'t see their decks or profile anywhere in Loopky, and you\'ll stop following them and their decks. They won\'t be told. This also mutes them on pubky.app.</string>
     <string name="block_done">Blocked</string>
-    <string name="unblock_done">Unblocked</string>
     <string name="unblock_failed">Couldn\'t unblock. Try again.</string>
-    <string name="friend_profile_blocked_title">You blocked this person</string>
-    <string name="friend_profile_blocked_body">Their decks and profile are hidden from you in Loopky. Unblock to see them again.</string>
-    <string name="settings_blocked_users">Blocked users</string>
-    <string name="blocked_users_caption">People you block in Loopky or mute on pubky.app. Their decks and profiles are hidden from you.</string>
-    <string name="blocked_users_loading">Loading blocked users…</string>
-    <string name="blocked_users_empty">You haven\'t blocked anyone.</string>
+    <string name="blocked_account_title">You blocked this account</string>
+    <string name="blocked_account_body">Its profile and decks are hidden. To see them again, unblock it in Settings → Blocked accounts.</string>
+    <string name="settings_blocked_users">Blocked accounts</string>
+    <string name="blocked_users_caption">Accounts you block in Loopky or mute on pubky.app. Their decks and profiles are hidden from you.</string>
+    <string name="blocked_users_loading">Loading blocked accounts…</string>
+    <string name="blocked_users_empty">You haven\'t blocked any accounts.</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">Following</string>

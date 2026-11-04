@@ -207,10 +207,7 @@ internal fun LoopkyNavHost(
             )
         }
         composable(Routes.BLOCKED_USERS) {
-            BlockedUsersRoute(
-                onBack = { navController.popBackStack() },
-                onOpenProfile = { person -> navController.navigateTo(Routes.friendProfile(person)) },
-            )
+            BlockedUsersRoute(onBack = { navController.popBackStack() })
         }
         composable(
             route = Routes.DECK_DETAIL,

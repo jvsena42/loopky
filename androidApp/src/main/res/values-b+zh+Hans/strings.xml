@@ -407,14 +407,13 @@
     <string name="block_confirm_title">要屏蔽 %1$s 吗？</string>
     <string name="block_confirm_body">你将不会在 Loopky 的任何地方看到此人的卡组或个人主页，并会取消关注此人及其卡组。对方不会收到通知。这也会在 pubky.app 上将其设为静音。</string>
     <string name="block_done">已屏蔽</string>
-    <string name="unblock_done">已取消屏蔽</string>
     <string name="unblock_failed">无法取消屏蔽，请重试。</string>
-    <string name="friend_profile_blocked_title">你已屏蔽此人</string>
-    <string name="friend_profile_blocked_body">此人的卡组和个人主页在 Loopky 中已对你隐藏。取消屏蔽即可再次查看。</string>
-    <string name="settings_blocked_users">已屏蔽的用户</string>
-    <string name="blocked_users_caption">你在 Loopky 中屏蔽或在 pubky.app 上静音的人。他们的卡组和个人主页会对你隐藏。</string>
-    <string name="blocked_users_loading">正在加载已屏蔽的用户…</string>
-    <string name="blocked_users_empty">你还没有屏蔽任何人。</string>
+    <string name="blocked_account_title">你已屏蔽此账号</string>
+    <string name="blocked_account_body">此账号的个人主页和卡组已隐藏。如需再次查看，请在设置 → 已屏蔽的账号中取消屏蔽。</string>
+    <string name="settings_blocked_users">已屏蔽的账号</string>
+    <string name="blocked_users_caption">你在 Loopky 中屏蔽或在 pubky.app 上静音的账号。他们的卡组和个人主页会对你隐藏。</string>
+    <string name="blocked_users_loading">正在加载已屏蔽的账号…</string>
+    <string name="blocked_users_empty">你还没有屏蔽任何账号。</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">关注</string>

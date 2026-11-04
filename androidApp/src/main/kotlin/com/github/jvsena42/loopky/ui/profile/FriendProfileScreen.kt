@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -62,6 +61,7 @@ import com.github.jvsena42.loopky.presentation.profile.FriendDeck
 import com.github.jvsena42.loopky.presentation.profile.FriendProfileEffect
 import com.github.jvsena42.loopky.presentation.profile.FriendProfileUiState
 import com.github.jvsena42.loopky.presentation.profile.FriendProfileViewModel
+import com.github.jvsena42.loopky.ui.components.BlockedAccountNotice
 import com.github.jvsena42.loopky.ui.components.DeckTile
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
 import com.github.jvsena42.loopky.ui.components.LoopkyPrimaryButton
@@ -106,6 +106,7 @@ fun FriendProfileRoute(
     val currentOpenDeck by rememberUpdatedState(onOpenDeck)
     val currentOpenProfile by rememberUpdatedState(onOpenProfile)
     val currentOpenFollows by rememberUpdatedState(onOpenFollows)
+    val currentBack by rememberUpdatedState(onBack)
     val clipboard = LocalClipboardManager.current
     var shareTarget by remember { mutableStateOf<ShareLinkTarget?>(null) }
 
@@ -127,8 +128,11 @@ fun FriendProfileRoute(
                     ),
                     chooserTitle = R.string.share_profile_chooser_title,
                 )
-                FriendProfileEffect.Blocked -> context.toast(R.string.block_done)
-                FriendProfileEffect.Unblocked -> context.toast(R.string.unblock_done)
+                // The profile is not to be seen once blocked, so the screen closes on it.
+                FriendProfileEffect.Blocked -> {
+                    context.toast(R.string.block_done)
+                    currentBack()
+                }
             }
         }
     }
@@ -242,33 +246,41 @@ private fun FriendProfileScreen(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(colors.surfaceCard)
-                            .clickable(onClick = onShare)
-                            .testTag("friend_profile_share"),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Share,
-                            contentDescription = stringResource(R.string.friend_profile_share),
-                            tint = colors.foregroundPrimary,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                    // A block is a record under the reader's own pubky, so a guest has nowhere
-                    // to write one, and blocking yourself is not a thing.
-                    if (state.isSignedIn && !state.isSelf) {
-                        ProfileOverflowMenu(
-                            isBlocked = state.isBlocked,
-                            enabled = !state.isProcessingBlock,
-                            onBlockClick = onBlockClick,
-                        )
+                // Nothing to share or act on for a blocked account.
+                if (!state.isBlocked) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(colors.surfaceCard)
+                                .clickable(onClick = onShare)
+                                .testTag("friend_profile_share"),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Share,
+                                contentDescription = stringResource(R.string.friend_profile_share),
+                                tint = colors.foregroundPrimary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        // A block is a record under the reader's own pubky, so a guest has nowhere
+                        // to write one, and blocking yourself is not a thing.
+                        if (state.isSignedIn && !state.isSelf) {
+                            ProfileOverflowMenu(
+                                enabled = !state.isProcessingBlock,
+                                onBlockClick = onBlockClick,
+                            )
+                        }
                     }
                 }
+            }
+
+            // Not even the name: a blocked account is not shown anywhere (#577).
+            if (state.isBlocked) {
+                BlockedAccountNotice(modifier = Modifier.testTag("friend_profile_blocked"))
+                return@Column
             }
 
             // Identity — the same hero the signed-in user's own profile uses, so a person reads
@@ -279,22 +291,6 @@ private fun FriendProfileScreen(
                 onPubkyClick = onCopyPubky,
                 modifier = Modifier.fillMaxWidth(),
             )
-
-            if (state.isBlocked) {
-                BlockedNotice(
-                    isProcessing = state.isProcessingBlock,
-                    onUnblock = onBlockClick,
-                )
-                state.errorReason?.let { reason ->
-                    Text(
-                        text = errorMessage(reason),
-                        color = colors.danger,
-                        fontSize = 13.sp,
-                        modifier = Modifier.fillMaxWidth().testTag("friend_profile_error"),
-                    )
-                }
-                return@Column
-            }
 
             // Following yourself is not a thing, and editing lives on the Profile tab — but
             // copying and sharing still are, so the row stays and only loses the Follow button.
@@ -391,7 +387,6 @@ private fun FriendProfileScreen(
 
 @Composable
 private fun ProfileOverflowMenu(
-    isBlocked: Boolean,
     enabled: Boolean,
     onBlockClick: () -> Unit,
 ) {
@@ -422,15 +417,15 @@ private fun ProfileOverflowMenu(
             DropdownMenuItem(
                 text = {
                     Text(
-                        text = stringResource(if (isBlocked) R.string.unblock_action else R.string.block_action),
-                        color = if (isBlocked) colors.foregroundPrimary else colors.danger,
+                        text = stringResource(R.string.block_action),
+                        color = colors.danger,
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Filled.Block,
                         contentDescription = null,
-                        tint = if (isBlocked) colors.foregroundPrimary else colors.danger,
+                        tint = colors.danger,
                     )
                 },
                 enabled = enabled,
@@ -441,50 +436,6 @@ private fun ProfileOverflowMenu(
                 modifier = Modifier.testTag("friend_profile_block"),
             )
         }
-    }
-}
-
-/** Stands in for everything below the hero once the reader has blocked this person. */
-@Composable
-private fun BlockedNotice(
-    isProcessing: Boolean,
-    onUnblock: () -> Unit,
-) {
-    val colors = LoopkyTheme.colors
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(colors.surfaceCard)
-            .padding(20.dp)
-            .testTag("friend_profile_blocked"),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Block,
-            contentDescription = null,
-            tint = colors.foregroundMuted,
-            modifier = Modifier.size(28.dp),
-        )
-        Text(
-            text = stringResource(R.string.friend_profile_blocked_title),
-            color = colors.foregroundPrimary,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.W700,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = stringResource(R.string.friend_profile_blocked_body),
-            color = colors.foregroundSecondary,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-        )
-        LoopkySecondaryButton(
-            text = stringResource(R.string.unblock_action),
-            onClick = { if (!isProcessing) onUnblock() },
-            modifier = Modifier.fillMaxWidth().testTag("friend_profile_unblock"),
-        )
     }
 }
 

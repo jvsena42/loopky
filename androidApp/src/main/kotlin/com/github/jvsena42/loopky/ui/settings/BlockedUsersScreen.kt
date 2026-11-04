@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -26,7 +25,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,16 +58,13 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun BlockedUsersRoute(
     onBack: () -> Unit = {},
-    onOpenProfile: (String) -> Unit = {},
 ) {
     val viewModel = koinViewModel<BlockedUsersViewModel>()
     val context = LocalContext.current
-    val currentOpenProfile by rememberUpdatedState(onOpenProfile)
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
-                is BlockedUsersEffect.OpenProfile -> currentOpenProfile(effect.pubky)
                 // The row is still there with its button live again, so a toast is enough.
                 is BlockedUsersEffect.ShowError -> context.toast(R.string.unblock_failed)
             }
@@ -81,7 +76,6 @@ fun BlockedUsersRoute(
         state = state,
         onBack = onBack,
         onRetry = viewModel::onRetry,
-        onOpenProfile = viewModel::onOpenProfile,
         onUnblock = viewModel::onUnblock,
     )
 }
@@ -91,7 +85,6 @@ private fun BlockedUsersScreen(
     state: BlockedUsersUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
-    onOpenProfile: (String) -> Unit,
     onUnblock: (String) -> Unit,
 ) {
     val colors = LoopkyTheme.colors
@@ -167,17 +160,18 @@ private fun BlockedUsersScreen(
                 contentPadding = PaddingValues(bottom = 24.dp),
             ) {
                 itemsIndexed(state.people, key = { _, person -> person.pubky }) { index, person ->
+                    // Not a link: a blocked account's profile is not shown, and Unblock is the one
+                    // thing to do here.
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("blocked_row_$index"),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         AuthorRow(
                             identity = person,
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { onOpenProfile(person.pubky) }
-                                .testTag("blocked_row_$index")
                                 .padding(vertical = 8.dp, horizontal = 4.dp),
                         )
                         TextButton(
@@ -213,7 +207,6 @@ private fun BlockedUsersScreenPreview() {
             ),
             onBack = {},
             onRetry = {},
-            onOpenProfile = {},
             onUnblock = {},
         )
     }

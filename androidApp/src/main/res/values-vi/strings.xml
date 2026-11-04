@@ -419,14 +419,13 @@
     <string name="block_confirm_title">Chặn %1$s?</string>
     <string name="block_confirm_body">Bạn sẽ không thấy bộ thẻ hay hồ sơ của họ ở bất kỳ đâu trong Loopky, và bạn sẽ ngừng theo dõi họ cùng các bộ thẻ của họ. Họ sẽ không được thông báo. Việc này cũng tắt tiếng họ trên pubky.app.</string>
     <string name="block_done">Đã chặn</string>
-    <string name="unblock_done">Đã bỏ chặn</string>
     <string name="unblock_failed">Không thể bỏ chặn. Hãy thử lại.</string>
-    <string name="friend_profile_blocked_title">Bạn đã chặn người này</string>
-    <string name="friend_profile_blocked_body">Bộ thẻ và hồ sơ của họ bị ẩn với bạn trong Loopky. Bỏ chặn để xem lại.</string>
-    <string name="settings_blocked_users">Người dùng bị chặn</string>
-    <string name="blocked_users_caption">Những người bạn đã chặn trong Loopky hoặc tắt tiếng trên pubky.app. Bộ thẻ và hồ sơ của họ bị ẩn với bạn.</string>
-    <string name="blocked_users_loading">Đang tải người dùng bị chặn…</string>
-    <string name="blocked_users_empty">Bạn chưa chặn ai.</string>
+    <string name="blocked_account_title">Bạn đã chặn tài khoản này</string>
+    <string name="blocked_account_body">Hồ sơ và bộ thẻ của tài khoản này bị ẩn. Để xem lại, hãy bỏ chặn trong Cài đặt → Tài khoản bị chặn.</string>
+    <string name="settings_blocked_users">Tài khoản bị chặn</string>
+    <string name="blocked_users_caption">Những tài khoản bạn đã chặn trong Loopky hoặc tắt tiếng trên pubky.app. Bộ thẻ và hồ sơ của họ bị ẩn với bạn.</string>
+    <string name="blocked_users_loading">Đang tải tài khoản bị chặn…</string>
+    <string name="blocked_users_empty">Bạn chưa chặn tài khoản nào.</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">Đang theo dõi</string>
