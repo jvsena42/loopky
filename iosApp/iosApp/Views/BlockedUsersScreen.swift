@@ -79,6 +79,7 @@ struct BlockedUsersScreen: View {
                 .disabled(isUnblocking)
                 .accessibilityIdentifier("blocked_unblock_\(index)")
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("blocked_row_\(index)")
     }
 
