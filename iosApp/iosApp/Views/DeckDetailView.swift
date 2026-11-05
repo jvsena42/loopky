@@ -4,7 +4,6 @@ enum DeckDetailViewState {
     case loading
     case content(DeckDetailContent)
     case error(String)
-    /// The deck's author is blocked: nothing of the deck is drawn (#577).
     case blocked
 }
 
@@ -102,7 +101,6 @@ struct DeckDetailView: View {
                 .contentPane(PaneWidth.reading)
             case .blocked:
                 VStack(spacing: 12) {
-                    // Back only: there is nothing here to share or edit.
                     HStack {
                         Button(action: onBack) { circleIcon(systemName: "chevron.left") }
                         Spacer()
