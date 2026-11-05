@@ -8,12 +8,12 @@
 # Bases by digest, like mcp/Dockerfile: Dependabot moves both lines together, and xcaddy builds
 # the builder image's own CADDY_VERSION, so the binary always matches the runtime's version. The
 # module is pinned to a commit because its only tag predates the syntax the Caddyfile uses.
-FROM --platform=linux/amd64 caddy:2.11.7-builder@sha256:d842facfd63b960922e57444ff76fd8f0793a66dfdcf481af8026e1f4e6a39b4 AS builder
+FROM --platform=linux/amd64 caddy:2.11.7-builder@sha256:c4cd20eaa0b69112fd5d4f721ffc9671687e1d5d0b155c8620cf7546dbef94c0 AS builder
 
 RUN xcaddy build --with github.com/mholt/caddy-ratelimit@5625512f24f6f59d6f64fb3aafe5eecff0b286db
 
 FROM scratch AS export
 COPY --from=builder /usr/bin/caddy /caddy
 
-FROM --platform=linux/amd64 caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af AS runtime
+FROM --platform=linux/amd64 caddy:2.11.7@sha256:36c24ad91a7ff7bc4c87fe22bfa8df3c4b18da0773d73fc12ee2c52b98c0bb7e AS runtime
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
