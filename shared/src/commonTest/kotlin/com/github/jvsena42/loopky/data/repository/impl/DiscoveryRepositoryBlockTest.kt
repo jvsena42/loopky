@@ -78,7 +78,7 @@ class DiscoveryRepositoryBlockTest {
         PubkyUri("pubky://$author/pub/loopky/decks/$deckId/manifest.json")
 
     @Test
-    fun `a block is pubky app's mute record, timestamped in microseconds`() = runTest {
+    fun `a block is pubky app's mute record timestamped in microseconds`() = runTest {
         repo.blockUser("trollpk").getOrThrow()
 
         val body = pubky.store.getValue(muteUrl("trollpk"))

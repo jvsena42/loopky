@@ -46,7 +46,7 @@ class BlockedUsersViewModelTest {
     }
 
     @Test
-    fun `an empty list is empty, not loading`() = runTest {
+    fun `an empty list is empty and not loading`() = runTest {
         val vm = BlockedUsersViewModel(discovery)
         advanceUntilIdle()
 

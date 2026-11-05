@@ -61,7 +61,7 @@ class DeckDetailBlockedTest {
     }
 
     @Test
-    fun `a blocked author's deck is shown as blocked, not as the deck`() = runTest(mainDispatcher) {
+    fun `a blocked author's deck is shown as blocked and not as the deck`() = runTest(mainDispatcher) {
         seed()
         discoveryRepo.blocks.add("trollpk")
 
