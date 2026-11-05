@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,7 +33,9 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 fun BlockedAccountNotice(modifier: Modifier = Modifier) {
     val colors = LoopkyTheme.colors
     Column(
+        // Merged so the caller's test tag surfaces and TalkBack reads the notice as one unit.
         modifier = modifier
+            .semantics(mergeDescendants = true) {}
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(colors.surfaceCard)
