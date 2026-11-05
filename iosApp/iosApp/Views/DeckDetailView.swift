@@ -4,6 +4,7 @@ enum DeckDetailViewState {
     case loading
     case content(DeckDetailContent)
     case error(String)
+    case blocked
 }
 
 struct DeckDetailContent {
@@ -93,6 +94,20 @@ struct DeckDetailView: View {
                         .font(.system(size: 14))
                         .foregroundColor(LoopkyColor.foregroundMuted)
                         .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .contentPane(PaneWidth.reading)
+            case .blocked:
+                VStack(spacing: 12) {
+                    HStack {
+                        Button(action: onBack) { circleIcon(systemName: "chevron.left") }
+                        Spacer()
+                    }
+                    Spacer()
+                    BlockedAccountNotice()
+                        .accessibilityIdentifier("deck_detail_blocked")
                     Spacer()
                 }
                 .padding(.horizontal, 20)

@@ -81,6 +81,7 @@ class DeckRepositoryImpl(
      * `viewModelScope` that dies in `onCleared()`. Injectable so tests can pass `backgroundScope`.
      */
     private val scope: CoroutineScope,
+    private val blockedAccounts: BlockedAccounts = BlockedAccounts(pubky, session),
 ) : DeckRepository {
 
     init {
@@ -855,9 +856,13 @@ class DeckRepositoryImpl(
 
     override suspend fun listCached(): CachedDecks? {
         val author = session.current()?.identity?.pubky ?: return null
+        // Only what is already known: this is the instant paint, and a request here would stall it.
+        // A snapshot from before a block is corrected by the next `listFollowed`.
+        val blocked = blockedAccounts.known()
         return runSuspendCatching { deckCache.load(author) }
             .onFailure { Log.e(TAG, "listCached: snapshot unreadable — ${it.message}", it) }
             .getOrNull()
+            ?.let { cached -> cached.copy(followed = cached.followed.filterNot { it.authorPubky in blocked }) }
     }
 
     /**
@@ -1049,6 +1054,19 @@ class DeckRepositoryImpl(
             _changes.tryEmit(Unit)
         }
 
+    override suspend fun unfollowDecksBy(authorPubky: String): Result<Unit> = runSuspendCatching {
+        val theirs = loadSubscriptions().values.filter { it.author_pubky == authorPubky }
+        var firstFailure: Throwable? = null
+        for (sub in theirs) {
+            unfollowDeck(sub.author_pubky, sub.deck_id).onFailure { err ->
+                Log.e(TAG, "unfollowDecksBy: ${sub.deck_id} FAILED — ${err.message}", err)
+                if (firstFailure == null) firstFailure = err
+            }
+        }
+        firstFailure?.let { throw it }
+        Unit
+    }
+
     override suspend fun isFollowingDeck(deckId: String): Boolean =
         loadSubscriptions().containsKey(deckId)
 
@@ -1090,7 +1108,8 @@ class DeckRepositoryImpl(
 
     override suspend fun listFollowed(): List<Deck> {
         val subs = loadSubscriptionsListing()
-        val resolved = resolveSubscriptionsListing(subs.items)
+        val blocked = blockedAccounts.loadOrEmpty()
+        val resolved = resolveSubscriptionsListing(subs.items.filterNot { it.author_pubky in blocked })
         // Both halves have to be clean. An empty result is not an error on this path — the
         // subscription listing answers `[]` for "follows nothing" and for "could not read" alike —
         // so without this a flaky launch writes `followed = []` over a real snapshot, and every
@@ -1103,7 +1122,10 @@ class DeckRepositoryImpl(
         // The signed-in user's own answer comes from the session cache, which also holds a follow
         // made a moment ago — reading their homeserver here would sometimes be a step behind.
         if (ownerPubky == session.current()?.identity?.pubky) return listFollowed()
-        return resolveSubscriptionsListing(readSubscriptionsListing(ownerPubky).items).items
+        val blocked = blockedAccounts.loadOrEmpty()
+        return resolveSubscriptionsListing(
+            readSubscriptionsListing(ownerPubky).items.filterNot { it.author_pubky in blocked },
+        ).items
     }
 
     /**

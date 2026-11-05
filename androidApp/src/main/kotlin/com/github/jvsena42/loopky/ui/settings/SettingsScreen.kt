@@ -111,6 +111,7 @@ fun SettingsRoute(
     onBackUpNow: () -> Unit = {},
     /** Which row to open and focus on arrival — see [Routes.SETTINGS_FOCUS_UNSPLASH]. */
     focus: String? = null,
+    onOpenBlockedUsers: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val appVersion = rememberAppVersion()
@@ -144,6 +145,7 @@ fun SettingsRoute(
         onCopyPubkyClick = viewModel::onCopyPubkyClick,
         onCopyHomeserverClick = viewModel::onCopyHomeserverClick,
         onShareOnPubkyChange = viewModel::onShareOnPubkyChange,
+        onBlockedUsersClick = onOpenBlockedUsers,
         onThemeModeChange = viewModel::onThemeModeChange,
         onNewCardsGoalChange = viewModel::onNewCardsGoalChange,
         onIntervalChange = viewModel::onIntervalChange,
@@ -172,6 +174,7 @@ private fun SettingsScreen(
     onCopyPubkyClick: () -> Unit,
     onCopyHomeserverClick: () -> Unit,
     onShareOnPubkyChange: (Boolean) -> Unit,
+    onBlockedUsersClick: () -> Unit,
     onThemeModeChange: (AppTheme) -> Unit,
     onNewCardsGoalChange: (Int) -> Unit,
     onIntervalChange: (SrsGrade, Int) -> Unit,
@@ -359,6 +362,16 @@ private fun SettingsScreen(
                         onCheckedChange = onShareOnPubkyChange,
                         testTag = "settings_share_on_pubky",
                     )
+                    // A block is a record under the signed-in account, so there is no list
+                    // without one.
+                    if (state.pubky.isNotBlank()) {
+                        SettingsDivider()
+                        SettingsNavRow(
+                            label = stringResource(R.string.settings_blocked_users),
+                            onClick = onBlockedUsersClick,
+                            modifier = Modifier.testTag("settings_blocked_users"),
+                        )
+                    }
                 }
 
                 // --- Appearance section ---
@@ -848,7 +861,7 @@ private fun SettingsValueRow(
 
 /** Transparent, so the section's own rounded background shows through every row in it. */
 @Composable
-private fun settingsRowColors(): ListItemColors = ListItemDefaults.colors(
+internal fun settingsRowColors(): ListItemColors = ListItemDefaults.colors(
     containerColor = Color.Transparent,
 )
 
@@ -1098,6 +1111,7 @@ private fun SettingsScreenPreview() {
             onCopyPubkyClick = {},
             onCopyHomeserverClick = {},
             onShareOnPubkyChange = {},
+            onBlockedUsersClick = {},
             onThemeModeChange = {},
             onNewCardsGoalChange = {},
             onIntervalChange = { _, _ -> },

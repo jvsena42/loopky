@@ -95,6 +95,9 @@ object Routes {
     /** One side of someone's follow graph. `source` is a [FollowSource] name, lowercased. */
     const val FOLLOW_LIST = "follows/{pubky}/{source}"
 
+    /** The accounts the signed-in user has blocked, reached from Settings (#577). */
+    const val BLOCKED_USERS = "settings/blocked"
+
     const val RECAP = "recap/{year}"
 
     /** [Routes.SETTINGS]'s `focus` value for the Unsplash access key row. */

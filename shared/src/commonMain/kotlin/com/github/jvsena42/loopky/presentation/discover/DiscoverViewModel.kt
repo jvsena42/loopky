@@ -82,6 +82,16 @@ class DiscoverViewModel(
 
     init {
         load()
+        // Discover stays composed under a profile the reader blocks from, so it drops that
+        // person here rather than waiting for a refresh to stop showing them (#577).
+        viewModelScope.launch {
+            discoveryRepository.blockChanges.collect { change ->
+                if (!change.isBlocked) return@collect
+                feed = feed.filterNot { it.authorPubky == change.pubky }
+                browsedDecks = browsedDecks.filterNot { it.authorPubky == change.pubky }
+                _state.update { it.withoutAuthor(change.pubky) }
+            }
+        }
     }
 
     fun onRefresh() = load(isRefresh = true)
@@ -573,6 +583,12 @@ private fun DiscoverUiState.withResolvedAuthors(authors: Map<String, PubkyIdenti
         following = following.copy(items = following.items.map { it.resolved() }),
     )
 }
+
+private fun DiscoverUiState.withoutAuthor(pubky: String): DiscoverUiState = copy(
+    people = people.copy(items = people.items.filterNot { it.identity.pubky == pubky }),
+    browse = browse.copy(items = browse.items.filterNot { it.authorPubky == pubky }),
+    following = following.copy(items = following.items.filterNot { it.authorPubky == pubky }),
+)
 
 private fun MutableStateFlow<DiscoverUiState>.updatePerson(
     pubky: String,

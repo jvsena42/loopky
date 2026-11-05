@@ -5,6 +5,8 @@ struct FriendProfileView: View {
     var state: FriendProfileViewState = FriendProfileViewState()
     var onBack: () -> Void = {}
     var onToggleFollow: () -> Void = {}
+    var onBlockClick: () -> Void = {}
+    var onBlockConfirmation: (Bool) -> Void = { _ in }
     var onCopyPubky: () -> Void = {}
     var onShare: () -> Void = {}
     var onOpenOnPubkyApp: () -> Void = {}
@@ -21,15 +23,15 @@ struct FriendProfileView: View {
                 toolbar
                 if state.isLoading {
                     ProgressView().padding(.top, 60)
+                } else if state.isBlocked {
+                    // Not even the name: a blocked account is not shown anywhere (#577).
+                    BlockedAccountNotice()
+                        .accessibilityIdentifier("friend_profile_blocked")
                 } else {
                     hero
                     stats
                     actionRow
-                    if let errorMessage = state.errorMessage {
-                        Text(errorMessage)
-                            .font(.system(size: 13))
-                            .foregroundStyle(LoopkyColor.danger)
-                    }
+                    errorText
                     decksSection
                 }
             }
@@ -51,6 +53,32 @@ struct FriendProfileView: View {
             onSignIn: { onDismissSignInPrompt(); onSignIn() },
             onDismiss: onDismissSignInPrompt
         )
+        // An alert, not a confirmationDialog: the dialog's cancel can fail to render, and the safe
+        // option has to be visible. The title's name is fixed while it is up, so a snapshot is fine.
+        .alert(
+            Text(String(format: NSLocalizedString("block_confirm_title", comment: ""), state.label)),
+            isPresented: Binding(
+                get: { state.isConfirmingBlock },
+                set: { if !$0 { onBlockConfirmation(false) } }
+            )
+        ) {
+            Button("block_action", role: .destructive) { onBlockConfirmation(true) }
+                .accessibilityIdentifier("block_confirm")
+            Button("block_cancel", role: .cancel) { onBlockConfirmation(false) }
+                .accessibilityIdentifier("block_cancel")
+        } message: {
+            Text("block_confirm_body")
+        }
+    }
+
+    @ViewBuilder
+    private var errorText: some View {
+        if let errorMessage = state.errorMessage {
+            Text(errorMessage)
+                .font(.system(size: 13))
+                .foregroundStyle(LoopkyColor.danger)
+                .accessibilityIdentifier("friend_profile_error")
+        }
     }
 
     private var toolbar: some View {
@@ -60,10 +88,30 @@ struct FriendProfileView: View {
             }
             .accessibilityLabel(Text("friend_profile_back_content_description"))
             Spacer()
-            Button(action: onShare) {
-                Image(systemName: "square.and.arrow.up").foregroundStyle(LoopkyColor.accentPrimary)
+            // Nothing to share or act on for a blocked account.
+            if !state.isBlocked { trailingActions }
+        }
+    }
+
+    @ViewBuilder
+    private var trailingActions: some View {
+        Button(action: onShare) {
+            Image(systemName: "square.and.arrow.up").foregroundStyle(LoopkyColor.accentPrimary)
+        }
+        .accessibilityLabel(Text("friend_profile_share"))
+        // A block is a record under the reader's own pubky: no account, nowhere to write it.
+        if state.isSignedIn && !state.isSelf && !state.isLoading {
+            Menu {
+                Button(role: .destructive, action: onBlockClick) {
+                    Label("block_action", systemImage: "nosign")
+                }
+                .disabled(state.isProcessingBlock)
+                .accessibilityIdentifier("friend_profile_block")
+            } label: {
+                Image(systemName: "ellipsis.circle").foregroundStyle(LoopkyColor.accentPrimary)
             }
-            .accessibilityLabel(Text("friend_profile_share"))
+            .accessibilityLabel(Text("friend_profile_more"))
+            .accessibilityIdentifier("friend_profile_more")
         }
     }
 

@@ -148,6 +148,8 @@ struct DeckDetailScreen: View {
             ))
         case let error as DeckDetailUiStateError:
             return .error(ErrorCopy.message(for: error.reason))
+        case is DeckDetailUiStateBlocked:
+            return .blocked
         default:
             return .loading
         }

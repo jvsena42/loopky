@@ -64,6 +64,7 @@ import com.github.jvsena42.loopky.presentation.decks.DeckDetailEffect
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailUiState
 import com.github.jvsena42.loopky.presentation.decks.DeckDetailViewModel
 import com.github.jvsena42.loopky.ui.components.AuthorRow
+import com.github.jvsena42.loopky.ui.components.BlockedAccountNotice
 import com.github.jvsena42.loopky.ui.components.CardPreviewRow
 import com.github.jvsena42.loopky.ui.components.ExpandableLinkedText
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
@@ -228,6 +229,32 @@ fun DeckDetailScreen(
                     .background(colors.surfacePrimary),
             ) {
                 LoopkyLoadingScreen(message = stringResource(R.string.deck_detail_loading))
+            }
+        }
+
+        DeckDetailUiState.Blocked -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.surfacePrimary)
+                    .windowInsetsPadding(WindowInsets.screenEdges),
+            ) {
+                HeaderCircleButton(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = stringResource(R.string.deck_detail_back),
+                    iconSize = 24.dp,
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .testTag("deck_detail_back"),
+                )
+                BlockedAccountNotice(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .contentPane(PaneWidth.Focused)
+                        .padding(20.dp)
+                        .testTag("deck_detail_blocked"),
+                )
             }
         }
 

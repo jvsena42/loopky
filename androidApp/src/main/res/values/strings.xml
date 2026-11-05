@@ -413,6 +413,20 @@
     <string name="friend_profile_copy_pubky">Copy pubky</string>
     <string name="friend_profile_no_decks">No decks yet.</string>
     <string name="friend_profile_share">Share profile</string>
+    <string name="friend_profile_more">More options</string>
+    <string name="block_action">Block</string>
+    <string name="unblock_action">Unblock</string>
+    <string name="block_cancel">Cancel</string>
+    <string name="block_confirm_title">Block %1$s?</string>
+    <string name="block_confirm_body">You won\'t see their decks or profile anywhere in Loopky, and you\'ll stop following them and their decks. They won\'t be told. This also mutes them on pubky.app.</string>
+    <string name="block_done">Blocked</string>
+    <string name="unblock_failed">Couldn\'t unblock. Try again.</string>
+    <string name="blocked_account_title">You blocked this account</string>
+    <string name="blocked_account_body">Its profile and decks are hidden. To see them again, unblock it in Settings → Blocked accounts.</string>
+    <string name="settings_blocked_users">Blocked accounts</string>
+    <string name="blocked_users_caption">Accounts you block in Loopky or mute on pubky.app. Their decks and profiles are hidden from you.</string>
+    <string name="blocked_users_loading">Loading blocked accounts…</string>
+    <string name="blocked_users_empty">You haven\'t blocked any accounts.</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">Following</string>

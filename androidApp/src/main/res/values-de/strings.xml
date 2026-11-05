@@ -393,6 +393,20 @@
     <string name="friend_profile_copy_pubky">pubky kopieren</string>
     <string name="friend_profile_no_decks">Noch keine Stapel.</string>
     <string name="friend_profile_share">Profil teilen</string>
+    <string name="friend_profile_more">Weitere Optionen</string>
+    <string name="block_action">Blockieren</string>
+    <string name="unblock_action">Blockierung aufheben</string>
+    <string name="block_cancel">Abbrechen</string>
+    <string name="block_confirm_title">%1$s blockieren?</string>
+    <string name="block_confirm_body">Du siehst die Stapel und das Profil dieser Person nirgendwo mehr in Loopky und folgst ihr und ihren Stapeln nicht mehr. Sie wird nicht benachrichtigt. Auf pubky.app wird sie damit auch stummgeschaltet.</string>
+    <string name="block_done">Blockiert</string>
+    <string name="unblock_failed">Blockierung konnte nicht aufgehoben werden. Versuch es noch einmal.</string>
+    <string name="blocked_account_title">Du hast dieses Konto blockiert</string>
+    <string name="blocked_account_body">Sein Profil und seine Stapel sind ausgeblendet. Um sie wieder zu sehen, heb die Blockierung unter Einstellungen → Blockierte Konten auf.</string>
+    <string name="settings_blocked_users">Blockierte Konten</string>
+    <string name="blocked_users_caption">Konten, die du in Loopky blockiert oder auf pubky.app stummgeschaltet hast. Ihre Stapel und Profile sind für dich ausgeblendet.</string>
+    <string name="blocked_users_loading">Blockierte Konten werden geladen…</string>
+    <string name="blocked_users_empty">Du hast keine Konten blockiert.</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">Folge ich</string>

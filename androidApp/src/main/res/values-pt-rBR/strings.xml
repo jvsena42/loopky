@@ -393,6 +393,20 @@
     <string name="friend_profile_copy_pubky">Copiar pubky</string>
     <string name="friend_profile_no_decks">Nenhum baralho ainda.</string>
     <string name="friend_profile_share">Compartilhar perfil</string>
+    <string name="friend_profile_more">Mais opções</string>
+    <string name="block_action">Bloquear</string>
+    <string name="unblock_action">Desbloquear</string>
+    <string name="block_cancel">Cancelar</string>
+    <string name="block_confirm_title">Bloquear %1$s?</string>
+    <string name="block_confirm_body">Você não verá os baralhos nem o perfil dessa pessoa em nenhum lugar do Loopky e deixará de seguir ela e os baralhos dela. Ela não será avisada. Isso também a silencia no pubky.app.</string>
+    <string name="block_done">Bloqueado</string>
+    <string name="unblock_failed">Não foi possível desbloquear. Tente de novo.</string>
+    <string name="blocked_account_title">Você bloqueou esta conta</string>
+    <string name="blocked_account_body">O perfil e os baralhos dela estão ocultos. Para vê-los de novo, desbloqueie em Configurações → Contas bloqueadas.</string>
+    <string name="settings_blocked_users">Contas bloqueadas</string>
+    <string name="blocked_users_caption">Contas que você bloqueou no Loopky ou silenciou no pubky.app. Os baralhos e perfis delas ficam ocultos para você.</string>
+    <string name="blocked_users_loading">Carregando contas bloqueadas…</string>
+    <string name="blocked_users_empty">Você não bloqueou nenhuma conta.</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">Seguindo</string>

@@ -412,6 +412,20 @@
     <string name="friend_profile_copy_pubky">複製 pubky</string>
     <string name="friend_profile_no_decks">還沒有牌組。</string>
     <string name="friend_profile_share">分享個人檔案</string>
+    <string name="friend_profile_more">更多選項</string>
+    <string name="block_action">封鎖</string>
+    <string name="unblock_action">解除封鎖</string>
+    <string name="block_cancel">取消</string>
+    <string name="block_confirm_title">要封鎖 %1$s 嗎？</string>
+    <string name="block_confirm_body">你將不會在 Loopky 的任何地方看到此人的牌組或個人檔案，並會取消追蹤此人及其牌組。對方不會收到通知。這也會在 pubky.app 上將其設為靜音。</string>
+    <string name="block_done">已封鎖</string>
+    <string name="unblock_failed">無法解除封鎖，請再試一次。</string>
+    <string name="blocked_account_title">你已封鎖此帳號</string>
+    <string name="blocked_account_body">此帳號的個人檔案和牌組已隱藏。如需再次查看，請在設定 → 已封鎖的帳號中解除封鎖。</string>
+    <string name="settings_blocked_users">已封鎖的帳號</string>
+    <string name="blocked_users_caption">你在 Loopky 中封鎖或在 pubky.app 上設為靜音的帳號。他們的牌組和個人檔案會對你隱藏。</string>
+    <string name="blocked_users_loading">正在載入已封鎖的帳號…</string>
+    <string name="blocked_users_empty">你還沒有封鎖任何帳號。</string>
 
     <!-- Follow lists -->
     <string name="follow_list_following_title">追蹤中</string>

@@ -9,6 +9,7 @@ import Shared
 struct SettingsScreen: View {
     var onSignedOut: () -> Void = {}
     var onBackUpNow: () -> Void = {}
+    var onOpenBlockedUsers: () -> Void = {}
 
     @Environment(\.openURL) private var openURL
 
@@ -44,7 +45,8 @@ struct SettingsScreen: View {
             onBackUpNow: onBackUpNow,
             onOpenAppSettings: {
                 if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-            }
+            },
+            onOpenBlockedUsers: onOpenBlockedUsers
         )
         .overlay(alignment: .bottom) {
             if let toast {

@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.AccountStamp
 import com.github.jvsena42.loopky.data.pubky.FollowDto
+import com.github.jvsena42.loopky.data.pubky.MuteDto
 import com.github.jvsena42.loopky.data.pubky.PostDto
 import com.github.jvsena42.loopky.data.pubky.PostEmbedDto
 import com.github.jvsena42.loopky.data.pubky.PostIds
@@ -19,6 +20,7 @@ import com.github.jvsena42.loopky.data.pubky.isNotFound
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
 import com.github.jvsena42.loopky.data.pubky.putWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.requireSession
+import com.github.jvsena42.loopky.data.repository.BlockChange
 import com.github.jvsena42.loopky.data.repository.DeckPage
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
@@ -40,6 +42,9 @@ import com.github.jvsena42.loopky.util.epochMillis
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -70,6 +75,7 @@ class DiscoveryRepositoryImpl(
     private val identityRepository: IdentityRepository,
     private val nexus: NexusClient,
     private val preferences: AppPreferences,
+    private val blockedAccounts: BlockedAccounts = BlockedAccounts(pubky, session),
 ) : DiscoveryRepository {
 
     /** Followee pubkys for the session, or null until first loaded from the homeserver. */
@@ -123,6 +129,54 @@ class DiscoveryRepositoryImpl(
         cacheLock.withLock { cache?.remove(pubky) }
         Unit
     }
+
+    private val _blockChanges = MutableSharedFlow<BlockChange>(extraBufferCapacity = 8)
+    override val blockChanges: SharedFlow<BlockChange> = _blockChanges.asSharedFlow()
+
+    override suspend fun blocked(): Set<String> = blockedAccounts.load()
+
+    override suspend fun isBlocked(pubky: String): Boolean = pubky in blocked()
+
+    override suspend fun blockUser(pubky: String): Result<Unit> = runSuspendCatching {
+        val owner = session.requireSession().identity.pubky
+        require(pubky != owner) { "You cannot block yourself" }
+        val body = loopkyJson.encodeToString(MuteDto(created_at = epochMillis() * MICROS_PER_MILLI))
+        this.pubky.putWithSessionRetry(PubkyPaths.mute(owner, pubky), body, session, revalidator)
+            .getOrThrow()
+        blockedAccounts.add(pubky)
+        _blockChanges.tryEmit(BlockChange(pubky, isBlocked = true))
+        dropFollowsOf(pubky)
+        Unit
+    }.onFailure { Log.w(TAG, "blockUser: FAILED — ${it.message}", it) }
+
+    override suspend fun unblockUser(pubky: String): Result<Unit> = runSuspendCatching {
+        val owner = session.requireSession().identity.pubky
+        this.pubky.deleteWithSessionRetry(PubkyPaths.mute(owner, pubky), session, revalidator)
+            .getOrThrow()
+        blockedAccounts.remove(pubky)
+        _blockChanges.tryEmit(BlockChange(pubky, isBlocked = false))
+        Unit
+    }.onFailure { Log.w(TAG, "unblockUser: FAILED — ${it.message}", it) }
+
+    override suspend fun blockedProfiles(): List<PubkyIdentity> =
+        blocked().toList().sorted().mapConcurrently { pubky ->
+            identityRepository.fetchProfile(pubky).getOrNull()
+                ?: PubkyIdentity(pubky, displayName = null, avatarUrl = null, bio = null)
+        }
+
+    /**
+     * Unfollow [pubky] and their decks after a block. Each step on its own: the block is already
+     * written, and one failed delete must not keep the rest of their decks on Home.
+     */
+    private suspend fun dropFollowsOf(pubky: String) {
+        if (runSuspendCatching { isFollowing(pubky) }.getOrDefault(false)) {
+            unfollowUser(pubky).onFailure { Log.w(TAG, "blockUser: unfollow FAILED — ${it.message}") }
+        }
+        deckRepository.unfollowDecksBy(pubky)
+            .onFailure { Log.w(TAG, "blockUser: unfollowDecksBy FAILED — ${it.message}") }
+    }
+
+    private suspend fun blockedOrEmpty(): Set<String> = blockedAccounts.loadOrEmpty()
 
     override suspend fun announceDeck(announcement: DeckAnnouncement): Result<PubkyUri> =
         runSuspendCatching {
@@ -252,8 +306,9 @@ class DiscoveryRepositoryImpl(
         candidates: List<String>,
         exclude: String,
     ): List<PubkyIdentity> {
+        val blocked = blockedOrEmpty()
         val considered = candidates
-            .filterNot { it == exclude }
+            .filterNot { it == exclude || it in blocked }
             .take(DiscoveryRepository.MAX_FOLLOW_CANDIDATES)
         // keepUnresolved: the self-tag already proved them a Loopky user, so a profile that fails
         // to resolve downgrades the entry to a bare pubky instead of dropping a real account out
@@ -268,7 +323,8 @@ class DiscoveryRepositoryImpl(
     override suspend fun decksFromFollowing(): List<Deck> {
         val me = session.current()?.identity?.pubky
         // Following yourself is reachable, and it would put your own decks on a Discover strip.
-        val followees = following().filterNot { it == me }
+        val blocked = blockedOrEmpty()
+        val followees = following().filterNot { it == me || it in blocked }
         val considered = followees.take(DiscoveryRepository.MAX_FOLLOWED_DECK_AUTHORS)
         // Said out loud rather than trimmed quietly: a strip that is short because the tail was
         // cut looks exactly like a strip that is short because nobody published.
@@ -307,7 +363,9 @@ class DiscoveryRepositoryImpl(
         val own = runSuspendCatching { deckRepository.listOwned() }.getOrElse { emptyList() }
         // Both sides folded, so a deck still carrying a pre-#479 `café` answers a browse for `cafe`.
         val label = TagLabels.fold(tag.value)
+        val blocked = blockedOrEmpty()
         return (following + own)
+            .filterNot { it.authorPubky in blocked }
             .distinctBy { it.id }
             .filter { deck -> deck.tags.any { TagLabels.fold(it.value) == label } }
             .sortedByDescending { it.updatedAt }
@@ -326,6 +384,9 @@ class DiscoveryRepositoryImpl(
         var skip = cursor
         var requests = 0
         var exhausted = false
+        // Dropped before the page is counted, so a blocked author's decks are refilled like any
+        // other rejected entry rather than leaving the page short.
+        val blocked = blockedOrEmpty()
 
         while (kept.size < limit && requests < MAX_REFILL_REQUESTS) {
             requests++
@@ -340,6 +401,9 @@ class DiscoveryRepositoryImpl(
                 break
             }
             subjects
+                .filterNot { subject ->
+                    PubkyUris.parseDeckManifest(subject.uri.value)?.authorPubky in blocked
+                }
                 .mapConcurrently { subject -> verifiedDeck(subject) }
                 .filterNotNull()
                 // After verification, off the manifest: the indexer's tag list is cut at five.
@@ -399,7 +463,8 @@ class DiscoveryRepositoryImpl(
 
         // Names first: someone who typed letters meant a name, and a pubky-prefix hit on the same
         // letters is the weaker reading of the same input.
-        val candidates = (byName + byId).distinct().filterNot { it == me }.take(limit)
+        val blocked = blockedOrEmpty()
+        val candidates = (byName + byId).distinct().filterNot { it == me || it in blocked }.take(limit)
         val kept = candidates.mapConcurrently { verifiedUser(it, keepUnresolved = true) }.filterNotNull()
         Log.d(TAG, "searchPeople('$q'): ${kept.size} Loopky of ${candidates.size} indexed")
         return kept
@@ -429,7 +494,9 @@ class DiscoveryRepositoryImpl(
         val label = TagLabels.fold(needle)
         val scored = (sample.map { it to it.relevanceTo(needle, label) }.filter { it.second > NO_MATCH } +
             tagged.map { it to it.relevanceTo(needle, label) })
+        val blocked = blockedOrEmpty()
         val matches = scored
+            .filterNot { (deck, _) -> deck.authorPubky in blocked }
             .distinctBy { (deck, _) -> deck.authorPubky + "/" + deck.id }
             .sortedByDescending { it.second }
             .map { it.first }
@@ -465,7 +532,8 @@ class DiscoveryRepositoryImpl(
 
     override suspend fun loopkyUsers(limit: Int): List<PubkyIdentity> {
         val me = session.current()?.identity?.pubky
-        val candidates = directoryCandidates(limit).filterNot { it == me }.take(limit)
+        val blocked = blockedOrEmpty()
+        val candidates = directoryCandidates(limit).filterNot { it == me || it in blocked }.take(limit)
         // keepUnresolved, like every other caller: the self-tag has already proved this is a real
         // Loopky account, and a missing `pubky.app/profile.json` is a 404 on a record signing up
         // never had to write. Dropping on it emptied the directory of exactly the accounts it exists
@@ -522,6 +590,7 @@ class DiscoveryRepositoryImpl(
         val me = session.current()?.identity?.pubky
         // A failure here must not empty the strip — worst case we suggest someone already followed.
         val followed = runSuspendCatching { following() }.getOrElse { emptyList() }.toSet()
+        val blocked = blockedOrEmpty()
         val roll = candidateRoll(seedDecks)
 
         val kept = mutableListOf<PubkyIdentity>()
@@ -533,7 +602,7 @@ class DiscoveryRepositoryImpl(
             val batch = roll.subList(index, minOf(index + limit - kept.size, roll.size))
             index += batch.size
             batch
-                .filterNot { it.pubky == me || it.pubky in followed }
+                .filterNot { it.pubky == me || it.pubky in followed || it.pubky in blocked }
                 .mapConcurrently { candidate -> resolveCandidate(candidate) }
                 .filterNotNullTo(kept)
         }

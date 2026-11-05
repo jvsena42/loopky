@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.data.repository.SignupRepository
 import com.github.jvsena42.loopky.data.repository.SrsRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.impl.AccountEraser
+import com.github.jvsena42.loopky.data.repository.impl.BlockedAccounts
 import com.github.jvsena42.loopky.data.repository.impl.CardRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.DeckRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.DiscoveryRepositoryImpl
@@ -60,6 +61,7 @@ import com.github.jvsena42.loopky.presentation.recap.RecapViewModel
 import com.github.jvsena42.loopky.presentation.request.DeckRequestViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
+import com.github.jvsena42.loopky.presentation.settings.BlockedUsersViewModel
 import com.github.jvsena42.loopky.presentation.settings.SettingsViewModel
 import com.github.jvsena42.loopky.presentation.signup.InviteCodeViewModel
 import com.github.jvsena42.loopky.presentation.signup.LightningVerificationViewModel
@@ -142,8 +144,14 @@ fun sharedModule(): Module = module {
     single<SessionRevalidator> { SessionRevalidatorImpl(get(), get(), get(), get()) }
 
     single<CardRepository> { CardRepositoryImpl(get(), get(), get()) }
+    // One instance for both repositories, or a block made in one is invisible to the other.
+    single { BlockedAccounts(pubky = get(), session = get()) }
     single<DeckRepository> {
-        DeckRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get(), get(), scope = get(REPOSITORY_SCOPE))
+        DeckRepositoryImpl(
+            get(), get(), get(), get(), get(), get(), get(), get(), get(),
+            scope = get(REPOSITORY_SCOPE),
+            blockedAccounts = get(),
+        )
     }
     single<MediaRepository> { MediaRepositoryImpl(get(), get(), get()) }
     single<ImportRepository> { ImportRepositoryImpl() }
@@ -177,7 +185,7 @@ fun sharedModule(): Module = module {
         )
     }
     single<DiscoveryRepository> {
-        DiscoveryRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get())
+        DiscoveryRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get(), blockedAccounts = get())
     }
 
     single<TagRepository> {
@@ -233,6 +241,7 @@ fun sharedModule(): Module = module {
         )
     }
     viewModel { DeckRequestViewModel(discoveryRepository = get()) }
+    viewModel { BlockedUsersViewModel(discoveryRepository = get()) }
     viewModel { DecksLibraryViewModel(deckRepository = get(), identityRepository = get()) }
     viewModel { params ->
         DeckDetailViewModel(

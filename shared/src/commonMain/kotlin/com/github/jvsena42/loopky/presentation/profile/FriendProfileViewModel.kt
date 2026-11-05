@@ -39,6 +39,9 @@ import kotlinx.coroutines.launch
  * reader to care about a distinction the author caption already makes. What tells them apart is
  * the name under each tile, which is why it is a name rather than a tag.
  */
+// Over the function ceiling since #577 added Block: follow, block, share and four ways off the
+// screen are each one tap on it, and splitting them would split the one state they share.
+@Suppress("TooManyFunctions")
 class FriendProfileViewModel(
     private val targetPubky: String,
     private val identityRepository: IdentityRepository,
@@ -58,6 +61,7 @@ class FriendProfileViewModel(
 
     private var loadJob: Job? = null
     private var followJob: Job? = null
+    private var blockJob: Job? = null
     private var followCountsJob: Job? = null
 
     init {
@@ -76,6 +80,16 @@ class FriendProfileViewModel(
         loadJob = viewModelScope.launch {
             _state.update {
                 if (silent) it.copy(isRefreshing = true) else it.copy(isLoading = true)
+            }
+
+            // Checked before anything of theirs is read: a blocked account is not shown at all —
+            // not its name, not its decks — however the screen was reached (#577).
+            val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
+            if (targetPubky in blocked) {
+                _state.update {
+                    it.copy(isLoading = false, isRefreshing = false, isBlocked = true, decks = emptyList())
+                }
+                return@launch
             }
 
             val profile = identityRepository.fetchProfile(targetPubky, forceRefresh).getOrNull()
@@ -109,7 +123,10 @@ class FriendProfileViewModel(
             val identity = profile ?: bareIdentity(targetPubky)
             // Theirs first, then what they follow. A deck they wrote *and* follow would otherwise
             // appear twice; authorship is the more specific claim, so it keeps the entry.
-            val merged = decks + followed.filterNot { deck -> decks.any { it.id == deck.id } }
+            // A deck they follow by someone the reader blocked is still that person's deck (#577).
+            val merged = decks + followed.filterNot { deck ->
+                deck.authorPubky in blocked || decks.any { it.id == deck.id }
+            }
             authors[targetPubky] = identity
             _state.update {
                 it.copy(
@@ -182,7 +199,7 @@ class FriendProfileViewModel(
     }
 
     fun onToggleFollow() {
-        if (followJob?.isActive == true || _state.value.isSelf) return
+        if (followJob?.isActive == true || _state.value.isSelf || _state.value.isBlocked) return
         // A follow is a record under the reader's own pubky, so a guest has nowhere to write it.
         // The button stays live rather than greyed: reaching for it is the moment worth
         // explaining what an account is for.
@@ -211,6 +228,39 @@ class FriendProfileViewModel(
                     // Was emitted into an empty lambda whose comment claimed it was
                     // "surfaced inline below"; nothing rendered it at all.
                     _state.update { it.copy(errorReason = err.toErrorReason()) }
+                }
+        }
+    }
+
+    /**
+     * Raises the block confirmation. Offered only to a signed-in reader — the record lives under
+     * their own pubky — never on their own profile, and never once blocked: unblocking lives in
+     * Settings → Blocked accounts and nowhere else (#577).
+     */
+    fun onBlockClick() {
+        if (blockJob?.isActive == true || !_state.value.canBlock) return
+        _state.update { it.copy(isConfirmingBlock = true) }
+    }
+
+    /**
+     * The answer to the block confirmation; false writes nothing. A block that lands emits
+     * [FriendProfileEffect.Blocked], on which the screen closes — the profile is not to be seen.
+     */
+    fun onBlockConfirmation(confirmed: Boolean) {
+        _state.update { it.copy(isConfirmingBlock = false) }
+        if (!confirmed) return
+        blockJob = viewModelScope.launch {
+            _state.update { it.copy(isProcessingBlock = true, errorReason = null) }
+            discoveryRepository.blockUser(targetPubky)
+                .onSuccess {
+                    _state.update {
+                        it.copy(isBlocked = true, isFollowing = false, isProcessingBlock = false, decks = emptyList())
+                    }
+                    _effects.emit(FriendProfileEffect.Blocked)
+                }
+                .onFailure { err ->
+                    Log.e(TAG, "block: FAILED — ${err.message}", err)
+                    _state.update { it.copy(isProcessingBlock = false, errorReason = err.toErrorReason()) }
                 }
         }
     }
@@ -294,6 +344,13 @@ data class FriendProfileUiState(
     val isFollowing: Boolean = false,
     val isProcessingFollow: Boolean = false,
     /**
+     * The reader blocked this person. Nothing of theirs is loaded or shown — not even the name —
+     * and there is no Unblock here: that lives in Settings → Blocked accounts (#577).
+     */
+    val isBlocked: Boolean = false,
+    val isConfirmingBlock: Boolean = false,
+    val isProcessingBlock: Boolean = false,
+    /**
      * Whether anyone is signed in. A profile and its decks are public records, so this screen
      * reads in full without an account; only Follow needs one.
      */
@@ -315,7 +372,10 @@ data class FriendProfileUiState(
     /** Null until the follow graph resolves, and after it fails — never a stand-in zero. */
     val followingCount: Int? = null,
     val followerCount: Int? = null,
-)
+) {
+    /** Block is offered to a signed-in reader, on someone else's profile, not yet blocked. */
+    val canBlock: Boolean get() = isSignedIn && !isSelf && !isBlocked
+}
 
 data class FriendDeck(
     val id: String,
@@ -349,4 +409,7 @@ sealed interface FriendProfileEffect {
 
     /** [identity] names the person in the shared message; [uri] is what opens Loopky on them. */
     data class ShareProfile(val identity: PubkyIdentity, val uri: String) : FriendProfileEffect
+
+    /** A block just landed: confirm it and close the profile. */
+    data object Blocked : FriendProfileEffect
 }

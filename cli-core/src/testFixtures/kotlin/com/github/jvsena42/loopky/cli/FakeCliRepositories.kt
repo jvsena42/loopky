@@ -189,6 +189,7 @@ class FakeDeckRepository(
     override suspend fun listByAuthor(authorPubky: String): List<Deck> = no("listByAuthor")
     override suspend fun followDeck(deck: Deck): Result<Unit> = no("followDeck")
     override suspend fun unfollowDeck(authorPubky: String, deckId: String): Result<Unit> = no("unfollowDeck")
+    override suspend fun unfollowDecksBy(authorPubky: String): Result<Unit> = no("unfollowDecksBy")
     override suspend fun isFollowingDeck(deckId: String): Boolean = no("isFollowingDeck")
     override suspend fun rememberFollowForSignIn(authorPubky: String, deckId: String) = no("rememberFollowForSignIn")
 
