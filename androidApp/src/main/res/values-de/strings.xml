@@ -470,6 +470,13 @@
     <string name="settings_delete_account_dialog_body">Deine Stapel, Karten, Bilder und dein Lernfortschritt werden endgültig gelöscht, und dein Profil wird aus Loopky entfernt.</string>
     <string name="settings_delete_account_dialog_irreversible">Das lässt sich nicht rückgängig machen.</string>
     <string name="settings_delete_account_dialog_identity">Deine Pubky-Identität bleibt in Pubky Ring.</string>
+    <string name="settings_delete_account_checking">Prüfe, ob andere Pubky-Apps dieses Konto nutzen …</string>
+    <string name="settings_delete_account_pubky_app_kept">Dein Pubky-Profil, deine Follows und Beiträge bleiben, weil eine andere Pubky-App dieses Konto nutzt.</string>
+    <string name="settings_delete_account_pubky_app_unknown">Dein Pubky-Profil und deine Follows bleiben, weil Loopky nicht prüfen konnte, ob eine andere Pubky-App dieses Konto nutzt.</string>
+    <string name="settings_delete_account_pubky_app_option">Auch mein Pubky-Profil löschen</string>
+    <string name="settings_delete_account_pubky_app_option_detail">Dein Name, deine Bio, deine Follows und Blockierungen. Nur Loopky hat sie geschrieben, aber andere Pubky-Apps zeigen sie auch an.</string>
+    <string name="settings_delete_account_dialog_identity_device">Dein Pubky-Schlüssel wird von diesem Gerät entfernt.</string>
+    <string name="settings_delete_account_dialog_only_key">Loopky hat die einzige Kopie deines Schlüssels, und du hast ihn nicht gesichert. Beim Löschen des Kontos wird er endgültig gelöscht.</string>
     <string name="settings_delete_account_confirm">Konto löschen</string>
     <string name="settings_delete_account_confirm_countdown">Konto löschen (%1$d)</string>
     <string name="settings_delete_account_progress_title">Wird gelöscht</string>

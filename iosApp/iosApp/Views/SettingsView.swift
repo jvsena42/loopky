@@ -17,6 +17,7 @@ struct SettingsView: View {
     var onDeleteAccount: () -> Void = {}
     var onConfirmDeleteAccount: () -> Void = {}
     var onDismissDeleteAccount: () -> Void = {}
+    var onDeletePubkyAppChange: (Bool) -> Void = { _ in }
     var onOpenUrl: (String) -> Void = { _ in }
     var onBackUpNow: () -> Void = {}
     var onOpenAppSettings: () -> Void = {}
@@ -43,14 +44,19 @@ struct SettingsView: View {
         .loopkyScreenBackground()
         .navigationTitle(Text("settings_title"))
         .navigationBarTitleDisplayMode(.inline)
-        .alert(
-            Text("settings_delete_account_dialog_title"),
-            isPresented: Binding(get: { state.isDeleting }, set: { if !$0 { onDismissDeleteAccount() } })
+        .sheet(
+            isPresented: Binding(get: { state.deletion != nil }, set: { if !$0 { onDismissDeleteAccount() } })
         ) {
-            Button("settings_delete_account_confirm", role: .destructive, action: onConfirmDeleteAccount)
-            Button("settings_cancel", role: .cancel, action: onDismissDeleteAccount)
-        } message: {
-            Text("settings_delete_account_dialog_irreversible")
+            if let deletion = state.deletion {
+                DeleteAccountSheet(
+                    phase: deletion,
+                    holdsOwnKey: state.holdsOwnKey,
+                    losesTheOnlyKey: state.deletionLosesTheOnlyKey,
+                    onDeletePubkyAppChange: onDeletePubkyAppChange,
+                    onConfirm: onConfirmDeleteAccount,
+                    onCancel: onDismissDeleteAccount
+                )
+            }
         }
     }
 

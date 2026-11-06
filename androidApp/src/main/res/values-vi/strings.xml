@@ -496,6 +496,13 @@
     <string name="settings_delete_account_dialog_body">Bộ thẻ, thẻ, hình ảnh và tiến độ học của bạn sẽ bị xóa vĩnh viễn, và hồ sơ của bạn sẽ bị gỡ khỏi Loopky.</string>
     <string name="settings_delete_account_dialog_irreversible">Không thể hoàn tác.</string>
     <string name="settings_delete_account_dialog_identity">Danh tính Pubky của bạn vẫn nằm trong Pubky Ring.</string>
+    <string name="settings_delete_account_checking">Đang kiểm tra xem ứng dụng Pubky khác có dùng tài khoản này không…</string>
+    <string name="settings_delete_account_pubky_app_kept">Hồ sơ Pubky, danh sách theo dõi và bài đăng của bạn vẫn được giữ lại, vì một ứng dụng Pubky khác đang dùng tài khoản này.</string>
+    <string name="settings_delete_account_pubky_app_unknown">Hồ sơ Pubky và danh sách theo dõi của bạn vẫn được giữ lại, vì Loopky không kiểm tra được liệu ứng dụng Pubky khác có dùng tài khoản này không.</string>
+    <string name="settings_delete_account_pubky_app_option">Xóa cả hồ sơ Pubky của tôi</string>
+    <string name="settings_delete_account_pubky_app_option_detail">Tên, tiểu sử, danh sách theo dõi và danh sách chặn của bạn. Chỉ Loopky đã ghi chúng, nhưng các ứng dụng Pubky khác cũng hiển thị chúng.</string>
+    <string name="settings_delete_account_dialog_identity_device">Khóa Pubky của bạn sẽ bị xóa khỏi thiết bị này.</string>
+    <string name="settings_delete_account_dialog_only_key">Loopky đang giữ bản sao duy nhất của khóa, và bạn chưa sao lưu nó. Xóa tài khoản sẽ xóa khóa vĩnh viễn.</string>
     <string name="settings_delete_account_confirm">Xóa tài khoản</string>
     <string name="settings_delete_account_confirm_countdown">Xóa tài khoản (%1$d)</string>
     <string name="settings_delete_account_progress_title">Đang xóa</string>

@@ -470,6 +470,13 @@
     <string name="settings_delete_account_dialog_body">Seus baralhos, cartas, imagens e progresso de estudo serão excluídos permanentemente, e seu perfil será removido do Loopky.</string>
     <string name="settings_delete_account_dialog_irreversible">Isso não pode ser desfeito.</string>
     <string name="settings_delete_account_dialog_identity">Sua identidade Pubky continua no Pubky Ring.</string>
+    <string name="settings_delete_account_checking">Verificando se outros apps Pubky usam esta conta…</string>
+    <string name="settings_delete_account_pubky_app_kept">Seu perfil Pubky, quem você segue e suas publicações continuam, porque outro app Pubky usa esta conta.</string>
+    <string name="settings_delete_account_pubky_app_unknown">Seu perfil Pubky e quem você segue continuam, porque o Loopky não conseguiu verificar se outro app Pubky usa esta conta.</string>
+    <string name="settings_delete_account_pubky_app_option">Excluir também meu perfil Pubky</string>
+    <string name="settings_delete_account_pubky_app_option_detail">Seu nome, bio, quem você segue e quem você bloqueou. Só o Loopky gravou esses dados, mas outros apps Pubky também os mostram.</string>
+    <string name="settings_delete_account_dialog_identity_device">Sua chave Pubky será removida deste dispositivo.</string>
+    <string name="settings_delete_account_dialog_only_key">O Loopky tem a única cópia da sua chave, e você não fez backup. Excluir a conta a exclui para sempre.</string>
     <string name="settings_delete_account_confirm">Excluir conta</string>
     <string name="settings_delete_account_confirm_countdown">Excluir conta (%1$d)</string>
     <string name="settings_delete_account_progress_title">Excluindo</string>

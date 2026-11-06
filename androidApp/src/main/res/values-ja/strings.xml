@@ -491,6 +491,13 @@
     <string name="settings_delete_account_dialog_body">デッキ、カード、画像、学習の進捗は完全に削除され、プロフィールは Loopky から削除されます。</string>
     <string name="settings_delete_account_dialog_irreversible">この操作は取り消せません。</string>
     <string name="settings_delete_account_dialog_identity">Pubky の ID は Pubky Ring に残ります。</string>
+    <string name="settings_delete_account_checking">このアカウントをほかの Pubky アプリが使っているか確認しています…</string>
+    <string name="settings_delete_account_pubky_app_kept">ほかの Pubky アプリがこのアカウントを使っているため、Pubky のプロフィール、フォロー、投稿は残ります。</string>
+    <string name="settings_delete_account_pubky_app_unknown">ほかの Pubky アプリがこのアカウントを使っているか Loopky が確認できなかったため、Pubky のプロフィールとフォローは残ります。</string>
+    <string name="settings_delete_account_pubky_app_option">Pubky のプロフィールも削除する</string>
+    <string name="settings_delete_account_pubky_app_option_detail">名前、自己紹介、フォロー、ブロック。書き込んだのは Loopky だけですが、ほかの Pubky アプリにも表示されます。</string>
+    <string name="settings_delete_account_dialog_identity_device">Pubky の鍵はこのデバイスから削除されます。</string>
+    <string name="settings_delete_account_dialog_only_key">鍵は Loopky にしかなく、まだバックアップされていません。アカウントを削除すると完全に削除されます。</string>
     <string name="settings_delete_account_confirm">アカウントを削除</string>
     <string name="settings_delete_account_confirm_countdown">アカウントを削除（%1$d）</string>
     <string name="settings_delete_account_progress_title">削除中</string>

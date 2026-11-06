@@ -480,6 +480,13 @@
     <string name="settings_delete_account_dialog_body">덱, 카드, 이미지, 학습 진행 상황이 영구적으로 삭제되고, 프로필이 Loopky에서 제거돼요.</string>
     <string name="settings_delete_account_dialog_irreversible">되돌릴 수 없어요.</string>
     <string name="settings_delete_account_dialog_identity">내 Pubky 신원은 Pubky Ring에 그대로 남아요.</string>
+    <string name="settings_delete_account_checking">다른 Pubky 앱이 이 계정을 쓰는지 확인하고 있어요…</string>
+    <string name="settings_delete_account_pubky_app_kept">다른 Pubky 앱이 이 계정을 쓰고 있어서 Pubky 프로필, 팔로우, 게시물은 그대로 남아요.</string>
+    <string name="settings_delete_account_pubky_app_unknown">다른 Pubky 앱이 이 계정을 쓰는지 Loopky가 확인하지 못해서 Pubky 프로필과 팔로우는 그대로 남아요.</string>
+    <string name="settings_delete_account_pubky_app_option">Pubky 프로필도 삭제</string>
+    <string name="settings_delete_account_pubky_app_option_detail">이름, 소개, 팔로우, 차단 목록이에요. Loopky만 작성했지만 다른 Pubky 앱에도 표시돼요.</string>
+    <string name="settings_delete_account_dialog_identity_device">Pubky 키가 이 기기에서 삭제돼요.</string>
+    <string name="settings_delete_account_dialog_only_key">키는 Loopky에만 있고, 아직 백업하지 않았어요. 계정을 삭제하면 영구적으로 삭제돼요.</string>
     <string name="settings_delete_account_confirm">계정 삭제</string>
     <string name="settings_delete_account_confirm_countdown">계정 삭제 (%1$d)</string>
     <string name="settings_delete_account_progress_title">삭제하는 중</string>

@@ -40760,6 +40760,503 @@
         }
       }
     },
+    "settings_delete_account_checking": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe, ob andere Pubky-Apps dieses Konto nutzen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking whether other Pubky apps use this account…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando si otras apps de Pubky usan esta cuenta…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérification de l’usage de ce compte par d’autres apps Pubky…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controllo se altre app Pubky usano questo account…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアカウントをほかの Pubky アプリが使っているか確認しています…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 Pubky 앱이 이 계정을 쓰는지 확인하고 있어요…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando se outros apps Pubky usam esta conta…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kiểm tra xem ứng dụng Pubky khác có dùng tài khoản này không…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查其他 Pubky 应用是否在使用这个账号…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在檢查其他 Pubky 應用程式是否在使用這個帳號…"
+          }
+        }
+      }
+    },
+    "settings_delete_account_pubky_app_kept": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein Pubky-Profil, deine Follows und Beiträge bleiben, weil eine andere Pubky-App dieses Konto nutzt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Pubky profile, follows and posts stay, because another Pubky app uses this account."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu perfil de Pubky, a quién sigues y tus publicaciones se mantienen, porque otra app de Pubky usa esta cuenta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ton profil Pubky, tes abonnements et tes publications restent, car une autre app Pubky utilise ce compte."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo profilo Pubky, chi segui e i tuoi post restano, perché un'altra app Pubky usa questo account."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかの Pubky アプリがこのアカウントを使っているため、Pubky のプロフィール、フォロー、投稿は残ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 Pubky 앱이 이 계정을 쓰고 있어서 Pubky 프로필, 팔로우, 게시물은 그대로 남아요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu perfil Pubky, quem você segue e suas publicações continuam, porque outro app Pubky usa esta conta."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồ sơ Pubky, danh sách theo dõi và bài đăng của bạn vẫn được giữ lại, vì một ứng dụng Pubky khác đang dùng tài khoản này."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由于其他 Pubky 应用在使用这个账号，你的 Pubky 个人主页、关注和帖子会保留。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由於其他 Pubky 應用程式正在使用這個帳號，你的 Pubky 個人檔案、追蹤和貼文都會保留。"
+          }
+        }
+      }
+    },
+    "settings_delete_account_pubky_app_unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein Pubky-Profil und deine Follows bleiben, weil Loopky nicht prüfen konnte, ob eine andere Pubky-App dieses Konto nutzt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Pubky profile and follows stay, because Loopky could not check whether another Pubky app uses this account."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu perfil de Pubky y a quién sigues se mantienen, porque Loopky no pudo comprobar si otra app de Pubky usa esta cuenta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ton profil Pubky et tes abonnements restent, car Loopky n’a pas pu vérifier si une autre app Pubky utilise ce compte."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo profilo Pubky e chi segui restano, perché Loopky non è riuscito a verificare se un'altra app Pubky usa questo account."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかの Pubky アプリがこのアカウントを使っているか Loopky が確認できなかったため、Pubky のプロフィールとフォローは残ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 Pubky 앱이 이 계정을 쓰는지 Loopky가 확인하지 못해서 Pubky 프로필과 팔로우는 그대로 남아요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu perfil Pubky e quem você segue continuam, porque o Loopky não conseguiu verificar se outro app Pubky usa esta conta."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồ sơ Pubky và danh sách theo dõi của bạn vẫn được giữ lại, vì Loopky không kiểm tra được liệu ứng dụng Pubky khác có dùng tài khoản này không."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由于 Loopky 无法确认其他 Pubky 应用是否在使用这个账号，你的 Pubky 个人主页和关注会保留。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由於 Loopky 無法確認其他 Pubky 應用程式是否在使用這個帳號，你的 Pubky 個人檔案和追蹤都會保留。"
+          }
+        }
+      }
+    },
+    "settings_delete_account_pubky_app_option": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auch mein Pubky-Profil löschen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also delete my Pubky profile"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar también mi perfil de Pubky"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer aussi mon profil Pubky"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elimina anche il mio profilo Pubky"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky のプロフィールも削除する"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky 프로필도 삭제"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Excluir também meu perfil Pubky"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa cả hồ sơ Pubky của tôi"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同时删除我的 Pubky 个人主页"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同時刪除我的 Pubky 個人檔案"
+          }
+        }
+      }
+    },
+    "settings_delete_account_pubky_app_option_detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein Name, deine Bio, deine Follows und Blockierungen. Nur Loopky hat sie geschrieben, aber andere Pubky-Apps zeigen sie auch an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your name, bio, follows and blocks. Only Loopky wrote them, but other Pubky apps show them too."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu nombre, biografía, a quién sigues y a quién bloqueaste. Solo Loopky los escribió, pero otras apps de Pubky también los muestran."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ton nom, ta bio, tes abonnements et tes blocages. Seul Loopky les a écrits, mais d’autres apps Pubky les affichent aussi."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo nome, la bio, chi segui e chi hai bloccato. Li ha scritti solo Loopky, ma anche altre app Pubky li mostrano."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前、自己紹介、フォロー、ブロック。書き込んだのは Loopky だけですが、ほかの Pubky アプリにも表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름, 소개, 팔로우, 차단 목록이에요. Loopky만 작성했지만 다른 Pubky 앱에도 표시돼요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu nome, bio, quem você segue e quem você bloqueou. Só o Loopky gravou esses dados, mas outros apps Pubky também os mostram."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên, tiểu sử, danh sách theo dõi và danh sách chặn của bạn. Chỉ Loopky đã ghi chúng, nhưng các ứng dụng Pubky khác cũng hiển thị chúng."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的名字、简介、关注和屏蔽列表。它们只由 Loopky 写入，但其他 Pubky 应用也会显示。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的名稱、簡介、追蹤和封鎖清單。只有 Loopky 寫入過，但其他 Pubky 應用程式也會顯示。"
+          }
+        }
+      }
+    },
+    "settings_delete_account_dialog_identity_device": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein Pubky-Schlüssel wird von diesem Gerät entfernt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Pubky key is removed from this device."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu clave de Pubky se quitará de este dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta clé Pubky sera retirée de cet appareil."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua chiave Pubky verrà rimossa da questo dispositivo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky の鍵はこのデバイスから削除されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky 키가 이 기기에서 삭제돼요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua chave Pubky será removida deste dispositivo."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khóa Pubky của bạn sẽ bị xóa khỏi thiết bị này."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 Pubky 密钥将从此设备中移除。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 Pubky 金鑰會從這部裝置移除。"
+          }
+        }
+      }
+    },
+    "settings_delete_account_dialog_only_key": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky hat die einzige Kopie deines Schlüssels, und du hast ihn nicht gesichert. Beim Löschen des Kontos wird er endgültig gelöscht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky holds the only copy of your key, and you haven't backed it up. Deleting your account deletes it for good."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky tiene la única copia de tu clave, y no hiciste una copia de seguridad. Eliminar la cuenta la borra para siempre."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky détient la seule copie de ta clé, et tu ne l’as pas sauvegardée. Supprimer ton compte la supprime définitivement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky ha l'unica copia della tua chiave e non ne hai fatto il backup. Eliminando l'account la elimini per sempre."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鍵は Loopky にしかなく、まだバックアップされていません。アカウントを削除すると完全に削除されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키는 Loopky에만 있고, 아직 백업하지 않았어요. 계정을 삭제하면 영구적으로 삭제돼요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Loopky tem a única cópia da sua chave, e você não fez backup. Excluir a conta a exclui para sempre."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky đang giữ bản sao duy nhất của khóa, và bạn chưa sao lưu nó. Xóa tài khoản sẽ xóa khóa vĩnh viễn."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky 保存着你密钥的唯一副本，而你还没有备份。删除账号会将其永久删除。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky 保存著你金鑰的唯一副本，而你還沒有備份。刪除帳號後它將被永久刪除。"
+          }
+        }
+      }
+    },
     "settings_delete_account_dialog_irreversible": {
       "extractionState": "manual",
       "localizations": {
