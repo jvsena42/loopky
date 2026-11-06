@@ -24,6 +24,7 @@ import com.github.jvsena42.loopky.domain.model.KeySource
 import com.github.jvsena42.loopky.domain.model.LocalAccount
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.ParsedRow
+import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReportIssue
@@ -179,26 +180,42 @@ interface IdentityRepository {
     suspend fun updateProfile(name: String?, bio: String?): Result<PubkyIdentity>
 
     /**
+     * What the signed-in account holds under `/pub/pubky.app/`, so Delete account knows whether
+     * it may offer to remove it. Never throws: no session, or any failed read, is
+     * [PubkyAppFootprint.Unknown].
+     */
+    suspend fun pubkyAppFootprint(): PubkyAppFootprint
+
+    /**
      * Erase everything Loopky has written for the signed-in user, then sign out.
      *
-     * **This does not delete the Pubky account, and nothing may tell the user it does.** The keypair
-     * and homeserver account belong to Ring; [PubkyClient] has no account-delete primitive.
+     * **This does not delete the Pubky identity or the homeserver account, and nothing may tell
+     * the user it does.** The account is a self-custodial key every Pubky app shares;
+     * [PubkyClient] has no account-delete primitive.
      *
-     * What goes: every owned deck via [DeckRepository.delete] (reused so the per-deck lock and tag
-     * records are handled), everything else under `/pub/loopky/`, the `loopky-user` self-tag in the
-     * **pubky.app** namespace (the only thing listing this account in Loopky's directory), and
-     * announcement posts embedding this user's decks.
+     * What always goes: every owned deck via [DeckRepository.delete] (reused so the per-deck lock
+     * and tag records are handled), everything else under `/pub/loopky/`, the `loopky-user`
+     * self-tag in the **pubky.app** namespace (the only thing listing this account in Loopky's
+     * directory), and the posts Loopky published there with their labels.
+     *
+     * With [deletePubkyApp], the rest of `/pub/pubky.app/` goes too — profile, follows, blocks,
+     * labels — and only while [pubkyAppFootprint] still answers [PubkyAppFootprint.LoopkyOnly]
+     * (or `Empty`). Otherwise it fails with `PubkyAppFootprintChangedException` before anything
+     * is deleted. Without it, `profile.json` and pubky.app follows stay: they are the user's
+     * presence in other Pubky apps.
      *
      * Deliberately **kept**: any unspent signup token — it was paid for, never expires, and still
-     * redeems against a new account. Deliberately **untouched**: `profile.json` and pubky.app follows,
-     * which are the user's presence in the wider network and not Loopky's to erase.
+     * redeems against a new account.
      *
      * Each homeserver step is best-effort so one 404 cannot strand the rest, but the local wipe and
      * sign-out happen only if the sweep ran to the end.
      *
      * @param onProgress `(done, total)`, coarse and advisory — the sweep may find more than `total`.
      */
-    suspend fun deleteAccount(onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }): Result<Unit>
+    suspend fun deleteAccount(
+        deletePubkyApp: Boolean = false,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
+    ): Result<Unit>
 
     companion object {
         const val DEFAULT_CAPABILITIES = "/pub/loopky/:rw,/pub/pubky.app/:rw"
@@ -1523,3 +1540,7 @@ data class StudySettingsSnapshot(
     /** Whether the record is known well enough to be safely overwritten. */
     val isEditable: Boolean get() = origin == SettingsOrigin.Remote
 }
+
+/** Delete account was asked to remove pubky.app, but the account no longer holds only Loopky's records. */
+class PubkyAppFootprintChangedException(val now: PubkyAppFootprint) :
+    IllegalStateException("pubky.app is now $now; nothing was deleted")

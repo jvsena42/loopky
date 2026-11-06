@@ -25,6 +25,9 @@ internal object LoopkyPubkyAppRecords {
     private val DECK_LABEL = ReservedTags.DECK.value
     private val DECK_REQUEST_LABELS = DeckRequests.TAGS.map { it.value }.toSet()
 
+    /** Every label [isLoopkyPost] looks for, so a caller missing some can ask what they could change. */
+    val POST_LABELS: Set<String> = DECK_REQUEST_LABELS + DECK_LABEL
+
     private const val PUBKY_SCHEME = "pubky://"
     private const val PROFILE = "profile.json"
     private const val PROFILE_PATH = "pub/pubky.app/$PROFILE"

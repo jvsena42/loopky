@@ -1,8 +1,11 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.data.pubky.PubkyLinks
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
+import com.github.jvsena42.loopky.data.repository.PubkyAppFootprintChangedException
 import com.github.jvsena42.loopky.domain.model.DailyStudyProgress
+import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
@@ -323,6 +326,168 @@ class IdentityRepositoryDeleteAccountTest {
         assertTrue(reports.isNotEmpty(), "a sweep with no feedback is a frozen dialog")
         // Monotonic, so a progress bar never jumps backwards.
         assertEquals(reports.map { it.first }.sorted(), reports.map { it.first })
+    }
+
+    // --- Deleting pubky.app too -------------------------------------------------------------------
+
+    /** A Loopky-only pubky.app footprint, beside Loopky's own namespace. */
+    private fun seedLoopkyOnlyPubkyApp() {
+        seedHomeserver()
+        pubky.store[PubkyPaths.mute(TEST_PUBKY, "trollpk")] = "{}"
+        labelOn(PubkyPaths.profile("trollpk"), "loopky-reported")
+        labelOn(PubkyPaths.profile("friendpk"), "climber")
+        pubky.store[PubkyPaths.post(TEST_PUBKY, "post1")] = announcement("$loopkyRoot/decks/deck1/manifest.json")
+    }
+
+    private val pubkyAppRoot = "pubky://$TEST_PUBKY/pub/pubky.app/"
+
+    private fun pubkyAppLeft() = pubky.store.keys.filter { it.startsWith(pubkyAppRoot) }
+
+    @Test
+    fun aLoopkyOnlyAccountIsReadAsOne() = runTest {
+        seedLoopkyOnlyPubkyApp()
+
+        assertEquals(PubkyAppFootprint.LoopkyOnly, repo.pubkyAppFootprint())
+    }
+
+    @Test
+    fun deletingPubkyAppTooLeavesNothingUnderIt() = runTest {
+        seedLoopkyOnlyPubkyApp()
+
+        repo.deleteAccount(deletePubkyApp = true).getOrThrow()
+
+        assertEquals(emptyList(), pubkyAppLeft())
+        assertTrue(pubky.store.keys.none { it.startsWith("$loopkyRoot/") })
+        assertEquals(null, session.current())
+    }
+
+    @Test
+    fun theProfileIsTheLastPubkyAppRecordDeleted() = runTest {
+        // A sweep that dies part way then still has a profile, reads as Loopky's, and a retry is
+        // offered the same choice.
+        seedLoopkyOnlyPubkyApp()
+
+        repo.deleteAccount(deletePubkyApp = true).getOrThrow()
+
+        assertEquals(PubkyPaths.profile(TEST_PUBKY), pubky.deletes.last { it.startsWith(pubkyAppRoot) })
+    }
+
+    @Test
+    fun deletingPubkyAppNeverReachesAnotherAccount() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        val friendsProfile = PubkyPaths.profile("friendpk")
+        pubky.store[friendsProfile] = """{"name":"Friend"}"""
+        val friendsFollow = PubkyPaths.follow("friendpk", TEST_PUBKY)
+        pubky.store[friendsFollow] = "{}"
+
+        repo.deleteAccount(deletePubkyApp = true).getOrThrow()
+
+        assertTrue(friendsProfile in pubky.store)
+        assertTrue(friendsFollow in pubky.store)
+        assertTrue(pubky.deletes.none { it.startsWith("pubky://friendpk/") }, "${pubky.deletes}")
+    }
+
+    @Test
+    fun anAccountAnotherAppWroteToSinceTheDialogOpenedIsNotTouched() = runTest {
+        // The dialog read LoopkyOnly; by the time the user confirmed, they had posted on pubky.app.
+        seedLoopkyOnlyPubkyApp()
+        decks.decks["deck1"] = testDeck(id = "deck1")
+        pubky.store[PubkyPaths.post(TEST_PUBKY, "fresh")] = """{"content":"good morning","kind":"short"}"""
+
+        val result = repo.deleteAccount(deletePubkyApp = true)
+
+        val error = result.exceptionOrNull()
+        assertTrue(error is PubkyAppFootprintChangedException, "$error")
+        assertEquals(PubkyAppFootprint.Direct, error.now)
+        assertEquals(emptyList(), pubky.deletes, "nothing may be deleted on a refusal")
+        assertEquals(emptyList(), decks.deleted)
+        assertEquals(TEST_PUBKY, session.current()?.identity?.pubky)
+    }
+
+    @Test
+    fun anAccountThatCannotBeReadIsNotTouchedEither() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        pubky.failGetWhenUrlContains = "profile.json"
+
+        val error = repo.deleteAccount(deletePubkyApp = true).exceptionOrNull()
+
+        assertTrue(error is PubkyAppFootprintChangedException, "$error")
+        assertEquals(PubkyAppFootprint.Unknown, error.now)
+        assertEquals(emptyList(), pubky.deletes)
+    }
+
+    @Test
+    fun anotherAppsNamespaceRefusesThePubkyAppDelete() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        pubky.store["pubky://$TEST_PUBKY/pub/bitkit.to/profile.json"] = "{}"
+
+        val error = repo.deleteAccount(deletePubkyApp = true).exceptionOrNull()
+
+        assertTrue(error is PubkyAppFootprintChangedException, "$error")
+        assertTrue("pubky://$TEST_PUBKY/pub/bitkit.to/profile.json" in pubky.store)
+    }
+
+    @Test
+    fun anEmptyPubkyAppIsDeletedWithoutComplaint() = runTest {
+        pubky.store["$loopkyRoot/settings.json"] = "{}"
+
+        repo.deleteAccount(deletePubkyApp = true).getOrThrow()
+
+        assertEquals(null, session.current())
+    }
+
+    @Test
+    fun aPubkyAppRecordThatWillNotGoFailsTheDeleteAndKeepsTheUserSignedIn() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        val stuck = PubkyPaths.follow(TEST_PUBKY, "friendpk")
+        pubky.undeletablePaths += stuck
+
+        val result = repo.deleteAccount(deletePubkyApp = true)
+
+        assertTrue(result.isFailure)
+        assertEquals(TEST_PUBKY, session.current()?.identity?.pubky)
+        assertTrue(stuck in pubky.store)
+    }
+
+    @Test
+    fun withoutTheChoiceALoopkyOnlyProfileFollowsAndBlocksStay() = runTest {
+        seedLoopkyOnlyPubkyApp()
+
+        repo.deleteAccount().getOrThrow()
+
+        assertTrue(PubkyPaths.profile(TEST_PUBKY) in pubky.store)
+        assertTrue(PubkyPaths.follow(TEST_PUBKY, "friendpk") in pubky.store)
+        assertTrue(PubkyPaths.mute(TEST_PUBKY, "trollpk") in pubky.store)
+        // The Loopky post still goes either way.
+        assertFalse(PubkyPaths.post(TEST_PUBKY, "post1") in pubky.store)
+    }
+
+    @Test
+    fun progressCountsThePubkyAppRecords() = runTest {
+        seedLoopkyOnlyPubkyApp()
+
+        val reports = mutableListOf<Pair<Int, Int>>()
+        repo.deleteAccount(deletePubkyApp = true) { done, total -> reports += done to total }.getOrThrow()
+
+        val total = reports.first().second
+        assertTrue(reports.size >= pubkyAppLeft().size + 6, "$reports")
+        assertTrue(reports.all { it.second == total })
+    }
+
+    @Test
+    fun theFootprintIsUnknownWithoutASession() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        session.set(null)
+
+        assertEquals(PubkyAppFootprint.Unknown, repo.pubkyAppFootprint())
+    }
+
+    @Test
+    fun theFootprintIsUnknownWhenTheHomeserverIsUnreachable() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        pubky.failListWith = PubkyError("HTTP transport error: connection refused")
+
+        assertEquals(PubkyAppFootprint.Unknown, repo.pubkyAppFootprint())
     }
 
     private fun announcement(deckUri: String): String = linkPost(deckUri)

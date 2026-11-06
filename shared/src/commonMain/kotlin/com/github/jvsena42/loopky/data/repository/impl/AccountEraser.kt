@@ -9,6 +9,7 @@ import com.github.jvsena42.loopky.data.pubky.deleteWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.isNotFound
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
 import com.github.jvsena42.loopky.data.repository.DeckRepository
+import com.github.jvsena42.loopky.data.repository.PubkyAppFootprintChangedException
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.DeckCacheStore
@@ -16,6 +17,7 @@ import com.github.jvsena42.loopky.data.storage.PendingReviewStore
 import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
 import com.github.jvsena42.loopky.domain.model.DailyStudyProgress
+import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.util.Log
@@ -33,6 +35,8 @@ import kotlinx.coroutines.sync.withLock
  *
  * **It does not delete the Pubky account**, and no copy anywhere may say it does — see
  * [IdentityRepository.deleteAccount] for what is in scope, and why the signup token survives.
+ * It reaches `/pub/pubky.app/` beyond Loopky's own posts only when asked to, and only on an
+ * account nothing but Loopky has written to.
  */
 // LongParameterList: the collaborator count is the reason this class exists rather than living on
 // IdentityRepositoryImpl. Taking an account apart genuinely touches decks, tags, the homeserver and
@@ -53,17 +57,31 @@ class AccountEraser(
 
     private val footprints = PubkyAppFootprintReader(pubky)
 
+    suspend fun footprint(owner: String): PubkyAppFootprint = footprints.classify(owner)
+
     /**
      * Sweep the homeserver for [owner]. Throws if anything Loopky owns could not be removed, which
      * is what keeps the caller from signing the user out of a half-deleted account.
+     *
+     * With [deletePubkyApp], everything under `/pub/pubky.app/` goes too, and only if the account
+     * is still [PubkyAppFootprint.LoopkyOnly] or [PubkyAppFootprint.Empty] when the sweep starts:
+     * otherwise it throws [PubkyAppFootprintChangedException] before deleting anything.
      */
-    suspend fun erase(owner: String, onProgress: (Int, Int) -> Unit) {
+    suspend fun erase(owner: String, deletePubkyApp: Boolean, onProgress: (Int, Int) -> Unit) {
+        if (deletePubkyApp) {
+            // Asked again rather than trusting the dialog: another app may have written since it opened.
+            val now = footprints.classify(owner)
+            if (now != PubkyAppFootprint.LoopkyOnly && now != PubkyAppFootprint.Empty) {
+                throw PubkyAppFootprintChangedException(now)
+            }
+        }
         val owned = decks.listOwned()
         // Taken before the decks go, so `total` covers the whole job. Best-effort: a listing we
         // could not read still leaves the per-deck pass to do the bulk of the work, and step 2
         // re-lists at the end anyway.
         val strays = namespaceRecords(owner)
-        val progress = SweepProgress((owned.size + strays.size).coerceAtLeast(1), onProgress)
+        val pubkyAppRecords = if (deletePubkyApp) footprints.pubkyAppRecords(owner) else emptyList()
+        val progress = SweepProgress((owned.size + strays.size + pubkyAppRecords.size).coerceAtLeast(1), onProgress)
 
         // Counted rather than thrown on. One record that will not go must not abandon the rest —
         // that leaves the account in a worse state than before — but it must still be the
@@ -100,11 +118,17 @@ class AccountEraser(
         // failed deletion, and a user with a busy feed should not be blocked by one unreadable record.
         deleteLoopkyPosts(owner)
 
+        // 5. On request, the rest of pubky.app: profile, follows, blocks, labels. The profile goes
+        // last, so a sweep that dies part way still leaves an account that reads as Loopky's, and a
+        // retry is offered the same choice.
+        if (deletePubkyApp) failures += deletePubkyAppRecords(owner, progress)
+
         // Re-list rather than trust the counters. `deleteRecord` scores a 404 as success, which is
         // right for a record a previous sweep already removed and wrong as a completeness proof —
         // it is exactly how a sweep that never saw a record could report having deleted it. The
         // only honest check is asking the homeserver what is left.
-        val leftovers = namespaceRecords(owner)
+        val leftovers = namespaceRecords(owner) +
+            if (deletePubkyApp) footprints.pubkyAppRecords(owner) else emptyList()
         check(failures == 0 && leftovers.isEmpty()) {
             "$failures record(s) could not be deleted, ${leftovers.size} still present"
         }
@@ -172,6 +196,17 @@ class AccountEraser(
             // Its labels only once the post is gone: a label on a surviving post is still in use.
             if (deleteRecord(post.path)) post.tagPaths.forEach { deleteRecord(it) }
         }
+    }
+
+    /** Returns how many records would not go. */
+    private suspend fun deletePubkyAppRecords(owner: String, progress: SweepProgress): Int {
+        val profile = PubkyPaths.profile(owner)
+        val records = footprints.pubkyAppRecords(owner)
+        val failures = records.filterNot { it == profile }
+            .mapConcurrently { path -> deleteRecord(path).also { progress.step() } }
+            .count { deleted -> !deleted }
+        if (profile !in records) return failures
+        return failures + if (deleteRecord(profile).also { progress.step() }) 0 else 1
     }
 
     /**
