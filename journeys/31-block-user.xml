@@ -14,7 +14,7 @@
   </description>
   <actions>
     <action>Open Discover and note B's deck tile in browse and B in the people strip. Tap B's name to open "friend_profile_screen"</action>
-    <action>Verify the nav row shows "friend_profile_share" and, beside it, "friend_profile_more". Open it and verify one item, "friend_profile_block", reading "Block" in the danger colour — and no Unblock anywhere on the screen</action>
+    <action>Verify the nav row shows "friend_profile_share" and, beside it, "friend_profile_more". Open it and verify two items, "friend_profile_report" ("Report", journey 32) and "friend_profile_block" ("Block"), both in the danger colour — and no Unblock anywhere on the screen</action>
     <action>Tap "friend_profile_block" and verify an alert titled "Block {B's name}?" saying their decks and profile will be hidden, that you will stop following them and their decks, that they are not told, and that this also mutes them on pubky.app. Tap "block_cancel" and verify nothing changed — Follow still reads "Following"</action>
     <action>Open the menu again, tap "friend_profile_block", then "block_confirm". Verify the profile CLOSES back to Discover (Android also shows a "Blocked" toast)</action>
     <action>Verify on the homeserver that /pub/pubky.app/mutes/{B} exists with a microsecond created_at, and that /pub/pubky.app/follows/{B} and the subscription record for B's deck are gone</action>
@@ -26,7 +26,7 @@
     <action>Tap "blocked_unblock_0" and verify the row leaves the list and "blocked_users_empty" reads "You haven't blocked any accounts."</action>
     <action>Pull to refresh Discover and verify B's deck and person card are back, and B's profile link opens the full profile. Verify B and B's deck are NOT followed again — unblocking restores nothing</action>
     <action>PUBKY.APP. Follow B's deck again, then mute B on pubky.app (staging) and relaunch Loopky. Verify B's deck is gone from Home and Library but the subscription record is still on the homeserver, B is listed under "Blocked accounts", and B's profile link opens blocked. Unblock there and verify B is unmuted on pubky.app and the deck is back on Home</action>
-    <action>GUEST. Signed out, open any profile and verify there is no "friend_profile_more", and Settings has no "settings_blocked_users"</action>
+    <action>GUEST. Signed out, open any profile and verify "friend_profile_more" holds "friend_profile_report" and no "friend_profile_block", and Settings has no "settings_blocked_users"</action>
     <action>SELF. Open your own profile through a link and verify there is no "friend_profile_more"</action>
     <action>OFFLINE. With the network cut, try to block and verify "friend_profile_error" says why and the profile stays open and unblocked</action>
     <action>TABLET / IPAD. At expanded width verify the blocked notice and the Blocked accounts list are pane-capped, not edge to edge</action>

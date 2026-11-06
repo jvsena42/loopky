@@ -17,7 +17,7 @@ A fresh session has none of this in context, so establish it before the first ed
   iOS is the XcodeBuildMCP CLI / `xcodebuildmcp` MCP server (see Build & run below), never bare
   `xcodebuild`, `xcrun` or `simctl`. Their skills — `android-cli` and `xcodebuildmcp-cli` — are
   installed; invoke the relevant one rather than reconstructing commands from memory.
-- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 31 numbered
+- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 32 numbered
   `journeys/*.xml` scripts (onboarding, import, study, discovery, signup/restore …) driven by hand
   on a device. Read `journeys/README.md` first — the driving traps, and what has never been run on
   a device, neither of which a green build says anything about — then re-run the journeys your
@@ -466,6 +466,20 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   account's profile or deck, reached by a link, shows **only** "You blocked this account":
   no name, no content, no Unblock. **Unblock lives in Settings → Blocked accounts and nowhere
   else**, and its rows open nothing.
+- **A report goes to pubky.app's moderators, then tags the profile and blocks (#577).**
+  `DiscoveryRepository.report` posts to pubky.app's `/api/report` (the Chatwoot Reports inbox,
+  pubky.app's nine issue types — `ReportIssue.wire` must match them or the endpoint answers
+  400), then writes `ReservedTags.REPORTED` (`loopky-reported`) on the profile and blocks the
+  account; a deck report blocks its author. Four things not to undo. The host is the
+  environment's `webBaseUrl`, and **staging's is behind HTTP basic auth**, so a staging build's
+  send always fails with 401 — do not point staging at production to make it pass, that files
+  test reports into the real inbox. The report is the only step that can fail the call: tag and
+  block come after it, and a report that did not arrive writes neither. The tag hides the account
+  from the reporter's followers (`FriendReports`) only when one of its **taggers** is a followee —
+  anyone can write any label, so the score means nothing — and that filter is discovery's alone:
+  a deck the reader follows by such an account stays on Home. And the sign-in consent starts
+  **unticked** and names the Terms of Use: guideline 1.2 needs agreement, which a pre-ticked box
+  is not. Architecture.md §7.9.
 - **Pubky is the source of truth for published decks.** The app is not offline-first in v1 — repos talk directly to `PubkyClient` and keep only an in-memory cache for the session. A persistent SQLDelight cache may come later. There are no private/local-only decks in v1 (spec §11).
 - **Homeserver layout is fixed.** Decks published under `/pub/loopky/decks/{deckId}/{manifest.json, cards/{n}.json, media/{sha256}.{ext}}`. Cards are stored in **chunk records** (~100 per record, `CHUNK_SIZE` in `DeckDtos.kt`), and the manifest carries a chunk table + `card_count` — **not** a per-card index. Study order is the card's own sparse `ord`, not manifest position. Sync diffs `chunks[].updated_at`. Single-card writes go through `DeckRepository.upsertCard`/`deleteCard`, which own the chunk write and the manifest patch together — never write a chunk without patching the manifest. Full schemas in `docs/Architecture.md §8.0`. Binary media is written raw via the FFI's `put_bytes_with_session`; reads come back Base64-encoded from the FFI transport and are decoded in `MediaRepositoryImpl`.
 - **Card deletes leave holes; a background pass folds them away, and it leaves gaps in the chunk numbering.** `deleteCard` shrinks a chunk's `count` rather than resequencing every later card, so `DeckRepository.compactDeck` reclaims the density off the critical path — one pair of neighbouring chunks at a time, asked for via `BackgroundTasks.scheduleDeckCompaction`, never performed inline. Two traps: a merge is the one chunk write that goes **landing record → manifest → source record** (every other one is chunk-then-manifest), because emptying the source first would leave the manifest pointing at a 404; and folding a pair drops its higher `n`, so the chunk table is **not contiguous** — anything that walks it must read `chunks[].n`, never `0 until chunks.size`. See Architecture.md §8.4.

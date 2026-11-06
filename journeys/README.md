@@ -1,6 +1,6 @@
 # Journeys
 
-31 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
+32 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
 on iOS. The CLI has none — it has no screen — and its equivalent is the `cli-linux` and `cli-binary`
 jobs in `.github/workflows/ci.yml`.
 
@@ -103,6 +103,13 @@ a line when you close it.
   expanded width were driven on Android (Pixel_9, staging); block, the profile link, Blocked
   accounts and unblock on iOS (iPhone 17e). Not driven: a mute made on pubky.app, the guest and
   dark-theme steps, the study queue (the test deck had no cards) and the iOS deck link.
+- **32 — a report that succeeds, and the friend branch.** Staging builds post to
+  `staging.pubky.app`, which is behind HTTP basic auth and answers 401, so on a staging build every
+  send fails: the sheet, Cancel, the issue gate and the failure branch were driven on Android
+  (Pixel_9) and the sheet on iOS (iPhone 17e), the guest sign-in prompt on iOS (iPhone 17) and the
+  deck header's More menu on both, the Android one also at expanded width. Never driven: a
+  successful send (it needs a production build and files a real report), the loopky-reported tag
+  and the block that follow it, the "Someone you follow reported this account" notice, and dark.
 - **28 — the password manager, end to end.** On Android, saving, the read-back check and restoring
   all need a device with a credential provider; no emulator here has one, so only the empty path
   (no provider: the save fails, the restore picker returns nothing) has been driven. On iOS the

@@ -1,0 +1,33 @@
+<journey name="Reporting a profile or a deck — to pubky.app's moderators, then blocked (#577)">
+  <description>
+    A report goes to pubky.app's POST /api/report, the Chatwoot Reports inbox pubky.app's
+    moderators work from, with pubky.app's nine issue types. A profile report sends the pubky.app
+    profile URL; a deck report sends the deck's loopky.app link, and its reason opens with the
+    pubky:// path an admin delete acts on. Then the reported profile is tagged loopky-reported
+    (a public record under /pub/pubky.app/tags/) and the account is blocked — a deck report blocks
+    the deck's author. Anyone who follows the reporter stops seeing the reported account in
+    discovery, and a link to it opens to "Someone you follow reported this account" with Show
+    anyway.
+
+    The host follows the build: staging builds post to staging.pubky.app, which sits behind HTTP
+    basic auth and answers 401, so on a staging build a send ALWAYS fails. That is the failure
+    branch below; the success branch needs a production build and files a real report — send one
+    only with the moderators told, and only against an account you own.
+
+    Needs a signed-in session and a second account B with a published deck (journey 31's setup),
+    and for the friend branch a third account C that follows the reporter.
+  </description>
+  <actions>
+    <action>Open B's profile, open "friend_profile_more" and tap "friend_profile_report". Verify the sheet "report_sheet" titled "Report this account" lists the nine issues "report_issue_personal-info" … "report_issue_copyright", a "report_details" field capped at 700 with its counter, "report_blocks_notice" saying the report also blocks the account and where to unblock it, and the note that the report adds a public "reported" tag</action>
+    <action>Verify "report_send" is disabled until an issue is picked, then enabled</action>
+    <action>Tap "report_cancel" and verify nothing was sent, tagged or blocked</action>
+    <action>FAILURE (staging build). Pick an issue, type details, tap "report_send". Verify "report_error" appears under the sheet, the sheet stays up with what you typed, and on closing it B is still followed and not blocked, with no loopky-reported tag record on your homeserver</action>
+    <action>SUCCESS (production build, account you own). Send a report on B. Verify the profile closes with "Reported and blocked", B is under Settings → Blocked accounts, /pub/pubky.app/tags/ holds a loopky-reported record on B's profile.json, and the report arrived in pubky.app's Reports inbox with B's pubky.app profile URL</action>
+    <action>DECK. Open one of B's decks and verify Report is NOT a circle on the cover: it is behind "deck_overflow" (a More button beside Share), as "deck_report". Tap it and verify "Report this deck" and the notice saying the deck's AUTHOR will be blocked. On success the deck closes</action>
+    <action>FRIEND. Signed in as C (who follows the reporter), after a successful report: verify B is gone from Discover, search and tag browse, and B's profile link shows "friend_profile_reported" ("Someone you follow reported this account") with "report_show_anyway". Tap it and verify the profile loads. B's deck link shows "deck_detail_reported" the same way</action>
+    <action>GUEST. Signed out, open B's profile menu and B's deck menu, tap Report, and verify the sign-in prompt "Sign in to report" instead of the sheet</action>
+    <action>OWN. On your own profile and your own deck verify there is no Report</action>
+    <action>TABLET / IPAD. At expanded width verify the deck header keeps Report behind its More button and the sheet is readable</action>
+    <action>DARK. With the dark theme verify the sheet, the danger-tinted notice and the reported notice are legible</action>
+  </actions>
+</journey>
