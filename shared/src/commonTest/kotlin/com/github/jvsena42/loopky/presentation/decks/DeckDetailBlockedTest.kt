@@ -1,5 +1,8 @@
 package com.github.jvsena42.loopky.presentation.decks
 
+import com.github.jvsena42.loopky.data.repository.CardRepository
+import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
+import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeCardRepository
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
@@ -12,8 +15,10 @@ import com.github.jvsena42.loopky.testing.testCard
 import com.github.jvsena42.loopky.testing.testDeck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -22,6 +27,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 /** A link still reaches a blocked author's deck; the screen shows none of it (#577). */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -120,5 +126,39 @@ class DeckDetailBlockedTest {
         advanceUntilIdle()
 
         assertEquals(null, assertIs<DeckDetailUiState.Content>(vm.state.value).reportingDeck)
+    }
+
+    @Test
+    fun `a stranger's deck fetches its cards while the report check runs`() = runTest(mainDispatcher) {
+        seed()
+        val slowCards = object : CardRepository by cardRepo {
+            override suspend fun fetchByDeck(deck: Deck) = cardRepo.fetchByDeck(deck).also { delay(SLOW_MS) }
+        }
+        val slowReports = object : DiscoveryRepository by discoveryRepo {
+            override suspend fun isReportedByFollowee(pubky: String) =
+                discoveryRepo.isReportedByFollowee(pubky).also { delay(SLOW_MS) }
+        }
+        val vm = DeckDetailViewModel(
+            deckId = "deck1",
+            authorPubky = "trollpk",
+            deckRepository = deckRepo,
+            cardRepository = slowCards,
+            identityRepository = FakeIdentityRepository(),
+            srsRepository = FakeSrsRepository(),
+            mediaRepository = FakeMediaRepository(),
+            tagRepository = RecordingTagRepository(),
+            discoveryRepository = slowReports,
+            appPreferences = FakeAppPreferences(),
+        )
+        while (vm.state.value !is DeckDetailUiState.Content) {
+            mainDispatcher.scheduler.advanceTimeBy(100)
+            mainDispatcher.scheduler.runCurrent()
+        }
+
+        assertTrue(currentTime < 2 * SLOW_MS, "content after ${currentTime}ms: cards waited for the report check")
+    }
+
+    private companion object {
+        const val SLOW_MS = 1_000L
     }
 }

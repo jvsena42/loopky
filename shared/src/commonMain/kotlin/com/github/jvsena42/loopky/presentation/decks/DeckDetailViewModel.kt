@@ -30,6 +30,7 @@ import com.github.jvsena42.loopky.presentation.share.DeckSharePrompt
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -135,18 +136,21 @@ class DeckDetailViewModel(
                 _state.update { DeckDetailUiState.Error(ErrorReason.NotFound, canRetry = false) }
                 return@launch
             }
+            // Must be a fetch, not a cache read: nothing has loaded this deck's cards yet on a
+            // cold launch, and for a deck you don't own nothing ever will.
+            // fetchByDeck already returns study order; sorting it again here cost a second pass
+            // over every card in the deck, on the main thread. Started before the hidden check,
+            // which costs a Nexus read for a stranger's deck.
+            val cardsRead = async { runSuspendCatching { cardRepository.fetchByDeck(deck).getOrThrow() } }
             // A link still reaches a blocked author's deck; nothing of it is shown (#577).
             hiddenState(deck.authorPubky, session?.identity?.pubky)?.let { hidden ->
+                cardsRead.cancel()
                 _state.update { hidden }
                 return@launch
             }
             loadedDeck = deck
 
-            // Must be a fetch, not a cache read: nothing has loaded this deck's cards yet on a
-            // cold launch, and for a deck you don't own nothing ever will.
-            // fetchByDeck already returns study order; sorting it again here cost a second pass
-            // over every card in the deck, on the main thread.
-            runSuspendCatching { cardRepository.fetchByDeck(deck).getOrThrow() }
+            cardsRead.await()
                 .onSuccess { cards ->
                     // Null, not zero, when the read fails: rendering "Due 0 · Mastered 0%" showed a
                     // fully-mature deck as untouched and caught up, with no error anywhere (#101).
