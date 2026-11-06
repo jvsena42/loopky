@@ -31,7 +31,7 @@ class ReportViewModel(
     private val deck: Deck?,
     private val discoveryRepository: DiscoveryRepository,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(ReportUiState(isDeck = deck != null))
+    private val _state = MutableStateFlow(fresh())
     val state: StateFlow<ReportUiState> = _state.asStateFlow()
 
     private val _effects = MutableSharedFlow<ReportEffect>(extraBufferCapacity = 4)
@@ -55,7 +55,7 @@ class ReportViewModel(
             val subject = deck?.let { ReportSubject.OfDeck(it) } ?: ReportSubject.Profile(accountPubky)
             discoveryRepository.report(subject, issue, _state.value.details)
                 .onSuccess { outcome ->
-                    _state.update { it.copy(isSending = false) }
+                    _state.update { fresh() }
                     _effects.emit(ReportEffect.Sent(blocked = outcome.blocked))
                 }
                 .onFailure { err ->
@@ -64,6 +64,17 @@ class ReportViewModel(
                 }
         }
     }
+
+    /**
+     * The sheet closed. On Android this ViewModel outlives it, scoped to the screen, so without
+     * this a reopened sheet shows the last attempt's issue, details and error. Ignored mid-send.
+     */
+    fun onDismiss() {
+        if (sendJob?.isActive == true) return
+        _state.update { fresh() }
+    }
+
+    private fun fresh() = ReportUiState(isDeck = deck != null)
 
     private companion object {
         const val TAG = "Loopky/ReportVM"

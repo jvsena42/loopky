@@ -118,4 +118,30 @@ class ReportViewModelTest {
 
         assertEquals(ReportLimits.DETAILS_MAX_LENGTH, vm.state.value.details.length)
     }
+
+    @Test
+    fun `a sheet closed after a failed send reopens empty`() = runTest(mainDispatcher) {
+        discovery.reportError = IllegalStateException("offline")
+        val vm = ReportViewModel("trollpk", deck = null, discoveryRepository = discovery)
+        vm.onIssueSelected(ReportIssue.Harassment)
+        vm.onDetailsChange("x")
+        vm.onSend()
+        advanceUntilIdle()
+        assertNotNull(vm.state.value.errorReason)
+
+        vm.onDismiss()
+
+        assertEquals(ReportUiState(isDeck = false), vm.state.value)
+    }
+
+    @Test
+    fun `a sent report leaves nothing selected for the next one`() = runTest(mainDispatcher) {
+        val vm = ReportViewModel("trollpk", deck = null, discoveryRepository = discovery)
+        vm.onIssueSelected(ReportIssue.Harassment)
+        vm.onSend()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.canSend)
+        assertEquals(null, vm.state.value.issue)
+    }
 }

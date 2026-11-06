@@ -82,7 +82,10 @@ fun ReportSheetHost(
         onIssueSelected = viewModel::onIssueSelected,
         onDetailsChange = viewModel::onDetailsChange,
         onSend = viewModel::onSend,
-        onDismiss = onDismiss,
+        onDismiss = {
+            viewModel.onDismiss()
+            onDismiss()
+        },
     )
 }
 
