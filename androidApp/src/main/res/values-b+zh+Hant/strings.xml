@@ -349,7 +349,6 @@
          sentence at runtime and turned into links, so a translation may place them anywhere. -->
     <string name="onboarding_policy_consent">我已閱讀並同意%1$s與%2$s。</string>
     <string name="onboarding_policy_privacy">隱私權政策</string>
-    <string name="onboarding_policy_license">授權條款</string>
     <string name="onboarding_qr_title">使用 Pubky Ring 掃描</string>
     <string name="onboarding_qr_body">在手機上開啟 Pubky Ring，點「授權」，然後掃描這個 QR 碼。</string>
     <string name="onboarding_qr_content_description">包含此登入請求的 QR 碼</string>
@@ -1043,4 +1042,35 @@
     <string name="sign_in_prompt_request_deck_title">請求牌組</string>
     <string name="sign_in_prompt_request_deck_body">請求會從你自己的帳號發布，製作牌組的人就知道是誰在請求。這需要一個帳號，但不需要電子郵件。</string>
     <string name="home_request_deck_link">沒找到？請求牌組</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">檢舉</string>
+    <string name="report_sheet_title_profile">檢舉此帳號</string>
+    <string name="report_sheet_title_deck">檢舉此卡組</string>
+    <string name="report_issue_label">有什麼問題？</string>
+    <string name="report_issue_personal_info">洩漏個人資料</string>
+    <string name="report_issue_hate_speech">仇恨或威脅言論</string>
+    <string name="report_issue_harassment">騷擾或針對性攻擊</string>
+    <string name="report_issue_child_abuse">兒童性虐待或剝削</string>
+    <string name="report_issue_terrorism">宣揚恐怖主義</string>
+    <string name="report_issue_violence">血腥或犯罪暴力</string>
+    <string name="report_issue_illegal_sales">非法販售或犯罪活動</string>
+    <string name="report_issue_sexual_content">未經同意或違法的色情內容</string>
+    <string name="report_issue_copyright">侵犯著作權</string>
+    <string name="report_details_label">詳細說明（選填）</string>
+    <string name="report_details_placeholder">任何有助於審核人員的資訊</string>
+    <string name="report_blocks_profile">送出此檢舉也會封鎖此帳號。你將不會在 Loopky 的任何地方看到它。你可以在「設定 → 已封鎖的帳號」中解除封鎖。</string>
+    <string name="report_blocks_deck">送出此檢舉也會封鎖該卡組的作者。你將不會在 Loopky 的任何地方看到其卡組或個人檔案。你可以在「設定 → 已封鎖的帳號」中解除封鎖。</string>
+    <string name="report_public_note">檢舉還會為該帳號加上公開的「已檢舉」標籤，追蹤你的人也將看不到它。</string>
+    <string name="report_send">送出檢舉</string>
+    <string name="report_cancel">取消</string>
+    <string name="report_done">已檢舉並封鎖</string>
+    <string name="report_done_block_failed">檢舉已送出，但無法封鎖該帳號。請在其個人檔案中嘗試「封鎖」。</string>
+    <string name="report_hidden_title">你追蹤的人檢舉了此帳號</string>
+    <string name="report_hidden_body">其個人檔案和卡組已對你隱藏。</string>
+    <string name="report_show_anyway">仍要顯示</string>
+    <string name="sign_in_prompt_report_title">登入後才能檢舉</string>
+    <string name="sign_in_prompt_report_body">檢舉會從你自己的帳號送出，並為你封鎖該帳號。需要帳號，但不需要電子郵件。</string>
+    <string name="onboarding_policy_terms">使用條款</string>
+    <string name="settings_terms">使用條款</string>
 </resources>

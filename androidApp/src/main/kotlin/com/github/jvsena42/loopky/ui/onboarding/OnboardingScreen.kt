@@ -66,8 +66,8 @@ import com.github.jvsena42.loopky.ui.layout.contentPane
 import com.github.jvsena42.loopky.ui.layout.screenEdges
 import com.github.jvsena42.loopky.ui.layout.windowWidthClass
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
-import com.github.jvsena42.loopky.ui.util.LICENSE_URL
 import com.github.jvsena42.loopky.ui.util.PRIVACY_POLICY_URL
+import com.github.jvsena42.loopky.ui.util.TERMS_URL
 import com.github.jvsena42.loopky.ui.util.openUrl
 import com.github.jvsena42.loopky.ui.util.rememberAppVersion
 import kotlinx.coroutines.flow.collectLatest
@@ -207,9 +207,10 @@ private fun OnboardingContent(
     // modes (Restoring/Starting/AwaitingApproval/…), so a cross-cutting flag would have to be
     // carried on every one of them to say something none of them is about. Nothing is persisted
     // across launches either: this screen is only reachable while signed out, so the question is
-    // asked once per account, which is when consent is actually meant to be given. Starts ticked —
-    // the policy is stated in the label above it, and un-ticking is the deliberate act.
-    var policyAccepted by rememberSaveable { mutableStateOf(true) }
+    // asked once per account, which is when consent is actually meant to be given. Starts
+    // unticked: App Store guideline 1.2 asks for terms the user agrees to, and a pre-ticked box is
+    // not agreement (#577).
+    var policyAccepted by rememberSaveable { mutableStateOf(false) }
 
     val widthClass = windowWidthClass()
     // The whole reason this screen knows about window size — and it decides the *presentation*
@@ -558,13 +559,13 @@ private fun CtaBlock(
 /**
  * The consent gate on sign-in.
  *
- * Google Play requires the privacy policy to be agreed to at the point an account is created, so it
- * is stated on this screen rather than behind a link somewhere in Settings.
+ * Google Play requires the privacy policy, and App Store guideline 1.2 the terms of use, to be
+ * agreed to at the point an account is created, so both are stated on this screen rather than
+ * behind a link somewhere in Settings.
  *
- * Un-ticking it blocks **all three** ways in — Pubky Ring, restore, and create-account — because
- * all three end in an account and a gate on one of three doors is decoration. It starts ticked, so
- * the state where nothing on the screen works is one the user chose and can undo in one tap,
- * directly beneath the controls it disabled.
+ * It gates **all three** ways in — Pubky Ring, restore, and create-account — because all three end
+ * in an account and a gate on one of three doors is decoration. It starts unticked, directly above
+ * the controls it enables.
  *
  * The two document names inside the sentence are real links. They are located by [indexOf] rather
  * than assembled from fragments so a translation can put them wherever its grammar wants; a name
@@ -579,11 +580,11 @@ private fun PolicyConsentRow(
 ) {
     val colors = LoopkyTheme.colors
     val context = LocalContext.current
+    val termsLabel = stringResource(R.string.onboarding_policy_terms)
     val privacyLabel = stringResource(R.string.onboarding_policy_privacy)
-    val licenseLabel = stringResource(R.string.onboarding_policy_license)
-    val sentence = stringResource(R.string.onboarding_policy_consent, privacyLabel, licenseLabel)
+    val sentence = stringResource(R.string.onboarding_policy_consent, termsLabel, privacyLabel)
 
-    val label = remember(sentence, privacyLabel, licenseLabel, colors.accentPrimary) {
+    val label = remember(sentence, termsLabel, privacyLabel, colors.accentPrimary) {
         val linkStyles = TextLinkStyles(
             style = SpanStyle(
                 color = colors.accentPrimary,
@@ -592,7 +593,7 @@ private fun PolicyConsentRow(
         )
         buildAnnotatedString {
             append(sentence)
-            listOf(privacyLabel to PRIVACY_POLICY_URL, licenseLabel to LICENSE_URL).forEach { (name, url) ->
+            listOf(termsLabel to TERMS_URL, privacyLabel to PRIVACY_POLICY_URL).forEach { (name, url) ->
                 val start = sentence.indexOf(name)
                 if (start >= 0) {
                     addLink(

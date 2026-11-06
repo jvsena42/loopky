@@ -27,4 +27,7 @@ fun rememberAppVersion(): String {
 /** The page is published from `PRIVACY.md`, which stays the source (loopky.github.io#12). */
 const val PRIVACY_POLICY_URL = "https://loopky.app/privacy/"
 
+/** Agreed to on the sign-in screen; states the zero-tolerance rule for objectionable content (#577). */
+const val TERMS_URL = "https://loopky.app/terms/"
+
 const val LICENSE_URL = "https://github.com/jvsena42/loopky/blob/main/LICENSE"

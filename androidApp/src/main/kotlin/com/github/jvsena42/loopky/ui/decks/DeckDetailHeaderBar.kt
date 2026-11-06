@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AppBarRow
@@ -45,11 +46,13 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 @Composable
 internal fun HeaderBar(
     isOwned: Boolean,
+    canReport: Boolean,
     canEdit: Boolean,
     onBackClick: () -> Unit,
     onShareClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onReportClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LoopkyTheme.colors
@@ -70,6 +73,7 @@ internal fun HeaderBar(
         val editLabel = stringResource(R.string.deck_detail_edit)
         val deleteLabel = stringResource(R.string.deck_detail_delete)
         val shareLabel = stringResource(R.string.deck_detail_share)
+        val reportLabel = stringResource(R.string.report_action)
         AppBarRow(
             overflowIndicator = { menu ->
                 HeaderCircleButton(
@@ -103,6 +107,16 @@ internal fun HeaderBar(
                 onClick = onShareClick,
                 testTag = "deck_share",
             )
+            // Last, so it is the first to move into the overflow menu.
+            if (canReport) {
+                headerAction(
+                    imageVector = Icons.Default.Flag,
+                    label = reportLabel,
+                    onClick = onReportClick,
+                    testTag = "deck_report",
+                    tint = colors.danger,
+                )
+            }
         }
     }
 }

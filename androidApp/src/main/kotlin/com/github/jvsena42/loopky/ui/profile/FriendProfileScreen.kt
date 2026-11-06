@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Share
@@ -71,9 +72,12 @@ import com.github.jvsena42.loopky.ui.components.ProfileHero
 import com.github.jvsena42.loopky.ui.components.ProfileStat
 import com.github.jvsena42.loopky.ui.components.ProfileStatsCard
 import com.github.jvsena42.loopky.ui.components.PubkyAppIconButton
+import com.github.jvsena42.loopky.ui.components.ReportSheetHost
+import com.github.jvsena42.loopky.ui.components.ReportedAccountNotice
 import com.github.jvsena42.loopky.ui.components.ShareLinkSheetHost
 import com.github.jvsena42.loopky.ui.components.ShareLinkTarget
 import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
+import com.github.jvsena42.loopky.ui.components.announceReport
 import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
 import com.github.jvsena42.loopky.ui.layout.StatusBarScrim
@@ -133,6 +137,7 @@ fun FriendProfileRoute(
                     context.toast(R.string.block_done)
                     currentBack()
                 }
+                is FriendProfileEffect.Reported -> context.announceReport(effect.blocked, currentBack)
             }
         }
     }
@@ -160,12 +165,23 @@ fun FriendProfileRoute(
         )
     }
 
+    if (state.isReporting) {
+        ReportSheetHost(
+            accountPubky = state.identity.pubky,
+            deck = null,
+            onDismiss = viewModel::onReportDismiss,
+            onSent = viewModel::onReportSent,
+        )
+    }
+
     FriendProfileScreen(
         state = state,
         onBack = onBack,
         onRefresh = viewModel::onRefresh,
         onToggleFollow = viewModel::onToggleFollow,
         onBlockClick = viewModel::onBlockClick,
+        onReportClick = viewModel::onReportClick,
+        onShowAnyway = viewModel::onShowAnyway,
         onCopyPubky = viewModel::onCopyPubky,
         onShare = viewModel::onShareClick,
         onOpenOnPubkyApp = viewModel::onOpenOnPubkyApp,
@@ -184,6 +200,8 @@ private fun FriendProfileScreen(
     onRefresh: () -> Unit,
     onToggleFollow: () -> Unit,
     onBlockClick: () -> Unit,
+    onReportClick: () -> Unit,
+    onShowAnyway: () -> Unit,
     onCopyPubky: () -> Unit,
     onShare: () -> Unit,
     onOpenOnPubkyApp: () -> Unit,
@@ -246,8 +264,8 @@ private fun FriendProfileScreen(
                     )
                 }
 
-                // Nothing to share or act on for a blocked account.
-                if (!state.isBlocked) {
+                // Nothing to share or act on for a blocked or hidden account.
+                if (!state.isBlocked && !state.isHiddenByReport) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
                             modifier = Modifier
@@ -265,11 +283,13 @@ private fun FriendProfileScreen(
                                 modifier = Modifier.size(18.dp),
                             )
                         }
-                        // A block is a record under the reader's own pubky, so a guest has nowhere
-                        // to write one, and blocking yourself is not a thing.
-                        if (state.isSignedIn && !state.isSelf) {
+                        // Report is offered to a guest too, who is asked to sign in; Block is not,
+                        // since a guest has nowhere to write the record.
+                        if (state.canReport) {
                             ProfileOverflowMenu(
                                 enabled = !state.isProcessingBlock,
+                                canBlock = state.canBlock,
+                                onReportClick = onReportClick,
                                 onBlockClick = onBlockClick,
                             )
                         }
@@ -280,6 +300,13 @@ private fun FriendProfileScreen(
             // Not even the name: a blocked account is not shown anywhere (#577).
             if (state.isBlocked) {
                 BlockedAccountNotice(modifier = Modifier.testTag("friend_profile_blocked"))
+                return@Column
+            }
+            if (state.isHiddenByReport) {
+                ReportedAccountNotice(
+                    onShowAnyway = onShowAnyway,
+                    modifier = Modifier.testTag("friend_profile_reported"),
+                )
                 return@Column
             }
 
@@ -388,6 +415,8 @@ private fun FriendProfileScreen(
 @Composable
 private fun ProfileOverflowMenu(
     enabled: Boolean,
+    canBlock: Boolean,
+    onReportClick: () -> Unit,
     onBlockClick: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
@@ -417,13 +446,13 @@ private fun ProfileOverflowMenu(
             DropdownMenuItem(
                 text = {
                     Text(
-                        text = stringResource(R.string.block_action),
+                        text = stringResource(R.string.report_action),
                         color = colors.danger,
                     )
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Filled.Block,
+                        imageVector = Icons.Filled.Flag,
                         contentDescription = null,
                         tint = colors.danger,
                     )
@@ -431,12 +460,35 @@ private fun ProfileOverflowMenu(
                 enabled = enabled,
                 onClick = {
                     expanded = false
-                    onBlockClick()
+                    onReportClick()
                 },
-                modifier = Modifier.testTag("friend_profile_block"),
+                modifier = Modifier.testTag("friend_profile_report"),
             )
+            if (canBlock) {
+                BlockMenuItem(
+                    enabled = enabled,
+                    onClick = {
+                        expanded = false
+                        onBlockClick()
+                    },
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun BlockMenuItem(enabled: Boolean, onClick: () -> Unit) {
+    val colors = LoopkyTheme.colors
+    DropdownMenuItem(
+        text = { Text(text = stringResource(R.string.block_action), color = colors.danger) },
+        leadingIcon = {
+            Icon(imageVector = Icons.Filled.Block, contentDescription = null, tint = colors.danger)
+        },
+        enabled = enabled,
+        onClick = onClick,
+        modifier = Modifier.testTag("friend_profile_block"),
+    )
 }
 
 @Composable
@@ -615,6 +667,8 @@ private fun FriendProfileScreenPreview() {
             onRefresh = {},
             onToggleFollow = {},
             onBlockClick = {},
+            onReportClick = {},
+            onShowAnyway = {},
             onCopyPubky = {},
             onShare = {},
             onOpenOnPubkyApp = {},
@@ -635,6 +689,8 @@ private fun FriendProfileScreenFollowingPreview() {
             onRefresh = {},
             onToggleFollow = {},
             onBlockClick = {},
+            onReportClick = {},
+            onShowAnyway = {},
             onCopyPubky = {},
             onShare = {},
             onOpenOnPubkyApp = {},
@@ -655,6 +711,8 @@ private fun FriendProfileScreenBlockedPreview() {
             onRefresh = {},
             onToggleFollow = {},
             onBlockClick = {},
+            onReportClick = {},
+            onShowAnyway = {},
             onCopyPubky = {},
             onShare = {},
             onOpenOnPubkyApp = {},
@@ -675,6 +733,8 @@ private fun FriendProfileScreenSelfPreview() {
             onRefresh = {},
             onToggleFollow = {},
             onBlockClick = {},
+            onReportClick = {},
+            onShowAnyway = {},
             onCopyPubky = {},
             onShare = {},
             onOpenOnPubkyApp = {},

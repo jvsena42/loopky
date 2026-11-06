@@ -338,7 +338,6 @@
     <string name="onboarding_get_ring">Kein Pubky Ring? Hol dir die App</string>
     <string name="onboarding_policy_consent">Ich habe die %1$s und die %2$s gelesen und stimme ihnen zu.</string>
     <string name="onboarding_policy_privacy">Datenschutzerklärung</string>
-    <string name="onboarding_policy_license">Lizenz</string>
     <string name="onboarding_qr_title">Mit Pubky Ring scannen</string>
     <string name="onboarding_qr_body">Öffne Pubky Ring auf deinem Handy, tippe auf Autorisieren und scanne diesen Code.</string>
     <string name="onboarding_qr_content_description">QR-Code mit dieser Anmeldeanfrage</string>
@@ -968,4 +967,35 @@
     <string name="sign_in_prompt_request_deck_title">Stapel anfragen</string>
     <string name="sign_in_prompt_request_deck_body">Eine Anfrage wird von deinem eigenen Konto gepostet, damit man weiß, wer fragt. Dafür brauchst du ein Konto, aber keine E-Mail.</string>
     <string name="home_request_deck_link">Nichts gefunden? Stapel anfragen</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">Melden</string>
+    <string name="report_sheet_title_profile">Dieses Konto melden</string>
+    <string name="report_sheet_title_deck">Diesen Stapel melden</string>
+    <string name="report_issue_label">Was ist das Problem?</string>
+    <string name="report_issue_personal_info">Veröffentlichung persönlicher Daten</string>
+    <string name="report_issue_hate_speech">Hassrede oder Drohungen</string>
+    <string name="report_issue_harassment">Belästigung oder gezielte Angriffe</string>
+    <string name="report_issue_child_abuse">Sexueller Missbrauch oder Ausbeutung von Kindern</string>
+    <string name="report_issue_terrorism">Terrorpropaganda</string>
+    <string name="report_issue_violence">Drastische oder kriminelle Gewalt</string>
+    <string name="report_issue_illegal_sales">Illegaler Verkauf oder kriminelle Aktivitäten</string>
+    <string name="report_issue_sexual_content">Nicht einvernehmliche oder kriminelle sexuelle Inhalte</string>
+    <string name="report_issue_copyright">Urheberrechtsverletzung</string>
+    <string name="report_details_label">Details (optional)</string>
+    <string name="report_details_placeholder">Alles, was den Moderatoren hilft</string>
+    <string name="report_blocks_profile">Mit dieser Meldung wird das Konto auch blockiert. Du siehst es dann nirgends mehr in Loopky. Entsperren kannst du es unter Einstellungen → Blockierte Konten.</string>
+    <string name="report_blocks_deck">Mit dieser Meldung wird auch die Person blockiert, die den Stapel erstellt hat. Du siehst ihre Stapel und ihr Profil dann nirgends mehr in Loopky. Entsperren kannst du sie unter Einstellungen → Blockierte Konten.</string>
+    <string name="report_public_note">Die Meldung fügt dem Konto außerdem ein öffentliches Tag „gemeldet“ hinzu, das es vor den Personen verbirgt, die dir folgen.</string>
+    <string name="report_send">Meldung senden</string>
+    <string name="report_cancel">Abbrechen</string>
+    <string name="report_done">Gemeldet und blockiert</string>
+    <string name="report_done_block_failed">Meldung gesendet, aber das Konto konnte nicht blockiert werden. Versuch es mit „Blockieren“ im Profil.</string>
+    <string name="report_hidden_title">Jemand, dem du folgst, hat dieses Konto gemeldet</string>
+    <string name="report_hidden_body">Profil und Stapel sind für dich ausgeblendet.</string>
+    <string name="report_show_anyway">Trotzdem anzeigen</string>
+    <string name="sign_in_prompt_report_title">Melde dich an, um zu melden</string>
+    <string name="sign_in_prompt_report_body">Eine Meldung wird von deinem eigenen Konto gesendet und blockiert das Konto für dich. Dafür brauchst du ein Konto, aber keine E-Mail.</string>
+    <string name="onboarding_policy_terms">Nutzungsbedingungen</string>
+    <string name="settings_terms">Nutzungsbedingungen</string>
 </resources>

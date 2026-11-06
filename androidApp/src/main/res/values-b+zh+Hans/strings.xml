@@ -342,7 +342,6 @@
     <string name="onboarding_get_ring">没有 Pubky Ring？获取应用</string>
     <string name="onboarding_policy_consent">我已阅读并同意%1$s和%2$s。</string>
     <string name="onboarding_policy_privacy">《隐私政策》</string>
-    <string name="onboarding_policy_license">《许可协议》</string>
     <string name="onboarding_qr_title">用 Pubky Ring 扫码</string>
     <string name="onboarding_qr_body">在手机上打开 Pubky Ring，点按“授权”，然后扫描这个二维码。</string>
     <string name="onboarding_qr_content_description">包含此登录请求的二维码</string>
@@ -973,4 +972,35 @@
     <string name="sign_in_prompt_request_deck_title">请求卡组</string>
     <string name="sign_in_prompt_request_deck_body">请求从你自己的账号发布，制作卡组的人能知道是谁在请求。需要一个账号，但不需要邮箱。</string>
     <string name="home_request_deck_link">没找到？请求卡组</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">举报</string>
+    <string name="report_sheet_title_profile">举报此账号</string>
+    <string name="report_sheet_title_deck">举报此卡组</string>
+    <string name="report_issue_label">有什么问题？</string>
+    <string name="report_issue_personal_info">泄露个人信息</string>
+    <string name="report_issue_hate_speech">仇恨或威胁言论</string>
+    <string name="report_issue_harassment">骚扰或针对性攻击</string>
+    <string name="report_issue_child_abuse">儿童性虐待或剥削</string>
+    <string name="report_issue_terrorism">宣扬恐怖主义</string>
+    <string name="report_issue_violence">血腥或犯罪暴力</string>
+    <string name="report_issue_illegal_sales">非法销售或犯罪活动</string>
+    <string name="report_issue_sexual_content">未经同意或违法的色情内容</string>
+    <string name="report_issue_copyright">侵犯版权</string>
+    <string name="report_details_label">详细说明（可选）</string>
+    <string name="report_details_placeholder">任何有助于审核人员的信息</string>
+    <string name="report_blocks_profile">发送此举报也会屏蔽此账号。你将不会在 Loopky 的任何地方看到它。你可以在“设置 → 已屏蔽的账号”中解除屏蔽。</string>
+    <string name="report_blocks_deck">发送此举报也会屏蔽该卡组的作者。你将不会在 Loopky 的任何地方看到其卡组或个人资料。你可以在“设置 → 已屏蔽的账号”中解除屏蔽。</string>
+    <string name="report_public_note">举报还会给该账号加上公开的“已举报”标签，关注你的人也将看不到它。</string>
+    <string name="report_send">发送举报</string>
+    <string name="report_cancel">取消</string>
+    <string name="report_done">已举报并屏蔽</string>
+    <string name="report_done_block_failed">举报已发送，但未能屏蔽该账号。请在其个人资料中尝试“屏蔽”。</string>
+    <string name="report_hidden_title">你关注的人举报了此账号</string>
+    <string name="report_hidden_body">其个人资料和卡组已对你隐藏。</string>
+    <string name="report_show_anyway">仍然显示</string>
+    <string name="sign_in_prompt_report_title">登录后才能举报</string>
+    <string name="sign_in_prompt_report_body">举报会从你自己的账号发出，并为你屏蔽该账号。需要账号，但不需要邮箱。</string>
+    <string name="onboarding_policy_terms">《使用条款》</string>
+    <string name="settings_terms">使用条款</string>
 </resources>
