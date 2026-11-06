@@ -196,6 +196,30 @@ class DiscoveryRepositoryReportTest {
         assertFalse(repo.isReportedByFollowee("trollpk"))
     }
 
+    @Test
+    fun `a failed candidates read is not remembered for the session`() = runTest {
+        follow("friendpk")
+        putRemoteManifest(author = "trollpk", deckId = "bad")
+        putRemoteManifest(author = "otherpk", deckId = "good")
+        tagRepo.subjectsByTag = mapOf(
+            ReservedTags.DECK to listOf(
+                TaggedSubject(PubkyUri("pubky://trollpk/pub/loopky/decks/bad/manifest.json"), listOf("trollpk"), 1),
+                TaggedSubject(PubkyUri("pubky://otherpk/pub/loopky/decks/good/manifest.json"), listOf("otherpk"), 1),
+            ),
+        )
+        val candidates = "$NEXUS/v0/search/users/by_tags?tags=loopky-reported&limit=100"
+        nexusHttp.enqueueFailure(HttpMethod.GET, candidates, IllegalStateException("offline"))
+        nexusHttp.enqueue(
+            HttpMethod.GET,
+            candidates,
+            HttpResponse(statusCode = 200, body = """[{"user_id":"trollpk","score":1}]"""),
+        )
+        nexusHttp.respond("$NEXUS/v0/user/trollpk/taggers/loopky-reported?limit=100", """{"users":["friendpk"]}""")
+
+        assertEquals(setOf("bad", "good"), repo.decksByTagGlobal(ReservedTags.DECK).map { it.id }.toSet())
+        assertEquals(listOf("good"), repo.decksByTagGlobal(ReservedTags.DECK).map { it.id })
+    }
+
     private companion object {
         const val NEXUS = "https://nexus.test"
         const val REPORT_URL = "https://staging.pubky.app/api/report"

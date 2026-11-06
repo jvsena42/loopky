@@ -36,7 +36,8 @@ class FriendReports(
         val label = ReservedTags.REPORTED.value
         val candidates = nexus.usersByProfileTag(label, CANDIDATE_LIMIT)
             .onFailure { Log.w(TAG, "hiddenFor: candidates FAILED, hiding nobody — ${it.message}") }
-            .getOrElse { emptyList() }
+            // Not cached: a failed read hides nobody this once, not for the rest of the session.
+            .getOrElse { return emptySet() }
         val hidden = candidates.distinct()
             .filterNot { it in following }
             .mapConcurrently(limit = IN_FLIGHT) { candidate -> candidate.takeIf { reportedBy(it, following) } }
