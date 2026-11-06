@@ -993,6 +993,7 @@
     <string name="report_done_block_failed">Signalement envoyé, mais le compte n’a pas pu être bloqué. Essaie Bloquer sur son profil.</string>
     <string name="report_hidden_title">Quelqu’un que tu suis a signalé ce compte</string>
     <string name="report_hidden_body">Son profil et ses paquets te sont masqués.</string>
+    <string name="report_hidden_title_moderators">La modération de pubky.app a signalé ce compte</string>
     <string name="report_show_anyway">Afficher quand même</string>
     <string name="sign_in_prompt_report_title">Connecte-toi pour signaler</string>
     <string name="sign_in_prompt_report_body">Un signalement est envoyé depuis ton propre compte et bloque le compte pour toi. Il faut un compte, mais pas d’e-mail.</string>

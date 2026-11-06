@@ -1005,6 +1005,7 @@
     <string name="report_done_block_failed">신고는 보냈지만 계정을 차단하지 못했어요. 프로필에서 차단을 시도해 주세요.</string>
     <string name="report_hidden_title">내가 팔로우하는 사람이 이 계정을 신고했어요</string>
     <string name="report_hidden_body">프로필과 덱이 숨겨져 있어요.</string>
+    <string name="report_hidden_title_moderators">pubky.app 운영진이 이 계정을 신고 대상으로 표시했어요</string>
     <string name="report_show_anyway">그래도 보기</string>
     <string name="sign_in_prompt_report_title">신고하려면 로그인하세요</string>
     <string name="sign_in_prompt_report_body">신고는 내 계정으로 보내지고, 해당 계정을 차단해요. 계정이 필요하지만 이메일은 필요 없어요.</string>

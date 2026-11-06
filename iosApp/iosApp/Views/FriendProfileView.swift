@@ -30,7 +30,7 @@ struct FriendProfileView: View {
                     BlockedAccountNotice()
                         .accessibilityIdentifier("friend_profile_blocked")
                 } else if state.isHiddenByReport {
-                    ReportedAccountNotice(onShowAnyway: onShowAnyway)
+                    ReportedAccountNotice(byModerators: state.isHiddenByModerators, onShowAnyway: onShowAnyway)
                         .accessibilityIdentifier("friend_profile_reported")
                 } else {
                     hero

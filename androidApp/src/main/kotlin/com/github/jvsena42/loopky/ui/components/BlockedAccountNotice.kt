@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.jvsena42.loopky.R
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 
 /**
@@ -69,11 +70,11 @@ fun BlockedAccountNotice(modifier: Modifier = Modifier) {
 }
 
 /**
- * What a profile or deck shows when someone the reader follows reported its account (#577). Unlike
- * a block, the reader can look anyway.
+ * What a profile or deck shows when pubky.app's moderators flagged its account or someone the
+ * reader follows reported it (#577). Unlike a block, the reader can look anyway.
  */
 @Composable
-fun ReportedAccountNotice(onShowAnyway: () -> Unit, modifier: Modifier = Modifier) {
+fun ReportedAccountNotice(reason: HiddenReason, onShowAnyway: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LoopkyTheme.colors
     Column(
         modifier = modifier
@@ -96,7 +97,12 @@ fun ReportedAccountNotice(onShowAnyway: () -> Unit, modifier: Modifier = Modifie
                 modifier = Modifier.size(28.dp),
             )
             Text(
-                text = stringResource(R.string.report_hidden_title),
+                text = stringResource(
+                    when (reason) {
+                        HiddenReason.FlaggedByModerators -> R.string.report_hidden_title_moderators
+                        HiddenReason.ReportedByFollowee -> R.string.report_hidden_title
+                    },
+                ),
                 color = colors.foregroundPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.W700,

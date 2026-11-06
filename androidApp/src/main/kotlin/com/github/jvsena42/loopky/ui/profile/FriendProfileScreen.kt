@@ -302,8 +302,9 @@ private fun FriendProfileScreen(
                 BlockedAccountNotice(modifier = Modifier.testTag("friend_profile_blocked"))
                 return@Column
             }
-            if (state.isHiddenByReport) {
+            state.hiddenReason?.let { reason ->
                 ReportedAccountNotice(
+                    reason = reason,
                     onShowAnyway = onShowAnyway,
                     modifier = Modifier.testTag("friend_profile_reported"),
                 )

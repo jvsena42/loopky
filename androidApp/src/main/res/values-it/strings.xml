@@ -993,6 +993,7 @@
     <string name="report_done_block_failed">Segnalazione inviata, ma non è stato possibile bloccare l’account. Prova con Blocca dal suo profilo.</string>
     <string name="report_hidden_title">Qualcuno che segui ha segnalato questo account</string>
     <string name="report_hidden_body">Il profilo e i mazzi sono nascosti per te.</string>
+    <string name="report_hidden_title_moderators">La moderazione di pubky.app ha segnalato questo account</string>
     <string name="report_show_anyway">Mostra comunque</string>
     <string name="sign_in_prompt_report_title">Accedi per segnalare</string>
     <string name="sign_in_prompt_report_body">La segnalazione parte dal tuo account e blocca l’account per te. Serve un account, ma non un’email.</string>

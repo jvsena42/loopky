@@ -993,6 +993,7 @@
     <string name="report_done_block_failed">Meldung gesendet, aber das Konto konnte nicht blockiert werden. Versuch es mit „Blockieren“ im Profil.</string>
     <string name="report_hidden_title">Jemand, dem du folgst, hat dieses Konto gemeldet</string>
     <string name="report_hidden_body">Profil und Stapel sind für dich ausgeblendet.</string>
+    <string name="report_hidden_title_moderators">Die Moderation von pubky.app hat dieses Konto markiert</string>
     <string name="report_show_anyway">Trotzdem anzeigen</string>
     <string name="sign_in_prompt_report_title">Melde dich an, um zu melden</string>
     <string name="sign_in_prompt_report_body">Eine Meldung wird von deinem eigenen Konto gesendet und blockiert das Konto für dich. Dafür brauchst du ein Konto, aber keine E-Mail.</string>

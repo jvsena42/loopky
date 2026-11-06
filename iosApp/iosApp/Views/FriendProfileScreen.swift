@@ -74,6 +74,7 @@ struct FriendProfileScreen: View {
             isConfirmingBlock: state.isConfirmingBlock,
             isProcessingBlock: state.isProcessingBlock,
             isHiddenByReport: state.isHiddenByReport,
+            isHiddenByModerators: state.hiddenReason == .flaggedbymoderators,
             canReport: state.canReport,
             canBlock: state.canBlock,
             isSignedIn: state.isSignedIn,
@@ -161,6 +162,7 @@ struct FriendProfileViewState {
     var isProcessingBlock: Bool = false
     /// Someone the reader follows reported this account: nothing is drawn until Show anyway.
     var isHiddenByReport: Bool = false
+    var isHiddenByModerators: Bool = false
     /// Offered to guests too, who are asked to sign in.
     var canReport: Bool = false
     var canBlock: Bool = false

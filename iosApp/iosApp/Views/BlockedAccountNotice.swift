@@ -24,9 +24,10 @@ struct BlockedAccountNotice: View {
     }
 }
 
-/// What a profile or deck shows when someone the reader follows reported its account (#577).
-/// Unlike a block, the reader can look anyway.
+/// What a profile or deck shows when pubky.app's moderators flagged its account or someone the
+/// reader follows reported it (#577). Unlike a block, the reader can look anyway.
 struct ReportedAccountNotice: View {
+    var byModerators: Bool = false
     var onShowAnyway: () -> Void = {}
 
     var body: some View {
@@ -35,7 +36,7 @@ struct ReportedAccountNotice: View {
                 Image(systemName: "flag")
                     .font(.system(size: 28))
                     .foregroundStyle(LoopkyColor.foregroundMuted)
-                Text("report_hidden_title")
+                Text(byModerators ? "report_hidden_title_moderators" : "report_hidden_title")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(LoopkyColor.foregroundPrimary)
                     .multilineTextAlignment(.center)
@@ -58,6 +59,7 @@ struct ReportedAccountNotice: View {
 /// A deck by a blocked account, or by one a followee reported: none of it, and a way back.
 struct HiddenDeckView: View {
     let isBlocked: Bool
+    var byModerators: Bool = false
     var onBack: () -> Void = {}
     var onShowAnyway: () -> Void = {}
 
@@ -78,7 +80,7 @@ struct HiddenDeckView: View {
             if isBlocked {
                 BlockedAccountNotice().accessibilityIdentifier("deck_detail_blocked")
             } else {
-                ReportedAccountNotice(onShowAnyway: onShowAnyway)
+                ReportedAccountNotice(byModerators: byModerators, onShowAnyway: onShowAnyway)
                     .accessibilityIdentifier("deck_detail_reported")
             }
             Spacer()

@@ -1048,6 +1048,7 @@
     <string name="report_done_block_failed">報告は送信しましたが、アカウントをブロックできませんでした。プロフィールの「ブロック」をお試しください。</string>
     <string name="report_hidden_title">フォロー中の人がこのアカウントを報告しました</string>
     <string name="report_hidden_body">プロフィールとデッキは非表示になっています。</string>
+    <string name="report_hidden_title_moderators">pubky.app のモデレーターがこのアカウントにフラグを付けました</string>
     <string name="report_show_anyway">表示する</string>
     <string name="sign_in_prompt_report_title">報告するにはサインイン</string>
     <string name="sign_in_prompt_report_body">報告はあなた自身のアカウントから送信され、そのアカウントをブロックします。アカウントが必要ですが、メールアドレスは不要です。</string>

@@ -998,6 +998,7 @@
     <string name="report_done_block_failed">举报已发送，但未能屏蔽该账号。请在其个人资料中尝试“屏蔽”。</string>
     <string name="report_hidden_title">你关注的人举报了此账号</string>
     <string name="report_hidden_body">其个人资料和卡组已对你隐藏。</string>
+    <string name="report_hidden_title_moderators">pubky.app 的审核人员标记了此账号</string>
     <string name="report_show_anyway">仍然显示</string>
     <string name="sign_in_prompt_report_title">登录后才能举报</string>
     <string name="sign_in_prompt_report_body">举报会从你自己的账号发出，并为你屏蔽该账号。需要账号，但不需要邮箱。</string>

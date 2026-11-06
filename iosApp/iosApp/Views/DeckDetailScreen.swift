@@ -163,8 +163,8 @@ struct DeckDetailScreen: View {
             return .error(ErrorCopy.message(for: error.reason))
         case is DeckDetailUiStateBlocked:
             return .blocked
-        case is DeckDetailUiStateHiddenByReport:
-            return .hiddenByReport
+        case let hidden as DeckDetailUiStateHiddenByReport:
+            return .hiddenByReport(byModerators: hidden.reason == .flaggedbymoderators)
         default:
             return .loading
         }

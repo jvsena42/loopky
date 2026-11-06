@@ -46,7 +46,12 @@ struct DeckDetailView: View {
                 .padding(.top, 8)
                 .contentPane(PaneWidth.reading)
             case .blocked, .hiddenByReport:
-                HiddenDeckView(isBlocked: state.isBlocked, onBack: onBack, onShowAnyway: onShowAnyway)
+                HiddenDeckView(
+                    isBlocked: state.isBlocked,
+                    byModerators: state.isHiddenByModerators,
+                    onBack: onBack,
+                    onShowAnyway: onShowAnyway
+                )
             case .content(let content):
                 contentBody(content)
             }

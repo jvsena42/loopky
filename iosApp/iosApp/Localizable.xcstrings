@@ -66269,6 +66269,77 @@
           }
         }
       }
+    },
+    "report_hidden_title_moderators": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pubky.app’s moderators flagged this account"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A moderação do pubky.app sinalizou esta conta"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Moderation von pubky.app hat dieses Konto markiert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La moderación de pubky.app marcó esta cuenta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La modération de pubky.app a signalé ce compte"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La moderazione di pubky.app ha segnalato questo account"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đội kiểm duyệt của pubky.app đã gắn cờ tài khoản này"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pubky.app のモデレーターがこのアカウントにフラグを付けました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pubky.app 운영진이 이 계정을 신고 대상으로 표시했어요"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pubky.app 的审核人员标记了此账号"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pubky.app 的審核人員標記了此帳號"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

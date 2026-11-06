@@ -5,11 +5,14 @@ enum DeckDetailViewState {
     case content(DeckDetailContent)
     case error(String)
     case blocked
-    case hiddenByReport
+    case hiddenByReport(byModerators: Bool)
 }
 
 extension DeckDetailViewState {
     var isBlocked: Bool { if case .blocked = self { return true } else { return false } }
+    var isHiddenByModerators: Bool {
+        if case .hiddenByReport(let byModerators) = self { return byModerators } else { return false }
+    }
 }
 
 struct DeckDetailContent {

@@ -1068,6 +1068,7 @@
     <string name="report_done_block_failed">檢舉已送出，但無法封鎖該帳號。請在其個人檔案中嘗試「封鎖」。</string>
     <string name="report_hidden_title">你追蹤的人檢舉了此帳號</string>
     <string name="report_hidden_body">其個人檔案和卡組已對你隱藏。</string>
+    <string name="report_hidden_title_moderators">pubky.app 的審核人員標記了此帳號</string>
     <string name="report_show_anyway">仍要顯示</string>
     <string name="sign_in_prompt_report_title">登入後才能檢舉</string>
     <string name="sign_in_prompt_report_body">檢舉會從你自己的帳號送出，並為你封鎖該帳號。需要帳號，但不需要電子郵件。</string>

@@ -1074,6 +1074,7 @@
     <string name="report_done_block_failed">Report sent, but the account could not be blocked. Try Block on their profile.</string>
     <string name="report_hidden_title">Someone you follow reported this account</string>
     <string name="report_hidden_body">Its profile and decks are hidden from you.</string>
+    <string name="report_hidden_title_moderators">pubky.app’s moderators flagged this account</string>
     <string name="report_show_anyway">Show anyway</string>
     <string name="sign_in_prompt_report_title">Sign in to report</string>
     <string name="sign_in_prompt_report_body">A report is sent from your own account, and it blocks the account for you. It needs an account, but no email.</string>

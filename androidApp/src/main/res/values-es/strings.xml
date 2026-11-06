@@ -993,6 +993,7 @@
     <string name="report_done_block_failed">Denuncia enviada, pero no se pudo bloquear la cuenta. Prueba con Bloquear en su perfil.</string>
     <string name="report_hidden_title">Alguien a quien sigues denunció esta cuenta</string>
     <string name="report_hidden_body">Su perfil y sus mazos están ocultos para ti.</string>
+    <string name="report_hidden_title_moderators">La moderación de pubky.app marcó esta cuenta</string>
     <string name="report_show_anyway">Mostrar de todos modos</string>
     <string name="sign_in_prompt_report_title">Inicia sesión para denunciar</string>
     <string name="sign_in_prompt_report_body">La denuncia se envía desde tu propia cuenta y bloquea la cuenta denunciada para ti. Necesitas una cuenta, pero no un correo.</string>

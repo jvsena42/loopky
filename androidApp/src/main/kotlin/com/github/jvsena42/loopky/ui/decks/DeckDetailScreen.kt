@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.github.jvsena42.loopky.R
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.StudyFeature
 import com.github.jvsena42.loopky.presentation.decks.CardPreviewModel
@@ -249,8 +250,8 @@ fun DeckDetailScreen(
             }
         }
 
-        DeckDetailUiState.Blocked, DeckDetailUiState.HiddenByReport -> HiddenDeck(
-            isBlocked = state == DeckDetailUiState.Blocked,
+        DeckDetailUiState.Blocked, is DeckDetailUiState.HiddenByReport -> HiddenDeck(
+            hiddenReason = (state as? DeckDetailUiState.HiddenByReport)?.reason,
             onBackClick = onBackClick,
             onShowAnyway = onShowAnyway,
         )
@@ -746,7 +747,7 @@ internal fun TitleSection(title: String, description: String?) {
 
 /** A deck by a blocked account, or one a followee reported: nothing of it, and a way back. */
 @Composable
-private fun HiddenDeck(isBlocked: Boolean, onBackClick: () -> Unit, onShowAnyway: () -> Unit) {
+private fun HiddenDeck(hiddenReason: HiddenReason?, onBackClick: () -> Unit, onShowAnyway: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -766,10 +767,11 @@ private fun HiddenDeck(isBlocked: Boolean, onBackClick: () -> Unit, onShowAnyway
             .align(Alignment.Center)
             .contentPane(PaneWidth.Focused)
             .padding(20.dp)
-        if (isBlocked) {
+        if (hiddenReason == null) {
             BlockedAccountNotice(modifier = noticeModifier.testTag("deck_detail_blocked"))
         } else {
             ReportedAccountNotice(
+                reason = hiddenReason,
                 onShowAnyway = onShowAnyway,
                 modifier = noticeModifier.testTag("deck_detail_reported"),
             )
