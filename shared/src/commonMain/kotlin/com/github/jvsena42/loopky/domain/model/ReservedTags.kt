@@ -46,7 +46,14 @@ object ReservedTags {
     /** On a recap's pubky.app post, so every shared recap is one indexed list. */
     val RECAP = Tag("${PREFIX}recap")
 
-    val ALL: Set<Tag> = setOf(USER, DECK, FOLLOWED, CLONED, RECAP)
+    /**
+     * On a reported account's `profile.json`, written by the reporter. Discovery hides an account
+     * one of the reader's followees tagged with it (`FriendReports`, #577). Public like every tag
+     * record: anyone can see who reported whom.
+     */
+    val REPORTED = Tag("${PREFIX}reported")
+
+    val ALL: Set<Tag> = setOf(USER, DECK, FOLLOWED, CLONED, RECAP, REPORTED)
 
     /**
      * True for anything in the reserved namespace, not just [ALL] — a label a future version

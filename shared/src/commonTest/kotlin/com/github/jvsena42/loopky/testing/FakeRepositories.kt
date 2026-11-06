@@ -61,6 +61,9 @@ import com.github.jvsena42.loopky.domain.model.LocalAccount
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.ParsedRow
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
+import com.github.jvsena42.loopky.domain.model.ReportIssue
+import com.github.jvsena42.loopky.domain.model.ReportOutcome
+import com.github.jvsena42.loopky.domain.model.ReportSubject
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Separator
@@ -985,6 +988,24 @@ class FakeDiscoveryRepository : DiscoveryRepository {
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = false))
         return Result.success(Unit)
     }
+
+    data class SentReport(val subject: ReportSubject, val issue: ReportIssue, val details: String)
+
+    val reports = mutableListOf<SentReport>()
+
+    /** When set, [report] fails before anything is sent. */
+    var reportError: Throwable? = null
+
+    /** Accounts [isReportedByFollowee] answers true for. */
+    val reportedByFollowees = mutableSetOf<String>()
+
+    override suspend fun report(subject: ReportSubject, issue: ReportIssue, details: String): Result<ReportOutcome> {
+        reportError?.let { return Result.failure(it) }
+        reports.add(SentReport(subject, issue, details))
+        return Result.success(ReportOutcome(blocked = blockUser(subject.accountPubky).isSuccess))
+    }
+
+    override suspend fun isReportedByFollowee(pubky: String): Boolean = pubky in reportedByFollowees
 
     override suspend fun blockedProfiles(): List<PubkyIdentity> = blocks.sorted().map { pubky ->
         profiles[pubky] ?: PubkyIdentity(pubky, displayName = null, avatarUrl = null, bio = null)

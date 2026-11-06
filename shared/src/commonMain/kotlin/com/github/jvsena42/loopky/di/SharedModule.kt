@@ -1,10 +1,12 @@
 package com.github.jvsena42.loopky.di
 
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.price.PriceClient
 import com.github.jvsena42.loopky.data.price.PriceSource
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.report.ReportClient
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
@@ -185,7 +187,12 @@ fun sharedModule(): Module = module {
         )
     }
     single<DiscoveryRepository> {
-        DiscoveryRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get(), blockedAccounts = get())
+        DiscoveryRepositoryImpl(
+            get(), get(), get(), get(), get(), get(), get(), get(),
+            reportClient = ReportClient(http = get(), baseUrl = get<PubkyEnvironment>().webBaseUrl),
+            environment = get(),
+            blockedAccounts = get(),
+        )
     }
 
     single<TagRepository> {

@@ -1,5 +1,7 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.report.ReportClient
 import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.toDto
@@ -70,6 +72,8 @@ class DiscoveryRepositoryPagingTest {
         identityRepository = identityRepo,
         nexus = NexusClient(http = http, baseUrl = "https://nexus.test"),
         preferences = preferences,
+        reportClient = ReportClient(FakeHttpFetcher(), "https://pubky.test"),
+        environment = PubkyEnvironment.Staging,
     )
 
     private fun putRemoteManifest(

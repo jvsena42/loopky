@@ -25,6 +25,9 @@ import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.ParsedRow
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
+import com.github.jvsena42.loopky.domain.model.ReportIssue
+import com.github.jvsena42.loopky.domain.model.ReportOutcome
+import com.github.jvsena42.loopky.domain.model.ReportSubject
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Separator
 import com.github.jvsena42.loopky.domain.model.Session
@@ -929,6 +932,21 @@ interface DiscoveryRepository {
      */
     suspend fun blockUser(pubky: String): Result<Unit>
     suspend fun unblockUser(pubky: String): Result<Unit>
+
+    /**
+     * Report [subject] to pubky.app's moderators, then tag the account's profile
+     * [ReservedTags.REPORTED] and block it (#577). Fails only when the report itself does not
+     * arrive; the tag is best-effort, and a block that fails comes back as
+     * [ReportOutcome.blocked] false. A deck report blocks the deck's author. Refuses the signed-in
+     * account's own pubky.
+     */
+    suspend fun report(subject: ReportSubject, issue: ReportIssue, details: String): Result<ReportOutcome>
+
+    /**
+     * True when someone the signed-in reader follows has reported [pubky] — discovery leaves such
+     * accounts out, and a profile or deck reached by a link says so. False on any failure.
+     */
+    suspend fun isReportedByFollowee(pubky: String): Boolean
 
     /** The accounts [blocked] names, as profiles — a bare pubky where one does not resolve. */
     suspend fun blockedProfiles(): List<PubkyIdentity>
