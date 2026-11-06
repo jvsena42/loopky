@@ -241,11 +241,14 @@ class DiscoveryRepositoryImpl(
      * Blocks, accounts pubky.app's moderators flagged, and — for a signed-in reader — accounts a
      * followee reported. Every discovery read filters on this; no part failing may fail the read.
      */
-    private suspend fun blockedOrEmpty(): Set<String> {
-        val hidden = blockedAccounts.loadOrEmpty() + moderatorFlags.flagged()
-        if (session.current() == null) return hidden
-        val following = runSuspendCatching { following().toSet() }.getOrElse { emptySet() }
-        return hidden + friendReports.hiddenFor(following)
+    private suspend fun blockedOrEmpty(): Set<String> = coroutineScope {
+        val flagged = async { moderatorFlags.flagged() }
+        val reported = async {
+            if (session.current() == null) return@async emptySet()
+            val following = runSuspendCatching { following().toSet() }.getOrElse { emptySet() }
+            friendReports.hiddenFor(following)
+        }
+        blockedAccounts.loadOrEmpty() + flagged.await() + reported.await()
     }
 
     override suspend fun announceDeck(announcement: DeckAnnouncement): Result<PubkyUri> =
