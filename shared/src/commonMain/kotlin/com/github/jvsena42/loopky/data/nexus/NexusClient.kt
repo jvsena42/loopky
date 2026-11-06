@@ -220,6 +220,15 @@ class NexusClient(
         }
     }
 
+    /** Whether [tagger] is among [userId]'s taggers under [label], whatever their number. */
+    suspend fun isTaggedBy(userId: String, label: String, tagger: String): Result<Boolean> = runSuspendCatching {
+        val url = "$baseUrl/v0/user/${encodeUriComponent(userId)}/taggers/${encodeUriComponent(label)}" +
+            "?limit=1&viewer_id=${encodeUriComponent(tagger)}"
+        withIndexerRetry("isTaggedBy") {
+            loopkyJson.decodeFromString(NexusTaggersDto.serializer(), http.get(url).getOrThrow()).relationship
+        }
+    }
+
     /**
      * Pubkys that follow [userId], most recent first. The one social read a homeserver cannot
      * answer: a follow record lives on the *follower's* homeserver, so this is a network-wide

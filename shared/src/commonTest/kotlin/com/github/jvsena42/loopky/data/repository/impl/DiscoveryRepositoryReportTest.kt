@@ -210,9 +210,19 @@ class DiscoveryRepositoryReportTest {
             """[{"user_id":"$flagged","score":1}]""",
         )
         nexusHttp.respond(
-            "$NEXUS/v0/user/$flagged/taggers/$label?limit=100",
-            """{"users":${taggers.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}}""",
+            "$NEXUS/v0/user/$flagged/taggers/$label?limit=1&viewer_id=$BOT",
+            """{"users":[],"relationship":${BOT in taggers}}""",
         )
+    }
+
+    @Test
+    fun `a bot flag past the first page of taggers still hides the account`() = runTest {
+        val strangers = (1..100).map { "stranger$it" }
+        val page = "$NEXUS/v0/user/trollpk/taggers/violence?limit=100"
+        nexusHttp.respond(page, """{"users":${strangers.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}}""")
+        nexusHttp.respond("$NEXUS/v0/user/trollpk/taggers/violence?limit=1&viewer_id=$BOT", """{"users":[],"relationship":true}""")
+
+        assertEquals(HiddenReason.FlaggedByModerators, repo.hiddenReason("trollpk"))
     }
 
     @Test
