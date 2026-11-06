@@ -1,6 +1,6 @@
 # Journeys
 
-32 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
+33 numbered `*.xml` scripts, driven by hand on a device: `android-cli` on Android, `xcodebuildmcp`
 on iOS. The CLI has none — it has no screen — and its equivalent is the `cli-linux` and `cli-binary`
 jobs in `.github/workflows/ci.yml`.
 
@@ -112,6 +112,12 @@ a line when you close it.
   and the block that follow it, the "Someone you follow reported this account" notice, the
   moderators' notice (no profile on production carries a bot flag yet: all seven labels answered
   zero candidates on 2026-11-06), and dark.
+- **33 — the "another app uses this account" branch, an unreachable check, a Ring account and
+  dark.** Delete with and without the pubky.app option was driven on Android (a new
+  `medium_phone` AVD, staging, also at 2560×1600) and iOS (iPhone Air), on throwaway invite-code
+  accounts, with the homeserver read back after each. No account here has records another app
+  wrote, so the Direct line has only run in unit tests; nor has the Unknown line, a Ring sign-in's
+  identity line, or dark.
 - **28 — the password manager, end to end.** On Android, saving, the read-back check and restoring
   all need a device with a credential provider; no emulator here has one, so only the empty path
   (no provider: the save fails, the restore picker returns nothing) has been driven. On iOS the

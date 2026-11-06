@@ -1,0 +1,25 @@
+<journey name="Delete account — Loopky's data, and the pubky.app records on request">
+  <description>
+    Settings → Delete account on a throwaway account. Destroys the account it runs on, so never
+    run it on a shared test account: sign up a fresh one with an invite code first. Run it twice,
+    once with "Also delete my Pubky profile" ticked and once without. What the dialog offers
+    depends on what the account holds under /pub/pubky.app/, so read the answer back from the
+    homeserver afterwards rather than trusting the screen.
+  </description>
+  <actions>
+    <action>Sign up a new account with an invite code (onboarding_create_pubky → signup_method_invite → signup_invite_input → signup_invite_submit) and skip the backup prompt</action>
+    <action>On the profile tab, tap "Add name" (resource-id: profile_name_nudge_action), set a name and save, so the account has a profile.json</action>
+    <action>Optionally follow one person and block another from Discover, so follows/ and mutes/ exist too</action>
+    <action>Open Settings (resource-id: profile_settings), scroll to the bottom and tap "Delete account" (resource-id: settings_delete_account)</action>
+    <action>Verify the dialog opens with the confirm button (resource-id: settings_delete_account_confirm) counting down from 10, and that "Checking whether other Pubky apps use this account…" (resource-id: settings_delete_account_checking) shows until the check lands</action>
+    <action>Verify that, for an account only Loopky has written to, an unticked "Also delete my Pubky profile" option (resource-id: settings_delete_account_pubky_app) appears with "Your name, bio, follows and blocks…" under it</action>
+    <action>Verify the identity line reads "Your Pubky key is removed from this device." for a local-key account, or "Your Pubky identity stays in Pubky Ring." for a Ring sign-in</action>
+    <action>On a fresh signup that has not been backed up, verify the red warning "Loopky holds the only copy of your key…" (resource-id: settings_delete_account_only_key) is shown; after a backup it is gone</action>
+    <action>Verify the confirm button stays disabled until the countdown ends and the check has landed</action>
+    <action>Tap Cancel (resource-id: settings_delete_account_cancel), open the dialog again and verify the option is unticked again and the check runs again</action>
+    <action>Run A: tick the option, confirm, verify "Deleting" with a removed count, then the onboarding screen; listing the account's /pub/ on the homeserver answers 404</action>
+    <action>Run B (another fresh account): leave the option unticked and confirm; verify the onboarding screen, and that /pub/pubky.app/profile.json is still on the homeserver while the loopky-user tag and everything under /pub/loopky/ are gone</action>
+    <action>On iOS, verify the dialog is a sheet that cannot be swiped away while "Deleting" is shown</action>
+    <action>On an account another Pubky app has written to (a post, a picture or links on the profile, another app's namespace), verify no option is shown and the line reads "Your Pubky profile, follows and posts stay, because another Pubky app uses this account."</action>
+  </actions>
+</journey>
