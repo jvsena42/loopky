@@ -216,6 +216,25 @@ class DiscoveryRepositoryReportTest {
     }
 
     @Test
+    fun `an indexer that was unreachable once does not switch moderation off for the process`() = runTest {
+        session.set(null)
+        putRemoteManifest(author = "trollpk", deckId = "bad")
+        putRemoteManifest(author = "otherpk", deckId = "good")
+        tagRepo.subjectsByTag = mapOf(
+            ReservedTags.DECK to listOf(
+                TaggedSubject(PubkyUri("pubky://trollpk/pub/loopky/decks/bad/manifest.json"), listOf("trollpk"), 1),
+                TaggedSubject(PubkyUri("pubky://otherpk/pub/loopky/decks/good/manifest.json"), listOf("otherpk"), 1),
+            ),
+        )
+        // Offline: no by_tags URL answers, so every label search fails.
+        repo.decksByTagGlobal(ReservedTags.DECK)
+
+        flaggedOnNexus("trollpk", "violence", taggers = listOf(BOT))
+
+        assertEquals(listOf("good"), repo.decksByTagGlobal(ReservedTags.DECK).map { it.id })
+    }
+
+    @Test
     fun `a bot flag past the first page of taggers still hides the account`() = runTest {
         val strangers = (1..100).map { "stranger$it" }
         val page = "$NEXUS/v0/user/trollpk/taggers/violence?limit=100"

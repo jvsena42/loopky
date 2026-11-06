@@ -35,7 +35,9 @@ class ModeratorFlags(
             .mapConcurrently(limit = IN_FLIGHT) { (pubky, label) -> pubky.takeIf { taggedByBot(it, label) } }
             .filterNotNull()
             .toSet()
-        lock.withLock { cache = flagged }
+        // Only a complete answer is kept: one failed search would otherwise switch a label off
+        // for the rest of the process.
+        if (searches.all { it.isSuccess }) lock.withLock { cache = flagged }
         return flagged
     }
 
