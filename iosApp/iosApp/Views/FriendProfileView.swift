@@ -7,6 +7,8 @@ struct FriendProfileView: View {
     var onToggleFollow: () -> Void = {}
     var onBlockClick: () -> Void = {}
     var onBlockConfirmation: (Bool) -> Void = { _ in }
+    var onReportClick: () -> Void = {}
+    var onShowAnyway: () -> Void = {}
     var onCopyPubky: () -> Void = {}
     var onShare: () -> Void = {}
     var onOpenOnPubkyApp: () -> Void = {}
@@ -27,6 +29,9 @@ struct FriendProfileView: View {
                     // Not even the name: a blocked account is not shown anywhere (#577).
                     BlockedAccountNotice()
                         .accessibilityIdentifier("friend_profile_blocked")
+                } else if state.isHiddenByReport {
+                    ReportedAccountNotice(onShowAnyway: onShowAnyway)
+                        .accessibilityIdentifier("friend_profile_reported")
                 } else {
                     hero
                     stats
@@ -88,8 +93,8 @@ struct FriendProfileView: View {
             }
             .accessibilityLabel(Text("friend_profile_back_content_description"))
             Spacer()
-            // Nothing to share or act on for a blocked account.
-            if !state.isBlocked { trailingActions }
+            // Nothing to share or act on for a blocked or hidden account.
+            if !state.isBlocked && !state.isHiddenByReport { trailingActions }
         }
     }
 
@@ -99,14 +104,22 @@ struct FriendProfileView: View {
             Image(systemName: "square.and.arrow.up").foregroundStyle(LoopkyColor.accentPrimary)
         }
         .accessibilityLabel(Text("friend_profile_share"))
-        // A block is a record under the reader's own pubky: no account, nowhere to write it.
-        if state.isSignedIn && !state.isSelf && !state.isLoading {
+        // Report is offered to a guest, who is asked to sign in; Block is not — a guest has nowhere
+        // to write the record.
+        if state.canReport && !state.isLoading {
             Menu {
-                Button(role: .destructive, action: onBlockClick) {
-                    Label("block_action", systemImage: "nosign")
+                Button(role: .destructive, action: onReportClick) {
+                    Label("report_action", systemImage: "flag")
                 }
                 .disabled(state.isProcessingBlock)
-                .accessibilityIdentifier("friend_profile_block")
+                .accessibilityIdentifier("friend_profile_report")
+                if state.canBlock {
+                    Button(role: .destructive, action: onBlockClick) {
+                        Label("block_action", systemImage: "nosign")
+                    }
+                    .disabled(state.isProcessingBlock)
+                    .accessibilityIdentifier("friend_profile_block")
+                }
             } label: {
                 Image(systemName: "ellipsis.circle").foregroundStyle(LoopkyColor.accentPrimary)
             }

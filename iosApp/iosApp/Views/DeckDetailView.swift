@@ -1,61 +1,5 @@
 import SwiftUI
 
-enum DeckDetailViewState {
-    case loading
-    case content(DeckDetailContent)
-    case error(String)
-    case blocked
-}
-
-struct DeckDetailContent {
-    let title: String
-    let description: String?
-    let coverEmoji: String
-    let coverImageUrl: String?
-    let coverImageBase64: String?
-    let author: IdentityData
-    let isOwned: Bool
-    let tags: [String]
-    let totalCards: Int
-    /// Pre-formatted by the shared ViewModel — "—" when the review state could not be read.
-    let dueLabel: String
-    /// Cards never studied. Apart from `dueLabel` because nothing about an unseen card is late.
-    let newCards: Int
-    let canStudy: Bool
-    let masteredPercent: String
-    let cards: [CardPreviewData]
-    var deckId: String = ""
-    /// Whether anyone is signed in. Deck detail reads fine without an account — the manifest and
-    /// cards are public — so this gates only Follow and the copy behind Edit, which write.
-    var isSignedIn: Bool = true
-    /// Claimed by a publish that never finished, so some cards are missing. Surfaced rather than
-    /// hidden: the count comes from the manifest, so the deck otherwise looks complete.
-    var isIncomplete: Bool = false
-    var isFollowing: Bool = false
-    var isFollowPending: Bool = false
-    var isCloning: Bool = false
-    /// The pencil is offered. Wider than `isOwned`: a followed deck carries it too, and there it
-    /// offers a copy rather than the editor (#254).
-    var canEdit: Bool = false
-    /// The author this deck was cloned from, when it carries clone provenance.
-    var clonedFromLabel: String?
-    /// Distinct taggers per the indexer — approximate by nature, so display only.
-    var followerCount: Int = 0
-    var clonedCount: Int = 0
-    /// This deck can be *tried* without being kept: flip its cards, grading nothing.
-    var canPreview: Bool = false
-    /// The deck's study opt-ins, as the reader will actually get them — the shared ViewModel has
-    /// already folded Listen and Speak through `Deck.speechReady`.
-    var listenEnabled: Bool = false
-    var speakEnabled: Bool = false
-    var typeEnabled: Bool = false
-    var reverseEnabled: Bool = false
-    /// The four above are the reader's own choice for a deck they follow, not the author's.
-    var isStudyCustomized: Bool = false
-
-    var hasStudyFeatures: Bool { listenEnabled || speakEnabled || typeEnabled || reverseEnabled }
-}
-
 /// Pure layout — state comes from the shared `DeckDetailViewModel` via `DeckDetailScreen`.
 struct DeckDetailView: View {
     var state: DeckDetailViewState = .loading
@@ -63,6 +7,8 @@ struct DeckDetailView: View {
     var onEdit: () -> Void = {}
     var onDelete: () -> Void = {}
     var onShare: () -> Void = {}
+    var onReport: () -> Void = {}
+    var onShowAnyway: () -> Void = {}
     var onStudy: () -> Void = {}
     var onOpenTag: (String) -> Void = { _ in }
     var onToggleFollow: () -> Void = {}
@@ -99,20 +45,8 @@ struct DeckDetailView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .contentPane(PaneWidth.reading)
-            case .blocked:
-                VStack(spacing: 12) {
-                    HStack {
-                        Button(action: onBack) { circleIcon(systemName: "chevron.left") }
-                        Spacer()
-                    }
-                    Spacer()
-                    BlockedAccountNotice()
-                        .accessibilityIdentifier("deck_detail_blocked")
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .contentPane(PaneWidth.reading)
+            case .blocked, .hiddenByReport:
+                HiddenDeckView(isBlocked: state.isBlocked, onBack: onBack, onShowAnyway: onShowAnyway)
             case .content(let content):
                 contentBody(content)
             }
@@ -175,7 +109,7 @@ struct DeckDetailView: View {
     /// the iPad was unaffected only because its header was already hoisted out.
     private func compactBody(_ content: DeckDetailContent) -> some View {
         VStack(spacing: 0) {
-            header(isOwned: content.isOwned, canEdit: content.canEdit)
+            header(isOwned: content.isOwned, canEdit: content.canEdit, canReport: content.canReport)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .contentPane(PaneWidth.reading)
@@ -210,7 +144,7 @@ struct DeckDetailView: View {
             // Across the top rather than inside the left pane: back and share act on the screen,
             // not on the metadata column, and a back button that scrolls away is one people cannot
             // find.
-            header(isOwned: content.isOwned, canEdit: content.canEdit)
+            header(isOwned: content.isOwned, canEdit: content.canEdit, canReport: content.canReport)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
             HStack(alignment: .top, spacing: 28) {
@@ -510,7 +444,7 @@ struct DeckDetailView: View {
     /// offers a copy rather than the editor (#254) — wanting to change someone else's deck is the
     /// one moment owning your own version is the answer.
     @ViewBuilder
-    private func header(isOwned: Bool, canEdit: Bool = false) -> some View {
+    private func header(isOwned: Bool, canEdit: Bool = false, canReport: Bool = false) -> some View {
         HStack(spacing: 10) {
             Button(action: onBack) {
                 circleIcon(systemName: "chevron.left")
@@ -530,6 +464,19 @@ struct DeckDetailView: View {
             }
             Button(action: onShare) {
                 circleIcon(systemName: "square.and.arrow.up")
+            }
+            // Behind More, never a circle of its own on every stranger's deck.
+            if canReport {
+                Menu {
+                    Button(role: .destructive, action: onReport) {
+                        Label("report_action", systemImage: "flag")
+                    }
+                    .accessibilityIdentifier("deck_report")
+                } label: {
+                    circleIcon(systemName: "ellipsis")
+                }
+                .accessibilityLabel(Text("friend_profile_more"))
+                .accessibilityIdentifier("deck_overflow")
             }
         }
         .loopkyGlassGroup(spacing: 10)

@@ -18,6 +18,9 @@ struct OnboardingView: View {
     var scan: RingScanPrompt?
 
     @Environment(\.loopkyWidthClass) private var widthClass
+    /// Local, not in the ViewModel: asked once per sign-in, on the only screen that leads to an
+    /// account. Starts unticked — App Store guideline 1.2 needs terms the user agrees to (#577).
+    @State private var policyAccepted = false
 
     var body: some View {
         ZStack {
@@ -115,7 +118,7 @@ struct OnboardingView: View {
             }
             .buttonStyle(.loopkyFilled)
             .shadow(color: LoopkyColor.shadowAccent, radius: 24, x: 0, y: 8)
-            .disabled(isWorking)
+            .disabled(isWorking || !policyAccepted)
 
             // Ring was opened over the deeplink, so this is the only way out of the wait — and a
             // signer that does not send the user back leaves them on a button still spinning (#299).
@@ -140,7 +143,7 @@ struct OnboardingView: View {
                     }
                 }
                 .buttonStyle(.loopkySoft)
-                .disabled(isWorking)
+                .disabled(isWorking || !policyAccepted)
                 .accessibilityIdentifier("onboarding_restore")
             }
 
@@ -162,9 +165,67 @@ struct OnboardingView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(LoopkyColor.accentSecondary)
             }
+            .disabled(!policyAccepted)
+            .opacity(policyAccepted ? 1 : 0.5)
             .accessibilityIdentifier("onboarding_create_pubky")
+
+            PolicyConsentRow(accepted: $policyAccepted, enabled: !isWorking)
         }
     }
+}
+
+/// The consent gate on sign-in: the Terms of Use and the Privacy Policy, both real links. Gates all
+/// three ways in, because all three end in an account.
+private struct PolicyConsentRow: View {
+    @Binding var accepted: Bool
+    let enabled: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Button {
+                accepted.toggle()
+            } label: {
+                Image(systemName: accepted ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 20))
+                    .foregroundStyle(accepted ? LoopkyColor.accentPrimary : LoopkyColor.foregroundMuted)
+            }
+            .disabled(!enabled)
+            .accessibilityLabel(Text(verbatim: sentence))
+            .accessibilityAddTraits(accepted ? .isSelected : [])
+            .accessibilityIdentifier("onboarding_policy_consent")
+            Text(linked)
+                .font(.system(size: 13))
+                .foregroundColor(LoopkyColor.foregroundSecondary)
+                .tint(LoopkyColor.accentPrimary)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var termsLabel: String { NSLocalizedString("onboarding_policy_terms", comment: "") }
+    private var privacyLabel: String { NSLocalizedString("onboarding_policy_privacy", comment: "") }
+
+    private var sentence: String {
+        String(format: NSLocalizedString("onboarding_policy_consent", comment: ""), termsLabel, privacyLabel)
+    }
+
+    /// The names are located in the sentence rather than assembled from fragments, so a translation
+    /// can put them wherever its grammar wants.
+    private var linked: AttributedString {
+        var text = AttributedString(sentence)
+        for (name, url) in [(termsLabel, LoopkyLinks.terms), (privacyLabel, LoopkyLinks.privacy)] {
+            if let range = text.range(of: name) {
+                text[range].link = URL(string: url)
+                text[range].underlineStyle = .single
+            }
+        }
+        return text
+    }
+}
+
+/// The pages the app links to on loopky.app.
+enum LoopkyLinks {
+    static let terms = "https://loopky.app/terms/"
+    static let privacy = "https://loopky.app/privacy/"
 }
 
 /// Everything the inline QR panel needs, bundled so `OnboardingView` takes one optional rather
