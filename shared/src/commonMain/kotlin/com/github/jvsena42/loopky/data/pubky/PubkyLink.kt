@@ -165,5 +165,14 @@ object PubkyLinks {
      * path [parse] recognises: it is for people who do not have the app.
      */
     fun recapWebUrl(pubky: String, year: Int): String =
-        "$WEB_ORIGIN/$WEB_RECAP_PATH/?$PARAM_PUBKY=${encodeUriComponent(pubky)}&$PARAM_YEAR=$year"
+        "${recapWebUrlPrefix(pubky)}$year"
+
+    /** Whether [url] is a [recapWebUrl] of [pubky]'s, for any year. */
+    fun isRecapWebUrlOf(url: String, pubky: String): Boolean {
+        val year = url.removePrefix(recapWebUrlPrefix(pubky))
+        return year != url && year.isNotEmpty() && year.all { it.isDigit() }
+    }
+
+    private fun recapWebUrlPrefix(pubky: String): String =
+        "$WEB_ORIGIN/$WEB_RECAP_PATH/?$PARAM_PUBKY=${encodeUriComponent(pubky)}&$PARAM_YEAR="
 }

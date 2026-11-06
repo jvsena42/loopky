@@ -1,6 +1,6 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
-import com.github.jvsena42.loopky.data.pubky.PostDto
+import com.github.jvsena42.loopky.data.pubky.LoopkyPubkyAppRecords
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
@@ -51,6 +51,8 @@ class AccountEraser(
     private val deckCache: DeckCacheStore,
 ) {
 
+    private val footprints = PubkyAppFootprintReader(pubky)
+
     /**
      * Sweep the homeserver for [owner]. Throws if anything Loopky owns could not be removed, which
      * is what keeps the caller from signing the user out of a half-deleted account.
@@ -94,10 +96,9 @@ class AccountEraser(
                 failures++
             }
 
-        // 4. Announcement posts, which would otherwise link to decks that no longer resolve.
-        // Uncounted on purpose: a stale post in a feed is untidy rather than a failed deletion,
-        // and a user with a busy feed should not be blocked by one unreadable record.
-        deleteAnnouncementPosts(owner)
+        // 4. Loopky's posts. Uncounted on purpose: a stale post in a feed is untidy rather than a
+        // failed deletion, and a user with a busy feed should not be blocked by one unreadable record.
+        deleteLoopkyPosts(owner)
 
         // Re-list rather than trust the counters. `deleteRecord` scores a 404 as success, which is
         // right for a record a previous sweep already removed and wrong as a completeness proof —
@@ -161,25 +162,16 @@ class AccountEraser(
         )
 
     /**
-     * Remove the posts Loopky published announcing this user's decks.
-     *
-     * Matched on the embed URI being under **this user's own** deck root, never on the post looking
-     * Loopky-ish: `posts/` is the user's ordinary pubky.app feed, shared with every other app, and
-     * an over-broad match deletes writing that has nothing to do with Loopky. A post that cannot be
-     * fetched or parsed is left where it is.
+     * Remove the posts Loopky published, and the labels on them: deck announcements, recaps and
+     * deck requests. `posts/` is the user's whole pubky.app feed, shared with every other app, so
+     * which posts count is [LoopkyPubkyAppRecords.isLoopkyPost]'s strict rule and nothing looser.
      */
-    private suspend fun deleteAnnouncementPosts(owner: String) {
-        val ownDeckRoot = PubkyPaths.decksList(owner)
-        pubky.listAllEntriesOrEmpty(PubkyPaths.postsRoot(owner))
-            .mapConcurrently { path ->
-                val embedUri = runSuspendCatching {
-                    loopkyJson.decodeFromString<PostDto>(pubky.get(path).getOrThrow()).embed?.uri
-                }.getOrNull()
-                if (embedUri?.startsWith(ownDeckRoot) == true) {
-                    Log.d(TAG, "removing announcement $path")
-                    deleteRecord(path)
-                }
-            }
+    private suspend fun deleteLoopkyPosts(owner: String) {
+        footprints.loopkyPosts(owner).mapConcurrently { post ->
+            Log.d(TAG, "removing Loopky post ${post.path}")
+            // Its labels only once the post is gone: a label on a surviving post is still in use.
+            if (deleteRecord(post.path)) post.tagPaths.forEach { deleteRecord(it) }
+        }
     }
 
     /**

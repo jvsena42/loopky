@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.pubky.PubkyLinks
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.domain.model.DailyStudyProgress
 import com.github.jvsena42.loopky.domain.model.PubkyUri
@@ -166,6 +167,104 @@ class IdentityRepositoryDeleteAccountTest {
     }
 
     @Test
+    fun aFollowAnnouncementCarryingTheDeckLabelIsRemovedWithItsLabels() = runTest {
+        val post = PubkyPaths.post(TEST_PUBKY, "post4")
+        pubky.store[post] = announcement("pubky://otherpk/${PubkyPaths.APP_NAMESPACE}/decks/deck1/manifest.json")
+        val deckLabel = labelOn(post, "loopky-deck")
+        val topic = labelOn(post, "spanish")
+
+        repo.deleteAccount().getOrThrow()
+
+        assertFalse(post in pubky.store)
+        assertFalse(deckLabel in pubky.store, "a label on a deleted post indexes nothing")
+        assertFalse(topic in pubky.store)
+    }
+
+    @Test
+    fun aRecapPostIsRemovedWithItsLabel() = runTest {
+        // Recaps link to the site, not to a deck, so the old own-deck match never saw them.
+        val post = PubkyPaths.post(TEST_PUBKY, "recap1")
+        pubky.store[post] = linkPost(PubkyLinks.recapWebUrl(TEST_PUBKY, 2026))
+        val label = labelOn(post, "loopky-recap")
+
+        repo.deleteAccount().getOrThrow()
+
+        assertFalse(post in pubky.store)
+        assertFalse(label in pubky.store)
+    }
+
+    @Test
+    fun aDeckRequestIsRemovedWithItsLabels() = runTest {
+        val post = PubkyPaths.post(TEST_PUBKY, "request1")
+        pubky.store[post] = """{"content":"Someone make a deck about tides","kind":"short"}"""
+        val labels = listOf(labelOn(post, "loopky"), labelOn(post, "deck-request"))
+
+        repo.deleteAccount().getOrThrow()
+
+        assertFalse(post in pubky.store)
+        labels.forEach { assertFalse(it in pubky.store) }
+    }
+
+    @Test
+    fun aShortPostWithOnlyOneDeckRequestLabelIsKept() = runTest {
+        val post = PubkyPaths.post(TEST_PUBKY, "post5")
+        pubky.store[post] = """{"content":"I love loopky","kind":"short"}"""
+        val label = labelOn(post, "loopky")
+
+        repo.deleteAccount().getOrThrow()
+
+        assertTrue(post in pubky.store, "a post the user labelled loopky on pubky.app is theirs")
+        assertTrue(label in pubky.store, "and so is its label")
+    }
+
+    @Test
+    fun someoneElsesRecapSharedByTheUserIsKept() = runTest {
+        val post = PubkyPaths.post(TEST_PUBKY, "post6")
+        pubky.store[post] = linkPost(PubkyLinks.recapWebUrl("otherpk", 2026))
+
+        repo.deleteAccount().getOrThrow()
+
+        assertTrue(post in pubky.store)
+    }
+
+    @Test
+    fun aPostThatCannotBeReadIsKept() = runTest {
+        val unreadable = PubkyPaths.post(TEST_PUBKY, "post7")
+        pubky.store[unreadable] = "{not json"
+
+        repo.deleteAccount().getOrThrow()
+
+        assertTrue(unreadable in pubky.store)
+    }
+
+    @Test
+    fun anUnreachablePostIsNotDeleted() = runTest {
+        // A failed read must never turn into a delete.
+        val post = PubkyPaths.post(TEST_PUBKY, "post8")
+        pubky.store[post] = announcement("$loopkyRoot/decks/deck1/manifest.json")
+        pubky.failGetWhenUrlContains = "/posts/post8"
+
+        repo.deleteAccount().getOrThrow()
+
+        assertTrue(post in pubky.store)
+    }
+
+    @Test
+    fun labelsOnAnythingButALoopkyPostAreLeftAlone() = runTest {
+        val ownPost = PubkyPaths.post(TEST_PUBKY, "post9")
+        pubky.store[ownPost] = """{"content":"hello","kind":"short"}"""
+        val onOwnPost = labelOn(ownPost, "greeting")
+        val onFriendsPost = labelOn(PubkyPaths.post("friendpk", "p1"), "funny")
+        val onFriend = labelOn(PubkyPaths.profile("friendpk"), "climber")
+
+        repo.deleteAccount().getOrThrow()
+
+        assertTrue(onOwnPost in pubky.store)
+        assertTrue(onFriendsPost in pubky.store)
+        assertTrue(onFriend in pubky.store)
+    }
+
+    @Test
     fun localStateIsClearedButAnUnspentSignupTokenIsNot() = runTest {
         pendingReviews.save(listOf(pendingReview()))
         studyProgress.save(TEST_PUBKY, DailyStudyProgress(dayIndex = 7, newCards = 3, reviews = 12))
@@ -226,8 +325,17 @@ class IdentityRepositoryDeleteAccountTest {
         assertEquals(reports.map { it.first }.sorted(), reports.map { it.first })
     }
 
-    private fun announcement(deckUri: String): String =
-        """{"content":"new deck","kind":"link","embed":{"kind":"link","uri":"$deckUri"}}"""
+    private fun announcement(deckUri: String): String = linkPost(deckUri)
+
+    private fun linkPost(uri: String): String =
+        """{"content":"new deck","kind":"link","embed":{"kind":"link","uri":"$uri"}}"""
+
+    /** Write a pubky.app tag record by [TEST_PUBKY] on [subject], and return its path. */
+    private fun labelOn(subject: String, label: String): String {
+        val path = PubkyPaths.tag(TEST_PUBKY, "tag-${(subject + label).hashCode().toUInt()}")
+        pubky.store[path] = """{"uri":"$subject","label":"$label","created_at":1}"""
+        return path
+    }
 
     private fun pendingReview() = com.github.jvsena42.loopky.data.storage.PendingReview(
         authorPubky = TEST_PUBKY,
