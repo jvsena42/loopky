@@ -100,6 +100,9 @@ class DeckDetailViewModel(
                 // A copy unfollows its source, and reloading for that rebuilds this state from
                 // scratch: the share prompt goes, and with it the only path to the copy.
                 if (current.isCloning || pendingCloneDeckId != null) return@collect
+                // A report blocks the author, which unfollows their decks one by one; a reload then
+                // drops the sheet before its Sent effect lands, so no toast and no back.
+                if (current.reportingDeck != null) return@collect
                 val following = runSuspendCatching { deckRepository.isFollowingDeck(deckId) }.getOrNull()
                 if (following != null && following != current.isFollowing) load(silent = true)
             }
