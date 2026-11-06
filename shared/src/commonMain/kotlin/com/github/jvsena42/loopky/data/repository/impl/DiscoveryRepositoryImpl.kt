@@ -35,6 +35,7 @@ import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckAnnouncement
 import com.github.jvsena42.loopky.domain.model.DeckRequests
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReportIssue
@@ -86,6 +87,7 @@ class DiscoveryRepositoryImpl(
     private val environment: PubkyEnvironment,
     private val blockedAccounts: BlockedAccounts = BlockedAccounts(pubky, session),
     private val friendReports: FriendReports = FriendReports(nexus, session),
+    private val moderatorFlags: ModeratorFlags = ModeratorFlags(nexus, environment.moderationBotPubky),
 ) : DiscoveryRepository {
 
     /** Followee pubkys for the session, or null until first loaded from the homeserver. */
@@ -211,10 +213,12 @@ class DiscoveryRepositoryImpl(
         ReportOutcome(blocked = blockUser(target).isSuccess)
     }.onFailure { Log.w(TAG, "report: FAILED — ${it.message}", it) }
 
-    override suspend fun isReportedByFollowee(pubky: String): Boolean {
-        if (pubky == session.current()?.identity?.pubky) return false
-        val following = runSuspendCatching { following().toSet() }.getOrElse { return false }
-        return friendReports.isReported(pubky, following)
+    override suspend fun hiddenReason(pubky: String): HiddenReason? {
+        if (pubky == session.current()?.identity?.pubky) return null
+        if (moderatorFlags.isFlagged(pubky)) return HiddenReason.FlaggedByModerators
+        if (session.current() == null) return null
+        val following = runSuspendCatching { following().toSet() }.getOrElse { return null }
+        return HiddenReason.ReportedByFollowee.takeIf { friendReports.isReported(pubky, following) }
     }
 
     /** pubky.app's profile page for a profile, so its moderators open what they already know. */
@@ -234,14 +238,14 @@ class DiscoveryRepositoryImpl(
     }
 
     /**
-     * Blocks, plus — for a signed-in reader — accounts a followee reported. Every discovery read
-     * filters on this; neither half failing may fail the read.
+     * Blocks, accounts pubky.app's moderators flagged, and — for a signed-in reader — accounts a
+     * followee reported. Every discovery read filters on this; no part failing may fail the read.
      */
     private suspend fun blockedOrEmpty(): Set<String> {
-        val blocked = blockedAccounts.loadOrEmpty()
-        if (session.current() == null) return blocked
+        val hidden = blockedAccounts.loadOrEmpty() + moderatorFlags.flagged()
+        if (session.current() == null) return hidden
         val following = runSuspendCatching { following().toSet() }.getOrElse { emptySet() }
-        return blocked + friendReports.hiddenFor(following)
+        return hidden + friendReports.hiddenFor(following)
     }
 
     override suspend fun announceDeck(announcement: DeckAnnouncement): Result<PubkyUri> =

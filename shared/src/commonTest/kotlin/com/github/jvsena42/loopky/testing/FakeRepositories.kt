@@ -53,6 +53,7 @@ import com.github.jvsena42.loopky.domain.model.DeckSource
 import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.FRONT_FIELD
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.ImportDraft
 import com.github.jvsena42.loopky.domain.model.KeyCustody
@@ -996,8 +997,8 @@ class FakeDiscoveryRepository : DiscoveryRepository {
     /** When set, [report] fails before anything is sent. */
     var reportError: Throwable? = null
 
-    /** Accounts [isReportedByFollowee] answers true for. */
-    val reportedByFollowees = mutableSetOf<String>()
+    /** Why [hiddenReason] hides an account; absent means shown. */
+    val hiddenReasons = mutableMapOf<String, HiddenReason>()
 
     override suspend fun report(subject: ReportSubject, issue: ReportIssue, details: String): Result<ReportOutcome> {
         reportError?.let { return Result.failure(it) }
@@ -1005,7 +1006,7 @@ class FakeDiscoveryRepository : DiscoveryRepository {
         return Result.success(ReportOutcome(blocked = blockUser(subject.accountPubky).isSuccess))
     }
 
-    override suspend fun isReportedByFollowee(pubky: String): Boolean = pubky in reportedByFollowees
+    override suspend fun hiddenReason(pubky: String): HiddenReason? = hiddenReasons[pubky]
 
     override suspend fun blockedProfiles(): List<PubkyIdentity> = blocks.sorted().map { pubky ->
         profiles[pubky] ?: PubkyIdentity(pubky, displayName = null, avatarUrl = null, bio = null)

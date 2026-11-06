@@ -37,18 +37,25 @@ enum class PubkyEnvironment(
     val defaultHomeserver: String,
     val webBaseUrl: String,
     val nexusBaseUrl: String,
+    /**
+     * pubky.app's moderation bot, whose tags on a profile are moderators' verdicts (#577). Read
+     * from pubky.app's own runtime config (`moderationId`) for each network.
+     */
+    val moderationBotPubky: String,
 ) {
     Staging(
         homegateBaseUrl = "https://homegate.staging.pubky.app",
         defaultHomeserver = "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
         webBaseUrl = "https://staging.pubky.app",
         nexusBaseUrl = "https://nexus.staging.pubky.app",
+        moderationBotPubky = "nto4u7kkagk5hfjk4wgueemzy61nssic811hid1ty9u81uatmqzy",
     ),
     Production(
         homegateBaseUrl = "https://homegate.pubky.app",
         defaultHomeserver = "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
         webBaseUrl = "https://pubky.app",
         nexusBaseUrl = "https://nexus.pubky.app",
+        moderationBotPubky = "euarj183st16psbzusb44usk8i1k5foubnw7zt3n3j8h9zxg6hro",
     ),
     ;
 

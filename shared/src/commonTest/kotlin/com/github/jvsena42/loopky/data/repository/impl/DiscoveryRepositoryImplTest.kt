@@ -177,8 +177,9 @@ class DiscoveryRepositoryImplTest {
         publishProfile("loopkypk", "Ada")
 
         assertEquals(listOf("loopkypk"), repo.followingProfiles("friendpk").map { it.pubky })
-        // Whose follows those are is a fact their own homeserver holds first-hand.
-        assertTrue(http.requestedUrls.isEmpty())
+        // Whose follows those are is a fact their own homeserver holds first-hand. The indexer is
+        // still asked which accounts the moderators flagged, which is not about follows.
+        assertTrue(http.requestedUrls.none { "/follow" in it })
     }
 
     @Test

@@ -12,6 +12,7 @@ import com.github.jvsena42.loopky.data.report.ReportClient
 import com.github.jvsena42.loopky.data.report.ReportRequest
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReportIssue
 import com.github.jvsena42.loopky.domain.model.ReportSubject
@@ -183,7 +184,7 @@ class DiscoveryRepositoryReportTest {
         )
 
         assertEquals(listOf("good"), repo.decksByTagGlobal(ReservedTags.DECK).map { it.id })
-        assertTrue(repo.isReportedByFollowee("trollpk"))
+        assertEquals(HiddenReason.ReportedByFollowee, repo.hiddenReason("trollpk"))
     }
 
     @Test
@@ -191,7 +192,7 @@ class DiscoveryRepositoryReportTest {
         follow("friendpk")
         reportedOnNexus("trollpk", taggers = listOf("strangerpk"))
 
-        assertFalse(repo.isReportedByFollowee("trollpk"))
+        assertEquals(null, repo.hiddenReason("trollpk"))
     }
 
     @Test
@@ -200,7 +201,51 @@ class DiscoveryRepositoryReportTest {
         follow("trollpk")
         reportedOnNexus("trollpk", taggers = listOf("friendpk"))
 
-        assertFalse(repo.isReportedByFollowee("trollpk"))
+        assertEquals(null, repo.hiddenReason("trollpk"))
+    }
+
+    private fun flaggedOnNexus(flagged: String, label: String, taggers: List<String>) {
+        nexusHttp.respond(
+            "$NEXUS/v0/search/users/by_tags?tags=$label&limit=100",
+            """[{"user_id":"$flagged","score":1}]""",
+        )
+        nexusHttp.respond(
+            "$NEXUS/v0/user/$flagged/taggers/$label?limit=100",
+            """{"users":${taggers.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}}""",
+        )
+    }
+
+    @Test
+    fun `an account the moderation bot flagged is hidden for a guest too`() = runTest {
+        session.set(null)
+        flaggedOnNexus("trollpk", "violence", taggers = listOf(BOT))
+        putRemoteManifest(author = "trollpk", deckId = "bad")
+        putRemoteManifest(author = "otherpk", deckId = "good")
+        tagRepo.subjectsByTag = mapOf(
+            ReservedTags.DECK to listOf(
+                TaggedSubject(PubkyUri("pubky://trollpk/pub/loopky/decks/bad/manifest.json"), listOf("trollpk"), 1),
+                TaggedSubject(PubkyUri("pubky://otherpk/pub/loopky/decks/good/manifest.json"), listOf("otherpk"), 1),
+            ),
+        )
+
+        assertEquals(listOf("good"), repo.decksByTagGlobal(ReservedTags.DECK).map { it.id })
+        assertEquals(HiddenReason.FlaggedByModerators, repo.hiddenReason("trollpk"))
+    }
+
+    @Test
+    fun `a violation label written by anyone but the bot hides nobody`() = runTest {
+        flaggedOnNexus("trollpk", "violence", taggers = listOf("strangerpk"))
+
+        assertEquals(null, repo.hiddenReason("trollpk"))
+    }
+
+    @Test
+    fun `a moderation flag wins over a friend's report`() = runTest {
+        follow("friendpk")
+        reportedOnNexus("trollpk", taggers = listOf("friendpk"))
+        flaggedOnNexus("trollpk", "nudity", taggers = listOf(BOT))
+
+        assertEquals(HiddenReason.FlaggedByModerators, repo.hiddenReason("trollpk"))
     }
 
     @Test
@@ -272,5 +317,6 @@ class DiscoveryRepositoryReportTest {
         const val NEXUS = "https://nexus.test"
         const val REPORT_URL = "https://staging.pubky.app/api/report"
         const val SLOW_MS = 1_000L
+        val BOT = PubkyEnvironment.Staging.moderationBotPubky
     }
 }

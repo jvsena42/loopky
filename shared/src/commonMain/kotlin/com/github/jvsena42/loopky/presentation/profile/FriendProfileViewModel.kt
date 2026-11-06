@@ -10,6 +10,7 @@ import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.ErrorReason
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.presentation.auth.SignInReason
@@ -130,7 +131,7 @@ class FriendProfileViewModel(
                 it.copy(
                     isLoading = false,
                     isRefreshing = false,
-                    isHiddenByReport = false,
+                    hiddenReason = null,
                     identity = identity,
                     isFollowing = isFollowing,
                     isSignedIn = myPubky != null,
@@ -200,21 +201,21 @@ class FriendProfileViewModel(
     /** True when nothing of this account may be shown — blocked, or reported by a followee. */
     private suspend fun showHiddenIfHidden(blocked: Set<String>): Boolean {
         val isBlocked = targetPubky in blocked
-        val isReported = !isBlocked && !showReported && discoveryRepository.isReportedByFollowee(targetPubky)
-        if (!isBlocked && !isReported) return false
+        val reason = if (isBlocked || showReported) null else discoveryRepository.hiddenReason(targetPubky)
+        if (!isBlocked && reason == null) return false
         _state.update {
             it.copy(
                 isLoading = false,
                 isRefreshing = false,
                 isBlocked = isBlocked,
-                isHiddenByReport = isReported,
+                hiddenReason = reason,
                 decks = emptyList(),
             )
         }
         return true
     }
 
-    /** Someone the reader follows reported this account; they asked to see it anyway. */
+    /** The account was hidden (moderators or a followee's report); they asked to see it anyway. */
     fun onShowAnyway() {
         showReported = true
         load()
@@ -399,10 +400,10 @@ data class FriendProfileUiState(
     val isConfirmingBlock: Boolean = false,
     val isProcessingBlock: Boolean = false,
     /**
-     * Someone the reader follows reported this account (#577). Nothing of it is shown until the
-     * reader taps Show anyway.
+     * pubky.app's moderators flagged this account, or someone the reader follows reported it
+     * (#577). Nothing of it is shown until the reader taps Show anyway.
      */
-    val isHiddenByReport: Boolean = false,
+    val hiddenReason: HiddenReason? = null,
     /** The report sheet is up. */
     val isReporting: Boolean = false,
     /**
@@ -430,6 +431,8 @@ data class FriendProfileUiState(
 ) {
     /** Block is offered to a signed-in reader, on someone else's profile, not yet blocked. */
     val canBlock: Boolean get() = isSignedIn && !isSelf && !isBlocked
+
+    val isHiddenByReport: Boolean get() = hiddenReason != null
 
     /** Offered to guests too, who are asked to sign in first. */
     val canReport: Boolean get() = !isSelf && !isBlocked && !isHiddenByReport

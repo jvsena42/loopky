@@ -16,6 +16,7 @@ import com.github.jvsena42.loopky.domain.model.DeckMastery
 import com.github.jvsena42.loopky.domain.model.DeckRequests
 import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.ErrorReason
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.ImportDraft
 import com.github.jvsena42.loopky.domain.model.KeyCustody
@@ -943,10 +944,11 @@ interface DiscoveryRepository {
     suspend fun report(subject: ReportSubject, issue: ReportIssue, details: String): Result<ReportOutcome>
 
     /**
-     * True when someone the signed-in reader follows has reported [pubky] — discovery leaves such
-     * accounts out, and a profile or deck reached by a link says so. False on any failure.
+     * Why [pubky] is hidden from discovery, for a profile or deck reached by a link: pubky.app's
+     * moderation bot flagged it (for every reader), or someone the signed-in reader follows
+     * reported it. Null for the reader's own account and on any failure.
      */
-    suspend fun isReportedByFollowee(pubky: String): Boolean
+    suspend fun hiddenReason(pubky: String): HiddenReason?
 
     /** The accounts [blocked] names, as profiles — a bare pubky where one does not resolve. */
     suspend fun blockedProfiles(): List<PubkyIdentity>

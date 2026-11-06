@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.presentation.decks
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.domain.model.Deck
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeCardRepository
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
@@ -90,11 +91,11 @@ class DeckDetailBlockedTest {
     @Test
     fun `a deck by an account a followee reported is hidden until show anyway`() = runTest(mainDispatcher) {
         seed()
-        discoveryRepo.reportedByFollowees.add("trollpk")
+        discoveryRepo.hiddenReasons["trollpk"] = HiddenReason.ReportedByFollowee
 
         val vm = viewModel()
         advanceUntilIdle()
-        assertEquals(DeckDetailUiState.HiddenByReport, vm.state.value)
+        assertEquals(DeckDetailUiState.HiddenByReport(HiddenReason.ReportedByFollowee), vm.state.value)
 
         vm.onShowAnyway()
         advanceUntilIdle()
@@ -135,8 +136,8 @@ class DeckDetailBlockedTest {
             override suspend fun fetchByDeck(deck: Deck) = cardRepo.fetchByDeck(deck).also { delay(SLOW_MS) }
         }
         val slowReports = object : DiscoveryRepository by discoveryRepo {
-            override suspend fun isReportedByFollowee(pubky: String) =
-                discoveryRepo.isReportedByFollowee(pubky).also { delay(SLOW_MS) }
+            override suspend fun hiddenReason(pubky: String) =
+                discoveryRepo.hiddenReason(pubky).also { delay(SLOW_MS) }
         }
         val vm = DeckDetailViewModel(
             deckId = "deck1",

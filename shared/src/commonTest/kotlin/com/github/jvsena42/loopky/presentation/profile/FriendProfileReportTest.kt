@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.presentation.profile
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.presentation.auth.SignInReason
 import com.github.jvsena42.loopky.testing.FakeDeckRepository
@@ -91,7 +92,7 @@ class FriendProfileReportTest {
 
     @Test
     fun `an account a followee reported is hidden until show anyway`() = runTest(mainDispatcher) {
-        discovery.reportedByFollowees.add(stranger)
+        discovery.hiddenReasons[stranger] = HiddenReason.ReportedByFollowee
         val identity = FakeIdentityRepository().apply {
             profiles[stranger] = PubkyIdentity(stranger, "Troll", null, null)
         }

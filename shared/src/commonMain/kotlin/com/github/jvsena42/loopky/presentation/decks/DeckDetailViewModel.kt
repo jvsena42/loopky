@@ -18,6 +18,7 @@ import com.github.jvsena42.loopky.domain.model.DeckCounts
 import com.github.jvsena42.loopky.domain.model.DeckMastery
 import com.github.jvsena42.loopky.domain.model.DeckSource
 import com.github.jvsena42.loopky.domain.model.ErrorReason
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.ReservedTags
@@ -403,14 +404,14 @@ class DeckDetailViewModel(
         }
     }
 
-    /** Blocked, or reported by a followee: what to show instead of a deck by [author], if anything. */
+    /** Blocked, flagged or reported by a followee: what to show instead of a deck by [author], if anything. */
     private suspend fun hiddenState(author: String, me: String?): DeckDetailUiState? {
         if (author == me) return null
         val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
         return when {
             author in blocked -> DeckDetailUiState.Blocked
-            !showReported && discoveryRepository.isReportedByFollowee(author) -> DeckDetailUiState.HiddenByReport
-            else -> null
+            showReported -> null
+            else -> discoveryRepository.hiddenReason(author)?.let { DeckDetailUiState.HiddenByReport(it) }
         }
     }
 
@@ -802,8 +803,11 @@ sealed interface DeckDetailUiState {
     /** The deck's author is blocked: nothing of the deck is shown. Unblocking lives in Settings. */
     data object Blocked : DeckDetailUiState
 
-    /** Someone the reader follows reported the author (#577). Shown only after Show anyway. */
-    data object HiddenByReport : DeckDetailUiState
+    /**
+     * pubky.app's moderators flagged the author, or someone the reader follows reported them
+     * (#577). Shown only after Show anyway.
+     */
+    data class HiddenByReport(val reason: HiddenReason) : DeckDetailUiState
     data class Content(
         val deckId: String,
         val title: String,
