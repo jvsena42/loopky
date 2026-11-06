@@ -22,6 +22,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -112,9 +113,15 @@ private fun ReportSheet(
     onDismiss: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
+    val isSending by rememberUpdatedState(state.isSending)
     ModalBottomSheet(
         onDismissRequest = { if (!state.isSending) onDismiss() },
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        // The hide itself is refused mid-send: the sheet settles to Hidden before it calls
+        // onDismissRequest, and a hidden sheet still composed keeps a window that eats the next tap.
+        sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = { it != SheetValue.Hidden || !isSending },
+        ),
         containerColor = colors.surfaceCard,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         modifier = Modifier.semantics { testTagsAsResourceId = true },
