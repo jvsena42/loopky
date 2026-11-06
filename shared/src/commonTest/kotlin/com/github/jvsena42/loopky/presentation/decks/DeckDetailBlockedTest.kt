@@ -80,4 +80,45 @@ class DeckDetailBlockedTest {
 
         assertIs<DeckDetailUiState.Content>(vm.state.value)
     }
+
+    @Test
+    fun `a deck by an account a followee reported is hidden until show anyway`() = runTest(mainDispatcher) {
+        seed()
+        discoveryRepo.reportedByFollowees.add("trollpk")
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertEquals(DeckDetailUiState.HiddenByReport, vm.state.value)
+
+        vm.onShowAnyway()
+        advanceUntilIdle()
+        assertIs<DeckDetailUiState.Content>(vm.state.value)
+    }
+
+    @Test
+    fun `report opens the sheet on the deck and a blocking report hides it`() = runTest(mainDispatcher) {
+        seed()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onReportClick()
+        assertEquals("deck1", assertIs<DeckDetailUiState.Content>(vm.state.value).reportingDeck?.id)
+
+        vm.onReportSent(blocked = true)
+        advanceUntilIdle()
+        assertEquals(DeckDetailUiState.Blocked, vm.state.value)
+    }
+
+    @Test
+    fun `a report whose block failed keeps the deck on screen`() = runTest(mainDispatcher) {
+        seed()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onReportClick()
+        vm.onReportSent(blocked = false)
+        advanceUntilIdle()
+
+        assertEquals(null, assertIs<DeckDetailUiState.Content>(vm.state.value).reportingDeck)
+    }
 }

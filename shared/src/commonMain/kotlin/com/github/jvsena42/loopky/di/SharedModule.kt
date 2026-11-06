@@ -35,6 +35,7 @@ import com.github.jvsena42.loopky.data.repository.impl.TagRepositoryImpl
 import com.github.jvsena42.loopky.data.storage.UpdatePromptGate
 import com.github.jvsena42.loopky.domain.model.RecapClock
 import com.github.jvsena42.loopky.domain.model.Tag
+import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.presentation.backup.BackupFileViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupPhraseViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupQuizViewModel
@@ -60,6 +61,7 @@ import com.github.jvsena42.loopky.presentation.profile.FollowListViewModel
 import com.github.jvsena42.loopky.presentation.profile.FriendProfileViewModel
 import com.github.jvsena42.loopky.presentation.profile.ProfileViewModel
 import com.github.jvsena42.loopky.presentation.recap.RecapViewModel
+import com.github.jvsena42.loopky.presentation.report.ReportViewModel
 import com.github.jvsena42.loopky.presentation.request.DeckRequestViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
@@ -249,6 +251,13 @@ fun sharedModule(): Module = module {
     }
     viewModel { DeckRequestViewModel(discoveryRepository = get()) }
     viewModel { BlockedUsersViewModel(discoveryRepository = get()) }
+    viewModel { params ->
+        ReportViewModel(
+            accountPubky = params.get(0),
+            deck = params.values.getOrNull(1) as? Deck,
+            discoveryRepository = get(),
+        )
+    }
     viewModel { DecksLibraryViewModel(deckRepository = get(), identityRepository = get()) }
     viewModel { params ->
         DeckDetailViewModel(

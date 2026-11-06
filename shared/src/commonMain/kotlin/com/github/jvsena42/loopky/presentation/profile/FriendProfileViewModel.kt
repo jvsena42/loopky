@@ -64,6 +64,9 @@ class FriendProfileViewModel(
     private var blockJob: Job? = null
     private var followCountsJob: Job? = null
 
+    /** Set by [onShowAnyway]: the reader chose to see an account a followee reported. */
+    private var showReported = false
+
     init {
         load()
     }
@@ -88,6 +91,12 @@ class FriendProfileViewModel(
             if (targetPubky in blocked) {
                 _state.update {
                     it.copy(isLoading = false, isRefreshing = false, isBlocked = true, decks = emptyList())
+                }
+                return@launch
+            }
+            if (!showReported && discoveryRepository.isReportedByFollowee(targetPubky)) {
+                _state.update {
+                    it.copy(isLoading = false, isRefreshing = false, isHiddenByReport = true, decks = emptyList())
                 }
                 return@launch
             }
@@ -132,6 +141,7 @@ class FriendProfileViewModel(
                 it.copy(
                     isLoading = false,
                     isRefreshing = false,
+                    isHiddenByReport = false,
                     identity = identity,
                     isFollowing = isFollowing,
                     isSignedIn = myPubky != null,
@@ -196,6 +206,38 @@ class FriendProfileViewModel(
             }
             Log.d(TAG, "loadFollowCounts: following=${following?.size} followers=${followers?.size}")
         }
+    }
+
+    /** Someone the reader follows reported this account; they asked to see it anyway. */
+    fun onShowAnyway() {
+        showReported = true
+        load()
+    }
+
+    /** A guest is asked to sign in: a report names its reporter, and the block after it is theirs. */
+    fun onReportClick() {
+        if (!_state.value.canReport) return
+        if (!_state.value.isSignedIn) {
+            _state.update { it.copy(signInPrompt = SignInReason.Report) }
+            return
+        }
+        _state.update { it.copy(isReporting = true) }
+    }
+
+    fun onReportDismiss() {
+        _state.update { it.copy(isReporting = false) }
+    }
+
+    /** From the report sheet's [com.github.jvsena42.loopky.presentation.report.ReportEffect.Sent]. */
+    fun onReportSent(blocked: Boolean) {
+        _state.update {
+            if (blocked) {
+                it.copy(isReporting = false, isBlocked = true, isFollowing = false, decks = emptyList())
+            } else {
+                it.copy(isReporting = false)
+            }
+        }
+        viewModelScope.launch { _effects.emit(FriendProfileEffect.Reported(blocked)) }
     }
 
     fun onToggleFollow() {
@@ -351,6 +393,13 @@ data class FriendProfileUiState(
     val isConfirmingBlock: Boolean = false,
     val isProcessingBlock: Boolean = false,
     /**
+     * Someone the reader follows reported this account (#577). Nothing of it is shown until the
+     * reader taps Show anyway.
+     */
+    val isHiddenByReport: Boolean = false,
+    /** The report sheet is up. */
+    val isReporting: Boolean = false,
+    /**
      * Whether anyone is signed in. A profile and its decks are public records, so this screen
      * reads in full without an account; only Follow needs one.
      */
@@ -375,6 +424,9 @@ data class FriendProfileUiState(
 ) {
     /** Block is offered to a signed-in reader, on someone else's profile, not yet blocked. */
     val canBlock: Boolean get() = isSignedIn && !isSelf && !isBlocked
+
+    /** Offered to guests too, who are asked to sign in first. */
+    val canReport: Boolean get() = !isSelf && !isBlocked && !isHiddenByReport
 }
 
 data class FriendDeck(
@@ -412,4 +464,10 @@ sealed interface FriendProfileEffect {
 
     /** A block just landed: confirm it and close the profile. */
     data object Blocked : FriendProfileEffect
+
+    /**
+     * A report reached the moderators. [blocked]: confirm and close, as [Blocked] does; otherwise
+     * say the block failed and stay.
+     */
+    data class Reported(val blocked: Boolean) : FriendProfileEffect
 }
