@@ -133,16 +133,8 @@ class DeckDetailViewModel(
                 return@launch
             }
             // A link still reaches a blocked author's deck; nothing of it is shown (#577).
-            val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
-            if (deck.authorPubky != session?.identity?.pubky && deck.authorPubky in blocked) {
-                _state.update { DeckDetailUiState.Blocked }
-                return@launch
-            }
-            if (!showReported &&
-                deck.authorPubky != session?.identity?.pubky &&
-                discoveryRepository.isReportedByFollowee(deck.authorPubky)
-            ) {
-                _state.update { DeckDetailUiState.HiddenByReport }
+            hiddenState(deck.authorPubky, session?.identity?.pubky)?.let { hidden ->
+                _state.update { hidden }
                 return@launch
             }
             loadedDeck = deck
@@ -401,6 +393,17 @@ class DeckDetailViewModel(
                         ) ?: s
                     }
                 }
+        }
+    }
+
+    /** Blocked, or reported by a followee: what to show instead of a deck by [author], if anything. */
+    private suspend fun hiddenState(author: String, me: String?): DeckDetailUiState? {
+        if (author == me) return null
+        val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
+        return when {
+            author in blocked -> DeckDetailUiState.Blocked
+            !showReported && discoveryRepository.isReportedByFollowee(author) -> DeckDetailUiState.HiddenByReport
+            else -> null
         }
     }
 

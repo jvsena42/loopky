@@ -88,18 +88,7 @@ class FriendProfileViewModel(
             // Checked before anything of theirs is read: a blocked account is not shown at all —
             // not its name, not its decks — however the screen was reached (#577).
             val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
-            if (targetPubky in blocked) {
-                _state.update {
-                    it.copy(isLoading = false, isRefreshing = false, isBlocked = true, decks = emptyList())
-                }
-                return@launch
-            }
-            if (!showReported && discoveryRepository.isReportedByFollowee(targetPubky)) {
-                _state.update {
-                    it.copy(isLoading = false, isRefreshing = false, isHiddenByReport = true, decks = emptyList())
-                }
-                return@launch
-            }
+            if (showHiddenIfHidden(blocked)) return@launch
 
             val profile = identityRepository.fetchProfile(targetPubky, forceRefresh).getOrNull()
             // Concurrent: each is a directory listing plus a manifest fetch per deck, so running
@@ -206,6 +195,23 @@ class FriendProfileViewModel(
             }
             Log.d(TAG, "loadFollowCounts: following=${following?.size} followers=${followers?.size}")
         }
+    }
+
+    /** True when nothing of this account may be shown — blocked, or reported by a followee. */
+    private suspend fun showHiddenIfHidden(blocked: Set<String>): Boolean {
+        val isBlocked = targetPubky in blocked
+        val isReported = !isBlocked && !showReported && discoveryRepository.isReportedByFollowee(targetPubky)
+        if (!isBlocked && !isReported) return false
+        _state.update {
+            it.copy(
+                isLoading = false,
+                isRefreshing = false,
+                isBlocked = isBlocked,
+                isHiddenByReport = isReported,
+                decks = emptyList(),
+            )
+        }
+        return true
     }
 
     /** Someone the reader follows reported this account; they asked to see it anyway. */

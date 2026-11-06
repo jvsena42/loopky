@@ -33,9 +33,9 @@ import com.github.jvsena42.loopky.data.repository.impl.SignupRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SrsRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.TagRepositoryImpl
 import com.github.jvsena42.loopky.data.storage.UpdatePromptGate
+import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.RecapClock
 import com.github.jvsena42.loopky.domain.model.Tag
-import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.presentation.backup.BackupFileViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupPhraseViewModel
 import com.github.jvsena42.loopky.presentation.backup.BackupQuizViewModel
