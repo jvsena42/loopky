@@ -96,6 +96,7 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.util.LICENSE_URL
 import com.github.jvsena42.loopky.ui.util.PRIVACY_POLICY_URL
 import com.github.jvsena42.loopky.ui.util.SecureScreen
+import com.github.jvsena42.loopky.ui.util.TERMS_URL
 import com.github.jvsena42.loopky.ui.util.openUrl
 import com.github.jvsena42.loopky.ui.util.rememberAppVersion
 import com.github.jvsena42.loopky.ui.util.truncatedPubky
@@ -153,6 +154,7 @@ fun SettingsRoute(
         onRemoveUnsplashKey = viewModel::onRemoveUnsplashKey,
         onUnsplashKeyErrorDismissed = viewModel::onUnsplashKeyErrorDismissed,
         onGetUnsplashKeyClick = { context.openUrl(UNSPLASH_DEVELOPER_URL) },
+        onTermsClick = { context.openUrl(TERMS_URL) },
         onPrivacyPolicyClick = { context.openUrl(PRIVACY_POLICY_URL) },
         onLicenseClick = { context.openUrl(LICENSE_URL) },
         onSignOutClick = viewModel::onSignOutClick,
@@ -182,6 +184,7 @@ private fun SettingsScreen(
     onRemoveUnsplashKey: () -> Unit,
     onUnsplashKeyErrorDismissed: () -> Unit,
     onGetUnsplashKeyClick: () -> Unit,
+    onTermsClick: () -> Unit,
     onPrivacyPolicyClick: () -> Unit,
     onLicenseClick: () -> Unit,
     onSignOutClick: () -> Unit,
@@ -415,6 +418,12 @@ private fun SettingsScreen(
                     SettingsValueRow(
                         label = stringResource(R.string.settings_app_version_label),
                         value = state.appVersion.ifBlank { stringResource(R.string.settings_app_version_unknown) },
+                    )
+                    SettingsDivider()
+                    SettingsLinkRow(
+                        label = stringResource(R.string.settings_terms),
+                        onClick = onTermsClick,
+                        modifier = Modifier.testTag("settings_terms"),
                     )
                     SettingsDivider()
                     SettingsLinkRow(
@@ -1119,6 +1128,7 @@ private fun SettingsScreenPreview() {
             onRemoveUnsplashKey = {},
             onUnsplashKeyErrorDismissed = {},
             onGetUnsplashKeyClick = {},
+            onTermsClick = {},
             onPrivacyPolicyClick = {},
             onLicenseClick = {},
             onSignOutClick = {},

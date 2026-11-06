@@ -16,6 +16,7 @@ import com.github.jvsena42.loopky.domain.model.DeckMastery
 import com.github.jvsena42.loopky.domain.model.DeckRequests
 import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.ErrorReason
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.ImportDraft
 import com.github.jvsena42.loopky.domain.model.KeyCustody
@@ -25,6 +26,9 @@ import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.ParsedRow
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
+import com.github.jvsena42.loopky.domain.model.ReportIssue
+import com.github.jvsena42.loopky.domain.model.ReportOutcome
+import com.github.jvsena42.loopky.domain.model.ReportSubject
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Separator
 import com.github.jvsena42.loopky.domain.model.Session
@@ -929,6 +933,22 @@ interface DiscoveryRepository {
      */
     suspend fun blockUser(pubky: String): Result<Unit>
     suspend fun unblockUser(pubky: String): Result<Unit>
+
+    /**
+     * Report [subject] to pubky.app's moderators, then tag the account's profile
+     * [ReservedTags.REPORTED] and block it (#577). Fails only when the report itself does not
+     * arrive; the tag is best-effort, and a block that fails comes back as
+     * [ReportOutcome.blocked] false. A deck report blocks the deck's author. Refuses the signed-in
+     * account's own pubky.
+     */
+    suspend fun report(subject: ReportSubject, issue: ReportIssue, details: String): Result<ReportOutcome>
+
+    /**
+     * Why [pubky] is hidden from discovery, for a profile or deck reached by a link: pubky.app's
+     * moderation bot flagged it (for every reader), or someone the signed-in reader follows
+     * reported it. Null for the reader's own account and on any failure.
+     */
+    suspend fun hiddenReason(pubky: String): HiddenReason?
 
     /** The accounts [blocked] names, as profiles — a bare pubky where one does not resolve. */
     suspend fun blockedProfiles(): List<PubkyIdentity>

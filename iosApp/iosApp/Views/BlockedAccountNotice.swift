@@ -23,3 +23,70 @@ struct BlockedAccountNotice: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+/// What a profile or deck shows when pubky.app's moderators flagged its account or someone the
+/// reader follows reported it (#577). Unlike a block, the reader can look anyway.
+struct ReportedAccountNotice: View {
+    var byModerators: Bool = false
+    var onShowAnyway: () -> Void = {}
+
+    var body: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 12) {
+                Image(systemName: "flag")
+                    .font(.system(size: 28))
+                    .foregroundStyle(LoopkyColor.foregroundMuted)
+                Text(byModerators ? "report_hidden_title_moderators" : "report_hidden_title")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(LoopkyColor.foregroundPrimary)
+                    .multilineTextAlignment(.center)
+                Text("report_hidden_body")
+                    .font(.system(size: 14))
+                    .foregroundStyle(LoopkyColor.foregroundSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .accessibilityElement(children: .combine)
+            Button("report_show_anyway", action: onShowAnyway)
+                .foregroundStyle(LoopkyColor.accentPrimary)
+                .accessibilityIdentifier("report_show_anyway")
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(RoundedRectangle(cornerRadius: 20).fill(LoopkyColor.surfaceCard))
+    }
+}
+
+/// A deck by a blocked account, or by one a followee reported: none of it, and a way back.
+struct HiddenDeckView: View {
+    let isBlocked: Bool
+    var byModerators: Bool = false
+    var onBack: () -> Void = {}
+    var onShowAnyway: () -> Void = {}
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Button(action: onBack) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(LoopkyColor.foregroundPrimary)
+                        .frame(width: 40, height: 40)
+                        .loopkyGlass(in: .circle)
+                }
+                .accessibilityLabel(Text("deck_detail_back"))
+                Spacer()
+            }
+            Spacer()
+            if isBlocked {
+                BlockedAccountNotice().accessibilityIdentifier("deck_detail_blocked")
+            } else {
+                ReportedAccountNotice(byModerators: byModerators, onShowAnyway: onShowAnyway)
+                    .accessibilityIdentifier("deck_detail_reported")
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .contentPane(PaneWidth.reading)
+    }
+}

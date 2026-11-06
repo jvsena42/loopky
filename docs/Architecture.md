@@ -836,6 +836,40 @@ Two consequences worth knowing before touching this:
   user's first identity — and `registerHeldKey` exists so the adopt-a-held-key path never mints at
   all.
 
+### 7.9 Reports, and hiding what a followee reported
+
+App Store guideline 1.2 needs a way to report objectionable content and block abusive users (#577).
+Loopky runs no backend, so a report goes to **pubky.app's** `POST /api/report` — unauthenticated,
+`{pubky, name, postUrl, issueType, reason}`, every field non-blank, reason ≤1000 characters — which
+files it as a Chatwoot conversation in the Reports inbox pubky.app's moderators already triage.
+`ReportClient` posts it to the build's `PubkyEnvironment.webBaseUrl`; `staging.pubky.app` is behind
+HTTP basic auth, so a staging send answers 401 and only production builds can file one.
+
+- **`postUrl`** is pubky.app's own profile URL for a profile (what its moderators open) and the
+  deck's `loopky.app/deck/` link for a deck. The **reason** opens with a line naming the subject by
+  its `pubky://` path — the path the homeserver admin API's `DELETE /webdav/{path}` and
+  `POST /users/{pubkey}/disable` act on — then the reader's details (≤700 characters).
+- **Then a tag, then a block.** The reporter writes `loopky-reported` on the reported
+  `profile.json` (a profile subject, so `/pub/pubky.app/tags/`, §7.7) and the mute record. Both are
+  best-effort after the report: the call fails only when the report did not arrive, and a block
+  that failed comes back as `ReportOutcome.blocked = false` so the screen says so instead of
+  closing.
+- **Friend reports.** `FriendReports` asks Nexus for every profile tagged `loopky-reported`
+  (`/v0/search/users/by_tags`) and keeps those whose taggers (`/v0/user/{id}/taggers/{label}`)
+  include someone the reader follows. Discovery reads leave them out like blocks; a profile or deck
+  reached by a link opens to a notice with Show anyway. Every failure hides nobody. The tag is
+  public, so anyone can see who reported whom — the sheet says the report adds one.
+- **pubky.app's moderation bot.** pubky-moderation sends `pubky.app` content (profiles, posts) to
+  Checkstep and, on a verdict, has its bot tag the judged file with a violation label
+  (`hatespeech`, `harassement`, `terrorism`, `violence`, `illegal_activities`,
+  `il_adult_nu_sex_act`, `nudity`) under the bot's own `/pub/pubky.app/tags/`. A tagged profile is
+  indexed like any profile tag, so `ModeratorFlags` hides an account whose label lists the bot
+  (`PubkyEnvironment.moderationBotPubky`, from pubky.app's runtime `moderationId`) among its
+  taggers — for every reader, guests included. **Decks are not covered**: the service also scans
+  every non-`pubky.app` file on the homeservers it watches, Loopky's chunks and media included, but
+  the bot tags the offending *file* under `pubky.app/tags/`, a subject Nexus refuses to index
+  (§7.7), so Loopky cannot see it. Deletions and bans still reach Loopky, through the admin API.
+
 ## 8. Data model & persistence
 
 ### 8.0 Homeserver layout (canonical)

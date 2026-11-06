@@ -67,6 +67,7 @@ internal fun DeckDetailHeader(
     onShareClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onReportClick: () -> Unit,
     onToggleFollow: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -79,11 +80,13 @@ internal fun DeckDetailHeader(
         if (showHeaderBar) {
             HeaderBar(
                 isOwned = state.isOwned,
+                canReport = state.canReport,
                 canEdit = state.canEdit,
                 onBackClick = onBackClick,
                 onShareClick = onShareClick,
                 onEditClick = onEditClick,
                 onDeleteClick = onDeleteClick,
+                onReportClick = onReportClick,
             )
         }
 
@@ -216,6 +219,7 @@ internal fun WideDeckDetail(
     onCardClick: (String) -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onReportClick: () -> Unit,
     onToggleFollow: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -231,11 +235,13 @@ internal fun WideDeckDetail(
         // cannot find.
         HeaderBar(
             isOwned = state.isOwned,
+            canReport = state.canReport,
             canEdit = state.canEdit,
             onBackClick = onBackClick,
             onShareClick = onShareClick,
             onEditClick = onEditClick,
             onDeleteClick = onDeleteClick,
+            onReportClick = onReportClick,
             modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
         )
         BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -262,6 +268,7 @@ internal fun WideDeckDetail(
                     onShareClick = onShareClick,
                     onEditClick = onEditClick,
                     onDeleteClick = onDeleteClick,
+                    onReportClick = onReportClick,
                     onToggleFollow = onToggleFollow,
                     modifier = Modifier
                         .width(paneWidth.coerceIn(MIN_DETAIL_PANE_WIDTH, maxPaneWidth))

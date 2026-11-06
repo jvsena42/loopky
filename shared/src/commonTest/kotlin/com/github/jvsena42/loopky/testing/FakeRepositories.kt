@@ -53,6 +53,7 @@ import com.github.jvsena42.loopky.domain.model.DeckSource
 import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.FRONT_FIELD
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.ImportDraft
 import com.github.jvsena42.loopky.domain.model.KeyCustody
@@ -62,6 +63,9 @@ import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.ParsedRow
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
+import com.github.jvsena42.loopky.domain.model.ReportIssue
+import com.github.jvsena42.loopky.domain.model.ReportOutcome
+import com.github.jvsena42.loopky.domain.model.ReportSubject
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Separator
 import com.github.jvsena42.loopky.domain.model.Session
@@ -985,6 +989,24 @@ class FakeDiscoveryRepository : DiscoveryRepository {
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = false))
         return Result.success(Unit)
     }
+
+    data class SentReport(val subject: ReportSubject, val issue: ReportIssue, val details: String)
+
+    val reports = mutableListOf<SentReport>()
+
+    /** When set, [report] fails before anything is sent. */
+    var reportError: Throwable? = null
+
+    /** Why [hiddenReason] hides an account; absent means shown. */
+    val hiddenReasons = mutableMapOf<String, HiddenReason>()
+
+    override suspend fun report(subject: ReportSubject, issue: ReportIssue, details: String): Result<ReportOutcome> {
+        reportError?.let { return Result.failure(it) }
+        reports.add(SentReport(subject, issue, details))
+        return Result.success(ReportOutcome(blocked = blockUser(subject.accountPubky).isSuccess))
+    }
+
+    override suspend fun hiddenReason(pubky: String): HiddenReason? = hiddenReasons[pubky]
 
     override suspend fun blockedProfiles(): List<PubkyIdentity> = blocks.sorted().map { pubky ->
         profiles[pubky] ?: PubkyIdentity(pubky, displayName = null, avatarUrl = null, bio = null)

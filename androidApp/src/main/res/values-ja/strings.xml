@@ -344,7 +344,6 @@
          sentence at runtime and turned into links, so a translation may place them anywhere. -->
     <string name="onboarding_policy_consent">%1$sと%2$sを読み、同意します。</string>
     <string name="onboarding_policy_privacy">プライバシーポリシー</string>
-    <string name="onboarding_policy_license">ライセンス</string>
     <string name="onboarding_qr_title">Pubky Ring でスキャン</string>
     <string name="onboarding_qr_body">スマートフォンで Pubky Ring を開き、「Authorize」をタップして、このコードをスキャンしてください。</string>
     <string name="onboarding_qr_content_description">このサインインリクエストを含む QR コード</string>
@@ -1023,4 +1022,36 @@
     <string name="sign_in_prompt_request_deck_title">デッキをリクエスト</string>
     <string name="sign_in_prompt_request_deck_body">リクエストはあなた自身のアカウントから投稿されるので、誰が求めているかが伝わります。アカウントが必要ですが、メールは不要です。</string>
     <string name="home_request_deck_link">見つからない？デッキをリクエスト</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">報告</string>
+    <string name="report_sheet_title_profile">このアカウントを報告</string>
+    <string name="report_sheet_title_deck">このデッキを報告</string>
+    <string name="report_issue_label">どのような問題ですか？</string>
+    <string name="report_issue_personal_info">個人情報の漏えい</string>
+    <string name="report_issue_hate_speech">ヘイトスピーチや脅迫</string>
+    <string name="report_issue_harassment">嫌がらせや標的化</string>
+    <string name="report_issue_child_abuse">児童の性的虐待や搾取</string>
+    <string name="report_issue_terrorism">テロの助長</string>
+    <string name="report_issue_violence">過激な暴力や犯罪的な暴力</string>
+    <string name="report_issue_illegal_sales">違法な販売や犯罪行為</string>
+    <string name="report_issue_sexual_content">同意のない性的コンテンツや違法な性的コンテンツ</string>
+    <string name="report_issue_copyright">著作権侵害</string>
+    <string name="report_details_label">詳細（任意）</string>
+    <string name="report_details_placeholder">モデレーターの参考になること</string>
+    <string name="report_blocks_profile">この報告を送信すると、このアカウントもブロックされます。Loopky のどこにも表示されなくなります。ブロックは 設定 → ブロック中のアカウント で解除できます。</string>
+    <string name="report_blocks_deck">この報告を送信すると、デッキの作成者もブロックされます。その人のデッキやプロフィールは Loopky のどこにも表示されなくなります。ブロックは 設定 → ブロック中のアカウント で解除できます。</string>
+    <string name="report_public_note">報告すると、このアカウントには公開の「報告済み」タグも付き、あなたをフォローしている人にも表示されなくなります。</string>
+    <string name="report_send">報告を送信</string>
+    <string name="report_cancel">キャンセル</string>
+    <string name="report_done">報告してブロックしました</string>
+    <string name="report_done_block_failed">報告は送信しましたが、アカウントをブロックできませんでした。プロフィールの「ブロック」をお試しください。</string>
+    <string name="report_hidden_title">フォロー中の人がこのアカウントを報告しました</string>
+    <string name="report_hidden_body">プロフィールとデッキは非表示になっています。</string>
+    <string name="report_hidden_title_moderators">pubky.app のモデレーターがこのアカウントにフラグを付けました</string>
+    <string name="report_show_anyway">表示する</string>
+    <string name="sign_in_prompt_report_title">報告するにはサインイン</string>
+    <string name="sign_in_prompt_report_body">報告はあなた自身のアカウントから送信され、そのアカウントをブロックします。アカウントが必要ですが、メールアドレスは不要です。</string>
+    <string name="onboarding_policy_terms">利用規約</string>
+    <string name="settings_terms">利用規約</string>
 </resources>

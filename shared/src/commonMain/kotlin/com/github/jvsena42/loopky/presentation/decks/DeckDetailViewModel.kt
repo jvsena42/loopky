@@ -18,6 +18,7 @@ import com.github.jvsena42.loopky.domain.model.DeckCounts
 import com.github.jvsena42.loopky.domain.model.DeckMastery
 import com.github.jvsena42.loopky.domain.model.DeckSource
 import com.github.jvsena42.loopky.domain.model.ErrorReason
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.ReservedTags
@@ -30,6 +31,7 @@ import com.github.jvsena42.loopky.presentation.share.DeckSharePrompt
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -75,6 +77,12 @@ class DeckDetailViewModel(
      */
     private var pendingCloneDeckId: String? = null
 
+    /** The deck as loaded, for the report sheet, which reports the deck itself. */
+    private var loadedDeck: Deck? = null
+
+    /** Set by [onShowAnyway]: the reader chose to see a deck by an account a followee reported. */
+    private var showReported = false
+
     init {
         load()
         // Studying runs on its own full-screen destination while this screen stays composed
@@ -94,6 +102,9 @@ class DeckDetailViewModel(
                 // A copy unfollows its source, and reloading for that rebuilds this state from
                 // scratch: the share prompt goes, and with it the only path to the copy.
                 if (current.isCloning || pendingCloneDeckId != null) return@collect
+                // A report blocks the author, which unfollows their decks one by one; a reload then
+                // drops the sheet before its Sent effect lands, so no toast and no back.
+                if (current.reportingDeck != null) return@collect
                 val following = runSuspendCatching { deckRepository.isFollowingDeck(deckId) }.getOrNull()
                 if (following != null && following != current.isFollowing) load(silent = true)
             }
@@ -126,18 +137,21 @@ class DeckDetailViewModel(
                 _state.update { DeckDetailUiState.Error(ErrorReason.NotFound, canRetry = false) }
                 return@launch
             }
-            // A link still reaches a blocked author's deck; nothing of it is shown (#577).
-            val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
-            if (deck.authorPubky != session?.identity?.pubky && deck.authorPubky in blocked) {
-                _state.update { DeckDetailUiState.Blocked }
-                return@launch
-            }
-
             // Must be a fetch, not a cache read: nothing has loaded this deck's cards yet on a
             // cold launch, and for a deck you don't own nothing ever will.
             // fetchByDeck already returns study order; sorting it again here cost a second pass
-            // over every card in the deck, on the main thread.
-            runSuspendCatching { cardRepository.fetchByDeck(deck).getOrThrow() }
+            // over every card in the deck, on the main thread. Started before the hidden check,
+            // which costs a Nexus read for a stranger's deck.
+            val cardsRead = async { runSuspendCatching { cardRepository.fetchByDeck(deck).getOrThrow() } }
+            // A link still reaches a blocked author's deck; nothing of it is shown (#577).
+            hiddenState(deck.authorPubky, session?.identity?.pubky)?.let { hidden ->
+                cardsRead.cancel()
+                _state.update { hidden }
+                return@launch
+            }
+            loadedDeck = deck
+
+            cardsRead.await()
                 .onSuccess { cards ->
                     // Null, not zero, when the read fails: rendering "Due 0 · Mastered 0%" showed a
                     // fully-mature deck as untouched and caught up, with no error anywhere (#101).
@@ -388,6 +402,55 @@ class DeckDetailViewModel(
                     }
                 }
         }
+    }
+
+    /** Blocked, flagged or reported by a followee: what to show instead of a deck by [author], if anything. */
+    private suspend fun hiddenState(author: String, me: String?): DeckDetailUiState? {
+        if (author == me) return null
+        val blocked = runSuspendCatching { discoveryRepository.blocked() }.getOrDefault(emptySet())
+        return when {
+            author in blocked -> DeckDetailUiState.Blocked
+            showReported -> null
+            else -> discoveryRepository.hiddenReason(author)?.let { DeckDetailUiState.HiddenByReport(it) }
+        }
+    }
+
+    /** Someone the reader follows reported this deck's author; they asked to see it anyway. */
+    fun onShowAnyway() {
+        showReported = true
+        load()
+    }
+
+    /** A guest is asked to sign in: a report names its reporter, and the block after it is theirs. */
+    fun onReportClick() {
+        val current = _state.value as? DeckDetailUiState.Content ?: return
+        if (current.isOwned) return
+        if (!current.isSignedIn) {
+            _state.update { current.copy(signInPrompt = SignInReason.Report) }
+            return
+        }
+        val deck = loadedDeck ?: return
+        _state.update { current.copy(reportingDeck = deck) }
+    }
+
+    fun onReportDismiss() {
+        val current = _state.value as? DeckDetailUiState.Content ?: return
+        _state.update { current.copy(reportingDeck = null) }
+    }
+
+    /**
+     * From the report sheet's [com.github.jvsena42.loopky.presentation.report.ReportEffect.Sent].
+     * A deck report blocks its author, so on success the deck is no longer to be seen.
+     */
+    fun onReportSent(blocked: Boolean) {
+        _state.update { current ->
+            when {
+                blocked -> DeckDetailUiState.Blocked
+                current is DeckDetailUiState.Content -> current.copy(reportingDeck = null)
+                else -> current
+            }
+        }
+        viewModelScope.launch { _effects.emit(DeckDetailEffect.Reported(blocked)) }
     }
 
     /** The visitor read the prompt and stayed. Nothing was written either way. */
@@ -739,6 +802,12 @@ sealed interface DeckDetailUiState {
 
     /** The deck's author is blocked: nothing of the deck is shown. Unblocking lives in Settings. */
     data object Blocked : DeckDetailUiState
+
+    /**
+     * pubky.app's moderators flagged the author, or someone the reader follows reported them
+     * (#577). Shown only after Show anyway.
+     */
+    data class HiddenByReport(val reason: HiddenReason) : DeckDetailUiState
     data class Content(
         val deckId: String,
         val title: String,
@@ -826,12 +895,17 @@ sealed interface DeckDetailUiState {
         val sharePrompt: DeckSharePrompt? = null,
         /** A recoverable failure worth showing without tearing down the loaded deck. */
         val errorReason: ErrorReason? = null,
+        /** Non-null while the report sheet is up: the deck it reports. */
+        val reportingDeck: Deck? = null,
     ) : DeckDetailUiState {
         /**
          * The pencil is offered. Wider than [isOwned]: a followed deck carries it too, and there it
          * offers a copy rather than the editor (#254).
          */
         val canEdit: Boolean get() = isOwned || isFollowing
+
+        /** Anyone else's deck; a guest is asked to sign in first. */
+        val canReport: Boolean get() = !isOwned
 
         /** Whether there is a study-modes row to draw at all — every deck may have none on. */
         val hasStudyFeatures: Boolean
@@ -890,6 +964,12 @@ sealed interface DeckDetailEffect {
     data object NavigateStudyPreview : DeckDetailEffect
     data class Share(val title: String, val uri: String) : DeckDetailEffect
     data object Deleted : DeckDetailEffect
+
+    /**
+     * A report reached the moderators. [blocked]: confirm and leave the deck; otherwise say the
+     * block of its author failed.
+     */
+    data class Reported(val blocked: Boolean) : DeckDetailEffect
 
     /** The clone is what the user now owns, so the screen moves to it rather than staying put. */
     data class Cloned(val deckId: String) : DeckDetailEffect

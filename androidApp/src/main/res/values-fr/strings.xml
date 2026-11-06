@@ -336,9 +336,8 @@
     <string name="onboarding_signin_default">Se connecter avec Pubky Ring</string>
     <string name="onboarding_no_email_notice">Pas d’e-mail. Pas de mot de passe. Ta clé, ton compte.</string>
     <string name="onboarding_get_ring">Pas de Pubky Ring ? Télécharge l’app</string>
-    <string name="onboarding_policy_consent">J’ai lu et j’accepte la %1$s et la %2$s.</string>
+    <string name="onboarding_policy_consent">J’ai lu et j’accepte les %1$s et la %2$s.</string>
     <string name="onboarding_policy_privacy">Politique de confidentialité</string>
-    <string name="onboarding_policy_license">Licence</string>
     <string name="onboarding_qr_title">Scanne avec Pubky Ring</string>
     <string name="onboarding_qr_body">Ouvre Pubky Ring sur ton téléphone, touche Autoriser et scanne ce code.</string>
     <string name="onboarding_qr_content_description">Code QR contenant cette demande de connexion</string>
@@ -968,4 +967,36 @@
     <string name="sign_in_prompt_request_deck_title">Demander un paquet</string>
     <string name="sign_in_prompt_request_deck_body">Une demande est publiée depuis ton propre compte, pour qu’on sache qui demande. Il faut un compte, mais pas d’e-mail.</string>
     <string name="home_request_deck_link">Rien trouvé ? Demande un paquet</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">Signaler</string>
+    <string name="report_sheet_title_profile">Signaler ce compte</string>
+    <string name="report_sheet_title_deck">Signaler ce paquet</string>
+    <string name="report_issue_label">Quel est le problème ?</string>
+    <string name="report_issue_personal_info">Divulgation d’informations personnelles</string>
+    <string name="report_issue_hate_speech">Discours haineux ou menaces</string>
+    <string name="report_issue_harassment">Harcèlement ou ciblage</string>
+    <string name="report_issue_child_abuse">Abus ou exploitation sexuelle d’enfants</string>
+    <string name="report_issue_terrorism">Apologie du terrorisme</string>
+    <string name="report_issue_violence">Violence explicite ou criminelle</string>
+    <string name="report_issue_illegal_sales">Vente illégale ou activité criminelle</string>
+    <string name="report_issue_sexual_content">Contenu sexuel non consenti ou criminel</string>
+    <string name="report_issue_copyright">Violation du droit d’auteur</string>
+    <string name="report_details_label">Détails (facultatif)</string>
+    <string name="report_details_placeholder">Tout ce qui peut aider les modérateurs</string>
+    <string name="report_blocks_profile">Envoyer ce signalement bloque aussi ce compte. Tu ne le verras plus nulle part dans Loopky. Tu peux le débloquer dans Réglages → Comptes bloqués.</string>
+    <string name="report_blocks_deck">Envoyer ce signalement bloque aussi l’auteur du paquet. Tu ne verras plus ses paquets ni son profil nulle part dans Loopky. Tu peux le débloquer dans Réglages → Comptes bloqués.</string>
+    <string name="report_public_note">Le signalement ajoute aussi au compte une étiquette publique « signalé », qui le masque aux personnes qui te suivent.</string>
+    <string name="report_send">Envoyer le signalement</string>
+    <string name="report_cancel">Annuler</string>
+    <string name="report_done">Signalé et bloqué</string>
+    <string name="report_done_block_failed">Signalement envoyé, mais le compte n’a pas pu être bloqué. Essaie Bloquer sur son profil.</string>
+    <string name="report_hidden_title">Quelqu’un que tu suis a signalé ce compte</string>
+    <string name="report_hidden_body">Son profil et ses paquets te sont masqués.</string>
+    <string name="report_hidden_title_moderators">La modération de pubky.app a signalé ce compte</string>
+    <string name="report_show_anyway">Afficher quand même</string>
+    <string name="sign_in_prompt_report_title">Connecte-toi pour signaler</string>
+    <string name="sign_in_prompt_report_body">Un signalement est envoyé depuis ton propre compte et bloque le compte pour toi. Il faut un compte, mais pas d’e-mail.</string>
+    <string name="onboarding_policy_terms">Conditions d’utilisation</string>
+    <string name="settings_terms">Conditions d’utilisation</string>
 </resources>

@@ -24,8 +24,6 @@ struct SettingsView: View {
 
     @State private var unsplashKey = ""
 
-    private static let privacyPolicyUrl = "https://loopky.app/privacy"
-
     var body: some View {
         List {
             identitySection
@@ -308,7 +306,9 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Section {
             LabeledContent("settings_app_version_label", value: state.appVersion)
-            Button("settings_privacy_policy") { onOpenUrl(Self.privacyPolicyUrl) }
+            Button("settings_terms") { onOpenUrl(LoopkyLinks.terms) }
+                .accessibilityIdentifier("settings_terms")
+            Button("settings_privacy_policy") { onOpenUrl(LoopkyLinks.privacy) }
         } header: {
             Text("settings_section_about")
         }

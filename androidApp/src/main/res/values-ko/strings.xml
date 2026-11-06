@@ -342,7 +342,6 @@
     <string name="onboarding_get_ring">Pubky Ring이 없나요? 앱 받기</string>
     <string name="onboarding_policy_consent">%1$s 및 %2$s을(를) 읽었으며 이에 동의합니다.</string>
     <string name="onboarding_policy_privacy">개인정보 처리방침</string>
-    <string name="onboarding_policy_license">라이선스</string>
     <string name="onboarding_qr_title">Pubky Ring으로 스캔</string>
     <string name="onboarding_qr_body">휴대폰에서 Pubky Ring을 열고 승인을 탭한 뒤 이 코드를 스캔하세요.</string>
     <string name="onboarding_qr_content_description">이 로그인 요청이 담긴 QR 코드</string>
@@ -980,4 +979,36 @@
     <string name="sign_in_prompt_request_deck_title">덱 요청하기</string>
     <string name="sign_in_prompt_request_deck_body">요청은 내 계정으로 게시되어 덱 제작자가 누가 요청했는지 알 수 있어요. 계정이 필요하지만 이메일은 필요 없어요.</string>
     <string name="home_request_deck_link">못 찾았나요? 덱 요청하기</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">신고</string>
+    <string name="report_sheet_title_profile">이 계정 신고</string>
+    <string name="report_sheet_title_deck">이 덱 신고</string>
+    <string name="report_issue_label">어떤 문제인가요?</string>
+    <string name="report_issue_personal_info">개인정보 유출</string>
+    <string name="report_issue_hate_speech">혐오 또는 위협적인 발언</string>
+    <string name="report_issue_harassment">괴롭힘 또는 표적 공격</string>
+    <string name="report_issue_child_abuse">아동 성적 학대 또는 착취</string>
+    <string name="report_issue_terrorism">테러 조장</string>
+    <string name="report_issue_violence">잔혹하거나 범죄적인 폭력</string>
+    <string name="report_issue_illegal_sales">불법 판매 또는 범죄 행위</string>
+    <string name="report_issue_sexual_content">동의 없는 또는 범죄적인 성적 콘텐츠</string>
+    <string name="report_issue_copyright">저작권 침해</string>
+    <string name="report_details_label">세부 정보(선택)</string>
+    <string name="report_details_placeholder">운영진에게 도움이 될 내용</string>
+    <string name="report_blocks_profile">이 신고를 보내면 이 계정도 차단돼요. Loopky 어디에서도 보이지 않아요. 설정 → 차단한 계정에서 차단을 해제할 수 있어요.</string>
+    <string name="report_blocks_deck">이 신고를 보내면 덱 작성자도 차단돼요. 그 사람의 덱과 프로필이 Loopky 어디에서도 보이지 않아요. 설정 → 차단한 계정에서 차단을 해제할 수 있어요.</string>
+    <string name="report_public_note">신고하면 이 계정에 공개 ‘신고됨’ 태그도 붙어, 나를 팔로우하는 사람들에게도 숨겨져요.</string>
+    <string name="report_send">신고 보내기</string>
+    <string name="report_cancel">취소</string>
+    <string name="report_done">신고하고 차단했어요</string>
+    <string name="report_done_block_failed">신고는 보냈지만 계정을 차단하지 못했어요. 프로필에서 차단을 시도해 주세요.</string>
+    <string name="report_hidden_title">내가 팔로우하는 사람이 이 계정을 신고했어요</string>
+    <string name="report_hidden_body">프로필과 덱이 숨겨져 있어요.</string>
+    <string name="report_hidden_title_moderators">pubky.app 운영진이 이 계정을 신고 대상으로 표시했어요</string>
+    <string name="report_show_anyway">그래도 보기</string>
+    <string name="sign_in_prompt_report_title">신고하려면 로그인하세요</string>
+    <string name="sign_in_prompt_report_body">신고는 내 계정으로 보내지고, 해당 계정을 차단해요. 계정이 필요하지만 이메일은 필요 없어요.</string>
+    <string name="onboarding_policy_terms">이용약관</string>
+    <string name="settings_terms">이용약관</string>
 </resources>

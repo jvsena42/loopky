@@ -336,9 +336,8 @@
     <string name="onboarding_signin_default">Iniciar sesión con Pubky Ring</string>
     <string name="onboarding_no_email_notice">Sin correo. Sin contraseña. Tu clave, tu cuenta.</string>
     <string name="onboarding_get_ring">¿No tienes Pubky Ring? Descarga la app</string>
-    <string name="onboarding_policy_consent">He leído y acepto la %1$s y la %2$s.</string>
+    <string name="onboarding_policy_consent">He leído y acepto los %1$s y la %2$s.</string>
     <string name="onboarding_policy_privacy">Política de privacidad</string>
-    <string name="onboarding_policy_license">Licencia</string>
     <string name="onboarding_qr_title">Escanea con Pubky Ring</string>
     <string name="onboarding_qr_body">Abre Pubky Ring en tu teléfono, toca Autorizar y escanea este código.</string>
     <string name="onboarding_qr_content_description">Código QR con esta solicitud de inicio de sesión</string>
@@ -968,4 +967,36 @@
     <string name="sign_in_prompt_request_deck_title">Pedir un mazo</string>
     <string name="sign_in_prompt_request_deck_body">La solicitud se publica desde tu propia cuenta, para que quien crea mazos sepa quién la pide. Necesitas una cuenta, pero no un correo.</string>
     <string name="home_request_deck_link">¿No lo encuentras? Pide un mazo</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">Denunciar</string>
+    <string name="report_sheet_title_profile">Denunciar esta cuenta</string>
+    <string name="report_sheet_title_deck">Denunciar este mazo</string>
+    <string name="report_issue_label">¿Cuál es el problema?</string>
+    <string name="report_issue_personal_info">Filtración de información personal</string>
+    <string name="report_issue_hate_speech">Discurso de odio o amenazas</string>
+    <string name="report_issue_harassment">Acoso o ataques dirigidos</string>
+    <string name="report_issue_child_abuse">Abuso o explotación sexual infantil</string>
+    <string name="report_issue_terrorism">Apología del terrorismo</string>
+    <string name="report_issue_violence">Violencia explícita o criminal</string>
+    <string name="report_issue_illegal_sales">Venta ilegal o actividad delictiva</string>
+    <string name="report_issue_sexual_content">Contenido sexual no consentido o delictivo</string>
+    <string name="report_issue_copyright">Infracción de derechos de autor</string>
+    <string name="report_details_label">Detalles (opcional)</string>
+    <string name="report_details_placeholder">Lo que ayude a los moderadores</string>
+    <string name="report_blocks_profile">Enviar esta denuncia también bloquea esta cuenta. No la verás en ninguna parte de Loopky. Puedes desbloquearla en Ajustes → Cuentas bloqueadas.</string>
+    <string name="report_blocks_deck">Enviar esta denuncia también bloquea al autor del mazo. No verás sus mazos ni su perfil en ninguna parte de Loopky. Puedes desbloquearlo en Ajustes → Cuentas bloqueadas.</string>
+    <string name="report_public_note">La denuncia también añade una etiqueta pública de “denunciado” a la cuenta, que la oculta a las personas que te siguen.</string>
+    <string name="report_send">Enviar denuncia</string>
+    <string name="report_cancel">Cancelar</string>
+    <string name="report_done">Denunciado y bloqueado</string>
+    <string name="report_done_block_failed">Denuncia enviada, pero no se pudo bloquear la cuenta. Prueba con Bloquear en su perfil.</string>
+    <string name="report_hidden_title">Alguien a quien sigues denunció esta cuenta</string>
+    <string name="report_hidden_body">Su perfil y sus mazos están ocultos para ti.</string>
+    <string name="report_hidden_title_moderators">La moderación de pubky.app marcó esta cuenta</string>
+    <string name="report_show_anyway">Mostrar de todos modos</string>
+    <string name="sign_in_prompt_report_title">Inicia sesión para denunciar</string>
+    <string name="sign_in_prompt_report_body">La denuncia se envía desde tu propia cuenta y bloquea la cuenta denunciada para ti. Necesitas una cuenta, pero no un correo.</string>
+    <string name="onboarding_policy_terms">Términos de uso</string>
+    <string name="settings_terms">Términos de uso</string>
 </resources>

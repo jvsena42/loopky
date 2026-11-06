@@ -350,7 +350,6 @@
          sentence at runtime and turned into links, so a translation may place them anywhere. -->
     <string name="onboarding_policy_consent">I have read and agree to the %1$s and the %2$s.</string>
     <string name="onboarding_policy_privacy">Privacy Policy</string>
-    <string name="onboarding_policy_license">License</string>
     <string name="onboarding_qr_title">Scan with Pubky Ring</string>
     <string name="onboarding_qr_body">Open Pubky Ring on your phone, tap Authorize, and scan this code.</string>
     <string name="onboarding_qr_content_description">QR code containing this sign-in request</string>
@@ -1049,4 +1048,36 @@
     <string name="sign_in_prompt_request_deck_title">Request a deck</string>
     <string name="sign_in_prompt_request_deck_body">A request is posted from your own account, so deck makers know who’s asking. It needs an account, but no email.</string>
     <string name="home_request_deck_link">Can’t find one? Request a deck</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">Report</string>
+    <string name="report_sheet_title_profile">Report this account</string>
+    <string name="report_sheet_title_deck">Report this deck</string>
+    <string name="report_issue_label">What’s wrong?</string>
+    <string name="report_issue_personal_info">Personal information leak</string>
+    <string name="report_issue_hate_speech">Hate or threatening speech</string>
+    <string name="report_issue_harassment">Harassment or targeting</string>
+    <string name="report_issue_child_abuse">Child sexual abuse or exploitation</string>
+    <string name="report_issue_terrorism">Promotion of terrorism</string>
+    <string name="report_issue_violence">Graphic or criminal violence</string>
+    <string name="report_issue_illegal_sales">Illegal sales or criminal activity</string>
+    <string name="report_issue_sexual_content">Non-consensual or criminal sexual content</string>
+    <string name="report_issue_copyright">Copyright infringement</string>
+    <string name="report_details_label">Details (optional)</string>
+    <string name="report_details_placeholder">Anything that helps the moderators</string>
+    <string name="report_blocks_profile">Sending this report also blocks this account. You won’t see it anywhere in Loopky. You can unblock it in Settings → Blocked accounts.</string>
+    <string name="report_blocks_deck">Sending this report also blocks the deck’s author. You won’t see their decks or profile anywhere in Loopky. You can unblock them in Settings → Blocked accounts.</string>
+    <string name="report_public_note">The report also adds a public “reported” tag to the account, which hides it from the people who follow you.</string>
+    <string name="report_send">Send report</string>
+    <string name="report_cancel">Cancel</string>
+    <string name="report_done">Reported and blocked</string>
+    <string name="report_done_block_failed">Report sent, but the account could not be blocked. Try Block on their profile.</string>
+    <string name="report_hidden_title">Someone you follow reported this account</string>
+    <string name="report_hidden_body">Its profile and decks are hidden from you.</string>
+    <string name="report_hidden_title_moderators">pubky.app’s moderators flagged this account</string>
+    <string name="report_show_anyway">Show anyway</string>
+    <string name="sign_in_prompt_report_title">Sign in to report</string>
+    <string name="sign_in_prompt_report_body">A report is sent from your own account, and it blocks the account for you. It needs an account, but no email.</string>
+    <string name="onboarding_policy_terms">Terms of Use</string>
+    <string name="settings_terms">Terms of use</string>
 </resources>

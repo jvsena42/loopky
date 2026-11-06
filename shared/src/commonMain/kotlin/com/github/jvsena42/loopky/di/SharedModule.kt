@@ -1,10 +1,12 @@
 package com.github.jvsena42.loopky.di
 
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.price.PriceClient
 import com.github.jvsena42.loopky.data.price.PriceSource
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.report.ReportClient
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
@@ -31,6 +33,7 @@ import com.github.jvsena42.loopky.data.repository.impl.SignupRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SrsRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.TagRepositoryImpl
 import com.github.jvsena42.loopky.data.storage.UpdatePromptGate
+import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.RecapClock
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.presentation.backup.BackupFileViewModel
@@ -58,6 +61,7 @@ import com.github.jvsena42.loopky.presentation.profile.FollowListViewModel
 import com.github.jvsena42.loopky.presentation.profile.FriendProfileViewModel
 import com.github.jvsena42.loopky.presentation.profile.ProfileViewModel
 import com.github.jvsena42.loopky.presentation.recap.RecapViewModel
+import com.github.jvsena42.loopky.presentation.report.ReportViewModel
 import com.github.jvsena42.loopky.presentation.request.DeckRequestViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
@@ -185,7 +189,12 @@ fun sharedModule(): Module = module {
         )
     }
     single<DiscoveryRepository> {
-        DiscoveryRepositoryImpl(get(), get(), get(), get(), get(), get(), get(), get(), blockedAccounts = get())
+        DiscoveryRepositoryImpl(
+            get(), get(), get(), get(), get(), get(), get(), get(),
+            reportClient = ReportClient(http = get(), baseUrl = get<PubkyEnvironment>().webBaseUrl),
+            environment = get(),
+            blockedAccounts = get(),
+        )
     }
 
     single<TagRepository> {
@@ -242,6 +251,13 @@ fun sharedModule(): Module = module {
     }
     viewModel { DeckRequestViewModel(discoveryRepository = get()) }
     viewModel { BlockedUsersViewModel(discoveryRepository = get()) }
+    viewModel { params ->
+        ReportViewModel(
+            accountPubky = params.get(0),
+            deck = params.values.getOrNull(1) as? Deck,
+            discoveryRepository = get(),
+        )
+    }
     viewModel { DecksLibraryViewModel(deckRepository = get(), identityRepository = get()) }
     viewModel { params ->
         DeckDetailViewModel(

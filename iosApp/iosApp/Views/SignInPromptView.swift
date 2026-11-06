@@ -19,6 +19,7 @@ enum SignInPromptCopy {
         switch reason {
         case .clonedeck: return "sign_in_prompt_clone_deck_\(suffix)"
         case .followperson: return "sign_in_prompt_follow_person_\(suffix)"
+        case .report: return "sign_in_prompt_report_\(suffix)"
         default: return "sign_in_prompt_follow_deck_\(suffix)"
         }
     }

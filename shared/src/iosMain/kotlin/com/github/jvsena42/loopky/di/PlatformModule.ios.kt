@@ -30,6 +30,7 @@ import com.github.jvsena42.loopky.data.storage.StudyProgressStore
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
 import com.github.jvsena42.loopky.data.storage.UpdatePromptGate
 import com.github.jvsena42.loopky.data.unsplash.UnsplashClient
+import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DraftCardImage
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.MediaRef
@@ -73,6 +74,7 @@ import com.github.jvsena42.loopky.presentation.profile.FollowSource
 import com.github.jvsena42.loopky.presentation.profile.FriendProfileViewModel
 import com.github.jvsena42.loopky.presentation.profile.ProfileViewModel
 import com.github.jvsena42.loopky.presentation.recap.RecapViewModel
+import com.github.jvsena42.loopky.presentation.report.ReportViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
 import com.github.jvsena42.loopky.presentation.settings.BlockedUsersViewModel
@@ -284,6 +286,10 @@ object IosDependencies {
         koin.get { parametersOf(pubky) }
 
     fun blockedUsersViewModel(): BlockedUsersViewModel = koin.get()
+
+    /** [deck] null reports the profile of [accountPubky]; a deck reports the deck and its author. */
+    fun reportViewModel(accountPubky: String, deck: Deck?): ReportViewModel =
+        koin.get { parametersOf(accountPubky, deck) }
 
     /**
      * Both parameters are mandatory — the Koin binding reads them with `params.get()`, not

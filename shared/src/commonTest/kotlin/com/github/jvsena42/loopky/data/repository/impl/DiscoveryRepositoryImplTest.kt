@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.nexus.HttpError
 import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.pubky.FollowDto
@@ -8,6 +9,7 @@ import com.github.jvsena42.loopky.data.pubky.PostKinds
 import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.toDto
+import com.github.jvsena42.loopky.data.report.ReportClient
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.domain.model.DeckAnnouncement
@@ -75,6 +77,8 @@ class DiscoveryRepositoryImplTest {
         identityRepository = identityRepo,
         nexus = NexusClient(http = http, baseUrl = NEXUS_BASE),
         preferences = preferences,
+        reportClient = ReportClient(FakeHttpFetcher(), "https://pubky.test"),
+        environment = PubkyEnvironment.Staging,
     )
 
     private fun followUrl(followee: String) =
@@ -173,8 +177,9 @@ class DiscoveryRepositoryImplTest {
         publishProfile("loopkypk", "Ada")
 
         assertEquals(listOf("loopkypk"), repo.followingProfiles("friendpk").map { it.pubky })
-        // Whose follows those are is a fact their own homeserver holds first-hand.
-        assertTrue(http.requestedUrls.isEmpty())
+        // Whose follows those are is a fact their own homeserver holds first-hand. The indexer is
+        // still asked which accounts the moderators flagged, which is not about follows.
+        assertTrue(http.requestedUrls.none { "/follow" in it })
     }
 
     @Test

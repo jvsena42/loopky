@@ -31,6 +31,8 @@ struct DeckDetailScreen: View {
             onEdit: { viewModel?.onEditClick() },
             onDelete: { viewModel?.onDeleteDeck() },
             onShare: { viewModel?.onShareClick() },
+            onReport: { viewModel?.onReportClick() },
+            onShowAnyway: { viewModel?.onShowAnyway() },
             onStudy: { viewModel?.onStudyClick() },
             onOpenTag: onOpenTag,
             onToggleFollow: { viewModel?.onToggleFollow() },
@@ -43,6 +45,16 @@ struct DeckDetailScreen: View {
             Text(deleteMessage)
         }
         .sheet(item: $shareTarget) { ShareLinkSheet(target: $0) }
+        .sheet(isPresented: reportSheetBinding) {
+            if let deck = content?.reportingDeck {
+                ReportSheet(
+                    accountPubky: deck.authorPubky,
+                    deck: deck,
+                    onSent: { viewModel?.onReportSent(blocked: $0) },
+                    onDismiss: { viewModel?.onReportDismiss() }
+                )
+            }
+        }
         // Raised by Edit on a deck you follow: your study options, then — one step in — the copy
         // (#254). **One** sheet whose content changes, not two: a second `.sheet` presented in the
         // update that dismisses the first is dropped, and the copy prompt would never appear. The
@@ -136,6 +148,7 @@ struct DeckDetailScreen: View {
                 isFollowPending: content.isFollowPending,
                 isCloning: content.isCloning,
                 canEdit: content.canEdit,
+                canReport: content.canReport,
                 clonedFromLabel: content.clonedFrom.map { IdentityData($0).label },
                 followerCount: Int(content.followerCount),
                 clonedCount: Int(content.clonedCount),
@@ -150,6 +163,8 @@ struct DeckDetailScreen: View {
             return .error(ErrorCopy.message(for: error.reason))
         case is DeckDetailUiStateBlocked:
             return .blocked
+        case let hidden as DeckDetailUiStateHiddenByReport:
+            return .hiddenByReport(byModerators: hidden.reason == .flaggedbymoderators)
         default:
             return .loading
         }
@@ -202,6 +217,13 @@ struct DeckDetailScreen: View {
         )
     }
 
+    private var reportSheetBinding: Binding<Bool> {
+        Binding(
+            get: { content?.reportingDeck != nil },
+            set: { if !$0 { viewModel?.onReportDismiss() } }
+        )
+    }
+
     private var deleteConfirmBinding: Binding<Bool> {
         Binding(
             get: { (uiState as? DeckDetailUiStateContent)?.showDeleteConfirm == true },
@@ -237,6 +259,9 @@ struct DeckDetailScreen: View {
                 onOpenClone(cloned.deckId)
             case is DeckDetailEffectShared:
                 flash("share_prompt_posted")
+            case let reported as DeckDetailEffectReported:
+                // A report that blocked the author leaves the deck, as a block does.
+                if reported.blocked { onBack() } else { flash("report_done_block_failed") }
             case is DeckDetailEffectShareFailed:
                 // Cosmetic: the follow or clone stands whether or not the post went out.
                 flash("share_prompt_failed")

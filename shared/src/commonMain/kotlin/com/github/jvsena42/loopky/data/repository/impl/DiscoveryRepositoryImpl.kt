@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.AccountStamp
@@ -20,6 +21,8 @@ import com.github.jvsena42.loopky.data.pubky.isNotFound
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
 import com.github.jvsena42.loopky.data.pubky.putWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.requireSession
+import com.github.jvsena42.loopky.data.report.ReportClient
+import com.github.jvsena42.loopky.data.report.ReportRequest
 import com.github.jvsena42.loopky.data.repository.BlockChange
 import com.github.jvsena42.loopky.data.repository.DeckPage
 import com.github.jvsena42.loopky.data.repository.DeckRepository
@@ -32,8 +35,13 @@ import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckAnnouncement
 import com.github.jvsena42.loopky.domain.model.DeckRequests
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
+import com.github.jvsena42.loopky.domain.model.ReportIssue
+import com.github.jvsena42.loopky.domain.model.ReportLimits
+import com.github.jvsena42.loopky.domain.model.ReportOutcome
+import com.github.jvsena42.loopky.domain.model.ReportSubject
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.TagLabels
@@ -75,7 +83,11 @@ class DiscoveryRepositoryImpl(
     private val identityRepository: IdentityRepository,
     private val nexus: NexusClient,
     private val preferences: AppPreferences,
+    private val reportClient: ReportClient,
+    private val environment: PubkyEnvironment,
     private val blockedAccounts: BlockedAccounts = BlockedAccounts(pubky, session),
+    private val friendReports: FriendReports = FriendReports(nexus, session),
+    private val moderatorFlags: ModeratorFlags = ModeratorFlags(nexus, environment.moderationBotPubky),
 ) : DiscoveryRepository {
 
     /** Followee pubkys for the session, or null until first loaded from the homeserver. */
@@ -176,7 +188,68 @@ class DiscoveryRepositoryImpl(
             .onFailure { Log.w(TAG, "blockUser: unfollowDecksBy FAILED — ${it.message}") }
     }
 
-    private suspend fun blockedOrEmpty(): Set<String> = blockedAccounts.loadOrEmpty()
+    override suspend fun report(
+        subject: ReportSubject,
+        issue: ReportIssue,
+        details: String,
+    ): Result<ReportOutcome> = runSuspendCatching {
+        val me = session.requireSession().identity.pubky
+        val target = subject.accountPubky
+        require(target != me) { "You cannot report yourself" }
+        val name = identityRepository.fetchProfile(me).getOrNull()?.displayName?.takeIf { it.isNotBlank() }
+            ?: me.take(REPORTER_NAME_KEY_CHARS)
+        reportClient.submit(
+            ReportRequest(
+                pubky = me,
+                name = name,
+                postUrl = subject.reportedUrl(),
+                issueType = issue.wire,
+                reason = subject.reasonWith(details.trim().take(ReportLimits.DETAILS_MAX_LENGTH)),
+            ),
+        ).getOrThrow()
+        // Best-effort, like every reserved-tag write: the report has already reached the moderators.
+        tagRepository.putReservedTag(PubkyUri(PubkyPaths.profile(target)), ReservedTags.REPORTED)
+            .onFailure { Log.w(TAG, "report: tag FAILED — ${it.message}") }
+        ReportOutcome(blocked = blockUser(target).isSuccess)
+    }.onFailure { Log.w(TAG, "report: FAILED — ${it.message}", it) }
+
+    override suspend fun hiddenReason(pubky: String): HiddenReason? {
+        if (pubky == session.current()?.identity?.pubky) return null
+        if (moderatorFlags.isFlagged(pubky)) return HiddenReason.FlaggedByModerators
+        if (session.current() == null) return null
+        val following = runSuspendCatching { following().toSet() }.getOrElse { return null }
+        return HiddenReason.ReportedByFollowee.takeIf { friendReports.isReported(pubky, following) }
+    }
+
+    /** pubky.app's profile page for a profile, so its moderators open what they already know. */
+    private fun ReportSubject.reportedUrl(): String = when (this) {
+        is ReportSubject.Profile -> environment.profileUrl(accountPubky)
+        is ReportSubject.OfDeck -> deck.webUrl
+    }
+
+    /** The line naming the subject goes first: it is what an admin delete or disable acts on. */
+    private fun ReportSubject.reasonWith(details: String): String {
+        val header = when (this) {
+            is ReportSubject.Profile -> "Loopky profile: ${PubkyPaths.profile(accountPubky)}"
+            is ReportSubject.OfDeck ->
+                "Loopky deck \"${deck.title}\": ${PubkyPaths.deckRoot(deck.authorPubky, deck.id)}/"
+        }
+        return if (details.isEmpty()) header else "$header\n\n$details"
+    }
+
+    /**
+     * Blocks, accounts pubky.app's moderators flagged, and — for a signed-in reader — accounts a
+     * followee reported. Every discovery read filters on this; no part failing may fail the read.
+     */
+    private suspend fun blockedOrEmpty(): Set<String> = coroutineScope {
+        val flagged = async { moderatorFlags.flagged() }
+        val reported = async {
+            if (session.current() == null) return@async emptySet()
+            val following = runSuspendCatching { following().toSet() }.getOrElse { emptySet() }
+            friendReports.hiddenFor(following)
+        }
+        blockedAccounts.loadOrEmpty() + flagged.await() + reported.await()
+    }
 
     override suspend fun announceDeck(announcement: DeckAnnouncement): Result<PubkyUri> =
         runSuspendCatching {
@@ -376,7 +449,7 @@ class DiscoveryRepositoryImpl(
         limit: Int,
         cursor: Int,
         alsoTagged: Set<Tag>,
-    ): DeckPage {
+    ): DeckPage = coroutineScope {
         val kept = mutableListOf<Deck>()
         // Author-scoped, not by deck id alone: two authors can publish the same deck id, and the
         // `distinctBy { it.id }` this replaced dropped the second one as a duplicate.
@@ -385,8 +458,9 @@ class DiscoveryRepositoryImpl(
         var requests = 0
         var exhausted = false
         // Dropped before the page is counted, so a blocked author's decks are refilled like any
-        // other rejected entry rather than leaving the page short.
-        val blocked = blockedOrEmpty()
+        // other rejected entry rather than leaving the page short. Read alongside the first page:
+        // a signed-in reader's friend reports cost a follow list and a Nexus search.
+        val blockedRead = async { blockedOrEmpty() }
 
         while (kept.size < limit && requests < MAX_REFILL_REQUESTS) {
             requests++
@@ -400,6 +474,7 @@ class DiscoveryRepositoryImpl(
                 exhausted = true
                 break
             }
+            val blocked = blockedRead.await()
             subjects
                 .filterNot { subject ->
                     PubkyUris.parseDeckManifest(subject.uri.value)?.authorPubky in blocked
@@ -417,7 +492,7 @@ class DiscoveryRepositoryImpl(
                 "${kept.size}/$limit in $requests requests, " +
                 "cursor $cursor -> $skip, hasMore=${!exhausted}",
         )
-        return DeckPage(decks = kept, nextCursor = skip, hasMore = !exhausted)
+        DeckPage(decks = kept, nextCursor = skip, hasMore = !exhausted)
     }
 
     /**
@@ -711,6 +786,9 @@ class DiscoveryRepositoryImpl(
 
     companion object {
         private const val TAG = "Loopky/DiscoveryRepo"
+
+        /** A reporter with no display name is named by the start of their key, as pubky.app shows it. */
+        private const val REPORTER_NAME_KEY_CHARS = 8
 
         /** The segment a follow record's url carries just before the followee's pubky. */
         private const val FOLLOWS_MARKER = "/pub/pubky.app/follows/"

@@ -349,7 +349,6 @@
          sentence at runtime and turned into links, so a translation may place them anywhere. -->
     <string name="onboarding_policy_consent">Tôi đã đọc và đồng ý với %1$s và %2$s.</string>
     <string name="onboarding_policy_privacy">Chính sách quyền riêng tư</string>
-    <string name="onboarding_policy_license">Giấy phép</string>
     <string name="onboarding_qr_title">Quét bằng Pubky Ring</string>
     <string name="onboarding_qr_body">Mở Pubky Ring trên điện thoại, nhấn Authorize rồi quét mã này.</string>
     <string name="onboarding_qr_content_description">Mã QR chứa yêu cầu đăng nhập này</string>
@@ -1043,4 +1042,36 @@
     <string name="sign_in_prompt_request_deck_title">Yêu cầu bộ thẻ</string>
     <string name="sign_in_prompt_request_deck_body">Yêu cầu được đăng từ tài khoản của chính bạn để người tạo bộ thẻ biết ai đang hỏi. Cần có tài khoản, nhưng không cần email.</string>
     <string name="home_request_deck_link">Không tìm thấy? Yêu cầu bộ thẻ</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">Báo cáo</string>
+    <string name="report_sheet_title_profile">Báo cáo tài khoản này</string>
+    <string name="report_sheet_title_deck">Báo cáo bộ thẻ này</string>
+    <string name="report_issue_label">Vấn đề là gì?</string>
+    <string name="report_issue_personal_info">Làm lộ thông tin cá nhân</string>
+    <string name="report_issue_hate_speech">Ngôn từ thù ghét hoặc đe dọa</string>
+    <string name="report_issue_harassment">Quấy rối hoặc nhắm mục tiêu</string>
+    <string name="report_issue_child_abuse">Xâm hại hoặc bóc lột tình dục trẻ em</string>
+    <string name="report_issue_terrorism">Cổ xúy khủng bố</string>
+    <string name="report_issue_violence">Bạo lực ghê rợn hoặc phạm pháp</string>
+    <string name="report_issue_illegal_sales">Mua bán bất hợp pháp hoặc hoạt động phạm pháp</string>
+    <string name="report_issue_sexual_content">Nội dung tình dục không đồng thuận hoặc phạm pháp</string>
+    <string name="report_issue_copyright">Vi phạm bản quyền</string>
+    <string name="report_details_label">Chi tiết (không bắt buộc)</string>
+    <string name="report_details_placeholder">Bất cứ điều gì giúp ích cho người kiểm duyệt</string>
+    <string name="report_blocks_profile">Gửi báo cáo này cũng sẽ chặn tài khoản. Bạn sẽ không thấy tài khoản này ở bất kỳ đâu trong Loopky. Bạn có thể bỏ chặn trong Cài đặt → Tài khoản bị chặn.</string>
+    <string name="report_blocks_deck">Gửi báo cáo này cũng sẽ chặn tác giả của bộ thẻ. Bạn sẽ không thấy bộ thẻ hay hồ sơ của họ ở bất kỳ đâu trong Loopky. Bạn có thể bỏ chặn trong Cài đặt → Tài khoản bị chặn.</string>
+    <string name="report_public_note">Báo cáo cũng gắn thẻ công khai “đã bị báo cáo” cho tài khoản, giúp ẩn tài khoản đó khỏi những người theo dõi bạn.</string>
+    <string name="report_send">Gửi báo cáo</string>
+    <string name="report_cancel">Hủy</string>
+    <string name="report_done">Đã báo cáo và chặn</string>
+    <string name="report_done_block_failed">Đã gửi báo cáo nhưng không thể chặn tài khoản. Hãy thử Chặn trên hồ sơ của họ.</string>
+    <string name="report_hidden_title">Một người bạn theo dõi đã báo cáo tài khoản này</string>
+    <string name="report_hidden_body">Hồ sơ và các bộ thẻ của tài khoản này đã bị ẩn với bạn.</string>
+    <string name="report_hidden_title_moderators">Đội kiểm duyệt của pubky.app đã gắn cờ tài khoản này</string>
+    <string name="report_show_anyway">Vẫn hiển thị</string>
+    <string name="sign_in_prompt_report_title">Đăng nhập để báo cáo</string>
+    <string name="sign_in_prompt_report_body">Báo cáo được gửi từ tài khoản của chính bạn và sẽ chặn tài khoản đó giúp bạn. Cần có tài khoản nhưng không cần email.</string>
+    <string name="onboarding_policy_terms">Điều khoản sử dụng</string>
+    <string name="settings_terms">Điều khoản sử dụng</string>
 </resources>

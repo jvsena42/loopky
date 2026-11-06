@@ -1,10 +1,12 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.pubky.MuteDto
 import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.toDto
+import com.github.jvsena42.loopky.data.report.ReportClient
 import com.github.jvsena42.loopky.data.repository.BlockChange
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.domain.model.PubkyUri
@@ -64,6 +66,8 @@ class DiscoveryRepositoryBlockTest {
         identityRepository = identityRepository(pubky = pubky, sessionProvider = session, tagRepository = tagRepo),
         nexus = NexusClient(http = FakeHttpFetcher(), baseUrl = "https://nexus.test"),
         preferences = FakeAppPreferences(),
+        reportClient = ReportClient(FakeHttpFetcher(), "https://pubky.test"),
+        environment = PubkyEnvironment.Staging,
         blockedAccounts = blockedAccounts,
     )
 

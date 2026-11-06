@@ -336,9 +336,8 @@
     <string name="onboarding_signin_default">Entrar com o Pubky Ring</string>
     <string name="onboarding_no_email_notice">Sem e-mail. Sem senha. Sua chave, sua conta.</string>
     <string name="onboarding_get_ring">Não tem o Pubky Ring? Baixe o app</string>
-    <string name="onboarding_policy_consent">Li e concordo com a %1$s e a %2$s.</string>
+    <string name="onboarding_policy_consent">Li e concordo com os %1$s e a %2$s.</string>
     <string name="onboarding_policy_privacy">Política de Privacidade</string>
-    <string name="onboarding_policy_license">Licença</string>
     <string name="onboarding_qr_title">Leia com o Pubky Ring</string>
     <string name="onboarding_qr_body">Abra o Pubky Ring no seu celular, toque em Autorizar e leia este código.</string>
     <string name="onboarding_qr_content_description">Código QR com este pedido de acesso</string>
@@ -968,4 +967,36 @@
     <string name="sign_in_prompt_request_deck_title">Pedir um baralho</string>
     <string name="sign_in_prompt_request_deck_body">O pedido é publicado pela sua própria conta, para quem cria baralhos saber quem está pedindo. Precisa de uma conta, mas não de e-mail.</string>
     <string name="home_request_deck_link">Não achou? Peça um baralho</string>
+
+    <!-- Report (#577) -->
+    <string name="report_action">Denunciar</string>
+    <string name="report_sheet_title_profile">Denunciar esta conta</string>
+    <string name="report_sheet_title_deck">Denunciar este baralho</string>
+    <string name="report_issue_label">Qual é o problema?</string>
+    <string name="report_issue_personal_info">Vazamento de informações pessoais</string>
+    <string name="report_issue_hate_speech">Discurso de ódio ou ameaça</string>
+    <string name="report_issue_harassment">Assédio ou perseguição</string>
+    <string name="report_issue_child_abuse">Abuso ou exploração sexual infantil</string>
+    <string name="report_issue_terrorism">Apologia ao terrorismo</string>
+    <string name="report_issue_violence">Violência explícita ou criminosa</string>
+    <string name="report_issue_illegal_sales">Venda ilegal ou atividade criminosa</string>
+    <string name="report_issue_sexual_content">Conteúdo sexual não consensual ou criminoso</string>
+    <string name="report_issue_copyright">Violação de direitos autorais</string>
+    <string name="report_details_label">Detalhes (opcional)</string>
+    <string name="report_details_placeholder">Algo que ajude a moderação</string>
+    <string name="report_blocks_profile">Enviar esta denúncia também bloqueia esta conta. Você não a verá mais em nenhum lugar do Loopky. Dá para desbloquear em Configurações → Contas bloqueadas.</string>
+    <string name="report_blocks_deck">Enviar esta denúncia também bloqueia o autor do baralho. Você não verá mais os baralhos nem o perfil dele em nenhum lugar do Loopky. Dá para desbloquear em Configurações → Contas bloqueadas.</string>
+    <string name="report_public_note">A denúncia também adiciona uma tag pública de “denunciado” à conta, o que a esconde de quem segue você.</string>
+    <string name="report_send">Enviar denúncia</string>
+    <string name="report_cancel">Cancelar</string>
+    <string name="report_done">Denunciado e bloqueado</string>
+    <string name="report_done_block_failed">Denúncia enviada, mas não foi possível bloquear a conta. Tente Bloquear no perfil.</string>
+    <string name="report_hidden_title">Alguém que você segue denunciou esta conta</string>
+    <string name="report_hidden_body">O perfil e os baralhos dela estão escondidos para você.</string>
+    <string name="report_hidden_title_moderators">A moderação do pubky.app sinalizou esta conta</string>
+    <string name="report_show_anyway">Mostrar mesmo assim</string>
+    <string name="sign_in_prompt_report_title">Entre para denunciar</string>
+    <string name="sign_in_prompt_report_body">A denúncia é enviada pela sua própria conta e bloqueia a conta denunciada para você. Precisa de uma conta, mas não de e-mail.</string>
+    <string name="onboarding_policy_terms">Termos de Uso</string>
+    <string name="settings_terms">Termos de uso</string>
 </resources>

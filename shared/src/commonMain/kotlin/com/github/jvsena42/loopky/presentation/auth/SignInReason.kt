@@ -27,4 +27,7 @@ enum class SignInReason {
 
     /** Asking for a deck nobody has made, which is a post on your own pubky.app feed. */
     RequestDeck,
+
+    /** Reporting a deck or a profile: the report names its reporter, and it blocks under your pubky. */
+    Report,
 }

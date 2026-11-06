@@ -1,6 +1,6 @@
 # Loopky Terms of Service
 
-**Last updated:** 18 October 2026
+**Last updated:** 6 November 2026
 
 These terms cover the Loopky apps for Android and iOS, the `loopky` command line tool, the Loopky
 plugin for AI agents, and the website at [loopky.app](https://loopky.app). Using any of them means
@@ -91,19 +91,31 @@ publishing you confirm that:
   web page;
 - the content is lawful where you are, and is not meant to harass, defraud or harm anyone.
 
-The project does not review decks before or after they are published.
+**There is zero tolerance for objectionable content and abusive users.** That includes hate or
+threatening speech, harassment, sexual content involving minors or published without consent,
+promotion of terrorism, graphic violence, illegal sales, other people's personal information and
+copyright infringement. Decks are not reviewed before they are published; they are acted on when
+reported (section 6).
 
 ---
 
 ## 6. Other people's content
 
 Decks, profiles and tags from other people come from their homeservers and from the Pubky indexer.
-Loopky does not verify, moderate or endorse them, and is not responsible for what they say or link
-to. Treat them as you would any content from a stranger on the internet.
+Loopky does not verify or endorse them, and is not responsible for what they say or link to.
 
-The project cannot remove content from a homeserver it does not run. To report something unlawful,
-contact the operator of the homeserver that hosts it. If the problem is in Loopky itself, open an
-issue at [github.com/jvsena42/loopky/issues](https://github.com/jvsena42/loopky/issues).
+**Report and block.** Every deck and profile in the apps has a Report action. A report goes to the
+moderators of pubky.app, who review reports within 24 hours. Content that breaks section 5 is
+removed from the homeservers Synonym operates, which is where accounts created through Loopky live,
+and the account that published it is disabled. Reporting an account also blocks it for you, and
+you can block any account from its profile; Settings → Blocked accounts lists them and is where you
+unblock. A report also adds a public "reported" tag to the account, which hides it from the people
+who follow you.
+
+Content on a homeserver someone else runs cannot be removed by the project; Loopky can only hide it
+from you. To report it to whoever runs it, contact that homeserver's operator. If the problem is in
+Loopky itself, open an issue at
+[github.com/jvsena42/loopky/issues](https://github.com/jvsena42/loopky/issues).
 
 ---
 

@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.github.jvsena42.loopky.R
+import com.github.jvsena42.loopky.domain.model.HiddenReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.StudyFeature
 import com.github.jvsena42.loopky.presentation.decks.CardPreviewModel
@@ -69,10 +70,13 @@ import com.github.jvsena42.loopky.ui.components.CardPreviewRow
 import com.github.jvsena42.loopky.ui.components.ExpandableLinkedText
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
 import com.github.jvsena42.loopky.ui.components.LoopkyPrimaryButton
+import com.github.jvsena42.loopky.ui.components.ReportSheetHost
+import com.github.jvsena42.loopky.ui.components.ReportedAccountNotice
 import com.github.jvsena42.loopky.ui.components.ShareLinkSheetHost
 import com.github.jvsena42.loopky.ui.components.ShareLinkTarget
 import com.github.jvsena42.loopky.ui.components.SharePromptDialog
 import com.github.jvsena42.loopky.ui.components.SignInPromptDialog
+import com.github.jvsena42.loopky.ui.components.announceReport
 import com.github.jvsena42.loopky.ui.components.errorMessage
 import com.github.jvsena42.loopky.ui.components.errorTitle
 import com.github.jvsena42.loopky.ui.layout.PaneWidth
@@ -135,6 +139,7 @@ fun DeckDetailRoute(
                     chooserTitle = R.string.share_deck_chooser_title,
                 )
                 DeckDetailEffect.Deleted -> currentBack()
+                is DeckDetailEffect.Reported -> context.announceReport(effect.blocked, currentBack)
                 is DeckDetailEffect.Cloned -> currentOpenClone(effect.deckId)
                 DeckDetailEffect.Shared -> context.toast(R.string.share_prompt_posted)
                 DeckDetailEffect.ShareFailed -> context.toast(R.string.share_prompt_failed)
@@ -153,6 +158,8 @@ fun DeckDetailRoute(
         onCardClick = { cardId -> currentEditCard(deckId, cardId) },
         onEditClick = viewModel::onEditClick,
         onDeleteClick = viewModel::onDeleteDeck,
+        onReportClick = viewModel::onReportClick,
+        onShowAnyway = viewModel::onShowAnyway,
         onConfirmDelete = viewModel::onConfirmDelete,
         onDismissDelete = viewModel::onDismissDelete,
         onToggleFollow = viewModel::onToggleFollow,
@@ -191,6 +198,15 @@ fun DeckDetailRoute(
         )
     }
 
+    (state as? DeckDetailUiState.Content)?.reportingDeck?.let { deck ->
+        ReportSheetHost(
+            accountPubky = deck.authorPubky,
+            deck = deck,
+            onDismiss = viewModel::onReportDismiss,
+            onSent = viewModel::onReportSent,
+        )
+    }
+
     ShareLinkSheetHost(target = shareTarget, onDismiss = { shareTarget = null })
 }
 
@@ -206,6 +222,8 @@ fun DeckDetailScreen(
     onCardClick: (String) -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onReportClick: () -> Unit,
+    onShowAnyway: () -> Unit,
     onConfirmDelete: () -> Unit,
     onDismissDelete: () -> Unit,
     onToggleFollow: () -> Unit,
@@ -232,31 +250,11 @@ fun DeckDetailScreen(
             }
         }
 
-        DeckDetailUiState.Blocked -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(colors.surfacePrimary)
-                    .windowInsetsPadding(WindowInsets.screenEdges),
-            ) {
-                HeaderCircleButton(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = stringResource(R.string.deck_detail_back),
-                    iconSize = 24.dp,
-                    onClick = onBackClick,
-                    modifier = Modifier
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                        .testTag("deck_detail_back"),
-                )
-                BlockedAccountNotice(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .contentPane(PaneWidth.Focused)
-                        .padding(20.dp)
-                        .testTag("deck_detail_blocked"),
-                )
-            }
-        }
+        DeckDetailUiState.Blocked, is DeckDetailUiState.HiddenByReport -> HiddenDeck(
+            hiddenReason = (state as? DeckDetailUiState.HiddenByReport)?.reason,
+            onBackClick = onBackClick,
+            onShowAnyway = onShowAnyway,
+        )
 
         is DeckDetailUiState.Error -> {
             Box(
@@ -323,6 +321,7 @@ fun DeckDetailScreen(
                 onCardClick = onCardClick,
                 onEditClick = onEditClick,
                 onDeleteClick = onDeleteClick,
+                onReportClick = onReportClick,
                 onToggleFollow = onToggleFollow,
             )
             if (state.showDeleteConfirm) {
@@ -389,6 +388,7 @@ private fun DeckDetailContent(
     onCardClick: (String) -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onReportClick: () -> Unit,
     onToggleFollow: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
@@ -445,6 +445,7 @@ private fun DeckDetailContent(
                 onCardClick = onCardClick,
                 onEditClick = onEditClick,
                 onDeleteClick = onDeleteClick,
+                onReportClick = onReportClick,
                 onToggleFollow = onToggleFollow,
                 // The header bar stays pinned below the status bar; the panes under it run to the
                 // bottom edge and pad for the navigation bar themselves.
@@ -486,6 +487,7 @@ private fun DeckDetailContent(
                     onShareClick = onShareClick,
                     onEditClick = onEditClick,
                     onDeleteClick = onDeleteClick,
+                    onReportClick = onReportClick,
                     onToggleFollow = onToggleFollow,
                 )
             }
@@ -743,6 +745,40 @@ internal fun TitleSection(title: String, description: String?) {
     }
 }
 
+/** A deck by a blocked account, or one a followee reported: nothing of it, and a way back. */
+@Composable
+private fun HiddenDeck(hiddenReason: HiddenReason?, onBackClick: () -> Unit, onShowAnyway: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LoopkyTheme.colors.surfacePrimary)
+            .windowInsetsPadding(WindowInsets.screenEdges),
+    ) {
+        HeaderCircleButton(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = stringResource(R.string.deck_detail_back),
+            iconSize = 24.dp,
+            onClick = onBackClick,
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .testTag("deck_detail_back"),
+        )
+        val noticeModifier = Modifier
+            .align(Alignment.Center)
+            .contentPane(PaneWidth.Focused)
+            .padding(20.dp)
+        if (hiddenReason == null) {
+            BlockedAccountNotice(modifier = noticeModifier.testTag("deck_detail_blocked"))
+        } else {
+            ReportedAccountNotice(
+                reason = hiddenReason,
+                onShowAnyway = onShowAnyway,
+                modifier = noticeModifier.testTag("deck_detail_reported"),
+            )
+        }
+    }
+}
+
 @Preview
 @Composable
 private fun DeckDetailScreenPreview() {
@@ -778,6 +814,8 @@ private fun DeckDetailScreenPreview() {
             onCardClick = {},
             onEditClick = {},
             onDeleteClick = {},
+            onReportClick = {},
+            onShowAnyway = {},
             onConfirmDelete = {},
             onDismissDelete = {},
             onToggleFollow = {},
@@ -829,6 +867,8 @@ private fun DeckDetailEmptyCardsPreview() {
             onCardClick = {},
             onEditClick = {},
             onDeleteClick = {},
+            onReportClick = {},
+            onShowAnyway = {},
             onConfirmDelete = {},
             onDismissDelete = {},
             onToggleFollow = {},
