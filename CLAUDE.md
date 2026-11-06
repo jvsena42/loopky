@@ -477,7 +477,10 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   block come after it, and a report that did not arrive writes neither. The tag hides the account
   from the reporter's followers (`FriendReports`) only when one of its **taggers** is a followee —
   anyone can write any label, so the score means nothing — and that filter is discovery's alone:
-  a deck the reader follows by such an account stays on Home. And the sign-in consent starts
+  a deck the reader follows by such an account stays on Home. **pubky.app's moderation bot** is
+  the same rule with one trusted tagger for every reader, guests included (`ModeratorFlags`,
+  `PubkyEnvironment.moderationBotPubky`): its violation labels on a profile hide the account. The
+  label list is pubky-moderation's `to_tag`, misspelling included (`harassement`). And the sign-in consent starts
   **unticked** and names the Terms of Use: guideline 1.2 needs agreement, which a pre-ticked box
   is not. Architecture.md §7.9.
 - **Pubky is the source of truth for published decks.** The app is not offline-first in v1 — repos talk directly to `PubkyClient` and keep only an in-memory cache for the session. A persistent SQLDelight cache may come later. There are no private/local-only decks in v1 (spec §11).

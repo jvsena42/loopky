@@ -859,6 +859,16 @@ HTTP basic auth, so a staging send answers 401 and only production builds can fi
   include someone the reader follows. Discovery reads leave them out like blocks; a profile or deck
   reached by a link opens to a notice with Show anyway. Every failure hides nobody. The tag is
   public, so anyone can see who reported whom — the sheet says the report adds one.
+- **pubky.app's moderation bot.** pubky-moderation sends `pubky.app` content (profiles, posts) to
+  Checkstep and, on a verdict, has its bot tag the judged file with a violation label
+  (`hatespeech`, `harassement`, `terrorism`, `violence`, `illegal_activities`,
+  `il_adult_nu_sex_act`, `nudity`) under the bot's own `/pub/pubky.app/tags/`. A tagged profile is
+  indexed like any profile tag, so `ModeratorFlags` hides an account whose label lists the bot
+  (`PubkyEnvironment.moderationBotPubky`, from pubky.app's runtime `moderationId`) among its
+  taggers — for every reader, guests included. **Decks are not covered**: the service also scans
+  every non-`pubky.app` file on the homeservers it watches, Loopky's chunks and media included, but
+  the bot tags the offending *file* under `pubky.app/tags/`, a subject Nexus refuses to index
+  (§7.7), so Loopky cannot see it. Deletions and bans still reach Loopky, through the admin API.
 
 ## 8. Data model & persistence
 

@@ -109,7 +109,9 @@ a line when you close it.
   (Pixel_9) and the sheet on iOS (iPhone 17e), the guest sign-in prompt on iOS (iPhone 17) and the
   deck header's More menu on both, the Android one also at expanded width. Never driven: a
   successful send (it needs a production build and files a real report), the loopky-reported tag
-  and the block that follow it, the "Someone you follow reported this account" notice, and dark.
+  and the block that follow it, the "Someone you follow reported this account" notice, the
+  moderators' notice (no profile on production carries a bot flag yet: all seven labels answered
+  zero candidates on 2026-11-06), and dark.
 - **28 — the password manager, end to end.** On Android, saving, the read-back check and restoring
   all need a device with a credential provider; no emulator here has one, so only the empty path
   (no provider: the save fails, the restore picker returns nothing) has been driven. On iOS the
