@@ -1,17 +1,22 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.nexus.HttpFetcher
 import com.github.jvsena42.loopky.data.nexus.HttpMethod
+import com.github.jvsena42.loopky.data.nexus.HttpRequest
 import com.github.jvsena42.loopky.data.nexus.HttpResponse
 import com.github.jvsena42.loopky.data.nexus.NexusClient
+import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.pubky.toDto
 import com.github.jvsena42.loopky.data.report.ReportClient
 import com.github.jvsena42.loopky.data.report.ReportRequest
+import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReportIssue
 import com.github.jvsena42.loopky.domain.model.ReportSubject
 import com.github.jvsena42.loopky.domain.model.ReservedTags
+import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeBackgroundTasks
@@ -27,6 +32,8 @@ import com.github.jvsena42.loopky.testing.testDeck
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlin.test.Test
@@ -220,8 +227,50 @@ class DiscoveryRepositoryReportTest {
         assertEquals(listOf("good"), repo.decksByTagGlobal(ReservedTags.DECK).map { it.id })
     }
 
+    @Test
+    fun `a browse page reads friends' reports alongside its first page`() = runTest {
+        follow("friendpk")
+        reportedOnNexus("trollpk", taggers = listOf("friendpk"))
+        putRemoteManifest(author = "trollpk", deckId = "bad")
+        putRemoteManifest(author = "otherpk", deckId = "good")
+        tagRepo.subjectsByTag = mapOf(
+            ReservedTags.DECK to listOf(
+                TaggedSubject(PubkyUri("pubky://trollpk/pub/loopky/decks/bad/manifest.json"), listOf("trollpk"), 1),
+                TaggedSubject(PubkyUri("pubky://otherpk/pub/loopky/decks/good/manifest.json"), listOf("otherpk"), 1),
+            ),
+        )
+        // Not `by nexusHttp`: delegation would route the default `get` straight to the fake.
+        val slowNexus = object : HttpFetcher {
+            override suspend fun send(request: HttpRequest) =
+                nexusHttp.send(request).also { if ("by_tags" in request.url) delay(SLOW_MS) }
+        }
+        val slowTags = object : TagRepository by tagRepo {
+            override suspend fun taggedSubjects(tag: Tag, limit: Int, skip: Int, sorting: NexusResourceSorting) =
+                tagRepo.taggedSubjects(tag, limit, skip, sorting).also { if (skip == 0) delay(SLOW_MS) }
+        }
+        val slowRepo = DiscoveryRepositoryImpl(
+            pubky = pubky,
+            session = session,
+            revalidator = revalidator,
+            deckRepository = deckRepo,
+            tagRepository = slowTags,
+            identityRepository = identityRepository(pubky = pubky, sessionProvider = session, tagRepository = slowTags),
+            nexus = NexusClient(http = slowNexus, baseUrl = NEXUS),
+            preferences = FakeAppPreferences(),
+            reportClient = ReportClient(reportHttp, "https://staging.pubky.app"),
+            environment = PubkyEnvironment.Staging,
+            blockedAccounts = blockedAccounts,
+        )
+
+        val page = slowRepo.decksByTagGlobalPage(ReservedTags.DECK, limit = 2, cursor = 0, alsoTagged = emptySet())
+
+        assertEquals(listOf("good"), page.decks.map { it.id })
+        assertTrue(currentTime < 2 * SLOW_MS, "the page waited ${currentTime}ms: the two reads ran one after the other")
+    }
+
     private companion object {
         const val NEXUS = "https://nexus.test"
         const val REPORT_URL = "https://staging.pubky.app/api/report"
+        const val SLOW_MS = 1_000L
     }
 }

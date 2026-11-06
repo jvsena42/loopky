@@ -442,7 +442,7 @@ class DiscoveryRepositoryImpl(
         limit: Int,
         cursor: Int,
         alsoTagged: Set<Tag>,
-    ): DeckPage {
+    ): DeckPage = coroutineScope {
         val kept = mutableListOf<Deck>()
         // Author-scoped, not by deck id alone: two authors can publish the same deck id, and the
         // `distinctBy { it.id }` this replaced dropped the second one as a duplicate.
@@ -451,8 +451,9 @@ class DiscoveryRepositoryImpl(
         var requests = 0
         var exhausted = false
         // Dropped before the page is counted, so a blocked author's decks are refilled like any
-        // other rejected entry rather than leaving the page short.
-        val blocked = blockedOrEmpty()
+        // other rejected entry rather than leaving the page short. Read alongside the first page:
+        // a signed-in reader's friend reports cost a follow list and a Nexus search.
+        val blockedRead = async { blockedOrEmpty() }
 
         while (kept.size < limit && requests < MAX_REFILL_REQUESTS) {
             requests++
@@ -466,6 +467,7 @@ class DiscoveryRepositoryImpl(
                 exhausted = true
                 break
             }
+            val blocked = blockedRead.await()
             subjects
                 .filterNot { subject ->
                     PubkyUris.parseDeckManifest(subject.uri.value)?.authorPubky in blocked
@@ -483,7 +485,7 @@ class DiscoveryRepositoryImpl(
                 "${kept.size}/$limit in $requests requests, " +
                 "cursor $cursor -> $skip, hasMore=${!exhausted}",
         )
-        return DeckPage(decks = kept, nextCursor = skip, hasMore = !exhausted)
+        DeckPage(decks = kept, nextCursor = skip, hasMore = !exhausted)
     }
 
     /**
