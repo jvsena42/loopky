@@ -118,9 +118,7 @@ class AccountEraser(
         // failed deletion, and a user with a busy feed should not be blocked by one unreadable record.
         deleteLoopkyPosts(owner)
 
-        // 5. On request, the rest of pubky.app: profile, follows, blocks, labels. The profile goes
-        // last, so a sweep that dies part way still leaves an account that reads as Loopky's, and a
-        // retry is offered the same choice.
+        // 5. On request, the rest of pubky.app: profile, follows, blocks, labels.
         if (deletePubkyApp) failures += deletePubkyAppRecords(owner, progress)
 
         // Re-list rather than trust the counters. `deleteRecord` scores a 404 as success, which is
@@ -198,15 +196,25 @@ class AccountEraser(
         }
     }
 
-    /** Returns how many records would not go. */
+    /**
+     * Deletes only the records judged Loopky's, never a bare listing: the gate in [erase] ran before
+     * steps 1–4, and another Pubky app may have written since. Anything else refuses before a
+     * single pubky.app record goes, and a record written after this listing is never deleted.
+     * Returns how many records would not go.
+     */
     private suspend fun deletePubkyAppRecords(owner: String, progress: SweepProgress): Int {
+        val records = footprints.judgedPubkyAppRecords(owner)
+        when {
+            records.foreign.isNotEmpty() -> throw PubkyAppFootprintChangedException(PubkyAppFootprint.Direct)
+            records.unreadable.isNotEmpty() -> throw PubkyAppFootprintChangedException(PubkyAppFootprint.Unknown)
+        }
         val profile = PubkyPaths.profile(owner)
-        val records = footprints.pubkyAppRecords(owner)
-        val failures = records.filterNot { it == profile }
+        // The profile last: a sweep that dies part way still reads as Loopky's.
+        val failures = records.loopkys.filterNot { it == profile }
             .mapConcurrently { path -> deleteRecord(path).also { progress.step() } }
             .count { deleted -> !deleted }
-        if (profile !in records) return failures
-        return failures + if (deleteRecord(profile).also { progress.step() }) 0 else 1
+        if (failures > 0 || profile !in records.loopkys) return failures
+        return if (deleteRecord(profile).also { progress.step() }) 0 else 1
     }
 
     /**

@@ -128,6 +128,53 @@ internal class PubkyAppFootprintReader(private val pubky: PubkyClient) {
     }
 
     /**
+     * Every record under [owner]'s `/pub/pubky.app/`, judged one by one, for the delete itself.
+     * Throws unless the listing read to the end. A record that cannot be read is never Loopky's.
+     */
+    suspend fun judgedPubkyAppRecords(owner: String): JudgedRecords {
+        val records = pubkyAppRecords(owner)
+        val ownPosts = PubkyPaths.postsRoot(owner)
+        val postPaths = records.filter { it.startsWith(ownPosts) }.toSet()
+        val tags = records.filter { it.startsWith(tagsRoot(owner)) }.mapConcurrently { it to readTag(it) }.toMap()
+        val labels = tags.values.mapNotNull { it.getOrNull() }
+            .filter { it.uri.startsWith(ownPosts) }
+            .groupBy({ it.uri }, { it.label.trim().lowercase() })
+        val posts = postPaths.toList().mapConcurrently { it to readPost(it) }.toMap()
+        val loopkyPosts = posts.filter { (path, post) ->
+            post.getOrNull()?.let { LoopkyPubkyAppRecords.isLoopkyPost(owner, it, labels[path].orEmpty().toSet()) } == true
+        }.keys
+        val profile = PubkyPaths.profile(owner)
+        val profileRead = if (profile in records) read(profile) { it } else null
+
+        val judged = records.associateWith { path ->
+            when {
+                path == profile -> requireNotNull(profileRead).fold(
+                    onSuccess = { if (LoopkyPubkyAppRecords.isLoopkyProfile(it)) Verdict.Loopkys else Verdict.Foreign },
+                    onFailure = { it.verdict() },
+                )
+                path.startsWith(PubkyPaths.followsRoot(owner)) || path.startsWith(PubkyPaths.mutesRoot(owner)) ->
+                    Verdict.Loopkys
+                path in tags -> tags.getValue(path).fold(
+                    onSuccess = {
+                        val isLoopkys = LoopkyPubkyAppRecords.isLoopkyLabel(it.uri, ownPosts, loopkyPosts, postPaths)
+                        if (isLoopkys) Verdict.Loopkys else Verdict.Foreign
+                    },
+                    onFailure = { it.verdict() },
+                )
+                path in loopkyPosts -> Verdict.Loopkys
+                path in posts -> posts.getValue(path).exceptionOrNull()?.verdict() ?: Verdict.Foreign
+                else -> Verdict.Foreign
+            }
+        }
+        fun with(verdict: Verdict) = judged.filterValues { it == verdict }.keys.toList()
+        return JudgedRecords(loopkys = with(Verdict.Loopkys), foreign = with(Verdict.Foreign), unreadable = with(Verdict.Unreadable))
+    }
+
+    private fun Throwable.verdict(): Verdict = if (this is Unreachable) Verdict.Unreadable else Verdict.Foreign
+
+    private enum class Verdict { Loopkys, Foreign, Unreadable }
+
+    /**
      * The posts Loopky published for [owner], each with the tag records on it. A post or tag that
      * cannot be read is left out, so a failed read never turns into a delete.
      */
@@ -218,6 +265,9 @@ internal class PubkyAppFootprintReader(private val pubky: PubkyClient) {
         const val BATCH = 16
     }
 }
+
+/** [JudgedRecords] splits a listing by whether Loopky wrote each record. */
+internal data class JudgedRecords(val loopkys: List<String>, val foreign: List<String>, val unreadable: List<String>)
 
 /** A post Loopky published, at [path], and the tag records on it that go with it. */
 internal data class LoopkyPost(val path: String, val tagPaths: List<String>)

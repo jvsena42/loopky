@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.data.pubky.PubkyLinks
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
@@ -472,6 +473,91 @@ class IdentityRepositoryDeleteAccountTest {
         val total = reports.first().second
         assertTrue(reports.size >= pubkyAppLeft().size + 6, "$reports")
         assertTrue(reports.all { it.second == total })
+    }
+
+    /** [pubky] with a hook run before every delete; a non-null answer replaces the delete. */
+    private class HookedDeletes(private val inner: FakePubkyClient) : PubkyClient by inner {
+        var beforeDelete: (String) -> Result<String>? = { null }
+        override suspend fun deleteWithSession(url: String, sessionSecret: String): Result<String> =
+            beforeDelete(url) ?: inner.deleteWithSession(url, sessionSecret)
+    }
+
+    private fun repoOver(client: PubkyClient) = identityRepository(
+        pubky = client,
+        sessionProvider = session,
+        tagRepository = tags,
+        deckRepository = decks,
+        pendingReviews = pendingReviews,
+        studyProgress = studyProgress,
+        preferences = preferences,
+        unsplashKeyStore = unsplashKey,
+    )
+
+    @Test
+    fun aRecordAnotherAppWritesWhileTheLoopkyNamespaceIsSweptIsNotDeleted() = runTest {
+        // The gate read LoopkyOnly; another app posts while steps 1–4 run.
+        seedLoopkyOnlyPubkyApp()
+        val foreign = PubkyPaths.post(TEST_PUBKY, "midsweep")
+        val hooked = HookedDeletes(pubky)
+        hooked.beforeDelete = { url ->
+            if (url.startsWith("$loopkyRoot/") && foreign !in pubky.store) {
+                pubky.store[foreign] = """{"content":"good morning","kind":"short"}"""
+            }
+            null
+        }
+
+        val error = repoOver(hooked).deleteAccount(deletePubkyApp = true).exceptionOrNull()
+
+        assertTrue(foreign in pubky.store, "another app's post written mid-sweep was deleted: ${pubky.deletes}")
+        assertTrue(error is PubkyAppFootprintChangedException, "$error")
+        assertEquals(PubkyAppFootprint.Direct, error.now)
+        assertTrue(pubky.deletes.none { it.startsWith(pubkyAppRoot) && it != PubkyPaths.post(TEST_PUBKY, "post1") })
+        assertEquals(TEST_PUBKY, session.current()?.identity?.pubky)
+    }
+
+    @Test
+    fun aRecordWrittenAfterThePubkyAppListingIsNeverDeleted() = runTest {
+        // Past the judged listing, a new record is simply not on the list: the sweep fails rather
+        // than deleting something it never saw.
+        seedLoopkyOnlyPubkyApp()
+        val late = PubkyPaths.post(TEST_PUBKY, "late")
+        val hooked = HookedDeletes(pubky)
+        hooked.beforeDelete = { url ->
+            if (url == PubkyPaths.follow(TEST_PUBKY, "friendpk")) {
+                pubky.store[late] = """{"content":"good morning","kind":"short"}"""
+            }
+            null
+        }
+
+        val result = repoOver(hooked).deleteAccount(deletePubkyApp = true)
+
+        assertTrue(late in pubky.store)
+        assertTrue(result.isFailure, "a sweep that leaves a record behind is not a delete")
+        assertEquals(TEST_PUBKY, session.current()?.identity?.pubky)
+    }
+
+    @Test
+    fun anUnreadablePubkyAppRecordRefusesStepFiveAsUnknown() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        val oneLabel = pubky.store.keys.first { it.startsWith(PubkyPaths.tag(TEST_PUBKY, "")) }
+        // The gate reads everything; once the sweep has started deleting, one label stops answering.
+        var sweeping = false
+        val flaky = object : PubkyClient by pubky {
+            override suspend fun deleteWithSession(url: String, sessionSecret: String): Result<String> {
+                sweeping = true
+                return pubky.deleteWithSession(url, sessionSecret)
+            }
+
+            override suspend fun get(url: String): Result<String> =
+                if (sweeping && url == oneLabel) Result.failure(PubkyError("HTTP transport error")) else pubky.get(url)
+        }
+
+        val error = repoOver(flaky).deleteAccount(deletePubkyApp = true).exceptionOrNull()
+
+        assertTrue(error is PubkyAppFootprintChangedException, "$error")
+        assertEquals(PubkyAppFootprint.Unknown, error.now)
+        assertTrue(PubkyPaths.profile(TEST_PUBKY) in pubky.store)
+        assertTrue(PubkyPaths.follow(TEST_PUBKY, "friendpk") in pubky.store)
     }
 
     @Test

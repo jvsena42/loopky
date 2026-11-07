@@ -73,6 +73,16 @@ internal object LoopkyPubkyAppRecords {
             PubkyLinks.isRecapWebUrlOf(uri, owner)
     }
 
+    /**
+     * Whether a label on [subject] is Loopky's: on a profile, on a deck, on one of [loopkyPosts],
+     * or on an own post that is gone. [ownPosts] is the owner's posts root; [postPaths] the posts
+     * it holds.
+     */
+    fun isLoopkyLabel(subject: String, ownPosts: String, loopkyPosts: Set<String>, postPaths: Set<String>): Boolean =
+        (subject.startsWith(ownPosts) && (subject in loopkyPosts || subject !in postPaths)) ||
+            isProfileUri(subject) ||
+            isLoopkyNamespaceUri(subject)
+
     /** Whether [uri] names anyone's `profile.json`. */
     fun isProfileUri(uri: String): Boolean = pathOf(uri) == PROFILE_PATH
 
