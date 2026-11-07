@@ -221,11 +221,22 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   (`vegetariano / vegetariana`): split it, or keep one form. Short fronts, short backs.
 - **Fix a card before showing the list, never annotate it.** If you notice a card breaks a rule
   here, rewrite it; the user reviews cards, not caveats about them.
-- **Parenthesized asides are notes, not answers.** `hola (informal)`: the card shows the note,
-  but typing and Speak grade only `hola`. Unbracketed, the note becomes part of the expected
-  answer. **A reading is the one exception**: on a side declared Japanese, a kana aside is also
-  accepted (`ねこ` answers `猫（ねこ）`), and on a side declared Chinese a tone-marked pinyin one
-  is (`学习（xuéxí）`). Both need the side's language declared.
+- **Bracketed asides are notes, not answers.** `hola (informal)`, `hello [ˈhɛloʊ]`: the card
+  shows the note, but typing and Speak grade only `hola`/`hello`. Unbracketed, the note becomes
+  part of the expected answer. Square brackets count only at the very end (or start) of the side,
+  after a space, holding no digits or symbols: `hello [ˈhɛloʊ][noun]` grades `hello`, but
+  `hello[ˈhɛloʊ]`, `arr[0]` and `pH = -log [H+]` are all answer. Prefer `( )` for a note.
+  **A reading is the one exception**, and only in **round brackets**: on a side declared Japanese
+  a kana aside is also accepted (`ねこ` answers `猫（ねこ）`, never `猫［ねこ］`), and on a side
+  declared Chinese a tone-marked pinyin one is (`学习（xuéxí）`). Both need the side's language
+  declared.
+- **Pronunciation is optional; add it only when the user asks for it.** When they do, follow the
+  language's dictionary convention (see "Pronunciation on language cards") as an aside on the
+  side being learned. A dictionary's slashes become brackets: `hello /həˈloʊ/` makes the slashes
+  and the IPA part of the typed answer. A note with a digit or a `/` (`[1]`, `[nei5 hou2]`,
+  `[가치/가티]`) goes in `( )`, or you pick one form. So does any pronunciation on a side with a
+  `/`, `+`, `=`, `~` or `→` anywhere, a round aside included: `look up (sth/sb) [lʊk ʌp]` grades
+  `look up [lʊk ʌp]`, but `look up (sth/sb) (lʊk ʌp)` grades `look up`.
 - **Language decks declare their pair.** `--front-lang en-US --back-lang es-ES` (BCP-47) is what
   makes `--listen` and `--speak` work, and it also tags the deck `language` and `spanish` so learners
   find it. Without the pair the phone would read Spanish in an English voice, so `loopky` refuses
@@ -383,8 +394,8 @@ Arabic and the rest. A beginner cannot read `ありがとうございます` on 
 - **Readings go in a full-width bracket aside**, `猫（ねこ）`, katakana kept as katakana inside it
   (`ブラジル人です。（ブラジルじんです）`). Typing and Speak accept the reading too, so `--type`
   stays on. Chinese takes tone-marked pinyin the same way, `学习（xuéxí）`. Korean takes no
-  reading and no romanization, since Hangul is already phonetic, and standard spacing
-  (띄어쓰기).
+  reading and no romanization unless the user asks (see "Pronunciation on language cards"),
+  since Hangul is already phonetic, and standard spacing (띄어쓰기).
 - **Register and number system change the answer**, so the front names them: Japanese keigo and
   Korean honorific, humble and 반말 forms (`comer (honorífico)`), and Korean native or
   Sino-Korean numbers (`três (número nativo)`, `três (número sino-coreano)`). Without the note a
@@ -429,7 +440,8 @@ card's picture over by that id. What has to change, and what a plain translation
   changes, the other stays (`--front-lang es-ES --back-lang de-DE`).
 - **Every note written for the old learner**: the front, and the asides on the back. A
   pronunciation hint is true only for one learner's sounds (`"j" de "já"` means nothing to a
-  Spanish speaker), so each one is rewritten, not translated.
+  Spanish speaker), so each one is rewritten, not translated. A dictionary notation (IPA, pinyin,
+  stress marks) describes the language rather than the learner, so it carries over unchanged.
 - **The false friends**: some stop being traps for the new learner and become ordinary cards, and
   the new pair has its own, which are added. A card that taught the old learner's language
   (regional slang, its grammar) is dropped.
@@ -453,6 +465,38 @@ language being learned (`«ou»`) are not untranslated text.
 the composition per stretch (words, phrases, sentences), a random sample of about ten cards from
 each stretch, and the complete list of the riskiest category — false friends in most language
 pairs — which is short enough to read and is where a wrong card does the most harm.
+
+## Pronunciation on language cards
+
+**This is opt-in.** A language deck is complete without pronunciation. Add it when the user asks
+("with IPA", "show how it's pronounced", "with romaji"). Mention it once in a plan when spelling is
+a poor guide to sound (English, French, Thai, kanji words), and leave it out unless they want it.
+Japanese and Chinese readings (above) are not pronunciation in this sense; they stay.
+
+When the user asks, write it the way that language's dictionaries do. A learner can then check a
+card against the reference they already use. Choose **one system per deck**, name it in the
+description (`IPA, US English`), and put it on the side being learned:
+
+| Language | Dictionary convention | On the card |
+|---|---|---|
+| English | IPA as in Cambridge and Oxford, `ˈ`/`ˌ` stress, US or UK to match the declared region. Not Merriam-Webster's respelling | `water [ˈwɑːtɚ]` (en-US), `water [ˈwɔːtə]` (en-GB) |
+| French, German, Italian, Portuguese, other Latin-script languages | IPA, as Le Robert, Larousse and Duden print it. Spanish spelling is regular, so mark only the irregular words | `Wasser [ˈvasɐ]` |
+| Italian open/closed vowels | Dictionaries write `pèsca`/`pésca`, which is not the spelling | IPA or an aside, never in the answer: `pesca [ˈpɛska]` (strict typing grades `pèsca` against a typed `pesca` wrong) |
+| Russian, Ukrainian, Belarusian | Stress acute on the stressed vowel, as dictionaries and learner books print it, plus `ё` | In the answer itself: `молоко́`, `за́мок`. Use the combining mark U+0301, never a Latin `ó`. Typing ignores U+0301, but not `ё`: a typed `еще` against `ещё` is wrong, so on a `--type` deck write `ё` only when the user wants it typed |
+| Arabic, Persian | Full vowel marks: ḥarakāt/tashkīl | In the answer itself: `كِتَاب`. Typing ignores the marks, so the learner types without vowels. Romanization (ALA-LC, DIN 31635) only if asked, in `( )` |
+| Hebrew | Niqqud, on the defective spelling (ktiv haser) | In an aside after the everyday spelling: `חודש (חֹדֶשׁ)`. Not in the answer itself: unpointed Hebrew adds vav and yod (ktiv male), so a typed `חודש` is wrong against `חֹדֶשׁ` |
+| Japanese | Kana reading. Pitch accent as the NHK and Daijirin drop number. Romaji is modified Hepburn | Reading as above. Accent only if asked, in `( )` because it is a digit: `箸（はし）(1)`, `橋（はし）(2)`. Romaji only if asked, after the kana and never instead of it: `学校（がっこう）(gakkō)` |
+| Mandarin | Hanyu Pinyin with tone marks (现代汉语词典, ISO 7098). Taiwan's dictionaries print Zhuyin | `学习（xuéxí）` as above. For Taiwan learners who ask, `學習（ㄒㄩㄝˊ ㄒㄧˊ）`, shown but not accepted as a typed answer. Tone marks, never tone numbers |
+| Cantonese | Jyutping (LSHK), tone digits | `你好 (nei5 hou2)`, round brackets because of the digits |
+| Korean | Hangul is phonetic, so the default is none. 표준국어대사전 gives the standard pronunciation in Hangul, in brackets, where sound changes apply | Only where it differs from the spelling: `같이 [가치]`, `읽다 [익따]`. Take one form where the dictionary lists two. Revised Romanization only if asked, in `( )` |
+| Hindi and other Devanagari | Spelling is phonemic. Scholarly romanization is IAST / ISO 15919 | Romanization only if asked: `नमस्ते (namaste)` |
+| Thai | The official RTGS romanization drops tone and vowel length, so it cannot show pronunciation | IPA with tone diacritics if asked: `ขอบคุณ [kʰɔ̀ːp kʰun]` |
+| Greek, Vietnamese, Turkish, Polish, Czech | Spelling already marks stress or tone | Nothing. IPA only if asked |
+
+An aside is never read aloud and never graded. Only a reading in round brackets, `( )` or
+`（ ）`, is ever accepted as a typed answer. Marks inside the answer itself (U+0301, ḥarakāt)
+are dropped before grading, but Listen reads them. On a reversed card the pronunciation shows on the prompt; that
+is fine, because it does not name the answer in the learner's language.
 
 ## Decks from a TV series
 
