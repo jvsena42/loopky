@@ -53,8 +53,12 @@ internal object LoopkyPubkyAppRecords {
      *   `loopky-deck` label. A deck link alone could be someone sharing it by hand.
      * - A recap: a link embed of [owner]'s recap page.
      * - A deck request: a short post with no embed, labelled both `loopky` and `deck-request`.
+     *
+     * Loopky never writes a reply or attaches a file, so a post with a parent or attachments is
+     * another app's whatever it embeds or is labelled.
      */
     fun isLoopkyPost(owner: String, post: PostDto, labels: Set<String>): Boolean {
+        if (post.parent != null || !post.attachments.isNullOrEmpty()) return false
         val embed = post.embed
         if (embed == null) {
             return post.kind == PostKinds.SHORT && labels.containsAll(DECK_REQUEST_LABELS)

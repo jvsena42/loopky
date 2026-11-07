@@ -133,6 +133,33 @@ class LoopkyPubkyAppRecordsTest {
     }
 
     @Test
+    fun aReplyOrAPostWithAttachmentsIsNeverADeckRequest() {
+        // postDeckRequest writes neither a parent nor attachments; pubky.app writes both.
+        val reply = PostDto(
+            content = "me too",
+            kind = PostKinds.SHORT,
+            parent = "pubky://otherpk/pub/pubky.app/posts/0033",
+        )
+        val withPicture = PostDto(
+            content = "tides",
+            kind = PostKinds.SHORT,
+            attachments = listOf("pubky://ownerpk/pub/pubky.app/files/1"),
+        )
+        assertFalse(loopkys(reply, "loopky", "deck-request"), "a reply")
+        assertFalse(loopkys(withPicture, "loopky", "deck-request"), "a post with attachments")
+    }
+
+    @Test
+    fun aReplyOrAPostWithAttachmentsIsNeverAnAnnouncementOrRecap() {
+        val replyToOwnDeck = link(ownDeck).copy(parent = "pubky://otherpk/pub/pubky.app/posts/0033")
+        val recapWithPicture = link(recap).copy(attachments = listOf("pubky://ownerpk/pub/pubky.app/files/1"))
+        assertFalse(loopkys(replyToOwnDeck, "loopky-deck"))
+        assertFalse(loopkys(recapWithPicture, "loopky-recap"))
+        // An empty attachment list is what an absent one decodes to elsewhere, and is still Loopky's.
+        assertTrue(loopkys(link(ownDeck).copy(attachments = emptyList())))
+    }
+
+    @Test
     fun aLongPostWithTheDeckRequestLabelsIsNotOne() {
         val long = PostDto(content = "an essay", kind = "long")
         assertFalse(loopkys(long, "loopky", "deck-request"))
