@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
+import com.github.jvsena42.loopky.data.repository.PubkyAppFootprintChangedException
 import com.github.jvsena42.loopky.data.repository.SettingsRepository
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.UnsplashKeyStore
@@ -13,6 +14,7 @@ import com.github.jvsena42.loopky.data.unsplash.UnsplashException
 import com.github.jvsena42.loopky.data.unsplash.maskedKeySuffix
 import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.KeyCustody
+import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.StudySettings
 import com.github.jvsena42.loopky.domain.model.UnbackedUpLocalKey
@@ -57,6 +59,7 @@ class SettingsViewModel(
     private var studySettingsJob: Job? = null
     private var countdownJob: Job? = null
     private var deleteJob: Job? = null
+    private var footprintJob: Job? = null
 
     init {
         load()
@@ -297,6 +300,7 @@ class SettingsViewModel(
     fun onDeleteAccountClick() {
         if (_state.value.deletion != null) return
         _state.update { it.copy(deletion = DeletionState.Confirming(COUNTDOWN_SECONDS)) }
+        readFootprint()
         countdownJob?.cancel()
         countdownJob = viewModelScope.launch {
             repeat(COUNTDOWN_SECONDS) {
@@ -309,10 +313,20 @@ class SettingsViewModel(
         }
     }
 
+    /** Opt in or out of deleting the pubky.app records too. Only an account Loopky alone wrote offers it. */
+    fun onDeletePubkyAppChange(enabled: Boolean) {
+        _state.update { state ->
+            val confirming = state.deletion as? DeletionState.Confirming ?: return@update state
+            if (confirming.footprint?.offersPubkyAppDeletion != true) return@update state
+            state.copy(deletion = confirming.copy(deletePubkyApp = enabled))
+        }
+    }
+
     /** Dismiss before the deed. Deliberately does nothing once [onConfirmDeleteAccount] has run. */
     fun onDeleteAccountDismissed() {
         if (_state.value.deletion !is DeletionState.Confirming) return
         countdownJob?.cancel()
+        footprintJob?.cancel()
         _state.update { it.copy(deletion = null) }
     }
 
@@ -322,10 +336,11 @@ class SettingsViewModel(
         if (deleteJob?.isActive == true) return
 
         countdownJob?.cancel()
+        val deletePubkyApp = confirming.deletePubkyApp && confirming.footprint?.offersPubkyAppDeletion == true
         _state.update { it.copy(deletion = DeletionState.Deleting(done = 0, total = 0)) }
         deleteJob = viewModelScope.launch {
-            Log.d(TAG, "onConfirmDeleteAccount: sweeping")
-            identityRepository.deleteAccount { done, total ->
+            Log.d(TAG, "onConfirmDeleteAccount: sweeping, pubky.app: $deletePubkyApp")
+            identityRepository.deleteAccount(deletePubkyApp) { done, total ->
                 _state.update { it.copy(deletion = DeletionState.Deleting(done = done, total = total)) }
             }
                 .onSuccess {
@@ -338,9 +353,27 @@ class SettingsViewModel(
                     // once and a second ten-second wait would only punish them for a homeserver
                     // that was unreachable. They are still signed in, which is the point.
                     Log.e(TAG, "onConfirmDeleteAccount: FAILED — ${err.message}", err)
-                    _state.update { it.copy(deletion = DeletionState.Confirming(secondsRemaining = 0)) }
+                    // Another app wrote to the account after the dialog read it: show what it holds
+                    // now, with the choice withdrawn, rather than the answer that is no longer true.
+                    val back = if (err is PubkyAppFootprintChangedException) {
+                        DeletionState.Confirming(secondsRemaining = 0, footprint = err.now)
+                    } else {
+                        confirming.copy(secondsRemaining = 0)
+                    }
+                    _state.update { it.copy(deletion = back) }
                     _effects.emit(SettingsEffect.ShowError(SettingsErrorMessage.AccountNotDeleted))
                 }
+        }
+    }
+
+    private fun readFootprint() {
+        footprintJob?.cancel()
+        footprintJob = viewModelScope.launch {
+            val footprint = identityRepository.pubkyAppFootprint()
+            _state.update { state ->
+                val confirming = state.deletion as? DeletionState.Confirming ?: return@update state
+                state.copy(deletion = confirming.copy(footprint = footprint))
+            }
         }
     }
 
@@ -406,7 +439,16 @@ data class SettingsUiState(
      * that stranded key offers a Ring user a backup door into an identity that is not theirs.
      */
     val holdsOwnKey: Boolean
-        get() = (keyCustody as? KeyCustody.Loopky)?.pubky == pubky && pubky.isNotBlank()
+        get() = holdsOwnKey()
+
+    /**
+     * Whether deleting the account would take the only copy of its key with it: Delete account
+     * signs out, and signing out clears a key Loopky holds, backed up or not.
+     */
+    val deletionLosesTheOnlyKey: Boolean
+        get() = holdsOwnKey() && (keyCustody as? KeyCustody.Loopky)?.isBackedUp == false
+
+    private fun holdsOwnKey(): Boolean = (keyCustody as? KeyCustody.Loopky)?.pubky == pubky && pubky.isNotBlank()
 }
 
 /**
@@ -419,10 +461,16 @@ data class SettingsUiState(
 sealed interface DeletionState {
     /**
      * The warning is on screen. [secondsRemaining] counts down to zero, and the confirm button is
-     * dead until it gets there.
+     * dead until it gets there and [footprint] has been read, because the warning depends on it.
+     * [deletePubkyApp] is the user's opt-in, honoured only when [footprint] offers it.
      */
-    data class Confirming(val secondsRemaining: Int) : DeletionState {
-        val isConfirmable: Boolean get() = secondsRemaining <= 0
+    data class Confirming(
+        val secondsRemaining: Int,
+        val footprint: PubkyAppFootprint? = null,
+        val deletePubkyApp: Boolean = false,
+    ) : DeletionState {
+        val isConfirmable: Boolean get() = secondsRemaining <= 0 && footprint != null
+        val isCheckingFootprint: Boolean get() = footprint == null
     }
 
     /**

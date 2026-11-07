@@ -17,7 +17,7 @@ A fresh session has none of this in context, so establish it before the first ed
   iOS is the XcodeBuildMCP CLI / `xcodebuildmcp` MCP server (see Build & run below), never bare
   `xcodebuild`, `xcrun` or `simctl`. Their skills — `android-cli` and `xcodebuildmcp-cli` — are
   installed; invoke the relevant one rather than reconstructing commands from memory.
-- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 32 numbered
+- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 33 numbered
   `journeys/*.xml` scripts (onboarding, import, study, discovery, signup/restore …) driven by hand
   on a device. Read `journeys/README.md` first — the driving traps, and what has never been run on
   a device, neither of which a green build says anything about — then re-run the journeys your
@@ -466,6 +466,19 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   account's profile or deck, reached by a link, shows **only** "You blocked this account":
   no name, no content, no Unblock. **Unblock lives in Settings → Blocked accounts and nowhere
   else**, and its rows open nothing.
+- **Delete account reaches `/pub/pubky.app/` only on request, and only on an account nothing
+  else wrote to (#578).** The Pubky identity is a self-custodial key every Pubky app shares, so
+  there is no Loopky account to delete beyond Loopky's records. `PubkyAppFootprintReader` reads
+  the account as Empty, LoopkyOnly, Direct or Unknown by `LoopkyPubkyAppRecords`' rules, and only
+  LoopkyOnly offers "Also delete my Pubky profile". Four things not to undo. The rules are
+  **strict**: a record they cannot place, or cannot parse, is another app's, and any failed read
+  is Unknown, which never offers the delete. The eraser **classifies again** when the sweep
+  starts and refuses before deleting anything if the answer changed. The profile goes **last**,
+  so an interrupted sweep still reads as Loopky's and a retry is offered the same choice. And a
+  post counts as Loopky's only by its shape *and* the owner's labels where the shape alone is
+  ambiguous: a deck link without `loopky-deck` is someone sharing a deck by hand. A new record
+  kind Loopky writes under pubky.app has to be added to those rules, or every account that has
+  one stops being offered the delete.
 - **A report goes to pubky.app's moderators, then tags the profile and blocks (#577).**
   `DiscoveryRepository.report` posts to pubky.app's `/api/report` (the Chatwoot Reports inbox,
   pubky.app's nine issue types — `ReportIssue.wire` must match them or the endpoint answers

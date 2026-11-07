@@ -1,11 +1,13 @@
 package com.github.jvsena42.loopky.presentation.settings
 
 import com.github.jvsena42.loopky.data.nexus.HttpError
+import com.github.jvsena42.loopky.data.repository.PubkyAppFootprintChangedException
 import com.github.jvsena42.loopky.data.unsplash.UnsplashClient
 import com.github.jvsena42.loopky.data.unsplash.UnsplashError
 import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.KeyCustody
+import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeHttpFetcher
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
@@ -17,6 +19,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -344,6 +347,217 @@ class SettingsViewModelTest {
 
         advanceUntilIdle()
         assertNull(vm.state.value.deletion, "the dialog closes once the sweep finishes")
+    }
+
+    // --- Delete account: pubky.app -----------------------------------------------------------
+
+    private fun TestScope.openedDeleteDialog(): SettingsViewModel {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onDeleteAccountClick()
+        return vm
+    }
+
+    private val SettingsViewModel.confirming: DeletionState.Confirming
+        get() = state.value.deletion as DeletionState.Confirming
+
+    @Test
+    fun openingTheDialogReadsWhatTheAccountHoldsOnPubkyApp() = runTest {
+        identityRepo.pubkyAppFootprintResult = PubkyAppFootprint.LoopkyOnly
+        val vm = openedDeleteDialog()
+        assertTrue(vm.confirming.isCheckingFootprint)
+
+        advanceTimeBy(1)
+
+        assertEquals(PubkyAppFootprint.LoopkyOnly, vm.confirming.footprint)
+        assertFalse(vm.confirming.deletePubkyApp, "removing pubky.app records is opt-in")
+    }
+
+    @Test
+    fun theConfirmButtonWaitsForTheFootprintAfterTheCountdown() = runTest {
+        // The warning depends on the answer, so it must be on screen before the delete can run.
+        identityRepo.pubkyAppFootprintDelayMs = 20_000
+        val vm = openedDeleteDialog()
+
+        advanceTimeBy(10_500)
+        assertEquals(0, vm.confirming.secondsRemaining)
+        assertFalse(vm.confirming.isConfirmable)
+        vm.onConfirmDeleteAccount()
+        advanceTimeBy(1)
+        assertEquals(0, identityRepo.deleteAccountCount)
+
+        advanceTimeBy(10_000)
+        assertTrue(vm.confirming.isConfirmable)
+    }
+
+    @Test
+    fun onlyALoopkyOnlyAccountTakesThePubkyAppChoice() = runTest {
+        for (footprint in PubkyAppFootprint.entries.filter { it != PubkyAppFootprint.LoopkyOnly }) {
+            identityRepo.pubkyAppFootprintResult = footprint
+            val vm = openedDeleteDialog()
+            advanceTimeBy(1)
+
+            vm.onDeletePubkyAppChange(true)
+
+            assertFalse(vm.confirming.deletePubkyApp, "$footprint must not take the choice")
+            vm.onDeleteAccountDismissed()
+        }
+    }
+
+    @Test
+    fun theChoiceIsIgnoredWhileTheFootprintIsStillBeingRead() = runTest {
+        identityRepo.pubkyAppFootprintDelayMs = 5_000
+        identityRepo.pubkyAppFootprintResult = PubkyAppFootprint.LoopkyOnly
+        val vm = openedDeleteDialog()
+
+        vm.onDeletePubkyAppChange(true)
+
+        assertFalse(vm.confirming.deletePubkyApp)
+    }
+
+    @Test
+    fun theChoiceReachesTheDelete() = runTest {
+        identityRepo.pubkyAppFootprintResult = PubkyAppFootprint.LoopkyOnly
+        val vm = openedDeleteDialog()
+        advanceTimeBy(10_500)
+
+        vm.onDeletePubkyAppChange(true)
+        assertTrue(vm.confirming.deletePubkyApp)
+        vm.onConfirmDeleteAccount()
+        advanceUntilIdle()
+
+        assertEquals(listOf(true), identityRepo.deleteAccountPubkyAppFlags)
+    }
+
+    @Test
+    fun theChoiceCanBeWithdrawn() = runTest {
+        identityRepo.pubkyAppFootprintResult = PubkyAppFootprint.LoopkyOnly
+        val vm = openedDeleteDialog()
+        advanceTimeBy(10_500)
+
+        vm.onDeletePubkyAppChange(true)
+        vm.onDeletePubkyAppChange(false)
+        vm.onConfirmDeleteAccount()
+        advanceUntilIdle()
+
+        assertEquals(listOf(false), identityRepo.deleteAccountPubkyAppFlags)
+    }
+
+    @Test
+    fun withoutTheChoiceTheDeleteLeavesPubkyAppAlone() = runTest {
+        for (footprint in PubkyAppFootprint.entries) {
+            identityRepo.pubkyAppFootprintResult = footprint
+            identityRepo.deleteAccountResult = Result.failure(IllegalStateException("stop here"))
+            val vm = openedDeleteDialog()
+            advanceTimeBy(10_500)
+
+            vm.onConfirmDeleteAccount()
+            advanceUntilIdle()
+            vm.onDeleteAccountDismissed()
+        }
+
+        assertEquals(PubkyAppFootprint.entries.map { false }, identityRepo.deleteAccountPubkyAppFlags)
+    }
+
+    @Test
+    fun anAccountAnotherAppWroteToMeanwhileWithdrawsTheChoice() = runTest {
+        identityRepo.pubkyAppFootprintResult = PubkyAppFootprint.LoopkyOnly
+        identityRepo.deleteAccountResult =
+            Result.failure(PubkyAppFootprintChangedException(PubkyAppFootprint.Direct))
+        val vm = openedDeleteDialog()
+        advanceTimeBy(10_500)
+        val effects = mutableListOf<SettingsEffect>()
+        val job = launch { vm.effects.toList(effects) }
+
+        vm.onDeletePubkyAppChange(true)
+        vm.onConfirmDeleteAccount()
+        advanceUntilIdle()
+
+        assertEquals(PubkyAppFootprint.Direct, vm.confirming.footprint)
+        assertFalse(vm.confirming.deletePubkyApp)
+        assertTrue(effects.any { it == SettingsEffect.ShowError(SettingsErrorMessage.AccountNotDeleted) })
+        // A retry from there deletes Loopky's data only.
+        identityRepo.deleteAccountResult = Result.success(Unit)
+        vm.onDeletePubkyAppChange(true)
+        vm.onConfirmDeleteAccount()
+        advanceUntilIdle()
+        assertEquals(listOf(true, false), identityRepo.deleteAccountPubkyAppFlags)
+        job.cancel()
+    }
+
+    @Test
+    fun anOrdinaryFailureKeepsTheChoice() = runTest {
+        identityRepo.pubkyAppFootprintResult = PubkyAppFootprint.LoopkyOnly
+        identityRepo.deleteAccountResult = Result.failure(IllegalStateException("homeserver down"))
+        val vm = openedDeleteDialog()
+        advanceTimeBy(10_500)
+
+        vm.onDeletePubkyAppChange(true)
+        vm.onConfirmDeleteAccount()
+        advanceUntilIdle()
+
+        assertEquals(PubkyAppFootprint.LoopkyOnly, vm.confirming.footprint)
+        assertTrue(vm.confirming.deletePubkyApp, "a retry should do what the user already chose")
+        assertTrue(vm.confirming.isConfirmable)
+    }
+
+    @Test
+    fun reopeningTheDialogReadsTheFootprintAgain() = runTest {
+        identityRepo.pubkyAppFootprintResult = PubkyAppFootprint.LoopkyOnly
+        val vm = openedDeleteDialog()
+        advanceTimeBy(1)
+        vm.onDeletePubkyAppChange(true)
+        vm.onDeleteAccountDismissed()
+
+        identityRepo.pubkyAppFootprintResult = PubkyAppFootprint.Direct
+        vm.onDeleteAccountClick()
+        advanceTimeBy(1)
+
+        assertEquals(2, identityRepo.pubkyAppFootprintCount)
+        assertEquals(PubkyAppFootprint.Direct, vm.confirming.footprint)
+        assertFalse(vm.confirming.deletePubkyApp, "a dismissed choice does not carry over")
+    }
+
+    @Test
+    fun aFootprintReadThatLandsAfterDismissalDoesNotReopenTheDialog() = runTest {
+        identityRepo.pubkyAppFootprintDelayMs = 5_000
+        val vm = openedDeleteDialog()
+
+        vm.onDeleteAccountDismissed()
+        advanceUntilIdle()
+
+        assertNull(vm.state.value.deletion)
+    }
+
+    @Test
+    fun deletingWarnsWhenItWouldTakeTheOnlyCopyOfTheKey() = runTest(mainDispatcher) {
+        val pubky = identityRepo.session!!.identity.pubky
+        identityRepo.custodyFlow.value = KeyCustody.Loopky(pubky = pubky)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.deletionLosesTheOnlyKey)
+    }
+
+    @Test
+    fun noKeyWarningOnceTheKeyIsBackedUp() = runTest(mainDispatcher) {
+        val pubky = identityRepo.session!!.identity.pubky
+        identityRepo.custodyFlow.value = KeyCustody.Loopky(pubky = pubky, backedUpBy = setOf(BackupMethod.EncryptedFile))
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.deletionLosesTheOnlyKey)
+    }
+
+    @Test
+    fun noKeyWarningForARingAccountOrSomeoneElsesKey() = runTest(mainDispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertFalse(vm.state.value.deletionLosesTheOnlyKey)
+
+        identityRepo.custodyFlow.value = KeyCustody.Loopky(pubky = "someone-elses-abandoned-signup")
+        advanceUntilIdle()
+        assertFalse(vm.state.value.deletionLosesTheOnlyKey)
     }
 
     @Test

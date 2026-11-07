@@ -470,6 +470,13 @@
     <string name="settings_delete_account_dialog_body">Tes paquets, cartes, images et ta progression seront définitivement supprimés, et ton profil sera retiré de Loopky.</string>
     <string name="settings_delete_account_dialog_irreversible">C’est irréversible.</string>
     <string name="settings_delete_account_dialog_identity">Ton identité Pubky reste dans Pubky Ring.</string>
+    <string name="settings_delete_account_checking">Vérification de l’usage de ce compte par d’autres apps Pubky…</string>
+    <string name="settings_delete_account_pubky_app_kept">Ton profil Pubky et tes abonnements restent, car une autre app Pubky utilise ce compte.</string>
+    <string name="settings_delete_account_pubky_app_unknown">Ton profil Pubky et tes abonnements restent, car Loopky n’a pas pu vérifier si une autre app Pubky utilise ce compte.</string>
+    <string name="settings_delete_account_pubky_app_option">Supprimer aussi mon profil Pubky</string>
+    <string name="settings_delete_account_pubky_app_option_detail">Ton nom, ta bio, tes abonnements et tes blocages. Seul Loopky les a écrits, mais d’autres apps Pubky les affichent aussi.</string>
+    <string name="settings_delete_account_dialog_identity_device">Ta clé Pubky sera retirée de cet appareil.</string>
+    <string name="settings_delete_account_dialog_only_key">Loopky détient la seule copie de ta clé, et tu ne l’as pas sauvegardée. Supprimer ton compte la supprime définitivement.</string>
     <string name="settings_delete_account_confirm">Supprimer le compte</string>
     <string name="settings_delete_account_confirm_countdown">Supprimer le compte (%1$d)</string>
     <string name="settings_delete_account_progress_title">Suppression</string>

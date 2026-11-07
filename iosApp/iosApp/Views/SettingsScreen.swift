@@ -41,6 +41,7 @@ struct SettingsScreen: View {
             onDeleteAccount: { viewModel?.onDeleteAccountClick() },
             onConfirmDeleteAccount: { viewModel?.onConfirmDeleteAccount() },
             onDismissDeleteAccount: { viewModel?.onDeleteAccountDismissed() },
+            onDeletePubkyAppChange: { viewModel?.onDeletePubkyAppChange(enabled: $0) },
             onOpenUrl: { if let url = URL(string: $0) { openURL(url) } },
             onBackUpNow: onBackUpNow,
             onOpenAppSettings: {
@@ -82,8 +83,35 @@ struct SettingsScreen: View {
             isVerifyingUnsplashKey: state.isVerifyingUnsplashKey,
             unsplashKeyError: Self.unsplashError(state.unsplashKeyError),
             holdsOwnKey: state.holdsOwnKey,
-            isDeleting: state.deletion != nil
+            deletionLosesTheOnlyKey: state.deletionLosesTheOnlyKey,
+            deletion: Self.deletionPhase(state.deletion)
         )
+    }
+
+    private static func deletionPhase(_ deletion: DeletionState?) -> DeleteAccountPhase? {
+        switch deletion {
+        case let confirming as DeletionStateConfirming:
+            return .confirming(
+                secondsRemaining: Int(confirming.secondsRemaining),
+                isConfirmable: confirming.isConfirmable,
+                footprint: footprint(confirming.footprint),
+                deletePubkyApp: confirming.deletePubkyApp
+            )
+        case let deleting as DeletionStateDeleting:
+            return .deleting(done: Int(deleting.done), total: Int(deleting.total))
+        default:
+            return nil
+        }
+    }
+
+    private static func footprint(_ footprint: PubkyAppFootprint?) -> DeleteAccountFootprint? {
+        switch footprint {
+        case PubkyAppFootprint.empty: return .empty
+        case PubkyAppFootprint.loopkyonly: return .loopkyOnly
+        case PubkyAppFootprint.direct: return .direct
+        case PubkyAppFootprint.unknown: return .unknown
+        default: return nil
+        }
     }
 
     private static func unsplashStatus(_ status: UnsplashKeyStatus) -> UnsplashStatus {
@@ -175,5 +203,7 @@ struct SettingsViewState {
     /// as, and offering that user a backup door into someone else's identity is the bug this
     /// comparison exists to stop.
     var holdsOwnKey: Bool = false
-    var isDeleting: Bool = false
+    var deletionLosesTheOnlyKey: Bool = false
+    /// Nil while the delete-account sheet is closed, which is almost always.
+    var deletion: DeleteAccountPhase?
 }

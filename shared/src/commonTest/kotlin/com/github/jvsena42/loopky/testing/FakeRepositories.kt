@@ -61,6 +61,7 @@ import com.github.jvsena42.loopky.domain.model.KeySource
 import com.github.jvsena42.loopky.domain.model.LocalAccount
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.ParsedRow
+import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReportIssue
@@ -241,8 +242,23 @@ class FakeIdentityRepository(var session: Session? = fakeSession()) : IdentityRe
      */
     var deleteAccountDelayMs: Long = 0
 
-    override suspend fun deleteAccount(onProgress: (Int, Int) -> Unit): Result<Unit> {
+    /** What [pubkyAppFootprint] answers, after [pubkyAppFootprintDelayMs]. */
+    var pubkyAppFootprintResult: PubkyAppFootprint = PubkyAppFootprint.Empty
+    var pubkyAppFootprintDelayMs: Long = 0
+    var pubkyAppFootprintCount = 0
+
+    override suspend fun pubkyAppFootprint(): PubkyAppFootprint {
+        pubkyAppFootprintCount++
+        if (pubkyAppFootprintDelayMs > 0) delay(pubkyAppFootprintDelayMs)
+        return pubkyAppFootprintResult
+    }
+
+    /** The `deletePubkyApp` of every [deleteAccount] call, in order. */
+    val deleteAccountPubkyAppFlags = mutableListOf<Boolean>()
+
+    override suspend fun deleteAccount(deletePubkyApp: Boolean, onProgress: (Int, Int) -> Unit): Result<Unit> {
         deleteAccountCount++
+        deleteAccountPubkyAppFlags += deletePubkyApp
         deleteAccountProgress.forEach { (done, total) -> onProgress(done, total) }
         if (deleteAccountDelayMs > 0) delay(deleteAccountDelayMs)
         // Only a success signs the user out, mirroring the real one: an interrupted sweep has to

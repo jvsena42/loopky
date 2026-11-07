@@ -7,6 +7,7 @@ import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.KeySource
 import com.github.jvsena42.loopky.domain.model.LocalAccount
+import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.Session
 import kotlinx.coroutines.flow.Flow
@@ -71,6 +72,9 @@ class CountingIdentityRepository(private val session: Session) : IdentityReposit
         no("fetchProfile")
 
     override suspend fun updateProfile(name: String?, bio: String?): Result<PubkyIdentity> = no("updateProfile")
-    override suspend fun deleteAccount(onProgress: (done: Int, total: Int) -> Unit): Result<Unit> =
-        no("deleteAccount")
+    override suspend fun pubkyAppFootprint(): PubkyAppFootprint = no("pubkyAppFootprint")
+    override suspend fun deleteAccount(
+        deletePubkyApp: Boolean,
+        onProgress: (done: Int, total: Int) -> Unit,
+    ): Result<Unit> = no("deleteAccount")
 }

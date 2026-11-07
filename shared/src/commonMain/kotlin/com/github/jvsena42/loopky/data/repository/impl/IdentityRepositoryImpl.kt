@@ -31,6 +31,7 @@ import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.KeySource
 import com.github.jvsena42.loopky.domain.model.LocalAccount
+import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
@@ -647,13 +648,23 @@ internal class IdentityRepositoryImpl(
         Log.e(TAG, "updateProfile: FAILED — ${it::class.simpleName}: ${it.message}", it)
     }
 
-    override suspend fun deleteAccount(onProgress: (Int, Int) -> Unit): Result<Unit> = runSuspendCatching {
+    override suspend fun pubkyAppFootprint(): PubkyAppFootprint {
+        val pubky = sessionProvider.current()?.identity?.pubky ?: return PubkyAppFootprint.Unknown
+        return runSuspendCatching { eraser.footprint(pubky) }
+            .onFailure { Log.w(TAG, "pubkyAppFootprint: FAILED — ${it.message}", it) }
+            .getOrDefault(PubkyAppFootprint.Unknown)
+    }
+
+    override suspend fun deleteAccount(
+        deletePubkyApp: Boolean,
+        onProgress: (Int, Int) -> Unit,
+    ): Result<Unit> = runSuspendCatching {
         val pubky = requireNotNull(sessionProvider.current()) { "Not signed in" }.identity.pubky
-        Log.d(TAG, "deleteAccount: starting for ${pubky.take(PUBKY_LOG_PREFIX_LEN)}…")
+        Log.d(TAG, "deleteAccount: starting for ${pubky.take(PUBKY_LOG_PREFIX_LEN)}…, pubky.app: $deletePubkyApp")
 
         // Throws unless every record Loopky owns is gone, which keeps the sign-out below from
         // stranding a half-deleted account: signing back in is what a retry needs.
-        eraser.erase(pubky, onProgress)
+        eraser.erase(pubky, deletePubkyApp, onProgress)
 
         // So a later sign-in on this process announces the account again rather than believing it did.
         selfTaggedThisProcess = false

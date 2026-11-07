@@ -496,6 +496,13 @@
     <string name="settings_delete_account_dialog_body">你的牌組、卡片、圖片和學習進度都會被永久刪除，你的個人檔案也會從 Loopky 移除。</string>
     <string name="settings_delete_account_dialog_irreversible">此動作無法復原。</string>
     <string name="settings_delete_account_dialog_identity">你的 Pubky 身分仍會保留在 Pubky Ring 中。</string>
+    <string name="settings_delete_account_checking">正在檢查其他 Pubky 應用程式是否在使用這個帳號…</string>
+    <string name="settings_delete_account_pubky_app_kept">由於其他 Pubky 應用程式正在使用這個帳號，你的 Pubky 個人檔案和追蹤都會保留。</string>
+    <string name="settings_delete_account_pubky_app_unknown">由於 Loopky 無法確認其他 Pubky 應用程式是否在使用這個帳號，你的 Pubky 個人檔案和追蹤都會保留。</string>
+    <string name="settings_delete_account_pubky_app_option">同時刪除我的 Pubky 個人檔案</string>
+    <string name="settings_delete_account_pubky_app_option_detail">你的名稱、簡介、追蹤和封鎖清單。只有 Loopky 寫入過，但其他 Pubky 應用程式也會顯示。</string>
+    <string name="settings_delete_account_dialog_identity_device">你的 Pubky 金鑰會從這部裝置移除。</string>
+    <string name="settings_delete_account_dialog_only_key">Loopky 保存著你金鑰的唯一副本，而你還沒有備份。刪除帳號後它將被永久刪除。</string>
     <string name="settings_delete_account_confirm">刪除帳號</string>
     <string name="settings_delete_account_confirm_countdown">刪除帳號（%1$d）</string>
     <string name="settings_delete_account_progress_title">正在刪除</string>

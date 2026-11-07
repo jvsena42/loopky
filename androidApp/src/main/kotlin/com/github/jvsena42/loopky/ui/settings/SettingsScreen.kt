@@ -78,7 +78,6 @@ import com.github.jvsena42.loopky.data.unsplash.UNSPLASH_DEVELOPER_URL
 import com.github.jvsena42.loopky.data.unsplash.UnsplashError
 import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.SrsGrade
-import com.github.jvsena42.loopky.presentation.settings.DeletionState
 import com.github.jvsena42.loopky.presentation.settings.SettingsEffect
 import com.github.jvsena42.loopky.presentation.settings.SettingsErrorMessage
 import com.github.jvsena42.loopky.presentation.settings.SettingsUiState
@@ -164,6 +163,7 @@ fun SettingsRoute(
         onDeleteAccountClick = viewModel::onDeleteAccountClick,
         onConfirmDeleteAccount = viewModel::onConfirmDeleteAccount,
         onDeleteAccountDismissed = viewModel::onDeleteAccountDismissed,
+        onDeletePubkyAppChange = viewModel::onDeletePubkyAppChange,
     )
 }
 
@@ -194,6 +194,7 @@ private fun SettingsScreen(
     onDeleteAccountClick: () -> Unit,
     onConfirmDeleteAccount: () -> Unit,
     onDeleteAccountDismissed: () -> Unit,
+    onDeletePubkyAppChange: (Boolean) -> Unit,
 ) {
     val colors = LoopkyTheme.colors
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -489,6 +490,9 @@ private fun SettingsScreen(
     // --- Delete account confirmation ---
     DeleteAccountDialog(
         deletion = state.deletion,
+        holdsOwnKey = state.holdsOwnKey,
+        losesTheOnlyKey = state.deletionLosesTheOnlyKey,
+        onDeletePubkyAppChange = onDeletePubkyAppChange,
         onConfirm = onConfirmDeleteAccount,
         onDismiss = onDeleteAccountDismissed,
     )
@@ -933,136 +937,6 @@ private fun SettingsSwitchRow(
 }
 
 /**
- * The delete-account warning, and then the sweep.
- *
- * Two things it does that an ordinary confirmation does not. The confirm button is dead for ten
- * seconds and says how many are left, because this is the one action in Loopky that destroys work
- * irrecoverably and a reflex tap must not be enough. And once the sweep starts the dialog stops
- * being dismissable at all: a back gesture that closed it would hide a deletion that is still
- * running and leave the user believing they had cancelled.
- */
-@Composable
-private fun DeleteAccountDialog(
-    deletion: DeletionState?,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    if (deletion == null) return
-    val colors = LoopkyTheme.colors
-    val deleting = deletion as? DeletionState.Deleting
-    val confirming = deletion as? DeletionState.Confirming
-
-    AlertDialog(
-        // No-op while deleting, which is what makes the dialog unclosable then. AlertDialog routes
-        // both the scrim tap and the back gesture through here.
-        onDismissRequest = { if (deleting == null) onDismiss() },
-        // AlertDialog is a separate window: without this its tags are invisible to journeys.
-        modifier = Modifier.semantics { testTagsAsResourceId = true },
-        containerColor = colors.surfaceCard,
-        title = {
-            Text(
-                text = stringResource(
-                    if (deleting != null) {
-                        R.string.settings_delete_account_progress_title
-                    } else {
-                        R.string.settings_delete_account_dialog_title
-                    },
-                ),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = colors.foregroundPrimary,
-            )
-        },
-        text = {
-            if (deleting != null) {
-                DeleteAccountProgress(done = deleting.done, total = deleting.total)
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = stringResource(R.string.settings_delete_account_dialog_body),
-                        fontSize = 14.sp,
-                        color = colors.foregroundSecondary,
-                        lineHeight = 20.sp,
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_delete_account_dialog_irreversible),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.srsAgain,
-                        lineHeight = 20.sp,
-                    )
-                    // The line that keeps the whole dialog honest: Loopky cannot delete the Pubky
-                    // identity, and must not imply that it has.
-                    Text(
-                        text = stringResource(R.string.settings_delete_account_dialog_identity),
-                        fontSize = 13.sp,
-                        color = colors.foregroundMuted,
-                        lineHeight = 18.sp,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            if (deleting != null) return@AlertDialog
-            val seconds = confirming?.secondsRemaining ?: 0
-            val ready = confirming?.isConfirmable == true
-            TextButton(
-                onClick = onConfirm,
-                enabled = ready,
-                modifier = Modifier.testTag("settings_delete_account_confirm"),
-            ) {
-                Text(
-                    text = if (ready) {
-                        stringResource(R.string.settings_delete_account_confirm)
-                    } else {
-                        stringResource(R.string.settings_delete_account_confirm_countdown, seconds)
-                    },
-                    color = if (ready) colors.srsAgain else colors.foregroundMuted,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        },
-        dismissButton = {
-            if (deleting != null) return@AlertDialog
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.testTag("settings_delete_account_cancel"),
-            ) {
-                Text(text = stringResource(R.string.settings_cancel), color = colors.foregroundSecondary)
-            }
-        },
-    )
-}
-
-/**
- * A spinner plus a count, and no way to stop.
- *
- * [total] is what the sweep knew when it started, so a determinate bar would be a lie it might
- * have to walk back; the count says what has actually happened. Zero total means the first report
- * has not arrived yet.
- */
-@Composable
-private fun DeleteAccountProgress(done: Int, total: Int) {
-    val colors = LoopkyTheme.colors
-    Row(
-        modifier = Modifier.testTag("settings_delete_account_progress"),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = colors.accentPrimary)
-        Text(
-            text = if (total > 0) {
-                stringResource(R.string.settings_delete_account_progress_count, done, total)
-            } else {
-                stringResource(R.string.settings_delete_account_progress_starting)
-            },
-            fontSize = 14.sp,
-            color = colors.foregroundSecondary,
-        )
-    }
-}
-
-/**
  * A row that leaves the app. Distinct from [SettingsValueRow], which shows a fact: the trailing
  * open-in-new glyph is the only signal that a tap here hands the user to a browser.
  */
@@ -1138,6 +1012,7 @@ private fun SettingsScreenPreview() {
             onDeleteAccountClick = {},
             onConfirmDeleteAccount = {},
             onDeleteAccountDismissed = {},
+            onDeletePubkyAppChange = {},
         )
     }
 }
