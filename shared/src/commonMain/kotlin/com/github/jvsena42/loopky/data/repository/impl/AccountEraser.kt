@@ -209,12 +209,16 @@ class AccountEraser(
             records.unreadable.isNotEmpty() -> throw PubkyAppFootprintChangedException(PubkyAppFootprint.Unknown)
         }
         val profile = PubkyPaths.profile(owner)
-        // The profile last: a sweep that dies part way still reads as Loopky's.
-        val failures = records.loopkys.filterNot { it == profile }
-            .mapConcurrently { path -> deleteRecord(path).also { progress.step() } }
-            .count { deleted -> !deleted }
-        if (failures > 0 || profile !in records.loopkys) return failures
-        return if (deleteRecord(profile).also { progress.step() }) 0 else 1
+        val (labels, rest) = records.loopkys.filterNot { it == profile }
+            .partition { it.startsWith(PubkyPaths.tag(owner, "")) }
+        // Labels only once everything they describe is gone, and the profile last: a sweep that
+        // dies part way still reads as Loopky's, so a retry is offered the same choice.
+        for (pass in listOf(rest, labels, listOfNotNull(profile.takeIf { it in records.loopkys }))) {
+            val failures = pass.mapConcurrently { path -> deleteRecord(path).also { progress.step() } }
+                .count { deleted -> !deleted }
+            if (failures > 0) return failures
+        }
+        return 0
     }
 
     /**

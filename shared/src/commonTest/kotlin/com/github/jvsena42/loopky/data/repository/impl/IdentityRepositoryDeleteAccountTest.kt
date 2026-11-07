@@ -537,6 +537,24 @@ class IdentityRepositoryDeleteAccountTest {
     }
 
     @Test
+    fun aFollowAnnouncementThatWillNotGoKeepsItsLabelSoARetryIsOfferedTheSameChoice() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        val post = PubkyPaths.post(TEST_PUBKY, "post2")
+        pubky.store[post] = announcement("pubky://otherpk/${PubkyPaths.APP_NAMESPACE}/decks/deck9/manifest.json")
+        labelOn(post, "loopky-deck")
+        val hooked = HookedDeletes(pubky)
+        hooked.beforeDelete = { url -> if (url == post) Result.failure(PubkyError("HTTP 500 Internal Server Error")) else null }
+
+        assertTrue(repoOver(hooked).deleteAccount(deletePubkyApp = true).isFailure)
+
+        hooked.beforeDelete = { null }
+        assertEquals(PubkyAppFootprint.LoopkyOnly, repoOver(hooked).pubkyAppFootprint(), "left: ${pubkyAppLeft()}")
+        assertTrue(PubkyPaths.profile(TEST_PUBKY) in pubky.store, "the profile goes last")
+        repoOver(hooked).deleteAccount(deletePubkyApp = true).getOrThrow()
+        assertEquals(emptyList(), pubkyAppLeft())
+    }
+
+    @Test
     fun anUnreadablePubkyAppRecordRefusesStepFiveAsUnknown() = runTest {
         seedLoopkyOnlyPubkyApp()
         val oneLabel = pubky.store.keys.first { it.startsWith(PubkyPaths.tag(TEST_PUBKY, "")) }
