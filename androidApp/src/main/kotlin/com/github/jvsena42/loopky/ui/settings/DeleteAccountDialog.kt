@@ -136,10 +136,12 @@ internal fun DeleteAccountDialog(
                 modifier = Modifier.testTag("settings_delete_account_confirm"),
             ) {
                 Text(
-                    text = if (ready) {
-                        stringResource(R.string.settings_delete_account_confirm)
-                    } else {
+                    // Keyed on the countdown, not on `ready`: once it ends, a check still running
+                    // leaves the button disabled, and "(0)" would read as a stuck timer.
+                    text = if (seconds > 0) {
                         stringResource(R.string.settings_delete_account_confirm_countdown, seconds)
+                    } else {
+                        stringResource(R.string.settings_delete_account_confirm)
                     },
                     color = if (ready) colors.srsAgain else colors.foregroundMuted,
                     fontWeight = FontWeight.Bold,
