@@ -492,7 +492,7 @@
     <string name="settings_delete_account_dialog_irreversible">この操作は取り消せません。</string>
     <string name="settings_delete_account_dialog_identity">Pubky の ID は Pubky Ring に残ります。</string>
     <string name="settings_delete_account_checking">このアカウントをほかの Pubky アプリが使っているか確認しています…</string>
-    <string name="settings_delete_account_pubky_app_kept">ほかの Pubky アプリがこのアカウントを使っているため、Pubky のプロフィール、フォロー、投稿は残ります。</string>
+    <string name="settings_delete_account_pubky_app_kept">ほかの Pubky アプリがこのアカウントを使っているため、Pubky のプロフィールとフォローは残ります。</string>
     <string name="settings_delete_account_pubky_app_unknown">ほかの Pubky アプリがこのアカウントを使っているか Loopky が確認できなかったため、Pubky のプロフィールとフォローは残ります。</string>
     <string name="settings_delete_account_pubky_app_option">Pubky のプロフィールも削除する</string>
     <string name="settings_delete_account_pubky_app_option_detail">名前、自己紹介、フォロー、ブロック。書き込んだのは Loopky だけですが、ほかの Pubky アプリにも表示されます。</string>

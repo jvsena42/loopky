@@ -497,7 +497,7 @@
     <string name="settings_delete_account_dialog_irreversible">Không thể hoàn tác.</string>
     <string name="settings_delete_account_dialog_identity">Danh tính Pubky của bạn vẫn nằm trong Pubky Ring.</string>
     <string name="settings_delete_account_checking">Đang kiểm tra xem ứng dụng Pubky khác có dùng tài khoản này không…</string>
-    <string name="settings_delete_account_pubky_app_kept">Hồ sơ Pubky, danh sách theo dõi và bài đăng của bạn vẫn được giữ lại, vì một ứng dụng Pubky khác đang dùng tài khoản này.</string>
+    <string name="settings_delete_account_pubky_app_kept">Hồ sơ Pubky và danh sách theo dõi của bạn vẫn được giữ lại, vì một ứng dụng Pubky khác đang dùng tài khoản này.</string>
     <string name="settings_delete_account_pubky_app_unknown">Hồ sơ Pubky và danh sách theo dõi của bạn vẫn được giữ lại, vì Loopky không kiểm tra được liệu ứng dụng Pubky khác có dùng tài khoản này không.</string>
     <string name="settings_delete_account_pubky_app_option">Xóa cả hồ sơ Pubky của tôi</string>
     <string name="settings_delete_account_pubky_app_option_detail">Tên, tiểu sử, danh sách theo dõi và danh sách chặn của bạn. Chỉ Loopky đã ghi chúng, nhưng các ứng dụng Pubky khác cũng hiển thị chúng.</string>

@@ -479,7 +479,7 @@
     <string name="settings_delete_account_dialog_irreversible">此操作无法撤销。</string>
     <string name="settings_delete_account_dialog_identity">你的 Pubky 身份仍保留在 Pubky Ring 中。</string>
     <string name="settings_delete_account_checking">正在检查其他 Pubky 应用是否在使用这个账号…</string>
-    <string name="settings_delete_account_pubky_app_kept">由于其他 Pubky 应用在使用这个账号，你的 Pubky 个人主页、关注和帖子会保留。</string>
+    <string name="settings_delete_account_pubky_app_kept">由于其他 Pubky 应用在使用这个账号，你的 Pubky 个人主页和关注会保留。</string>
     <string name="settings_delete_account_pubky_app_unknown">由于 Loopky 无法确认其他 Pubky 应用是否在使用这个账号，你的 Pubky 个人主页和关注会保留。</string>
     <string name="settings_delete_account_pubky_app_option">同时删除我的 Pubky 个人主页</string>
     <string name="settings_delete_account_pubky_app_option_detail">你的名字、简介、关注和屏蔽列表。它们只由 Loopky 写入，但其他 Pubky 应用也会显示。</string>

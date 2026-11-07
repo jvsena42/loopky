@@ -471,7 +471,7 @@
     <string name="settings_delete_account_dialog_irreversible">Das lässt sich nicht rückgängig machen.</string>
     <string name="settings_delete_account_dialog_identity">Deine Pubky-Identität bleibt in Pubky Ring.</string>
     <string name="settings_delete_account_checking">Prüfe, ob andere Pubky-Apps dieses Konto nutzen …</string>
-    <string name="settings_delete_account_pubky_app_kept">Dein Pubky-Profil, deine Follows und Beiträge bleiben, weil eine andere Pubky-App dieses Konto nutzt.</string>
+    <string name="settings_delete_account_pubky_app_kept">Dein Pubky-Profil und deine Follows bleiben, weil eine andere Pubky-App dieses Konto nutzt.</string>
     <string name="settings_delete_account_pubky_app_unknown">Dein Pubky-Profil und deine Follows bleiben, weil Loopky nicht prüfen konnte, ob eine andere Pubky-App dieses Konto nutzt.</string>
     <string name="settings_delete_account_pubky_app_option">Auch mein Pubky-Profil löschen</string>
     <string name="settings_delete_account_pubky_app_option_detail">Dein Name, deine Bio, deine Follows und Blockierungen. Nur Loopky hat sie geschrieben, aber andere Pubky-Apps zeigen sie auch an.</string>

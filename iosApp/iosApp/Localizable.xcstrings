@@ -40837,67 +40837,67 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dein Pubky-Profil, deine Follows und Beiträge bleiben, weil eine andere Pubky-App dieses Konto nutzt."
+            "value": "Dein Pubky-Profil und deine Follows bleiben, weil eine andere Pubky-App dieses Konto nutzt."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Pubky profile, follows and posts stay, because another Pubky app uses this account."
+            "value": "Your Pubky profile and follows stay, because another Pubky app uses this account."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu perfil de Pubky, a quién sigues y tus publicaciones se mantienen, porque otra app de Pubky usa esta cuenta."
+            "value": "Tu perfil de Pubky y a quién sigues se mantienen, porque otra app de Pubky usa esta cuenta."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ton profil Pubky, tes abonnements et tes publications restent, car une autre app Pubky utilise ce compte."
+            "value": "Ton profil Pubky et tes abonnements restent, car une autre app Pubky utilise ce compte."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il tuo profilo Pubky, chi segui e i tuoi post restano, perché un'altra app Pubky usa questo account."
+            "value": "Il tuo profilo Pubky e chi segui restano, perché un'altra app Pubky usa questo account."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ほかの Pubky アプリがこのアカウントを使っているため、Pubky のプロフィール、フォロー、投稿は残ります。"
+            "value": "ほかの Pubky アプリがこのアカウントを使っているため、Pubky のプロフィールとフォローは残ります。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다른 Pubky 앱이 이 계정을 쓰고 있어서 Pubky 프로필, 팔로우, 게시물은 그대로 남아요."
+            "value": "다른 Pubky 앱이 이 계정을 쓰고 있어서 Pubky 프로필과 팔로우는 그대로 남아요."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seu perfil Pubky, quem você segue e suas publicações continuam, porque outro app Pubky usa esta conta."
+            "value": "Seu perfil Pubky e quem você segue continuam, porque outro app Pubky usa esta conta."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hồ sơ Pubky, danh sách theo dõi và bài đăng của bạn vẫn được giữ lại, vì một ứng dụng Pubky khác đang dùng tài khoản này."
+            "value": "Hồ sơ Pubky và danh sách theo dõi của bạn vẫn được giữ lại, vì một ứng dụng Pubky khác đang dùng tài khoản này."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "由于其他 Pubky 应用在使用这个账号，你的 Pubky 个人主页、关注和帖子会保留。"
+            "value": "由于其他 Pubky 应用在使用这个账号，你的 Pubky 个人主页和关注会保留。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "由於其他 Pubky 應用程式正在使用這個帳號，你的 Pubky 個人檔案、追蹤和貼文都會保留。"
+            "value": "由於其他 Pubky 應用程式正在使用這個帳號，你的 Pubky 個人檔案和追蹤都會保留。"
           }
         }
       }

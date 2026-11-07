@@ -498,7 +498,7 @@
     <string name="settings_delete_account_dialog_irreversible">This cannot be undone.</string>
     <string name="settings_delete_account_dialog_identity">Your Pubky identity stays in Pubky Ring.</string>
     <string name="settings_delete_account_checking">Checking whether other Pubky apps use this account…</string>
-    <string name="settings_delete_account_pubky_app_kept">Your Pubky profile, follows and posts stay, because another Pubky app uses this account.</string>
+    <string name="settings_delete_account_pubky_app_kept">Your Pubky profile and follows stay, because another Pubky app uses this account.</string>
     <string name="settings_delete_account_pubky_app_unknown">Your Pubky profile and follows stay, because Loopky could not check whether another Pubky app uses this account.</string>
     <string name="settings_delete_account_pubky_app_option">Also delete my Pubky profile</string>
     <string name="settings_delete_account_pubky_app_option_detail">Your name, bio, follows and blocks. Only Loopky wrote them, but other Pubky apps show them too.</string>

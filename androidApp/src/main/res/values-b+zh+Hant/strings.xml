@@ -497,7 +497,7 @@
     <string name="settings_delete_account_dialog_irreversible">此動作無法復原。</string>
     <string name="settings_delete_account_dialog_identity">你的 Pubky 身分仍會保留在 Pubky Ring 中。</string>
     <string name="settings_delete_account_checking">正在檢查其他 Pubky 應用程式是否在使用這個帳號…</string>
-    <string name="settings_delete_account_pubky_app_kept">由於其他 Pubky 應用程式正在使用這個帳號，你的 Pubky 個人檔案、追蹤和貼文都會保留。</string>
+    <string name="settings_delete_account_pubky_app_kept">由於其他 Pubky 應用程式正在使用這個帳號，你的 Pubky 個人檔案和追蹤都會保留。</string>
     <string name="settings_delete_account_pubky_app_unknown">由於 Loopky 無法確認其他 Pubky 應用程式是否在使用這個帳號，你的 Pubky 個人檔案和追蹤都會保留。</string>
     <string name="settings_delete_account_pubky_app_option">同時刪除我的 Pubky 個人檔案</string>
     <string name="settings_delete_account_pubky_app_option_detail">你的名稱、簡介、追蹤和封鎖清單。只有 Loopky 寫入過，但其他 Pubky 應用程式也會顯示。</string>

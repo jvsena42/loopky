@@ -20,6 +20,6 @@
     <action>Run A: tick the option, confirm, verify "Deleting" with a removed count, then the onboarding screen; listing the account's /pub/ on the homeserver answers 404</action>
     <action>Run B (another fresh account): leave the option unticked and confirm; verify the onboarding screen, and that /pub/pubky.app/profile.json is still on the homeserver while the loopky-user tag and everything under /pub/loopky/ are gone</action>
     <action>On iOS, verify the dialog is a sheet that cannot be swiped away while "Deleting" is shown</action>
-    <action>On an account another Pubky app has written to (a post, a picture or links on the profile, another app's namespace), verify no option is shown and the line reads "Your Pubky profile, follows and posts stay, because another Pubky app uses this account."</action>
+    <action>On an account another Pubky app has written to (a post, a picture or links on the profile, another app's namespace), verify no option is shown and the line reads "Your Pubky profile and follows stay, because another Pubky app uses this account." Loopky's own posts are deleted on this path too</action>
   </actions>
 </journey>

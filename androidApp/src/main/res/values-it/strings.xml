@@ -471,7 +471,7 @@
     <string name="settings_delete_account_dialog_irreversible">Non si può annullare.</string>
     <string name="settings_delete_account_dialog_identity">La tua identità Pubky resta in Pubky Ring.</string>
     <string name="settings_delete_account_checking">Controllo se altre app Pubky usano questo account…</string>
-    <string name="settings_delete_account_pubky_app_kept">Il tuo profilo Pubky, chi segui e i tuoi post restano, perché un\'altra app Pubky usa questo account.</string>
+    <string name="settings_delete_account_pubky_app_kept">Il tuo profilo Pubky e chi segui restano, perché un\'altra app Pubky usa questo account.</string>
     <string name="settings_delete_account_pubky_app_unknown">Il tuo profilo Pubky e chi segui restano, perché Loopky non è riuscito a verificare se un\'altra app Pubky usa questo account.</string>
     <string name="settings_delete_account_pubky_app_option">Elimina anche il mio profilo Pubky</string>
     <string name="settings_delete_account_pubky_app_option_detail">Il tuo nome, la bio, chi segui e chi hai bloccato. Li ha scritti solo Loopky, ma anche altre app Pubky li mostrano.</string>

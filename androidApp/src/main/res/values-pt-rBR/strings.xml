@@ -471,7 +471,7 @@
     <string name="settings_delete_account_dialog_irreversible">Isso não pode ser desfeito.</string>
     <string name="settings_delete_account_dialog_identity">Sua identidade Pubky continua no Pubky Ring.</string>
     <string name="settings_delete_account_checking">Verificando se outros apps Pubky usam esta conta…</string>
-    <string name="settings_delete_account_pubky_app_kept">Seu perfil Pubky, quem você segue e suas publicações continuam, porque outro app Pubky usa esta conta.</string>
+    <string name="settings_delete_account_pubky_app_kept">Seu perfil Pubky e quem você segue continuam, porque outro app Pubky usa esta conta.</string>
     <string name="settings_delete_account_pubky_app_unknown">Seu perfil Pubky e quem você segue continuam, porque o Loopky não conseguiu verificar se outro app Pubky usa esta conta.</string>
     <string name="settings_delete_account_pubky_app_option">Excluir também meu perfil Pubky</string>
     <string name="settings_delete_account_pubky_app_option_detail">Seu nome, bio, quem você segue e quem você bloqueou. Só o Loopky gravou esses dados, mas outros apps Pubky também os mostram.</string>
