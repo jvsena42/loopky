@@ -109,10 +109,9 @@ class DeckAnnouncementTest {
         val announcement = DeckAnnouncement.of(deck, DeckAnnouncement.Kind.Created)
 
         assertEquals("https://img.test/c.jpg", announcement.coverImageUrl)
-        // The deck link goes first so pubky.app's "see more" fold never hides it.
+        // pubky.app previews only the first http(s) link, so the cover has to precede the deck's.
         val content = announcement.content
-        assertTrue(content.indexOf(deck.webUrl) in 0 until content.indexOf("https://img.test/c.jpg"), content)
-        assertTrue(content.endsWith("https://img.test/c.jpg"), content)
+        assertTrue(content.indexOf("https://img.test/c.jpg") in 0 until content.indexOf(deck.webUrl), content)
     }
 
     @Test
