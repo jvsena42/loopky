@@ -14,6 +14,9 @@ struct StudyCardView: View {
     var onGiveUp: () -> Void = {}
 
     @Environment(\.loopkyWidthClass) private var widthClass
+    /// Pictures that would not load, by url or sha. One that fails gives its space back, or its
+    /// frame leaves the side's text pushed down under an empty box.
+    @State private var failedPictures: Set<String> = []
 
     var body: some View {
         ZStack {
@@ -178,15 +181,20 @@ struct StudyCardView: View {
 
     @ViewBuilder
     private func picture(_ ref: MediaRef.Image?) -> some View {
-        if ref != nil {
+        if let ref, !failedPictures.contains(pictureKey(ref)) {
             CardMediaImage(
                 ref: ref,
                 authorPubky: state.authorPubky,
-                deckId: state.deckId
+                deckId: state.deckId,
+                onFailed: { failedPictures.insert(pictureKey(ref)) }
             )
             .frame(maxHeight: widthClass == .compact ? 240 : 420)
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
+    }
+
+    private func pictureKey(_ ref: MediaRef.Image) -> String {
+        ref.url ?? ref.sha256
     }
 
     /// Listen and Speak, both practising the side that is showing.

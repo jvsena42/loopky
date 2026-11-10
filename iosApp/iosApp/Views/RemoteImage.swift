@@ -24,6 +24,8 @@ struct RemoteImage<Content: View, Placeholder: View>: View {
     let url: URL?
     @ViewBuilder let content: (Image) -> Content
     @ViewBuilder let placeholder: () -> Placeholder
+    /// Called when the picture is known not to load, so a caller can give its space back.
+    var onFailed: () -> Void = {}
 
     /// Keyed by the URL it came from. `.task(id:)` re-runs on every appear, so an unchanged URL
     /// must not reset or refetch; and an image is drawn only for the URL it belongs to, so a load
@@ -42,10 +44,13 @@ struct RemoteImage<Content: View, Placeholder: View>: View {
     }
 
     private func load() async {
-        guard let url, loaded?.url != url,
-              let (data, _) = try? await AppURLSession.shared.data(from: url),
+        guard let url, loaded?.url != url else { return }
+        guard let (data, _) = try? await AppURLSession.shared.data(from: url),
               let decoded = UIImage(data: data)
-        else { return }
+        else {
+            if !Task.isCancelled { onFailed() }
+            return
+        }
         loaded = (url, decoded)
     }
 }

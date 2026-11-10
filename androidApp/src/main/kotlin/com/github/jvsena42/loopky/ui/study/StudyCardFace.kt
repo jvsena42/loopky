@@ -25,6 +25,10 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +84,10 @@ internal fun CardFace(
     authorPubky: String = "",
 ) {
     val colors = LoopkyTheme.colors
+    // A picture that will not load gives its space back, or its weight leaves the side's text
+    // pinned under an empty block at the bottom of the card.
+    var featureImageFailed by remember(featureImageRef) { mutableStateOf(false) }
+    val featureImage = featureImageRef.takeUnless { featureImageFailed }
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -108,12 +116,13 @@ internal fun CardFace(
         }
         Spacer(modifier = Modifier.size(16.dp))
         // The side itself, when it is a picture rather than words.
-        featureImageRef?.let { image ->
+        featureImage?.let { image ->
             CardMediaImage(
                 image = image,
                 deckId = deckId,
                 authorPubky = authorPubky,
                 contentScale = ContentScale.Fit,
+                onFailed = { featureImageFailed = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
@@ -144,7 +153,7 @@ internal fun CardFace(
                 maxTextSize = textSize,
                 // An image-only side has no text to give room to, and weight(1f) twice would
                 // halve the picture for the sake of an empty line.
-                modifier = if (featureImageRef == null) Modifier.weight(1f) else Modifier,
+                modifier = if (featureImage == null) Modifier.weight(1f) else Modifier,
             )
         }
         answerNote?.let {

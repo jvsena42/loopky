@@ -18,6 +18,8 @@ struct CardMediaImage: View {
     var authorPubky: String
     var deckId: String
     var contentMode: ContentMode = .fit
+    /// Called when the picture is known not to load, so a caller can give its space back.
+    var onFailed: () -> Void = {}
 
     @State private var blob: Data?
     @State private var isLoading = false
@@ -31,6 +33,8 @@ struct CardMediaImage: View {
                     scaled(image)
                 } placeholder: {
                     placeholder
+                } onFailed: {
+                    onFailed()
                 }
             } else {
                 placeholder
@@ -76,5 +80,6 @@ struct CardMediaImage: View {
             ref: ref
         )
         blob = bytes?.toData()
+        if blob.flatMap(UIImage.init(data:)) == nil, !Task.isCancelled { onFailed() }
     }
 }
