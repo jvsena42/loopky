@@ -153,6 +153,7 @@ class StudySessionReverseTest {
             frontLang = "es-ES",
             backLang = "en-US",
             reverseEnabled = true,
+            speechBothSides = true,
         )
         val vm = viewModel()
         advanceUntilIdle()
@@ -167,6 +168,36 @@ class StudySessionReverseTest {
         val spoken = assertIs<StudySessionEffect.Speak>(effects.excludingHaptics().last())
         assertEquals("dog", spoken.text)
         assertEquals("en-US", spoken.languageTag, "read in the wrong side's language")
+        job.cancel()
+    }
+
+    @Test
+    fun aReversedCardKeepsListenAndSpeakOffTheFaceShownBeforeTheFlip() = runTest {
+        // "Before the flip" is the presentation's prompt, which on a reverse is the card's back: the
+        // gate follows the face, not the side the card stored first.
+        seedReverseDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+
+        val reverse = advanceToReverse(vm, SrsGrade.Good) { advanceUntilIdle() }
+        val before = effects.excludingHaptics().size
+        assertFalse(reverse.showsListen)
+        assertFalse(reverse.showsSpeak)
+        vm.onSpeak()
+        vm.onSpeakTest()
+        advanceUntilIdle()
+        assertEquals(before, effects.excludingHaptics().size, "the reversed prompt was practised")
+
+        vm.onReveal()
+        advanceUntilIdle()
+        assertTrue(reviewing(vm).showsListen)
+        assertTrue(reviewing(vm).showsSpeak)
+        vm.onSpeak()
+        advanceUntilIdle()
+        assertEquals(StudySessionEffect.Speak("perro", "es-ES"), effects.excludingHaptics().last())
         job.cancel()
     }
 

@@ -55,6 +55,17 @@ data class Deck(
      * swapping two sides needs no declared language.
      */
     val reverseEnabled: Boolean = false,
+    /**
+     * Opt-in: Listen and Speak on the prompt face as well as the answer face (#595). Off, they
+     * appear only once the card is flipped and the answer is legible: on the prompt they read or
+     * grade the question before the reader has tried to recall the answer, and Speak there
+     * transcribes in the prompt's language what the reader meant to say in the answer's.
+     *
+     * Defaults **off**, and a manifest written before the field decodes that way, so every existing
+     * deck lost its front-face buttons with it. Inert without [listenEnabled] or [speakEnabled],
+     * and so behind [speechReady] too.
+     */
+    val speechBothSides: Boolean = false,
     /** BCP-47 tag for the card front's language, e.g. `"en-US"`. See [speechReady]. */
     val frontLang: String? = null,
     /** BCP-47 tag for the card back's language, e.g. `"es-ES"`. See [speechReady]. */
@@ -73,8 +84,8 @@ data class Deck(
      */
     val reorderPending: Boolean = false,
     /**
-     * The author's study opt-ins, set only on a followed deck whose reader changed them. The four
-     * `…Enabled` fields above are then the **reader's**, so everything that studies or draws the
+     * The author's study opt-ins, set only on a followed deck whose reader changed them. The study
+     * opt-ins above are then the **reader's**, so everything that studies or draws the
      * deck gets their choice without asking; this is what is left to say what the author chose.
      * Never written to a manifest — it lives on the reader's subscription record.
      */

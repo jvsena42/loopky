@@ -106,6 +106,14 @@ class StudySessionViewModel(
      */
     private val answerVisible: Boolean get() = revealed && typePhase !is TypePhase.Answering
 
+    /**
+     * The VM-side twin of `Reviewing.showsListen`/`showsSpeak`: [enabled] on the face showing now,
+     * read from [revealed] and [typePhase] rather than the state, which a reveal only rebuilds a
+     * coroutine later.
+     */
+    private fun speechOnFacingSide(s: StudySessionUiState.Reviewing, enabled: Boolean): Boolean =
+        enabled && (answerVisible || (!revealed && s.speechBothSides))
+
     private val current: StudyPresentation? get() = queue.getOrNull(index)
 
     /**
@@ -466,10 +474,10 @@ class StudySessionViewModel(
         typedAnswer = ""
     }
 
-    /** Pronunciation practice for the side facing the user (gated on the deck's speak opt-in). */
+    /** Pronunciation practice on the side facing the user, where [speechOnFacingSide] allows it. */
     fun onSpeakTest() {
         val s = _state.value
-        if (s !is StudySessionUiState.Reviewing || !s.speakEnabled) return
+        if (s !is StudySessionUiState.Reviewing || !speechOnFacingSide(s, s.speakEnabled)) return
         startRecognition(targetFor(s) ?: return)
     }
 
@@ -567,12 +575,13 @@ class StudySessionViewModel(
     /**
      * Read the side facing the user, in *that side's* language — the two sides of a vocabulary card
      * are routinely different ones. Gated here and not only in the UI, like the announce gate, so a
-     * deck that declared no languages cannot be read aloud in the reader's accent. What is read is
-     * the phrase, not the card's editorial asides (see [AnswerMatcher.stripParentheticals]).
+     * deck that declared no languages cannot be read aloud in the reader's accent, nor a prompt read
+     * out on a deck that keeps Listen to the answer. What is read is the phrase, not the card's
+     * editorial asides (see [AnswerMatcher.stripParentheticals]).
      */
     fun onSpeak() {
         val s = _state.value
-        if (s !is StudySessionUiState.Reviewing || !s.listenEnabled || isListening) return
+        if (s !is StudySessionUiState.Reviewing || !speechOnFacingSide(s, s.listenEnabled) || isListening) return
         // answerVisible, not revealed: on a flipped-but-masked typing card the back is on screen but
         // hidden, and reading it aloud would hand over the answer the mask is withholding.
         // Parenthesized asides are dropped for the same reason the matchers drop them.
@@ -765,6 +774,7 @@ class StudySessionViewModel(
                 listenEnabled = deck?.listenEnabled == true && deck.speechReady,
                 isListening = isListening,
                 speakEnabled = deck?.speakEnabled == true && deck.speechReady,
+                speechBothSides = deck?.speechBothSides == true,
                 speakPhase = speakPhase,
                 typePhase = typePhase,
                 typedAnswer = typedAnswer,
@@ -938,6 +948,8 @@ sealed interface StudySessionUiState {
         /** Listen is reading aloud right now; the button is disabled until it ends. */
         val isListening: Boolean = false,
         val speakEnabled: Boolean = false,
+        /** Listen and Speak on the prompt face too, not only after the flip. See `Deck.speechBothSides`. */
+        val speechBothSides: Boolean = false,
         val speakPhase: SpeakPhase = SpeakPhase.Idle,
         /**
          * Where this card is in the type-the-answer flow, or [TypePhase.Off] when the deck has not
@@ -972,6 +984,16 @@ sealed interface StudySessionUiState {
          * the gesture.
          */
         val answerHidden: Boolean get() = typePhase is TypePhase.Answering
+
+        /**
+         * Whether Listen and Speak belong on the face showing now. The prompt face only when the
+         * deck asked for both sides; the answer face once its words are legible, never on the mask.
+         */
+        private val speechOnThisFace: Boolean
+            get() = if (revealed) !answerHidden else speechBothSides
+
+        val showsListen: Boolean get() = listenEnabled && speechOnThisFace
+        val showsSpeak: Boolean get() = speakEnabled && speechOnThisFace
 
         /**
          * [revealed] alone is not enough once the answer can be revealed-but-masked: grading a card

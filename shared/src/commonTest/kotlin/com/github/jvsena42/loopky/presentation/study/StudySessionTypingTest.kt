@@ -133,9 +133,10 @@ class StudySessionTypingTest {
     }
 
     @Test
-    fun listenReadsThePromptWhileTheAnswerIsStillMasked() = runTest {
+    fun listenAndSpeakStayOffWhileTheAnswerIsStillMasked() = runTest {
         // A flipped-but-masked card is the one place "the side facing the user" and "the side the
-        // user can read" disagree. Reading the back aloud there would speak the hidden answer.
+        // user can read" disagree. Reading the back aloud there would speak the hidden answer, and
+        // the prompt is not on screen to read — even on a deck that offers both sides.
         seedDeck()
         deckRepo.decks["deck1"] = testDeck(
             id = "deck1",
@@ -143,6 +144,7 @@ class StudySessionTypingTest {
             frontLang = "es-ES",
             backLang = "en-US",
             typeEnabled = true,
+            speechBothSides = true,
         )
         val vm = viewModel()
         advanceUntilIdle()
@@ -151,9 +153,14 @@ class StudySessionTypingTest {
         val job = launch { vm.effects.toList(effects) }
 
         vm.onReveal()
-        vm.onSpeak()
         advanceUntilIdle()
-        assertEquals(StudySessionEffect.Speak("hola", "es-ES"), effects.excludingHaptics().single())
+        val masked = assertIs<StudySessionUiState.Reviewing>(vm.state.value)
+        assertFalse(masked.showsListen)
+        assertFalse(masked.showsSpeak)
+        vm.onSpeak()
+        vm.onSpeakTest()
+        advanceUntilIdle()
+        assertEquals(emptyList(), effects.excludingHaptics())
 
         // A correct check is what unmasks the back, and only then does Listen follow it there.
         vm.onAnswerChange("hello")

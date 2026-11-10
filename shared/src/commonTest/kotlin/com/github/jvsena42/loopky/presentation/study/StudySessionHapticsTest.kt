@@ -214,7 +214,7 @@ class StudySessionHapticsTest {
 
     @Test
     fun aSpokenAttemptSucceedsOrWarnsAndAFailedListenIsNeither() = runTest {
-        deckRepo.decks["deck1"] = testDeck(id = "deck1", frontLang = "es-ES", backLang = "en-US")
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", frontLang = "es-ES", backLang = "en-US", speechBothSides = true)
         srsRepo.due = listOf(testCard("c1", front = "hola", back = "hello"))
         val vm = viewModel()
         advanceUntilIdle()
@@ -247,7 +247,7 @@ class StudySessionHapticsTest {
 
     @Test
     fun onlyACorrectSpokenAttemptChimes() = runTest {
-        deckRepo.decks["deck1"] = testDeck(id = "deck1", frontLang = "es-ES", backLang = "en-US")
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", frontLang = "es-ES", backLang = "en-US", speechBothSides = true)
         srsRepo.due = listOf(testCard("c1", front = "hola", back = "hello"))
         val vm = viewModel()
         advanceUntilIdle()
@@ -271,7 +271,7 @@ class StudySessionHapticsTest {
 
     @Test
     fun aLateSpeechErrorAfterTheSheetIsGoneIsSilent() = runTest {
-        deckRepo.decks["deck1"] = testDeck(id = "deck1", frontLang = "es-ES", backLang = "en-US")
+        deckRepo.decks["deck1"] = testDeck(id = "deck1", frontLang = "es-ES", backLang = "en-US", speechBothSides = true)
         srsRepo.due = listOf(testCard("c1", front = "hola", back = "hello"))
         val vm = viewModel()
         advanceUntilIdle()

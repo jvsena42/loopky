@@ -76,7 +76,10 @@ class StudySessionViewModelTest {
         )
     }
 
-    /** A deck that has declared its pair, so Listen and Speak are actually on offer. */
+    /**
+     * A deck that has declared its pair, so Listen and Speak are actually on offer — on both faces,
+     * since most of these tests practise the prompt.
+     */
     private suspend fun seedSpeechDeck() {
         seedDeck()
         deckRepo.decks["deck1"] = testDeck(
@@ -84,6 +87,7 @@ class StudySessionViewModelTest {
             title = "Spanish",
             frontLang = "es-ES",
             backLang = "en-US",
+            speechBothSides = true,
         )
     }
 
