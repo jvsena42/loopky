@@ -21,6 +21,7 @@
     <action>Tap the element with resource-id "profile_settings"</action>
     <action>Verify the Settings screen is shown with an Identity section (truncated pubky, homeserver) and a "Sign out" row (resource-id: settings_signout)</action>
     <action>Tap the element with resource-id "settings_copy_pubky" and verify no crash occurs</action>
+    <action>Scroll to Studying and verify a "Listen speed" slider (resource-id: settings_listen_speed) reading 1× on a fresh install, usable even while the study rows above it are still disabled; drag it to 0.65× and verify the label follows, then leave and reopen Settings and verify it still reads 0.65×</action>
     <action>Tap the element with resource-id "settings_signout"</action>
     <action>Verify a confirmation dialog appears</action>
     <action>Confirm sign out</action>
