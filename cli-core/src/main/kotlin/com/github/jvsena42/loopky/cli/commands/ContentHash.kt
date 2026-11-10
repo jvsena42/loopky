@@ -120,4 +120,4 @@ private fun HashedCard.toJson() = buildJsonArray {
     listOf(frontText, frontImage, backText, backImage).forEach { add(JsonPrimitive(it)) }
 }
 
-private val STUDY_MODES = listOf("listen", "speak", "type", "reverse")
+private val STUDY_MODES = listOf("listen", "speak", "type", "reverse", "both-sides")

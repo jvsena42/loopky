@@ -579,6 +579,7 @@ private fun Deck.overlaidWith(args: Args): Deck? {
         speakEnabled = args.flagOrNull("speak") ?: speakEnabled,
         typeEnabled = args.flagOrNull("type") ?: typeEnabled,
         reverseEnabled = args.flagOrNull("reverse") ?: reverseEnabled,
+        speechBothSides = args.flagOrNull("both-sides") ?: speechBothSides,
         frontLang = frontLang,
         backLang = backLang,
     )
@@ -640,6 +641,7 @@ private fun newDeck(
         // The one opt-in with a source opinion behind it: an `.apkg` built on a reversed note type
         // says so, and `parseBulkNotes` carries that through. A suggestion, still overridable.
         reverseEnabled = args.flag("reverse", default = draft.suggestsReverse),
+        speechBothSides = args.flag("both-sides", default = false),
         frontLang = frontLang,
         backLang = backLang,
     )

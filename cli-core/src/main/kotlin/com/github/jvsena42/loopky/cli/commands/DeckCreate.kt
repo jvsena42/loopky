@@ -236,6 +236,7 @@ private fun Args.newDeck(
         speakEnabled = flag("speak", default = false),
         typeEnabled = flag("type", default = false),
         reverseEnabled = flag("reverse", default = false),
+        speechBothSides = flag("both-sides", default = false),
         frontLang = frontLang,
         backLang = backLang,
     )

@@ -61,6 +61,7 @@ class DeckEditTest {
         assertEquals(deck.speakEnabled, written.speakEnabled)
         assertEquals(deck.typeEnabled, written.typeEnabled)
         assertEquals(deck.reverseEnabled, written.reverseEnabled)
+        assertEquals(deck.speechBothSides, written.speechBothSides)
     }
 
     /** `card edit --back=`'s gesture, on the deck's own optional fields. */
@@ -160,6 +161,17 @@ class DeckEditTest {
         assertEquals(false, written.listenEnabled)
         assertEquals(true, written.typeEnabled)
         assertEquals(true, written.speakEnabled)
+    }
+
+    @Test
+    fun `--both-sides puts listen and speak on the prompt and --no-both-sides takes them off`() = runBlocking {
+        val on = FakeDeckRepository(deck)
+        deckEdit(edit("--both-sides"), on)
+        assertEquals(true, on.metadataWrites.single().speechBothSides)
+
+        val off = FakeDeckRepository(deck.copy(speechBothSides = true))
+        deckEdit(edit("--no-both-sides"), off)
+        assertEquals(false, off.metadataWrites.single().speechBothSides)
     }
 
     @Test

@@ -44,6 +44,8 @@ data class DeckView(
     @SerialName("speak_enabled") val speakEnabled: Boolean = false,
     @SerialName("type_enabled") val typeEnabled: Boolean = false,
     @SerialName("reverse_enabled") val reverseEnabled: Boolean = false,
+    /** Listen and Speak are offered before the flip as well as after it. */
+    @SerialName("speech_both_sides") val speechBothSides: Boolean = false,
     /**
      * The manifest's chunk table: which card records exist, how full each one is, and when it last
      * changed.
@@ -153,6 +155,7 @@ fun Deck.toView(): DeckView = DeckView(
     speakEnabled = speakEnabled,
     typeEnabled = typeEnabled,
     reverseEnabled = reverseEnabled,
+    speechBothSides = speechBothSides,
     chunks = chunks.map { ChunkView(n = it.n, count = it.count, updatedAt = it.updatedAt) },
     uri = pubkyUri.value,
     shareUrl = webUrl,

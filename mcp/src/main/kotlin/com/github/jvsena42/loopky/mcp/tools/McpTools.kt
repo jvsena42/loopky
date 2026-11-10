@@ -106,7 +106,7 @@ private val IMAGE_CHECK_OPTIONS = mapOf(
 )
 
 private val DECK_METADATA = setOf("title", "description", "tag", "cover-url", "cover-emoji")
-private val STUDY_OPT_INS = setOf("listen", "speak", "type", "reverse")
+private val STUDY_OPT_INS = setOf("listen", "speak", "type", "reverse", "both-sides")
 private val STUDY_OPT_OUTS = STUDY_OPT_INS.mapTo(mutableSetOf()) { "no-$it" }
 private val LANGUAGES = setOf("front-lang", "back-lang")
 private val CARD_FIELDS = setOf("front", "back", "front-image", "back-image")

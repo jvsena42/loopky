@@ -132,6 +132,7 @@ private fun DeckView.describe(): String = buildString {
             "speak".takeIf { speakEnabled },
             "type".takeIf { typeEnabled },
             "reverse".takeIf { reverseEnabled },
+            "listen/speak on both sides".takeIf { speechBothSides && (listenEnabled || speakEnabled) },
         ).joinToString(", ").ifEmpty { "flip only" },
     )
     if (incomplete) appendLine("INCOMPLETE:  a publish did not finish; re-publish or delete it.")

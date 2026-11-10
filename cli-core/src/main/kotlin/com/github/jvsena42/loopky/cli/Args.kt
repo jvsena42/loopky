@@ -117,11 +117,11 @@ class Args private constructor(
             "resume", "export", "url-only", "force", "yes", "dry-run",
             // `update --check` asks without doing; `--no-update-check` is the global opt-out.
             "check", "no-update-check",
-            // The four deck study opt-ins, each with an explicit off form. A `--no-` switch is
+            // The five deck study opt-ins, each with an explicit off form. A `--no-` switch is
             // not decoration: every one of these defaults to off here, and a caller editing an
             // existing deck needs a way to say so rather than only a way to agree.
             "listen", "no-listen", "speak", "no-speak",
-            "type", "no-type", "reverse", "no-reverse",
+            "type", "no-type", "reverse", "no-reverse", "both-sides", "no-both-sides",
             // `card list`'s two filters. Opposites, so passing both is a usage error rather than
             // a precedence rule nobody would remember.
             "missing-image", "has-image",
