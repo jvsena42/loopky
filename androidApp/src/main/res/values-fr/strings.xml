@@ -253,6 +253,8 @@
     <string name="publish_type_subtitle">Écris la réponse au lieu de juste la lire</string>
     <string name="publish_reverse_title">Dans les deux sens</string>
     <string name="publish_reverse_subtitle">Demander aussi chaque carte du verso vers le recto</string>
+    <string name="publish_both_sides_title">Écouter et Parler des deux côtés</string>
+    <string name="publish_both_sides_subtitle">Aussi avant de retourner, sur la question. Désactivé : seulement sur la réponse</string>
     <string name="study_reversed_badge">Inversée</string>
     <string name="deck_languages_hint">Définit la voix utilisée pour lire chaque face à voix haute.</string>
     <string name="deck_front_language_label">Langue du recto</string>

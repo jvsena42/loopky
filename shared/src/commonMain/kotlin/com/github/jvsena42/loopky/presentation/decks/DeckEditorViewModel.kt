@@ -135,6 +135,7 @@ class DeckEditorViewModel(
                     // what the deck says is what the deck does.
                     typeEnabled = deck.typeEnabled,
                     reverseEnabled = deck.reverseEnabled,
+                    speechBothSides = deck.speechBothSides,
                     frontLang = deck.frontLang,
                     backLang = deck.backLang,
                 )
@@ -421,6 +422,10 @@ class DeckEditorViewModel(
     /** Nor does asking the card backwards — swapping two sides needs no declared language. */
     fun onToggleReverse() {
         _state.update { it.copy(reverseEnabled = !it.reverseEnabled) }
+    }
+
+    fun onToggleSpeechBothSides() {
+        _state.update { it.copy(speechBothSides = !it.speechBothSides) }
     }
 
     /**
@@ -725,6 +730,7 @@ private fun buildDeck(
     speakEnabled = s.speakEnabled,
     typeEnabled = s.typeEnabled,
     reverseEnabled = s.reverseEnabled,
+    speechBothSides = s.speechBothSides,
     frontLang = s.frontLang,
     backLang = s.backLang,
     mediaRehostCursor = existing?.mediaRehostCursor ?: 0,
@@ -760,6 +766,8 @@ data class DeckEditorUiState(
     /** Same again — see `Deck.reverseEnabled`. Editable here so a deck published before the
      * opt-in existed can still be given it. */
     val reverseEnabled: Boolean = false,
+    /** Listen and Speak on the prompt too; offered only while one of them is on. */
+    val speechBothSides: Boolean = false,
     /** BCP-47 tags for the two card sides; required once either speech opt-in above is on. */
     val frontLang: String? = null,
     val backLang: String? = null,

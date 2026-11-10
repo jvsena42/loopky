@@ -524,6 +524,8 @@ private fun ReviewingContent(
                             listenEnabled = state.listenEnabled,
                             isListening = state.isListening,
                             speakEnabled = state.speakEnabled,
+                            listenOnFront = state.listenEnabled && state.speechBothSides,
+                            speakOnFront = state.speakEnabled && state.speechBothSides,
                             deckId = state.deckId,
                             authorPubky = state.authorPubky,
                             onReveal = onReveal,
@@ -650,6 +652,8 @@ private fun AnimatedContentScope.FlippableCard(
     listenEnabled: Boolean,
     isListening: Boolean,
     speakEnabled: Boolean,
+    listenOnFront: Boolean,
+    speakOnFront: Boolean,
     deckId: String,
     authorPubky: String,
     onReveal: () -> Unit,
@@ -687,18 +691,18 @@ private fun AnimatedContentScope.FlippableCard(
         contentAlignment = Alignment.Center,
     ) {
         if (rotation < 90f) {
-            // Listen/Speak sit on both faces. They act on the side facing the user, so on the front
-            // they practise the prompt in the *front* language — the side a foreign word usually sits
-            // on. The prompt's picture belongs here too: an Anki front is often nothing else, and
-            // passing it only to the back left those cards asking the question with a blank card (#96).
+            // Listen/Speak sit here only on a deck that asked for both sides: on the prompt they read
+            // or grade the question before the reader has tried to recall the answer. The prompt's
+            // picture belongs here too: an Anki front is often nothing else, and passing it only to
+            // the back left those cards asking the question with a blank card (#96).
             CardFace(
                 label = null,
                 text = card.frontText,
                 textSize = 48.sp,
                 onSpeak = onSpeak,
-                showListen = interactive && listenEnabled,
+                showListen = interactive && listenOnFront,
                 listenAvailable = !isListening,
-                onSpeakTest = if (interactive && speakEnabled) onSpeakTest else null,
+                onSpeakTest = if (interactive && speakOnFront) onSpeakTest else null,
                 featureImageRef = card.frontImageRef,
                 deckId = deckId,
                 authorPubky = authorPubky,

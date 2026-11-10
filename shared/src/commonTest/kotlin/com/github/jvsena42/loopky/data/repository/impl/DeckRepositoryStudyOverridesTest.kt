@@ -46,9 +46,9 @@ class DeckRepositoryStudyOverridesTest {
     /** A second repository over the same homeserver: nothing in memory, as after a restart. */
     private fun newProcess() = deckRepository(pubky, session, cardRepo, revalidator, deckCache = deckCache)
 
-    // The fixture's author opt-ins: listen and speak on, type and reverse off.
+    // The fixture's author opt-ins: listen and speak on, type, reverse and both sides off.
     private val authored = StudyFeatures(listen = true, speak = true, type = false, reverse = false)
-    private val mine = StudyFeatures(listen = false, speak = true, type = true, reverse = false)
+    private val mine = StudyFeatures(listen = false, speak = true, type = true, reverse = false, bothSides = true)
 
     @Test
     fun onlyTheOptInsThatDifferFromTheAuthorsAreStoredOnTheSubscription() = runTest {
@@ -57,7 +57,7 @@ class DeckRepositoryStudyOverridesTest {
         repo.customizeStudy(deck.id, mine).getOrThrow()
 
         assertEquals(
-            StudyOverridesDto(listen_enabled = false, type_enabled = true),
+            StudyOverridesDto(listen_enabled = false, type_enabled = true, speech_both_sides = true),
             subscription().study,
         )
         // Not a record of its own: one would outlive the unfollow that deletes this one.
@@ -179,7 +179,7 @@ class DeckRepositoryStudyOverridesTest {
         repo.markSeen(deck.copy(updatedAt = 9_000L))
 
         assertEquals(9_000L, subscription().last_seen_updated_at)
-        assertEquals(StudyOverridesDto(listen_enabled = false, type_enabled = true), subscription().study)
+        assertEquals(StudyOverridesDto(listen_enabled = false, type_enabled = true, speech_both_sides = true), subscription().study)
     }
 
     @Test
@@ -215,7 +215,16 @@ class DeckRepositoryStudyOverridesTest {
         val stored = loopkyJson.decodeFromString<ManifestDto>(
             pubky.store.getValue("pubky://$TEST_PUBKY/pub/loopky/decks/${clone.id}/manifest.json"),
         )
-        assertEquals(mine, StudyFeatures(stored.listen_enabled, stored.speak_enabled, stored.type_enabled, stored.reverse_enabled))
+        assertEquals(
+            mine,
+            StudyFeatures(
+                stored.listen_enabled,
+                stored.speak_enabled,
+                stored.type_enabled,
+                stored.reverse_enabled,
+                stored.speech_both_sides,
+            ),
+        )
         assertNull(stored.cover_emoji)
         assertNull(stored.cover_image_ref)
         // They are the copy's own opt-ins now: there is no author left for them to differ from.
@@ -235,7 +244,7 @@ class DeckRepositoryStudyOverridesTest {
         relaunched.rememberFollowForSignIn(AUTHOR, deck.id)
         relaunched.followPendingAfterSignIn().getOrThrow()
 
-        assertEquals(StudyOverridesDto(listen_enabled = false, type_enabled = true), subscription().study)
+        assertEquals(StudyOverridesDto(listen_enabled = false, type_enabled = true, speech_both_sides = true), subscription().study)
         assertEquals(mine, assertNotNull(relaunched.getLocal(deck.id)).study)
     }
 

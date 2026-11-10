@@ -126,6 +126,10 @@ class PublishDeckViewModel(
         _state.update { it.copy(reverseEnabled = !it.reverseEnabled) }
     }
 
+    fun onToggleSpeechBothSides() {
+        _state.update { it.copy(speechBothSides = !it.speechBothSides) }
+    }
+
     /**
      * Picking a language also labels the deck with it — `"spanish"`, an ordinary tag the author
      * can still remove — so a stranger learning that language can find the deck. The label the
@@ -303,6 +307,7 @@ class PublishDeckViewModel(
         speakEnabled = speakEnabled,
         typeEnabled = typeEnabled,
         reverseEnabled = reverseEnabled,
+        speechBothSides = speechBothSides,
         frontLang = frontLang,
         backLang = backLang,
     )
@@ -671,6 +676,8 @@ data class PublishDeckUiState(
      * toggle is right there to turn off.
      */
     val reverseEnabled: Boolean = false,
+    /** Listen and Speak on the prompt too; offered only while one of them is on. */
+    val speechBothSides: Boolean = false,
     /** BCP-47 tags for the two card sides; required once either speech opt-in above is on. */
     val frontLang: String? = null,
     val backLang: String? = null,

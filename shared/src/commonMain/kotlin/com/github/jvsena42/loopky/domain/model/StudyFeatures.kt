@@ -1,22 +1,25 @@
 package com.github.jvsena42.loopky.domain.model
 
-/** A deck's four study opt-ins, as one value. */
+/** A deck's five study opt-ins, as one value. */
 data class StudyFeatures(
     val listen: Boolean,
     val speak: Boolean,
     val type: Boolean,
     val reverse: Boolean,
+    /** Listen and Speak on the prompt face too — see `Deck.speechBothSides`. */
+    val bothSides: Boolean = false,
 ) {
     fun with(feature: StudyFeature, enabled: Boolean): StudyFeatures = when (feature) {
         StudyFeature.Listen -> copy(listen = enabled)
         StudyFeature.Speak -> copy(speak = enabled)
         StudyFeature.Typing -> copy(type = enabled)
         StudyFeature.Reverse -> copy(reverse = enabled)
+        StudyFeature.BothSides -> copy(bothSides = enabled)
     }
 }
 
 /** PascalCase, and `Typing` rather than `Type`: the entries cross to Swift lowercased. */
-enum class StudyFeature { Listen, Speak, Typing, Reverse }
+enum class StudyFeature { Listen, Speak, Typing, Reverse, BothSides }
 
 /**
  * What a reader changed about how they study a deck they follow. Null means "as the author set
@@ -27,14 +30,17 @@ data class StudyOverrides(
     val speak: Boolean? = null,
     val type: Boolean? = null,
     val reverse: Boolean? = null,
+    val bothSides: Boolean? = null,
 ) {
-    val isEmpty: Boolean get() = listen == null && speak == null && type == null && reverse == null
+    val isEmpty: Boolean
+        get() = listen == null && speak == null && type == null && reverse == null && bothSides == null
 
     fun over(author: StudyFeatures): StudyFeatures = StudyFeatures(
         listen = listen ?: author.listen,
         speak = speak ?: author.speak,
         type = type ?: author.type,
         reverse = reverse ?: author.reverse,
+        bothSides = bothSides ?: author.bothSides,
     )
 
     companion object {
@@ -47,12 +53,13 @@ data class StudyOverrides(
             speak = chosen.speak.takeIf { it != author.speak },
             type = chosen.type.takeIf { it != author.type },
             reverse = chosen.reverse.takeIf { it != author.reverse },
+            bothSides = chosen.bothSides.takeIf { it != author.bothSides },
         )
     }
 }
 
 val Deck.study: StudyFeatures
-    get() = StudyFeatures(listenEnabled, speakEnabled, typeEnabled, reverseEnabled)
+    get() = StudyFeatures(listenEnabled, speakEnabled, typeEnabled, reverseEnabled, speechBothSides)
 
 /** The author's own opt-ins, whether or not the reader's are laid over them. */
 val Deck.authoredStudy: StudyFeatures get() = authorStudy ?: study
@@ -72,4 +79,5 @@ private fun Deck.withStudy(features: StudyFeatures): Deck = copy(
     speakEnabled = features.speak,
     typeEnabled = features.type,
     reverseEnabled = features.reverse,
+    speechBothSides = features.bothSides,
 )

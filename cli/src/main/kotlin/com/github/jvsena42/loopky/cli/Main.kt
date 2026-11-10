@@ -470,7 +470,8 @@ internal val USAGE = """
       deck create --title T [--description D] [--tag T]... [--cover-url URL] [--cover-emoji E]
                   [--from-file F] [--check-images] [--dry-run] [--expect-hash HASH]
                   [--id DECKID] [--if-not-exists]
-                  [--listen] [--speak] [--type] [--reverse] [--front-lang BCP47] [--back-lang BCP47]
+                  [--listen] [--speak] [--type] [--reverse] [--both-sides]
+                  [--front-lang BCP47] [--back-lang BCP47]
                                 --id with --if-not-exists is the idempotent form: an existing deck
                                 is returned untouched (created: false). Without --if-not-exists an
                                 existing id is refused. A language pair also tags the deck
@@ -482,7 +483,8 @@ internal val USAGE = """
       deck edit <deckId> [--title T] [--description D] [--cover-url URL] [--cover-emoji E]
                   [--tag T]... [--clear-tags] [--clear-cover]
                   [--listen|--no-listen] [--speak|--no-speak] [--type|--no-type]
-                  [--reverse|--no-reverse] [--front-lang BCP47] [--back-lang BCP47]
+                  [--reverse|--no-reverse] [--both-sides|--no-both-sides]
+                  [--front-lang BCP47] [--back-lang BCP47]
                                 Metadata only; cards are untouched. An omitted flag leaves its field
                                 alone, `--description=` clears it, --tag replaces the whole set.
       deck delete <deckId> [--confirm-title T]

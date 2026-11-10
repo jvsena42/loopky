@@ -47,6 +47,7 @@ struct PublishDeckScreen: View {
                 speakEnabled: uiState?.speakEnabled ?? false,
                 typeEnabled: uiState?.typeEnabled ?? false,
                 reverseEnabled: uiState?.reverseEnabled ?? false,
+                speechBothSides: uiState?.speechBothSides ?? false,
                 frontLang: uiState?.frontLang,
                 backLang: uiState?.backLang,
                 languagesRequired: uiState?.speechLanguagesMissing ?? false,
@@ -54,6 +55,7 @@ struct PublishDeckScreen: View {
                 onToggleSpeak: { viewModel?.onToggleSpeak() },
                 onToggleType: { viewModel?.onToggleType() },
                 onToggleReverse: { viewModel?.onToggleReverse() },
+                onToggleSpeechBothSides: { viewModel?.onToggleSpeechBothSides() },
                 onFrontLangSelected: { viewModel?.onFrontLangSelected(tag: $0) },
                 onBackLangSelected: { viewModel?.onBackLangSelected(tag: $0) }
             ),

@@ -41,10 +41,15 @@ internal data class StudyOverridesDto(
     val speak_enabled: Boolean? = null,
     val type_enabled: Boolean? = null,
     val reverse_enabled: Boolean? = null,
+    val speech_both_sides: Boolean? = null,
 )
 
 internal fun StudyOverrides.toDto(): StudyOverridesDto? =
-    if (isEmpty) null else StudyOverridesDto(listen, speak, type, reverse)
+    if (isEmpty) null else StudyOverridesDto(listen, speak, type, reverse, bothSides)
 
 internal fun StudyOverridesDto?.toDomain(): StudyOverrides =
-    if (this == null) StudyOverrides() else StudyOverrides(listen_enabled, speak_enabled, type_enabled, reverse_enabled)
+    if (this == null) {
+        StudyOverrides()
+    } else {
+        StudyOverrides(listen_enabled, speak_enabled, type_enabled, reverse_enabled, speech_both_sides)
+    }

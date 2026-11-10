@@ -62,10 +62,10 @@ struct StudyCardView: View {
                 if state.revealed { backFace } else { frontFace }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Listen practises the side that is showing, so it belongs on both faces — but never
-            // on a masked answer: reading it aloud, or asking it to be pronounced, would hand over
-            // the thing the card is withholding.
-            if !(state.revealed && state.answerHidden) { practiceRow }
+            // Which face carries the row is decided in the shared ViewModel (`showsListen`/
+            // `showsSpeak`): the prompt only on a deck that asked for both sides, and never a
+            // masked answer.
+            practiceRow
         }
     }
 

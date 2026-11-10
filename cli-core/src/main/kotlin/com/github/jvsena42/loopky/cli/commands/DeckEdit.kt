@@ -152,6 +152,7 @@ private fun Deck.applying(args: Args, onNote: (String) -> Unit): Deck {
         speakEnabled = args.flag("speak", default = speakEnabled),
         typeEnabled = args.flag("type", default = typeEnabled),
         reverseEnabled = args.flag("reverse", default = reverseEnabled),
+        speechBothSides = args.flag("both-sides", default = speechBothSides),
         frontLang = frontLang,
         backLang = backLang,
     )
@@ -232,6 +233,7 @@ private fun Deck.changedFieldsFrom(before: Deck): List<String> = listOfNotNull(
     "speak_enabled".takeIf { speakEnabled != before.speakEnabled },
     "type_enabled".takeIf { typeEnabled != before.typeEnabled },
     "reverse_enabled".takeIf { reverseEnabled != before.reverseEnabled },
+    "speech_both_sides".takeIf { speechBothSides != before.speechBothSides },
 )
 
 /**
@@ -248,4 +250,5 @@ private val EDIT_FLAGS = listOf(
     "title", "description", "cover-url", "cover-emoji", "tag", "clear-tags", "clear-cover",
     "front-lang", "back-lang",
     "listen", "no-listen", "speak", "no-speak", "type", "no-type", "reverse", "no-reverse",
+    "both-sides", "no-both-sides",
 )

@@ -22,6 +22,7 @@ class DeckDtosTest {
         speakEnabled: Boolean = true,
         typeEnabled: Boolean = false,
         reverseEnabled: Boolean = false,
+        speechBothSides: Boolean = false,
         frontLang: String? = null,
         backLang: String? = null,
         cover: MediaRef.Image? = null,
@@ -41,6 +42,7 @@ class DeckDtosTest {
         speakEnabled = speakEnabled,
         typeEnabled = typeEnabled,
         reverseEnabled = reverseEnabled,
+        speechBothSides = speechBothSides,
         frontLang = frontLang,
         backLang = backLang,
     )
@@ -161,6 +163,24 @@ class DeckDtosTest {
         """.trimIndent()
         val back = loopkyJson.decodeFromString<ManifestDto>(legacy).toDomain()
         assertFalse(back.reverseEnabled)
+    }
+
+    @Test
+    fun manifestRoundTripPreservesSpeechBothSides() {
+        val json = loopkyJson.encodeToString(deck(speechBothSides = true).toDto())
+        assertTrue(json.contains("\"speech_both_sides\":true"), "speech_both_sides missing from $json")
+        assertTrue(loopkyJson.decodeFromString<ManifestDto>(json).toDomain().speechBothSides)
+    }
+
+    @Test
+    fun legacyManifestWithoutSpeechBothSidesKeepsListenAndSpeakToTheAnswer() {
+        val legacy = """
+            {"schema_version":1,"deck_id":"d","author_pubky":"pk","title":"T",
+             "created_at":1,"updated_at":2,"listen_enabled":true,"speak_enabled":true}
+        """.trimIndent()
+        val back = loopkyJson.decodeFromString<ManifestDto>(legacy).toDomain()
+        assertTrue(back.listenEnabled)
+        assertFalse(back.speechBothSides)
     }
 
     @Test

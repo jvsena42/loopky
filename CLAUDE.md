@@ -553,6 +553,10 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   (`"spanish"` for `es-ES`, plus the `"language"` umbrella — `LanguageTags`, base subtag, swapped
   when the pair changes), because a reserved label cannot trend or be browsed — Architecture.md
   §7.7 point 4.
+  Where the two buttons sit is a fifth opt-in, `speechBothSides` (#595): off, which is also what
+  every manifest without the field reads as, they appear only after the flip on a legible answer.
+  The gate is in `StudySessionViewModel` (`speechOnFacingSide`), and it reads the VM's own
+  `revealed`, not the state, which a reveal rebuilds a coroutine later.
 - **A listen that produces no answer is reported in the sheet, never dismissed.** Closing the Speak
   sheet on a recognition error is indistinguishable from the app having missed the tap, and the
   common Android errors are ordinary: nothing matched, the engine busy on a fast retry, no model

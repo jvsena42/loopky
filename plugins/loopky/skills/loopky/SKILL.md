@@ -242,6 +242,8 @@ Branch on the exit code (or `error.code` in the JSON) before reading the message
   find it. Without the pair the phone would read Spanish in an English voice, so `loopky` refuses
   either switch until both languages are given (exit 2).
   `--type` (typed answers) and `--reverse` (ask both directions) need no pair.
+  Listen and Speak appear only after the card is flipped, on the answer; `--both-sides` puts them
+  on the question too. Leave it off unless the user asks to hear or say the prompt.
 - **Pictures are `https` URLs, never uploads.** SVG, TIFF, WebM and STL do not render on either
   phone, whatever the host: use a JPEG, PNG or WebP. Add `--check-images` to the dry-run when the
   URLs came from anywhere you have not fetched. Which source to take them from is the next section.

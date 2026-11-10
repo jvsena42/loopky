@@ -151,6 +151,7 @@ private val STUDY_OPT_INS = listOf(
     CliOption("speak", "grade a spoken answer - needs a declared language pair", OptionValue.Switch),
     CliOption("type", "type the answer instead of revealing it", OptionValue.Switch),
     CliOption("reverse", "ask each card in both directions", OptionValue.Switch),
+    CliOption("both-sides", "offer listen and speak before the flip too, not only on the answer", OptionValue.Switch),
 )
 
 private val STUDY_OPT_OUTS = STUDY_OPT_INS.map {

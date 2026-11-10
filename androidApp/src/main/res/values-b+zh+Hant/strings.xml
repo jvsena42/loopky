@@ -257,6 +257,8 @@
     <string name="publish_type_subtitle">寫出答案，而不只是看答案</string>
     <string name="publish_reverse_title">雙向</string>
     <string name="publish_reverse_subtitle">每張卡片也會反過來，從背面問到正面</string>
+    <string name="publish_both_sides_title">兩面都可聆聽和口說</string>
+    <string name="publish_both_sides_subtitle">翻面前的問題面也顯示。關閉時只在答案面顯示</string>
     <string name="study_reversed_badge">反向</string>
     <string name="deck_languages_hint">設定朗讀每一面時使用的語音。</string>
     <string name="deck_front_language_label">正面語言</string>

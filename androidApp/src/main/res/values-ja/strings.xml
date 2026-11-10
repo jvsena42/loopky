@@ -254,6 +254,8 @@
     <string name="publish_type_subtitle">答えを読むだけでなく、書いて答える</string>
     <string name="publish_reverse_title">両方向</string>
     <string name="publish_reverse_subtitle">各カードを裏面から表面の向きでも出題</string>
+    <string name="publish_both_sides_title">両面で聞く・話す</string>
+    <string name="publish_both_sides_subtitle">めくる前の問題面にも表示。オフのときは答えの面だけ</string>
     <string name="study_reversed_badge">逆向き</string>
     <string name="deck_languages_hint">各面の読み上げに使う音声を設定します。</string>
     <string name="deck_front_language_label">表面の言語</string>

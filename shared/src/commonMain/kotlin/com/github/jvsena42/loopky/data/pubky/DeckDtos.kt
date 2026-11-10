@@ -58,6 +58,11 @@ internal data class ManifestDto(
      */
     val reverse_enabled: Boolean = false,
     /**
+     * Listen and Speak on the prompt face as well as the answer. Absent reads as off, so a deck
+     * published before the field shows them after the flip only — see `Deck.speechBothSides`.
+     */
+    val speech_both_sides: Boolean = false,
+    /**
      * BCP-47 tag for the language of the card front / back, e.g. `"en-US"`, `"es-ES"`. Absent on
      * manifests written before the pair existed, which is why listen/speak go inert without them
      * rather than falling back to the reader's device locale — see `Deck.speechReady`.
@@ -156,6 +161,7 @@ internal fun Deck.toDto() = ManifestDto(
     speak_enabled = speakEnabled,
     type_enabled = typeEnabled,
     reverse_enabled = reverseEnabled,
+    speech_both_sides = speechBothSides,
     front_lang = frontLang,
     back_lang = backLang,
     media_rehost_cursor = mediaRehostCursor,
@@ -181,6 +187,7 @@ internal fun ManifestDto.toDomain() = Deck(
     speakEnabled = speak_enabled,
     typeEnabled = type_enabled,
     reverseEnabled = reverse_enabled,
+    speechBothSides = speech_both_sides,
     frontLang = front_lang,
     backLang = back_lang,
     mediaRehostCursor = media_rehost_cursor,
