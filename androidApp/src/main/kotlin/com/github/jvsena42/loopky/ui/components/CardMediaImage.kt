@@ -3,8 +3,10 @@ package com.github.jvsena42.loopky.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -32,6 +34,8 @@ fun CardMediaImage(
      * slot — a deck cover's emoji, say — pass false so the two don't stack on top of each other.
      */
     showLoadingIndicator: Boolean = true,
+    /** Called once the picture is known not to load, so a caller can give its space back. */
+    onFailed: () -> Unit = {},
 ) {
     if (image.isRemote) {
         AsyncImage(
@@ -39,15 +43,23 @@ fun CardMediaImage(
             contentDescription = null,
             modifier = modifier,
             contentScale = contentScale,
+            onError = { onFailed() },
         )
         return
     }
 
     val mediaRepository = koinInject<MediaRepository>()
-    val bytes by produceState<ByteArray?>(initialValue = null, image.sha256, deckId, authorPubky) {
-        value = mediaRepository.get(authorPubky, deckId, image).getOrNull()
+    val bytes by produceState<Result<ByteArray>?>(initialValue = null, image.sha256, deckId, authorPubky) {
+        value = mediaRepository.get(authorPubky, deckId, image)
     }
-    val data = bytes
+    val result = bytes
+    if (result?.isFailure == true) {
+        val currentOnFailed by rememberUpdatedState(onFailed)
+        LaunchedEffect(result) { currentOnFailed() }
+        Box(modifier)
+        return
+    }
+    val data = result?.getOrNull()
     if (data == null) {
         if (showLoadingIndicator) {
             Box(modifier, contentAlignment = Alignment.Center) {
@@ -60,6 +72,7 @@ fun CardMediaImage(
             contentDescription = null,
             modifier = modifier,
             contentScale = contentScale,
+            onError = { onFailed() },
         )
     }
 }
