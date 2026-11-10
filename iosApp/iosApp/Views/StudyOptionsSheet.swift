@@ -78,6 +78,13 @@ struct StudyOptionsSheet: View {
                 isOn: chosen.speak && options.speechReady, enabled: options.speechReady) {
                 onChange(.speak, !chosen.speak)
             }
+            if options.speechReady && (chosen.listen || chosen.speak) {
+                divider
+                row("publish_both_sides_title", "publish_both_sides_subtitle", "both_sides",
+                    isOn: chosen.bothSides) {
+                    onChange(.bothsides, !chosen.bothSides)
+                }
+            }
             divider
             row("publish_type_title", "publish_type_subtitle", "type", isOn: chosen.type) {
                 onChange(.typing, !chosen.type)

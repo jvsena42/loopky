@@ -1,7 +1,7 @@
 import SwiftUI
 import Shared
 
-/// The deck's four study opt-ins, plus the language pair Listen and Speak need.
+/// The deck's study opt-ins, plus the language pair Listen and Speak need.
 ///
 /// Shared by the publish flow and the deck editor, mirroring Android's
 /// `ui/components/DeckStudyOptions.kt`, so the two screens cannot drift into offering different
@@ -17,6 +17,7 @@ struct DeckStudyOptions: View {
     var speakEnabled: Bool
     var typeEnabled: Bool
     var reverseEnabled: Bool
+    var speechBothSides: Bool = false
     var frontLang: String?
     var backLang: String?
     /// Set when an audio opt-in is on and the pair is still missing.
@@ -26,6 +27,7 @@ struct DeckStudyOptions: View {
     var onToggleSpeak: () -> Void = {}
     var onToggleType: () -> Void = {}
     var onToggleReverse: () -> Void = {}
+    var onToggleSpeechBothSides: () -> Void = {}
     var onFrontLangSelected: (String) -> Void = { _ in }
     var onBackLangSelected: (String) -> Void = { _ in }
 
@@ -53,6 +55,12 @@ struct DeckStudyOptions: View {
                 divider
                 optionRow("publish_reverse_title", "publish_reverse_subtitle",
                           isOn: reverseEnabled, action: onToggleReverse)
+                if showsLanguages {
+                    divider
+                    optionRow("publish_both_sides_title", "publish_both_sides_subtitle",
+                              isOn: speechBothSides, action: onToggleSpeechBothSides)
+                        .accessibilityIdentifier("publish_both_sides_toggle")
+                }
             }
             .padding(.vertical, 4)
             .background(RoundedRectangle(cornerRadius: 16).fill(LoopkyColor.surfaceCard))

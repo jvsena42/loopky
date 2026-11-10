@@ -35648,6 +35648,148 @@
         }
       }
     },
+    "publish_both_sides_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anhören und Sprechen auf beiden Seiten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listen and Speak on both sides"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchar y Hablar en ambas caras"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écouter et Parler des deux côtés"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ascolta e Parla su entrambi i lati"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "両面で聞く・話す"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "양면에서 듣기·말하기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvir e Falar dos dois lados"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nghe và Nói ở cả hai mặt"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两面都可朗读和跟读"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "兩面都可聆聽和口說"
+          }
+        }
+      }
+    },
+    "publish_both_sides_subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auch vor dem Umdrehen, auf der Frage. Aus: erst bei der Antwort"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also before the flip, on the question. Off, they wait for the answer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "También antes de girar, en la pregunta. Desactivado, solo en la respuesta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aussi avant de retourner, sur la question. Désactivé : seulement sur la réponse"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anche prima di girare, sulla domanda. Disattivato: solo sulla risposta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "めくる前の問題面にも表示。オフのときは答えの面だけ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "뒤집기 전 질문 면에도 표시해요. 끄면 답 면에만 나와요"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Também antes de virar, na pergunta. Desligado, só aparecem na resposta"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cả trước khi lật, ở mặt câu hỏi. Khi tắt, chỉ hiện ở mặt đáp án"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻面前的问题面也显示。关闭时只在答案面显示"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻面前的問題面也顯示。關閉時只在答案面顯示"
+          }
+        }
+      }
+    },
     "publish_reverse_title": {
       "extractionState": "manual",
       "localizations": {

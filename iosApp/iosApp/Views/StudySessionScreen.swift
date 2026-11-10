@@ -112,9 +112,9 @@ struct StudySessionScreen: View {
             answerHidden: card.answerHidden,
             gradesAvailable: card.gradesAvailable,
             intervals: Self.intervals(card.intervals),
-            listenEnabled: card.listenEnabled,
+            listenEnabled: card.showsListen,
             isListening: card.isListening,
-            speakEnabled: card.speakEnabled,
+            speakEnabled: card.showsSpeak,
             speakPhase: card.speakPhase,
             typePhase: Self.typePhase(card.typePhase),
             typeMissMessage: Self.missMessage(card.typePhase),
@@ -313,6 +313,7 @@ struct StudyViewState {
     var answerHidden: Bool = false
     var gradesAvailable: Bool = false
     var intervals: [StudyGrade: String] = [:]
+    /// Already narrowed to the face showing — `Reviewing.showsListen`, as `speakEnabled` is `showsSpeak`.
     var listenEnabled: Bool = false
     /// Listen is reading aloud; its button is disabled until the speech ends.
     var isListening: Bool = false
