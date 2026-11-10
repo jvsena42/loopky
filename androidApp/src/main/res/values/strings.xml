@@ -463,6 +463,8 @@
     <string name="settings_interval_easy_label">Easy interval (days)</string>
     <string name="settings_interval_description">How long until the card comes back.</string>
     <string name="settings_interval_mastery_note">Your longest interval is when a card counts as mastered.</string>
+    <string name="settings_listen_speed_label">Listen speed</string>
+    <string name="settings_listen_speed_description">How fast Listen reads each card. Tap Listen again to slow it down further.</string>
     <string name="settings_study_unavailable">Couldn\'t load your study settings. Editing is off until they arrive, so nothing is overwritten.</string>
     <string name="settings_study_save_failed">Couldn\'t save your study settings.</string>
     <string name="settings_section_image_search">IMAGE SEARCH</string>

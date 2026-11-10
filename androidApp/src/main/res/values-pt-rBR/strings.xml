@@ -439,6 +439,8 @@
     <string name="settings_interval_easy_label">Intervalo de Fácil (dias)</string>
     <string name="settings_interval_description">Quanto tempo até a carta voltar.</string>
     <string name="settings_interval_mastery_note">Seu maior intervalo é quando uma carta conta como dominada.</string>
+    <string name="settings_listen_speed_label">Velocidade da leitura</string>
+    <string name="settings_listen_speed_description">A velocidade com que Ouvir lê cada carta. Toque em Ouvir de novo para deixar ainda mais lento.</string>
     <string name="settings_study_unavailable">Não foi possível carregar suas configurações de estudo. A edição fica desligada até que cheguem, para que nada seja sobrescrito.</string>
     <string name="settings_study_save_failed">Não foi possível salvar suas configurações de estudo.</string>
     <string name="settings_section_image_search">BUSCA DE IMAGENS</string>

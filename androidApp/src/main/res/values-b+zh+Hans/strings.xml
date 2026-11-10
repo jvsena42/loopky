@@ -448,6 +448,8 @@
     <string name="settings_interval_easy_label">简单间隔（天）</string>
     <string name="settings_interval_description">卡片多久后再次出现。</string>
     <string name="settings_interval_mastery_note">达到你设置的最长间隔时，卡片即算作已掌握。</string>
+    <string name="settings_listen_speed_label">朗读速度</string>
+    <string name="settings_listen_speed_description">“朗读”读出每张卡片的速度。再次轻点“朗读”可以进一步放慢。</string>
     <string name="settings_study_unavailable">无法加载你的学习设置。在加载完成前暂不能编辑，以免覆盖任何内容。</string>
     <string name="settings_study_save_failed">无法保存你的学习设置。</string>
     <string name="settings_section_image_search">图片搜索</string>

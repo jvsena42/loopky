@@ -439,6 +439,8 @@
     <string name="settings_interval_easy_label">Intervall für Einfach (Tage)</string>
     <string name="settings_interval_description">Wie lange es dauert, bis die Karte wiederkommt.</string>
     <string name="settings_interval_mastery_note">Ab deinem längsten Intervall gilt eine Karte als gemeistert.</string>
+    <string name="settings_listen_speed_label">Vorlesetempo</string>
+    <string name="settings_listen_speed_description">Wie schnell „Anhören“ jede Karte vorliest. Tippe erneut auf „Anhören“, um es weiter zu verlangsamen.</string>
     <string name="settings_study_unavailable">Deine Lerneinstellungen konnten nicht geladen werden. Bearbeiten ist aus, bis sie da sind, damit nichts überschrieben wird.</string>
     <string name="settings_study_save_failed">Deine Lerneinstellungen konnten nicht gespeichert werden.</string>
     <string name="settings_section_image_search">BILDSUCHE</string>

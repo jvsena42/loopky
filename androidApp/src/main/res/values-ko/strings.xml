@@ -449,6 +449,8 @@
     <string name="settings_interval_easy_label">쉬움 간격 (일)</string>
     <string name="settings_interval_description">카드가 다시 나올 때까지의 기간이에요.</string>
     <string name="settings_interval_mastery_note">가장 긴 간격에 도달하면 카드를 숙달한 것으로 쳐요.</string>
+    <string name="settings_listen_speed_label">읽기 속도</string>
+    <string name="settings_listen_speed_description">듣기로 카드를 읽어 주는 속도예요. 듣기를 다시 탭하면 더 느려져요.</string>
     <string name="settings_study_unavailable">학습 설정을 불러오지 못했어요. 불러올 때까지 편집이 꺼져 있어 아무것도 덮어쓰지 않아요.</string>
     <string name="settings_study_save_failed">학습 설정을 저장하지 못했어요.</string>
     <string name="settings_section_image_search">이미지 검색</string>

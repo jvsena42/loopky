@@ -462,6 +462,8 @@
     <string name="settings_interval_easy_label">Khoảng cách Dễ (ngày)</string>
     <string name="settings_interval_description">Bao lâu thì thẻ quay lại.</string>
     <string name="settings_interval_mastery_note">Khi thẻ đạt khoảng cách dài nhất của bạn, thẻ được tính là đã thành thạo.</string>
+    <string name="settings_listen_speed_label">Tốc độ đọc</string>
+    <string name="settings_listen_speed_description">Tốc độ Nghe đọc mỗi thẻ. Nhấn Nghe lần nữa để đọc chậm hơn nữa.</string>
     <string name="settings_study_unavailable">Không tải được cài đặt học tập. Tạm thời không thể chỉnh sửa cho đến khi tải xong, để không ghi đè dữ liệu.</string>
     <string name="settings_study_save_failed">Không lưu được cài đặt học tập.</string>
     <string name="settings_section_image_search">TÌM HÌNH ẢNH</string>
