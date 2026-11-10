@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.data.storage
 
 import com.github.jvsena42.loopky.domain.model.AppTheme
+import com.github.jvsena42.loopky.domain.model.ListenSpeed
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -145,8 +146,7 @@ interface AppPreferences {
     suspend fun setUpdatePromptDay(day: Int)
 
     /**
-     * The speed Listen starts every card at, as a [com.github.jvsena42.loopky.domain.model.ListenSpeed]
-     * multiplier. Device-local: it is a reading-comfort choice, not a scheduling one, so it has no
+     * The speed Listen starts every card at, as a [ListenSpeed] multiplier. Device-local: it is a reading-comfort choice, not a scheduling one, so it has no
      * business in the synced study settings.
      *
      * Emits the current value immediately and again on every change.
