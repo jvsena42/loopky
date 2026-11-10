@@ -148,6 +148,7 @@ fun SettingsRoute(
         onBlockedUsersClick = onOpenBlockedUsers,
         onThemeModeChange = viewModel::onThemeModeChange,
         onNewCardsGoalChange = viewModel::onNewCardsGoalChange,
+        onListenSpeedChange = viewModel::onListenSpeedChange,
         onIntervalChange = viewModel::onIntervalChange,
         onSaveUnsplashKey = viewModel::onSaveUnsplashKey,
         onRemoveUnsplashKey = viewModel::onRemoveUnsplashKey,
@@ -179,6 +180,7 @@ private fun SettingsScreen(
     onBlockedUsersClick: () -> Unit,
     onThemeModeChange: (AppTheme) -> Unit,
     onNewCardsGoalChange: (Int) -> Unit,
+    onListenSpeedChange: (Float) -> Unit,
     onIntervalChange: (SrsGrade, Int) -> Unit,
     onSaveUnsplashKey: (String) -> Unit,
     onRemoveUnsplashKey: () -> Unit,
@@ -394,6 +396,7 @@ private fun SettingsScreen(
                     onGoalChange = onNewCardsGoalChange,
                     onIntervalChange = onIntervalChange,
                 )
+                ListenSpeedSection(speed = state.listenSpeed, onSpeedChange = onListenSpeedChange)
 
                 // --- Image search section ---
                 SettingsSectionLabel(text = stringResource(R.string.settings_section_image_search))
@@ -997,6 +1000,7 @@ private fun SettingsScreenPreview() {
             onBlockedUsersClick = {},
             onThemeModeChange = {},
             onNewCardsGoalChange = {},
+            onListenSpeedChange = {},
             onIntervalChange = { _, _ -> },
             onSaveUnsplashKey = {},
             onRemoveUnsplashKey = {},

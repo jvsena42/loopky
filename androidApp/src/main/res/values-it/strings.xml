@@ -439,6 +439,8 @@
     <string name="settings_interval_easy_label">Intervallo Facile (giorni)</string>
     <string name="settings_interval_description">Quanto tempo passa prima che la carta ritorni.</string>
     <string name="settings_interval_mastery_note">Quando una carta raggiunge il tuo intervallo più lungo, conta come imparata.</string>
+    <string name="settings_listen_speed_label">Velocità di lettura</string>
+    <string name="settings_listen_speed_description">Quanto velocemente Ascolta legge ogni carta. Tocca di nuovo Ascolta per rallentare ancora.</string>
     <string name="settings_study_unavailable">Impossibile caricare le impostazioni di studio. La modifica resta disattivata finché non arrivano, così non viene sovrascritto nulla.</string>
     <string name="settings_study_save_failed">Impossibile salvare le impostazioni di studio.</string>
     <string name="settings_section_image_search">RICERCA IMMAGINI</string>

@@ -11,25 +11,34 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.jvsena42.loopky.R
+import com.github.jvsena42.loopky.domain.model.ListenSpeed
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.StudySettings
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
+import java.text.NumberFormat
 
 private const val MAX_DIGITS = 3
 
@@ -107,6 +116,84 @@ internal fun StudySettingsSection(
             enabled = enabled,
             testTag = "settings_interval_easy",
             onValueChange = { onIntervalChange(SrsGrade.Easy, it) },
+        )
+    }
+}
+
+/**
+ * The speed Listen starts each card at. A card of its own rather than a row in
+ * [StudySettingsSection]: that card waits on the synced study record, and this is a device
+ * preference with nothing to wait for.
+ *
+ * The slider holds its own position while dragged and commits on release, so a drag across the
+ * range is one write rather than ten.
+ */
+@Composable
+internal fun ListenSpeedSection(
+    speed: Float,
+    onSpeedChange: (Float) -> Unit,
+) {
+    val colors = LoopkyTheme.colors
+    var draft by remember(speed) { mutableFloatStateOf(speed) }
+    val locale = LocalConfiguration.current.locales[0]
+    val format = remember(locale) { NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 } }
+    val label = stringResource(R.string.settings_listen_speed_label)
+    val speedText = "${format.format(ListenSpeed.sanitized(draft))}×"
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(colors.surfaceSecondary),
+    ) {
+        ListItem(
+            headlineContent = {
+                Text(
+                    text = label,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.foregroundPrimary,
+                )
+            },
+            supportingContent = {
+                Text(
+                    text = stringResource(R.string.settings_listen_speed_description),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = colors.foregroundMuted,
+                )
+            },
+            trailingContent = {
+                Text(
+                    text = speedText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.foregroundPrimary,
+                )
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        )
+        Slider(
+            value = draft,
+            onValueChange = { draft = it },
+            onValueChangeFinished = { onSpeedChange(ListenSpeed.sanitized(draft)) },
+            valueRange = ListenSpeed.MIN..ListenSpeed.MAX,
+            steps = ListenSpeed.SLIDER_STEPS,
+            colors = SliderDefaults.colors(
+                thumbColor = colors.accentPrimary,
+                activeTrackColor = colors.accentPrimary,
+                activeTickColor = colors.foregroundOnAccent,
+                inactiveTrackColor = colors.accentPrimarySoft,
+                inactiveTickColor = colors.accentPrimary,
+            ),
+            modifier = Modifier
+                .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                // Without these TalkBack reads the slider as a nameless percentage of its range.
+                .semantics {
+                    contentDescription = label
+                    stateDescription = speedText
+                }
+                .testTag("settings_listen_speed"),
         )
     }
 }

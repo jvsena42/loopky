@@ -410,6 +410,36 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun listenStartsEveryCardAtTheChosenSpeedAndRepeatsStepDownToTheFloor() = runTest {
+        preferences.setListenSpeed(0.75f)
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+
+        repeat(3) {
+            vm.onSpeak()
+            vm.onListenFinished()
+        }
+        advanceUntilIdle()
+        assertEquals(
+            listOf(0.75f, 0.5f, 0.5f),
+            effects.excludingHaptics().map { assertIs<StudySessionEffect.Speak>(it).rate },
+        )
+
+        vm.onReveal()
+        vm.onGrade(SrsGrade.Good)
+        advanceUntilIdle()
+        vm.onSpeak()
+        advanceUntilIdle()
+        assertEquals(StudySessionEffect.Speak("gracias", "es-ES", 0.75f), effects.excludingHaptics().last())
+
+        job.cancel()
+    }
+
+    @Test
     fun listenIgnoresTapsUntilTheSpeechEnds() = runTest {
         seedSpeechDeck()
         val vm = viewModel()

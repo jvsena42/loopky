@@ -32,6 +32,7 @@ struct SettingsScreen: View {
             onShareOnPubkyChanged: { viewModel?.onShareOnPubkyChange(enabled: $0) },
             onThemeChanged: { viewModel?.onThemeModeChange(theme: $0) },
             onGoalChanged: { viewModel?.onNewCardsGoalChange(goal: Int32($0)) },
+            onListenSpeedChanged: { viewModel?.onListenSpeedChange(rate: $0) },
             onIntervalChanged: { grade, days in
                 viewModel?.onIntervalChange(grade: grade.shared, days: Int32(days))
             },
@@ -74,6 +75,7 @@ struct SettingsScreen: View {
             appVersion: appVersion,
             shareOnPubky: state.shareOnPubky,
             theme: state.themeMode,
+            listenSpeed: state.listenSpeed,
             newCardsGoal: Int(state.studySettings.newCardsPerDayGoal),
             hardDays: Int(state.studySettings.hardDays),
             goodDays: Int(state.studySettings.goodDays),
@@ -190,6 +192,7 @@ struct SettingsViewState {
     var appVersion: String = ""
     var shareOnPubky: Bool = true
     var theme: AppTheme = AppTheme.system
+    var listenSpeed: Float = 1
     var newCardsGoal: Int = 0
     var hardDays: Int = 1
     var goodDays: Int = 3

@@ -5,6 +5,7 @@ import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.DailyStudyProgress
 import com.github.jvsena42.loopky.domain.model.KeyCustody
+import com.github.jvsena42.loopky.domain.model.ListenSpeed
 import com.github.jvsena42.loopky.domain.model.Session
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -142,6 +143,17 @@ internal class FileAppPreferences(private val store: JsonFileStore) : AppPrefere
     override suspend fun setUpdatePromptDay(day: Int) {
         withContext(Dispatchers.IO) { store.set(KEY_UPDATE_PROMPT_DAY, day.toString()) }
         _updatePromptDay.update { day }
+    }
+
+    private val _listenSpeed = MutableStateFlow(
+        store.string(KEY_LISTEN_SPEED)?.toFloatOrNull()?.let(ListenSpeed::sanitized) ?: ListenSpeed.DEFAULT,
+    )
+    override val listenSpeed: Flow<Float> = _listenSpeed.asStateFlow()
+
+    override suspend fun setListenSpeed(rate: Float) {
+        val sanitized = ListenSpeed.sanitized(rate)
+        withContext(Dispatchers.IO) { store.set(KEY_LISTEN_SPEED, sanitized.toString()) }
+        _listenSpeed.update { sanitized }
     }
 }
 

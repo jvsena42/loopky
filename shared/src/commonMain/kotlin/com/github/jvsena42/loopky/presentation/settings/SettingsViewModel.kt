@@ -14,6 +14,7 @@ import com.github.jvsena42.loopky.data.unsplash.UnsplashException
 import com.github.jvsena42.loopky.data.unsplash.maskedKeySuffix
 import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.KeyCustody
+import com.github.jvsena42.loopky.domain.model.ListenSpeed
 import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.StudySettings
@@ -80,6 +81,9 @@ class SettingsViewModel(
         // around it is the obvious failure.
         appPreferences.themeMode
             .onEach { theme -> _state.update { it.copy(themeMode = theme) } }
+            .launchIn(viewModelScope)
+        appPreferences.listenSpeed
+            .onEach { rate -> _state.update { it.copy(listenSpeed = rate) } }
             .launchIn(viewModelScope)
         // Collected, not read once: the record loads asynchronously, and the rows stay disabled
         // until it has — writing before then would put defaults over the user's real settings.
@@ -162,6 +166,11 @@ class SettingsViewModel(
      */
     fun onThemeModeChange(theme: AppTheme) {
         viewModelScope.launch { appPreferences.setThemeMode(theme) }
+    }
+
+    /** Device-local, like the theme, so it is never gated on the study settings record being read. */
+    fun onListenSpeedChange(rate: Float) {
+        viewModelScope.launch { appPreferences.setListenSpeed(rate) }
     }
 
     fun onNewCardsGoalChange(goal: Int) =
@@ -413,6 +422,8 @@ data class SettingsUiState(
     val shareOnPubky: Boolean = true,
     /** The palette the app paints itself in. Device-local — see [AppTheme]. */
     val themeMode: AppTheme = AppTheme.System,
+    /** The speed Listen starts each card at — see [ListenSpeed]. */
+    val listenSpeed: Float = ListenSpeed.DEFAULT,
     val unsplashKeyStatus: UnsplashKeyStatus = UnsplashKeyStatus.NotSet,
     val isVerifyingUnsplashKey: Boolean = false,
     val unsplashKeyError: UnsplashError? = null,

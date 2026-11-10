@@ -439,6 +439,8 @@
     <string name="settings_interval_easy_label">Intervalo de Fácil (días)</string>
     <string name="settings_interval_description">Cuánto tarda la tarjeta en volver.</string>
     <string name="settings_interval_mastery_note">Cuando una tarjeta llega a tu intervalo más largo, cuenta como dominada.</string>
+    <string name="settings_listen_speed_label">Velocidad de lectura</string>
+    <string name="settings_listen_speed_description">Lo rápido que Escuchar lee cada tarjeta. Toca Escuchar otra vez para ir aún más despacio.</string>
     <string name="settings_study_unavailable">No se pudo cargar tu configuración de estudio. La edición está desactivada hasta que llegue, para no sobrescribir nada.</string>
     <string name="settings_study_save_failed">No se pudo guardar tu configuración de estudio.</string>
     <string name="settings_section_image_search">BÚSQUEDA DE IMÁGENES</string>

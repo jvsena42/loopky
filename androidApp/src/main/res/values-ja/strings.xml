@@ -457,6 +457,8 @@
     <string name="settings_interval_easy_label">「簡単」の間隔（日）</string>
     <string name="settings_interval_description">カードが再び出題されるまでの期間です。</string>
     <string name="settings_interval_mastery_note">最も長い間隔に達したカードが「習得済み」になります。</string>
+    <string name="settings_listen_speed_label">読み上げ速度</string>
+    <string name="settings_listen_speed_description">「聞く」でカードを読み上げる速さです。もう一度「聞く」をタップすると、さらに遅くなります。</string>
     <string name="settings_study_unavailable">学習設定を読み込めませんでした。上書きを防ぐため、読み込まれるまで編集できません。</string>
     <string name="settings_study_save_failed">学習設定を保存できませんでした。</string>
     <string name="settings_section_image_search">画像検索</string>

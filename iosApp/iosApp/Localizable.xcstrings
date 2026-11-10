@@ -42180,6 +42180,148 @@
         }
       }
     },
+    "settings_listen_speed_description": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie schnell „Anhören“ jede Karte vorliest. Tippe erneut auf „Anhören“, um es weiter zu verlangsamen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How fast Listen reads each card. Tap Listen again to slow it down further."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo rápido que Escuchar lee cada tarjeta. Toca Escuchar otra vez para ir aún más despacio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La vitesse à laquelle Écouter lit chaque carte. Touche Écouter à nouveau pour ralentir encore."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quanto velocemente Ascolta legge ogni carta. Tocca di nuovo Ascolta per rallentare ancora."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「聞く」でカードを読み上げる速さです。もう一度「聞く」をタップすると、さらに遅くなります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "듣기로 카드를 읽어 주는 속도예요. 듣기를 다시 탭하면 더 느려져요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A velocidade com que Ouvir lê cada carta. Toque em Ouvir de novo para deixar ainda mais lento."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tốc độ Nghe đọc mỗi thẻ. Nhấn Nghe lần nữa để đọc chậm hơn nữa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“朗读”读出每张卡片的速度。再次轻点“朗读”可以进一步放慢。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「聆聽」朗讀每張卡片的速度。再次點按「聆聽」可以再放慢。"
+          }
+        }
+      }
+    },
+    "settings_listen_speed_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorlesetempo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listen speed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velocidad de lectura"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vitesse de lecture"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velocità di lettura"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み上げ速度"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "읽기 속도"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velocidade da leitura"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tốc độ đọc"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "朗读速度"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "朗讀速度"
+          }
+        }
+      }
+    },
     "settings_language_description": {
       "extractionState": "manual",
       "localizations": {

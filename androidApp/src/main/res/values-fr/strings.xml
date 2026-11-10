@@ -439,6 +439,8 @@
     <string name="settings_interval_easy_label">Intervalle Facile (jours)</string>
     <string name="settings_interval_description">Délai avant que la carte revienne.</string>
     <string name="settings_interval_mastery_note">Une carte compte comme maîtrisée quand elle atteint ton intervalle le plus long.</string>
+    <string name="settings_listen_speed_label">Vitesse de lecture</string>
+    <string name="settings_listen_speed_description">La vitesse à laquelle Écouter lit chaque carte. Touche Écouter à nouveau pour ralentir encore.</string>
     <string name="settings_study_unavailable">Impossible de charger tes paramètres d’étude. La modification reste désactivée jusqu’à leur arrivée, pour que rien ne soit écrasé.</string>
     <string name="settings_study_save_failed">Impossible d’enregistrer tes paramètres d’étude.</string>
     <string name="settings_section_image_search">RECHERCHE D’IMAGES</string>
