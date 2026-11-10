@@ -22,6 +22,7 @@ struct PublishDeckScreen: View {
     @State private var title = ""
     @State private var description = ""
     @State private var didSeedFields = false
+    @State private var sharePromptShown = false
 
     var body: some View {
         PublishDeckView(
@@ -133,6 +134,7 @@ struct PublishDeckScreen: View {
         stateSink = FlowEffectSink(vm.state) { value in
             guard let state = value as? PublishDeckUiState else { return }
             uiState = state
+            if state.sharePrompt != nil { sharePromptShown = true }
             // The draft arrives with a suggested title; seed the fields once so the user sees it,
             // then leave them alone or typing would fight the state coming back.
             //
@@ -149,7 +151,13 @@ struct PublishDeckScreen: View {
             switch effect {
             case is PublishDeckEffectNavigateBack: onBack()
             case is PublishDeckEffectNavigateToOnboarding: onSignedOut()
-            case let published as PublishDeckEffectPublished: onPublished(published.deckId)
+            case let published as PublishDeckEffectPublished:
+                let deckId = published.deckId
+                guard sharePromptShown else { onPublished(deckId); return }
+                Task { @MainActor in
+                    try? await Task.sleep(for: AlertDismissal.settle)
+                    onPublished(deckId)
+                }
             case is PublishDeckEffectShared, is PublishDeckEffectShareFailed:
                 // Deliberately not shown. Announcing is best-effort, and the `Published` that
                 // follows it immediately pops this screen — a toast raised here would be torn

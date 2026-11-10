@@ -490,6 +490,28 @@ class PublishDeckViewModelTest {
         assertTrue(preferences.shareOnPubkyValue, "Not now must not be a permanent opt-out")
     }
 
+    /** An iOS alert reports one answer twice: the button's action, then its binding. */
+    @Test
+    fun aSecondDismissalOfTheSameOfferLeavesOnlyOnce() = runTest {
+        val vm = viewModel()
+        val effects = mutableListOf<PublishDeckEffect>()
+        backgroundScope.launch { vm.effects.collect { effects.add(it) } }
+        vm.onTitleChanged("Spanish")
+        vm.onPublishClick()
+        runCurrent()
+        val deckId = assertNotNull(vm.state.value.publishedDeckId)
+        advanceTimeBy(11_000L)
+        runCurrent()
+
+        vm.onShareNeverAsk()
+        vm.onShareDismiss()
+        runCurrent()
+        vm.onShareDismiss()
+        runCurrent()
+
+        assertEquals(listOf<PublishDeckEffect>(PublishDeckEffect.Published(deckId)), effects)
+    }
+
     @Test
     fun dontAskAgainTurnsTheSettingsSwitchOff() = runTest {
         val vm = viewModel()

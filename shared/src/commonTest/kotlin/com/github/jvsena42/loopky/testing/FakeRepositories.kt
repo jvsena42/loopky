@@ -423,10 +423,14 @@ class FakeDeckRepository : DeckRepository {
     /** When set, every [delete] fails — a homeserver that went away mid-sweep. */
     var deleteError: Throwable? = null
 
+    /** Runs on a successful [delete], for a test whose homeserver should lose the deck's records too. */
+    var onDelete: (String) -> Unit = {}
+
     override suspend fun delete(deckId: String): Result<Unit> {
         deleted.add(deckId)
         deleteError?.let { return Result.failure(it) }
         decks.remove(deckId)
+        onDelete(deckId)
         _changes.tryEmit(Unit)
         return Result.success(Unit)
     }

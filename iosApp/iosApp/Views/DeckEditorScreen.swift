@@ -17,6 +17,7 @@ struct DeckEditorScreen: View {
     @State private var uiState: DeckEditorUiState?
     @State private var stateSink: FlowEffectSink?
     @State private var effectSink: FlowEffectSink?
+    @State private var sharePromptShown = false
 
     var body: some View {
         DeckEditorView(
@@ -98,7 +99,10 @@ struct DeckEditorScreen: View {
         guard viewModel == nil else { return }
         let vm = IosDependencies.shared.deckEditorViewModel(deckId: deckId)
         viewModel = vm
-        stateSink = FlowEffectSink(vm.state) { uiState = $0 as? DeckEditorUiState }
+        stateSink = FlowEffectSink(vm.state) { value in
+            uiState = value as? DeckEditorUiState
+            if uiState?.sharePrompt != nil { sharePromptShown = true }
+        }
         guard effectSink == nil else { return }
         effectSink = FlowEffectSink(vm.effects) { effect in
             switch effect {
@@ -111,7 +115,12 @@ struct DeckEditorScreen: View {
             case let newCard as DeckEditorEffectNavigateNewCard:
                 onNewCard(newCard.deckId)
             case let saved as DeckEditorEffectSaveSuccess:
-                onSaved(saved.deckId)
+                let deckId = saved.deckId
+                guard sharePromptShown else { onSaved(deckId); return }
+                Task { @MainActor in
+                    try? await Task.sleep(for: AlertDismissal.settle)
+                    onSaved(deckId)
+                }
             case is DeckEditorEffectShared, is DeckEditorEffectShareFailed:
                 // Deliberately not shown. Announcing is best-effort, and the `SaveSuccess` that
                 // follows it immediately pops this screen — a toast raised here would be torn
