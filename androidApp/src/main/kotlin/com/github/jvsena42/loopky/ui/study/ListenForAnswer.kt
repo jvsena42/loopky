@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.ui.study
 
+import com.github.jvsena42.loopky.platform.ListenWindow
 import com.github.jvsena42.loopky.platform.SpeechError
 import com.github.jvsena42.loopky.platform.SpeechEvent
 import com.github.jvsena42.loopky.platform.SpeechRecognizer
@@ -16,6 +17,7 @@ internal suspend fun listenForAnswer(
     previous: Job?,
     speechRecognizer: SpeechRecognizer,
     languageTag: String,
+    window: ListenWindow,
     viewModel: StudySessionViewModel,
 ) {
     previous?.cancelAndJoin()
@@ -23,7 +25,7 @@ internal suspend fun listenForAnswer(
         viewModel.onSpeechError(SpeechError.Unavailable)
         return
     }
-    speechRecognizer.listen(languageTag).collect { event ->
+    speechRecognizer.listen(languageTag, window).collect { event ->
         when (event) {
             is SpeechEvent.Result -> viewModel.onSpeechResult(event.text)
             is SpeechEvent.Error -> viewModel.onSpeechError(event.reason)

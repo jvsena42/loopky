@@ -174,9 +174,10 @@ fun StudySessionRoute(
                 is StudySessionEffect.StartSpeechRecognition -> {
                     val previous = recognitionJob.value
                     recognitionJob.value = scope.launch {
-                        listenForAnswer(previous, speechRecognizer, effect.languageTag, viewModel)
+                        listenForAnswer(previous, speechRecognizer, effect.languageTag, effect.window, viewModel)
                     }
                 }
+                StudySessionEffect.FinishSpeechRecognition -> speechRecognizer.finish()
                 is StudySessionEffect.Haptic -> hapticPlayer.play(effect.pattern)
                 StudySessionEffect.SpeakCorrectChime -> chimePlayer.play()
 
@@ -208,6 +209,7 @@ fun StudySessionRoute(
         onSpeakContinue = viewModel::onSpeakDismiss,
         onSpeakRetry = viewModel::onSpeakRetry,
         onSpeakCancel = viewModel::onSpeakDismiss,
+        onSpeakDone = viewModel::onSpeakDone,
         onAnswerChange = viewModel::onAnswerChange,
         onCheckAnswer = viewModel::onCheckAnswer,
         onGiveUp = viewModel::onGiveUp,
@@ -255,6 +257,7 @@ fun StudySessionScreen(
     onSpeakContinue: () -> Unit = {},
     onSpeakRetry: () -> Unit = {},
     onSpeakCancel: () -> Unit = {},
+    onSpeakDone: () -> Unit = {},
     onAnswerChange: (String) -> Unit = {},
     onCheckAnswer: () -> Unit = {},
     onGiveUp: () -> Unit = {},
@@ -351,6 +354,7 @@ fun StudySessionScreen(
         SpeakSheets(
             phase = state.speakPhase,
             onCancel = onSpeakCancel,
+            onDone = onSpeakDone,
             onContinue = onSpeakContinue,
             onRetry = onSpeakRetry,
         )

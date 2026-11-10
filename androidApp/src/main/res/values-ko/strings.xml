@@ -307,7 +307,7 @@
 
     <!-- Speak (study) -->
     <string name="speak_listening_prompt">단어를 말해 보세요</string>
-    <string name="speak_listening_hint">탭하면 취소돼요</string>
+    <string name="speak_done">완료</string>
     <string name="speak_correct_title">완벽해요!</string>
     <string name="speak_you_said_label">내가 말한 것</string>
     <string name="speak_continue">계속</string>

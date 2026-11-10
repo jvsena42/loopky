@@ -54179,73 +54179,73 @@
         }
       }
     },
-    "speak_listening_hint": {
+    "speak_done": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zum Abbrechen tippen"
+            "value": "Fertig"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tap to cancel"
+            "value": "Done"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toca para cancelar"
+            "value": "Listo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Touche pour annuler"
+            "value": "Terminé"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tocca per annullare"
+            "value": "Fatto"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "タップしてキャンセル"
+            "value": "完了"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "탭하면 취소돼요"
+            "value": "완료"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toque para cancelar"
+            "value": "Concluir"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nhấn để hủy"
+            "value": "Xong"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "点按取消"
+            "value": "完成"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "點一下即可取消"
+            "value": "完成"
           }
         }
       }

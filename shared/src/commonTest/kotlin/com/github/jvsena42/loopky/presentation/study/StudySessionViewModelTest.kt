@@ -515,6 +515,47 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun doneEndsTheRecordingAndKeepsTheListeningPhase() = runTest {
+        // Done grades what was heard, so the sheet waits for the transcript rather than closing.
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+
+        vm.onSpeakTest()
+        advanceUntilIdle()
+        vm.onSpeakDone()
+        advanceUntilIdle()
+
+        assertEquals(StudySessionEffect.FinishSpeechRecognition, effects.excludingHaptics().last())
+        val state = assertIs<StudySessionUiState.Reviewing>(vm.state.value)
+        assertEquals(SpeakPhase.Listening("hola"), state.speakPhase)
+
+        vm.onSpeechResult("hola")
+        advanceUntilIdle()
+        assertIs<SpeakPhase.Correct>(assertIs<StudySessionUiState.Reviewing>(vm.state.value).speakPhase)
+        job.cancel()
+    }
+
+    @Test
+    fun doneOutsideAListenDoesNothing() = runTest {
+        seedSpeechDeck()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val effects = mutableListOf<StudySessionEffect>()
+        val job = launch { vm.effects.toList(effects) }
+
+        vm.onSpeakDone()
+        advanceUntilIdle()
+
+        assertTrue(effects.excludingHaptics().isEmpty())
+        job.cancel()
+    }
+
+    @Test
     fun theListeningPromptShowsTheSideBeingGraded() = runTest {
         // The sheet used to prompt with the back text whichever side was facing, so practising the
         // front asked for the answer and then failed it against the prompt.

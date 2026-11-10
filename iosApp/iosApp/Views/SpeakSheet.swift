@@ -12,9 +12,30 @@ struct SpeakSheet: View {
     let phase: Any?
     var onRetry: () -> Void = {}
     var onContinue: () -> Void = {}
+    var onDone: () -> Void = {}
     var onDismiss: () -> Void = {}
 
+    @State private var contentHeight: CGFloat = 0
+
     var body: some View {
+        ScrollView {
+            content
+                .padding(24)
+                .frame(maxWidth: .infinity)
+                .contentPane(PaneWidth.focused)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        // On the presentation, not the content: a `.background` on the content paints only as far
+        // as the content reaches, and the rest of the sheet showed the system glass, tinted by the
+        // card behind it. surfaceCard, not surfacePrimary: a sheet is raised above the screen.
+        .presentationBackground(LoopkyColor.surfaceCard)
+        // Sized to the content: a fixed height clipped a sentence-long answer or left a band.
+        .presentationDetents(contentHeight > 0 ? [.height(contentHeight)] : [.medium])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var content: some View {
         VStack(spacing: 16) {
             switch phase {
             case let listening as SpeakPhaseListening:
@@ -29,12 +50,9 @@ struct SpeakSheet: View {
                 EmptyView()
             }
         }
-        .padding(24)
-        .contentPane(PaneWidth.focused)
-        .background(LoopkyColor.surfacePrimary)
-        .presentationDetents([.height(340)])
-        .presentationDragIndicator(.visible)
     }
+
+    private static let longTargetChars = 40
 
     private func listeningBody(_ target: String) -> some View {
         VStack(spacing: 14) {
@@ -43,8 +61,9 @@ struct SpeakSheet: View {
                 .foregroundStyle(LoopkyColor.foregroundMuted)
             // What is shown is the card as written, asides included: the note is the context worth
             // seeing, even though the matcher drops it before comparing.
+            // A sentence at word size runs off the sheet and hides Done.
             Text(verbatim: target)
-                .font(.system(size: 26, weight: .heavy))
+                .font(.system(size: target.count > Self.longTargetChars ? 18 : 26, weight: .heavy))
                 .foregroundStyle(LoopkyColor.foregroundPrimary)
                 .multilineTextAlignment(.center)
             Image(systemName: "waveform")
@@ -52,10 +71,10 @@ struct SpeakSheet: View {
                 .foregroundStyle(LoopkyColor.accentPrimary)
                 .symbolEffect(.variableColor.iterative, options: .repeating)
                 .padding(.vertical, 8)
-            Button("speak_listening_hint", action: onDismiss)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(LoopkyColor.foregroundMuted)
-                .accessibilityIdentifier("speak_cancel")
+            // Done grades what was said so far; swiping the sheet away still discards the attempt.
+            Button("speak_done", action: onDone)
+                .buttonStyle(.loopkyFilled)
+                .accessibilityIdentifier("speak_done")
         }
     }
 
@@ -127,6 +146,7 @@ struct SpeakSheet: View {
                 Text(verbatim: heard)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(LoopkyColor.srsHard)
+                    .multilineTextAlignment(.center)
             }
             VStack(spacing: 2) {
                 Text("speak_correct_label")
@@ -135,6 +155,7 @@ struct SpeakSheet: View {
                 Text(verbatim: expected)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(LoopkyColor.srsGood)
+                    .multilineTextAlignment(.center)
             }
             Button("speak_try_again", action: onRetry)
                 .buttonStyle(.loopkyFilled)

@@ -1,4 +1,5 @@
 import AVFoundation
+import Shared
 import Speech
 
 /// Native speech recognition for the study session's Speak practice.
@@ -16,11 +17,9 @@ final class SpeechListener {
     private var task: SFSpeechRecognitionTask?
     private var silenceTimer: Timer?
     private var capTimer: Timer?
-
-    /// How long the transcription may stay unchanged before the answer counts as given.
-    private static let pauseInterval: TimeInterval = 1.5
-    /// Matches `AndroidSpeechRecognizer.LISTEN_TIMEOUT`.
-    private static let listenTimeout: TimeInterval = 15
+    /// How long the transcription may stay unchanged before the answer counts as given. Set per
+    /// listen from the shared `ListenWindow`, so a long sentence gets a longer pause.
+    private var pauseInterval: TimeInterval = 1.5
 
     private init() {}
 
@@ -50,6 +49,7 @@ final class SpeechListener {
     /// why it did not. Exactly one of the two is called.
     func listen(
         languageTag: String,
+        window: ListenWindow,
         onResult: @escaping (String) -> Void,
         onFailure: @escaping (Failure) -> Void
     ) {
@@ -61,11 +61,22 @@ final class SpeechListener {
                 return
             }
             do {
-                try self.start(languageTag: languageTag, onResult: onResult, onFailure: onFailure)
+                try self.start(
+                    languageTag: languageTag,
+                    window: window,
+                    onResult: onResult,
+                    onFailure: onFailure
+                )
             } catch {
                 onFailure(.unavailable)
             }
         }
+    }
+
+    /// End the recording now and deliver what was heard, as the pause after the last word would.
+    /// `stop()` is the one that discards the attempt.
+    func finish() {
+        finishAudio()
     }
 
     /// Tear the session down, dropping any result still in flight. A no-op when nothing is
@@ -108,6 +119,7 @@ final class SpeechListener {
 
     private func start(
         languageTag: String,
+        window: ListenWindow,
         onResult: @escaping (String) -> Void,
         onFailure: @escaping (Failure) -> Void
     ) throws {
@@ -139,7 +151,11 @@ final class SpeechListener {
         audioEngine.prepare()
         try audioEngine.start()
 
+        pauseInterval = TimeInterval(window.pauseMillis) / 1000
         var delivered = false
+        // What was heard so far. An error after the audio ended (Done, the cap) still grades these
+        // words, rather than throwing away a sentence that was nearly finished.
+        var heard: String?
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             // A final result and an error can both arrive; whichever lands first wins, and the
             // other is dropped rather than double-reporting one attempt.
@@ -153,12 +169,20 @@ final class SpeechListener {
             if error != nil {
                 delivered = true
                 self?.stop()
-                onFailure(.noMatch)
+                if let heard, !heard.isEmpty {
+                    onResult(heard)
+                } else {
+                    onFailure(.noMatch)
+                }
                 return
             }
-            if result != nil { self?.restartSilenceTimer() }
+            if let result {
+                heard = result.bestTranscription.formattedString
+                self?.restartSilenceTimer()
+            }
         }
-        capTimer = Timer.scheduledTimer(withTimeInterval: Self.listenTimeout, repeats: false) { [weak self] _ in
+        let cap = TimeInterval(window.capMillis) / 1000
+        capTimer = Timer.scheduledTimer(withTimeInterval: cap, repeats: false) { [weak self] _ in
             self?.finishAudio()
         }
     }
@@ -169,7 +193,7 @@ final class SpeechListener {
     /// error when nothing was heard.
     private func restartSilenceTimer() {
         silenceTimer?.invalidate()
-        silenceTimer = Timer.scheduledTimer(withTimeInterval: Self.pauseInterval, repeats: false) { [weak self] _ in
+        silenceTimer = Timer.scheduledTimer(withTimeInterval: pauseInterval, repeats: false) { [weak self] _ in
             self?.finishAudio()
         }
     }

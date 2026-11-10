@@ -22,6 +22,7 @@ import com.github.jvsena42.loopky.domain.model.SpeakMatcher
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.SrsState
 import com.github.jvsena42.loopky.domain.model.TypedAnswerOutcome
+import com.github.jvsena42.loopky.platform.ListenWindow
 import com.github.jvsena42.loopky.platform.SpeechError
 import com.github.jvsena42.loopky.presentation.share.DeckSharePrompt
 import com.github.jvsena42.loopky.util.Log
@@ -537,6 +538,16 @@ class StudySessionViewModel(
 
     fun onSpeakDismiss() {
         setSpeakPhase(SpeakPhase.Idle)
+    }
+
+    /**
+     * End the recording now and grade what was heard. Unlike [onSpeakDismiss] the phase stays
+     * Listening: the answer arrives through [onSpeechResult] or [onSpeechError] as usual.
+     */
+    fun onSpeakDone() {
+        val s = _state.value
+        if (s !is StudySessionUiState.Reviewing || s.speakPhase !is SpeakPhase.Listening) return
+        viewModelScope.launch { _effects.emit(StudySessionEffect.FinishSpeechRecognition) }
     }
 
     private fun setSpeakPhase(phase: SpeakPhase) {
@@ -1074,7 +1085,13 @@ sealed interface StudySessionEffect {
     data class StartSpeechRecognition(
         val expected: String,
         val languageTag: String,
-    ) : StudySessionEffect
+    ) : StudySessionEffect {
+        /** Sized on what is spoken, so a card's aside does not lengthen the wait. */
+        val window: ListenWindow get() = ListenWindow.forAnswer(AnswerMatcher.stripParentheticals(expected))
+    }
+
+    /** Stop recording and deliver what was heard so far, rather than discarding it. */
+    data object FinishSpeechRecognition : StudySessionEffect
     data object Close : StudySessionEffect
 
     /** Leave a guest's preview for sign-in, with the deck already remembered for a follow. */

@@ -45,6 +45,15 @@ interface SpeechRecognizer {
     /** Whether recognition is available on this device. */
     fun isAvailable(): Boolean
 
-    /** Start listening, emitting [SpeechEvent]s until the flow is cancelled or completes. */
-    fun listen(languageTag: String? = null): Flow<SpeechEvent>
+    /**
+     * Start listening, emitting [SpeechEvent]s until the flow is cancelled or completes. [window]
+     * bounds the silence that ends the answer and the length of the whole attempt.
+     */
+    fun listen(languageTag: String? = null, window: ListenWindow = ListenWindow.forAnswer("")): Flow<SpeechEvent>
+
+    /**
+     * End the running listen and deliver what was heard so far as its [SpeechEvent.Result].
+     * Cancelling the collector discards the attempt instead. A no-op when nothing is listening.
+     */
+    fun finish() = Unit
 }

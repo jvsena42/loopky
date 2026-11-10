@@ -310,7 +310,7 @@
 
     <!-- Speak (study) -->
     <string name="speak_listening_prompt">Say the word</string>
-    <string name="speak_listening_hint">Tap to cancel</string>
+    <string name="speak_done">Done</string>
     <string name="speak_correct_title">Perfect!</string>
     <string name="speak_you_said_label">YOU SAID</string>
     <string name="speak_continue">Continue</string>

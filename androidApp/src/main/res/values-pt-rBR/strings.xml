@@ -303,7 +303,7 @@
 
     <!-- Speak (study) -->
     <string name="speak_listening_prompt">Diga a palavra</string>
-    <string name="speak_listening_hint">Toque para cancelar</string>
+    <string name="speak_done">Concluir</string>
     <string name="speak_correct_title">Perfeito!</string>
     <string name="speak_you_said_label">VOCÊ DISSE</string>
     <string name="speak_continue">Continuar</string>

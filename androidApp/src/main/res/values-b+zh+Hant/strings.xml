@@ -310,7 +310,7 @@
 
     <!-- Speak (study) -->
     <string name="speak_listening_prompt">說出這個字</string>
-    <string name="speak_listening_hint">點一下即可取消</string>
+    <string name="speak_done">完成</string>
     <string name="speak_correct_title">完美！</string>
     <string name="speak_you_said_label">你說的是</string>
     <string name="speak_continue">繼續</string>
