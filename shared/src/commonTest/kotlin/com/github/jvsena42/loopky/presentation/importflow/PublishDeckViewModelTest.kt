@@ -612,6 +612,20 @@ class PublishDeckViewModelTest {
     }
 
     @Test
+    fun listenAndSpeakOnBothSidesIsOffUntilAskedForAndReachesTheManifest() = runTest {
+        val vm = viewModel()
+        vm.onTitleChanged("Spanish")
+        runCurrent()
+        assertFalse(vm.state.value.speechBothSides)
+
+        vm.onToggleSpeechBothSides()
+        vm.onPublishClick()
+        runCurrent()
+
+        assertTrue(deckRepo.published.single().first.speechBothSides)
+    }
+
+    @Test
     fun anImportThatKnowsItIsReversibleArrivesWithTheOptInOn() = runTest {
         // A suggestion like the title and tags beside it, not a decision — an `.apkg` built on a
         // reversed note type says so, and the toggle is right there to turn off.

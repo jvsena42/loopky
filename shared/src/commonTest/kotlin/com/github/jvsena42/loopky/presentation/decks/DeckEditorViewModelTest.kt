@@ -659,6 +659,22 @@ class DeckEditorViewModelTest {
         }
 
     @Test
+    fun `listen and speak on both sides loads and saves`() = runTest(mainDispatcher) {
+        deckRepo.decks["deck1"] =
+            testDeck(id = "deck1", authorPubky = TEST_PUBKY, speechBothSides = true)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.speechBothSides)
+
+        vm.onToggleSpeechBothSides()
+        vm.onSaveClick()
+        advanceUntilIdle()
+
+        assertFalse(deckRepo.decks.getValue("deck1").speechBothSides)
+    }
+
+    @Test
     fun `turning on listen without languages blocks the save`() = runTest(mainDispatcher) {
         deckRepo.decks["deck1"] = testDeck(id = "deck1", authorPubky = TEST_PUBKY)
         val vm = viewModel()
