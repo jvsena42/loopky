@@ -446,37 +446,51 @@ class PublishDeckViewModel(
 
     /** Post the announcement, then leave regardless — a failed post is not a failed publish. */
     fun onShareConfirm() {
-        val prompt = _state.value.sharePrompt?.takeIf { !it.isPosting } ?: return
+        val prompt = takeSharePrompt { it.copy(isPosting = true) } ?: return
         viewModelScope.launch {
-            _state.update { it.copy(sharePrompt = prompt.copy(isPosting = true)) }
             discoveryRepository.announceDeck(prompt.announcement)
                 .onSuccess { _effects.emit(PublishDeckEffect.Shared) }
                 .onFailure { err ->
                     Log.e(TAG, "share: FAILED — ${err.message}", err)
                     _effects.emit(PublishDeckEffect.ShareFailed)
                 }
-            dismissSharePrompt()
+            _state.update { it.copy(sharePrompt = null) }
+            leaveAfterShare()
         }
     }
 
     fun onShareDismiss() {
-        if (_state.value.sharePrompt?.isPosting == true) return
-        viewModelScope.launch { dismissSharePrompt() }
+        takeSharePrompt { null } ?: return
+        viewModelScope.launch { leaveAfterShare() }
     }
 
     /** Declines *and* turns the offer off, so the prompt and the Settings switch stay one setting. */
     fun onShareNeverAsk() {
-        if (_state.value.sharePrompt?.isPosting == true) return
+        takeSharePrompt { null } ?: return
         viewModelScope.launch {
             appPreferences.setShareOnPubky(false)
-            dismissSharePrompt()
+            leaveAfterShare()
         }
     }
 
-    private suspend fun dismissSharePrompt() {
-        val deckId = _state.value.publishedDeckId
-        _state.update { it.copy(sharePrompt = null) }
-        deckId?.let { _effects.emit(PublishDeckEffect.Published(it)) }
+    /**
+     * Claims the open offer synchronously, before any coroutine runs, so a second answer to the
+     * same offer is refused. An iOS alert reports one tap twice — the button's action, then its
+     * `isPresented` binding — and a second `Published` reassigned the navigation path mid-transition,
+     * leaving the screen on "Deck published!" with a Done that did nothing.
+     */
+    private fun takeSharePrompt(next: (DeckSharePrompt) -> DeckSharePrompt?): DeckSharePrompt? {
+        var taken: DeckSharePrompt? = null
+        _state.update { state ->
+            val prompt = state.sharePrompt?.takeIf { !it.isPosting }
+            taken = prompt
+            if (prompt == null) state else state.copy(sharePrompt = next(prompt))
+        }
+        return taken
+    }
+
+    private suspend fun leaveAfterShare() {
+        _state.value.publishedDeckId?.let { _effects.emit(PublishDeckEffect.Published(it)) }
     }
 
     /**
