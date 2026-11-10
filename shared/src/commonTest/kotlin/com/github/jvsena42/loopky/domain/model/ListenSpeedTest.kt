@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 
 class ListenSpeedTest {
     @Test
-    fun `normal speed keeps the old 1, 0_75, 0_5 steps`() {
+    fun `normal speed keeps the old 1 then 0_75 then 0_5 steps`() {
         assertEquals(listOf(1f, 0.75f, 0.5f, 0.5f), (0..3).map { ListenSpeed.forRepeat(1f, it) })
     }
 
