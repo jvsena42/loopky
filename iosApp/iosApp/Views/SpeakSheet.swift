@@ -15,7 +15,27 @@ struct SpeakSheet: View {
     var onDone: () -> Void = {}
     var onDismiss: () -> Void = {}
 
+    @State private var contentHeight: CGFloat = 0
+
     var body: some View {
+        ScrollView {
+            content
+                .padding(24)
+                .frame(maxWidth: .infinity)
+                .contentPane(PaneWidth.focused)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        // On the presentation, not the content: a `.background` on the content paints only as far
+        // as the content reaches, and the rest of the sheet showed the system glass, tinted by the
+        // card behind it. surfaceCard, not surfacePrimary: a sheet is raised above the screen.
+        .presentationBackground(LoopkyColor.surfaceCard)
+        // Sized to the content: a fixed height clipped a sentence-long answer or left a band.
+        .presentationDetents(contentHeight > 0 ? [.height(contentHeight)] : [.medium])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var content: some View {
         VStack(spacing: 16) {
             switch phase {
             case let listening as SpeakPhaseListening:
@@ -30,11 +50,6 @@ struct SpeakSheet: View {
                 EmptyView()
             }
         }
-        .padding(24)
-        .contentPane(PaneWidth.focused)
-        .background(LoopkyColor.surfacePrimary)
-        .presentationDetents([.height(340)])
-        .presentationDragIndicator(.visible)
     }
 
     private static let longTargetChars = 40
@@ -135,6 +150,7 @@ struct SpeakSheet: View {
                 Text(verbatim: heard)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(LoopkyColor.srsHard)
+                    .multilineTextAlignment(.center)
             }
             VStack(spacing: 2) {
                 Text("speak_correct_label")
@@ -143,6 +159,7 @@ struct SpeakSheet: View {
                 Text(verbatim: expected)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(LoopkyColor.srsGood)
+                    .multilineTextAlignment(.center)
             }
             Button("speak_try_again", action: onRetry)
                 .buttonStyle(.loopkyFilled)
