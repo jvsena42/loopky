@@ -8,9 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,18 +28,28 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -130,23 +143,28 @@ internal fun CardFace(
             )
         }
         if (answerInput != null) {
-            // Deliberately un-padded for the keyboard, and centred rather than pinned. The screen
-            // does not resize for the IME any more (see `StudySessionScreen`), so the card keeps
-            // its height and its lower edge simply passes behind the keyboard — the block sits at
-            // the card's middle, which is clear of it. `imePadding()` here is not the fix it looks
-            // like: it pads by the keyboard's *whole* height rather than the part that overlaps,
-            // which shrank this viewport to less than the block and sheared Give up off the bottom.
-            //
-            // It scrolls rather than clips, for the windows where the middle is not clear either: a
-            // Give up button that cannot be reached is the one control in this mode that must never
-            // be unreachable.
+            // The screen does not resize for the IME (see `StudySessionScreen`), so the card keeps
+            // its height and its lower edge passes behind the keyboard. The block is centred in
+            // the part of this area the keyboard leaves visible: padded by the *overlap*, not by
+            // `imePadding()`, which pads by the keyboard's whole height and shrank the viewport
+            // below the block. Centring in the whole area put Give up behind the keyboard as soon
+            // as a miss line made the block taller. It scrolls rather than clips where even the
+            // visible part is too short: Give up must never be unreachable.
+            val keyboardOverlap = rememberKeyboardOverlap()
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                contentAlignment = Alignment.Center,
-            ) { answerInput() }
+                    .onGloballyPositioned(keyboardOverlap::onPositioned),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = keyboardOverlap.overlap)
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center,
+                ) { answerInput() }
+            }
         } else if (text.isNotBlank()) {
             CardText(
                 text = text,
@@ -264,3 +282,35 @@ private val CARD_TEXT_STEP = 1.sp
 
 /** Relative, so the leading follows the font autosize settles on rather than a fixed 24 sp. */
 private val CARD_LINE_HEIGHT = 1.2.em
+
+/**
+ * How much of a laid-out area the keyboard covers, measured from where the area actually sits in
+ * the window rather than assumed from the keyboard's height.
+ */
+@Stable
+private class KeyboardOverlap(private val density: Density) {
+    private var areaBottomPx by mutableFloatStateOf(0f)
+    private var windowHeightPx by mutableIntStateOf(0)
+    var keyboardHeightPx by mutableIntStateOf(0)
+
+    val overlap: Dp
+        get() {
+            if (windowHeightPx == 0) return 0.dp
+            val keyboardTop = windowHeightPx - keyboardHeightPx
+            val covered = (areaBottomPx - keyboardTop).coerceAtLeast(0f)
+            return with(density) { covered.toDp() }
+        }
+
+    fun onPositioned(coordinates: LayoutCoordinates) {
+        areaBottomPx = coordinates.localToRoot(Offset(0f, coordinates.size.height.toFloat())).y
+        windowHeightPx = coordinates.findRootCoordinates().size.height
+    }
+}
+
+@Composable
+private fun rememberKeyboardOverlap(): KeyboardOverlap {
+    val density = LocalDensity.current
+    val overlap = remember(density) { KeyboardOverlap(density) }
+    overlap.keyboardHeightPx = WindowInsets.ime.getBottom(density)
+    return overlap
+}
