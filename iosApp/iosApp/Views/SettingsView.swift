@@ -27,6 +27,9 @@ struct SettingsView: View {
     @State private var unsplashKey = ""
     /// The slider's position while dragged; committed on release, so a drag is one write.
     @State private var listenSpeedDraft: Float?
+    /// A VoiceOver or keyboard adjustment moves the value with no editing begin/end around it,
+    /// so a change made while this is false is committed at once rather than left in the draft.
+    @State private var isDraggingListenSpeed = false
 
     var body: some View {
         List {
@@ -238,11 +241,18 @@ struct SettingsView: View {
                 Slider(
                     value: Binding(
                         get: { Double(speed) },
-                        set: { listenSpeedDraft = Float($0) }
+                        set: { value in
+                            if isDraggingListenSpeed {
+                                listenSpeedDraft = Float(value)
+                            } else {
+                                onListenSpeedChanged(ListenSpeed.shared.sanitized(rate: Float(value)))
+                            }
+                        }
                     ),
                     in: Double(ListenSpeed.shared.MIN)...Double(ListenSpeed.shared.MAX),
                     step: Double(ListenSpeed.shared.STEP)
                 ) { editing in
+                    isDraggingListenSpeed = editing
                     guard !editing, let draft = listenSpeedDraft else { return }
                     onListenSpeedChanged(ListenSpeed.shared.sanitized(rate: draft))
                     listenSpeedDraft = nil
