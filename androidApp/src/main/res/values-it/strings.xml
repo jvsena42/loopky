@@ -253,6 +253,8 @@
     <string name="publish_type_subtitle">Scrivi la risposta invece di leggerla e basta</string>
     <string name="publish_reverse_title">In entrambi i sensi</string>
     <string name="publish_reverse_subtitle">Chiedi ogni carta anche dal retro al fronte</string>
+    <string name="publish_both_sides_title">Ascolta e Parla su entrambi i lati</string>
+    <string name="publish_both_sides_subtitle">Anche prima di girare, sulla domanda. Disattivato: solo sulla risposta</string>
     <string name="study_reversed_badge">Invertita</string>
     <string name="deck_languages_hint">Imposta la voce che legge ad alta voce ogni lato.</string>
     <string name="deck_front_language_label">Lingua del fronte</string>

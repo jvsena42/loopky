@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -133,6 +134,19 @@ private fun StudyOptionsContent(
             iconBackground = colors.accentSecondarySoft,
             enabled = options.speechReady && !options.isSaving,
         )
+        if (options.speechReady && (chosen.listen || chosen.speak)) {
+            OptionToggleRow(
+                title = stringResource(R.string.publish_both_sides_title),
+                subtitle = stringResource(R.string.publish_both_sides_subtitle),
+                checked = chosen.bothSides,
+                onToggle = { onChange(StudyFeature.BothSides, !chosen.bothSides) },
+                testTag = "study_options_both_sides",
+                icon = Icons.Default.Flip,
+                iconColor = colors.accentPrimary,
+                iconBackground = colors.accentPrimarySoft,
+                enabled = !options.isSaving,
+            )
+        }
         if (!options.speechReady) {
             Text(
                 text = stringResource(R.string.study_options_speech_unavailable),

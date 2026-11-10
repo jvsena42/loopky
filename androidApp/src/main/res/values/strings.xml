@@ -257,6 +257,8 @@
     <string name="publish_type_subtitle">Write the answer instead of just reading it</string>
     <string name="publish_reverse_title">Both directions</string>
     <string name="publish_reverse_subtitle">Also ask each card back to front</string>
+    <string name="publish_both_sides_title">Listen and Speak on both sides</string>
+    <string name="publish_both_sides_subtitle">Also before the flip, on the question. Off, they wait for the answer</string>
     <string name="study_reversed_badge">Reversed</string>
     <string name="deck_languages_hint">Sets the voice used to read each side aloud.</string>
     <string name="deck_front_language_label">Front language</string>

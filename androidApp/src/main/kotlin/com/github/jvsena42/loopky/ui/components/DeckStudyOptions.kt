@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -48,7 +49,7 @@ import java.util.Locale
 
 /**
  * The deck's study opt-ins — Listen, Speak, Type and both directions — and, when a *speech* one is
- * on, the language of each card side.
+ * on, whether it is offered before the flip and the language of each card side.
  *
  * Shared by the publish flow and the deck editor so an already-published deck can be given the
  * pair it was written without — before this, the opt-ins were set at publish and never editable.
@@ -59,6 +60,7 @@ fun DeckStudyOptions(
     speakEnabled: Boolean,
     typeEnabled: Boolean,
     reverseEnabled: Boolean,
+    speechBothSides: Boolean,
     frontLang: String?,
     backLang: String?,
     availableLanguages: List<String>,
@@ -66,6 +68,7 @@ fun DeckStudyOptions(
     onToggleSpeak: () -> Unit,
     onToggleType: () -> Unit,
     onToggleReverse: () -> Unit,
+    onToggleSpeechBothSides: () -> Unit,
     onFrontLangSelected: (String) -> Unit,
     onBackLangSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -125,6 +128,16 @@ fun DeckStudyOptions(
         )
 
         if (listenEnabled || speakEnabled) {
+            OptionToggleRow(
+                title = stringResource(R.string.publish_both_sides_title),
+                subtitle = stringResource(R.string.publish_both_sides_subtitle),
+                checked = speechBothSides,
+                onToggle = onToggleSpeechBothSides,
+                testTag = "publish_both_sides_toggle",
+                icon = Icons.Default.Flip,
+                iconColor = colors.accentPrimary,
+                iconBackground = colors.accentPrimarySoft,
+            )
             Text(
                 stringResource(R.string.deck_languages_hint),
                 fontSize = 12.sp,

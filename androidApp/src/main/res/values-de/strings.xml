@@ -253,6 +253,8 @@
     <string name="publish_type_subtitle">Schreib die Antwort, statt sie nur zu lesen</string>
     <string name="publish_reverse_title">Beide Richtungen</string>
     <string name="publish_reverse_subtitle">Jede Karte auch von hinten nach vorne abfragen</string>
+    <string name="publish_both_sides_title">Anhören und Sprechen auf beiden Seiten</string>
+    <string name="publish_both_sides_subtitle">Auch vor dem Umdrehen, auf der Frage. Aus: erst bei der Antwort</string>
     <string name="study_reversed_badge">Umgekehrt</string>
     <string name="deck_languages_hint">Legt die Stimme fest, die jede Seite vorliest.</string>
     <string name="deck_front_language_label">Sprache der Vorderseite</string>

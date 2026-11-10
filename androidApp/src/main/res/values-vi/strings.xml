@@ -257,6 +257,8 @@
     <string name="publish_type_subtitle">Viết đáp án thay vì chỉ đọc</string>
     <string name="publish_reverse_title">Cả hai chiều</string>
     <string name="publish_reverse_subtitle">Hỏi thêm mỗi thẻ theo chiều từ sau ra trước</string>
+    <string name="publish_both_sides_title">Nghe và Nói ở cả hai mặt</string>
+    <string name="publish_both_sides_subtitle">Cả trước khi lật, ở mặt câu hỏi. Khi tắt, chỉ hiện ở mặt đáp án</string>
     <string name="study_reversed_badge">Đảo chiều</string>
     <string name="deck_languages_hint">Chọn giọng đọc to từng mặt thẻ.</string>
     <string name="deck_front_language_label">Ngôn ngữ mặt trước</string>
