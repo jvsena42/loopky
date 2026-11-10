@@ -308,7 +308,6 @@
     <!-- Speak (study) -->
     <string name="speak_listening_prompt">単語を言ってください</string>
     <string name="speak_done">完了</string>
-    <string name="speak_cancel">キャンセル</string>
     <string name="speak_correct_title">完璧です！</string>
     <string name="speak_you_said_label">認識結果</string>
     <string name="speak_continue">続ける</string>

@@ -74,7 +74,7 @@ fun SpeakSheets(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             when (phase) {
-                is SpeakPhase.Listening -> ListeningBody(phase.expected, onDone = onDone, onCancel = onCancel)
+                is SpeakPhase.Listening -> ListeningBody(phase.expected, onDone = onDone)
                 is SpeakPhase.Correct -> CorrectBody(phase.heard, onContinue)
                 is SpeakPhase.Wrong -> WrongBody(phase.heard, phase.expected, onRetry)
                 is SpeakPhase.Failed -> FailedBody(phase, onRetry = onRetry, onDismiss = onCancel)
@@ -85,7 +85,7 @@ fun SpeakSheets(
 }
 
 @Composable
-private fun ListeningBody(targetWord: String, onDone: () -> Unit, onCancel: () -> Unit) {
+private fun ListeningBody(targetWord: String, onDone: () -> Unit) {
     val colors = LoopkyTheme.colors
     Text(
         text = stringResource(R.string.speak_listening_prompt),
@@ -128,24 +128,13 @@ private fun ListeningBody(targetWord: String, onDone: () -> Unit, onCancel: () -
             Icon(Icons.Default.Mic, null, tint = colors.foregroundOnAccent, modifier = Modifier.size(36.dp))
         }
     }
-    // Done keeps what was said and grades it; Cancel throws the attempt away.
+    // Done grades what was said so far; swiping the sheet away still discards the attempt.
     SheetButton(
         label = stringResource(R.string.speak_done),
         background = colors.accentSecondary,
         contentColor = colors.foregroundOnAccent,
         tag = "speak_done",
         onClick = onDone,
-    )
-    Text(
-        text = stringResource(R.string.speak_cancel),
-        fontSize = 14.sp,
-        fontWeight = FontWeight.W600,
-        color = colors.foregroundMuted,
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onCancel)
-            .testTag("speak_cancel")
-            .padding(horizontal = 16.dp, vertical = 8.dp),
     )
 }
 

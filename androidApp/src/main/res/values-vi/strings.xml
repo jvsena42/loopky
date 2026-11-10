@@ -311,7 +311,6 @@
     <!-- Speak (study) -->
     <string name="speak_listening_prompt">Hãy nói từ này</string>
     <string name="speak_done">Xong</string>
-    <string name="speak_cancel">Hủy</string>
     <string name="speak_correct_title">Hoàn hảo!</string>
     <string name="speak_you_said_label">BẠN ĐÃ NÓI</string>
     <string name="speak_continue">Tiếp tục</string>

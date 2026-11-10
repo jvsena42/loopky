@@ -71,14 +71,10 @@ struct SpeakSheet: View {
                 .foregroundStyle(LoopkyColor.accentPrimary)
                 .symbolEffect(.variableColor.iterative, options: .repeating)
                 .padding(.vertical, 8)
-            // Done keeps what was said and grades it; Cancel throws the attempt away.
+            // Done grades what was said so far; swiping the sheet away still discards the attempt.
             Button("speak_done", action: onDone)
                 .buttonStyle(.loopkyFilled)
                 .accessibilityIdentifier("speak_done")
-            Button("speak_cancel", action: onDismiss)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(LoopkyColor.foregroundMuted)
-                .accessibilityIdentifier("speak_cancel")
         }
     }
 
