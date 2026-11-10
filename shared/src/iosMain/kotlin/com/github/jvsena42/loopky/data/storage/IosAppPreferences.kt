@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.data.storage
 
 import com.github.jvsena42.loopky.domain.model.AppTheme
+import com.github.jvsena42.loopky.domain.model.ListenSpeed
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -129,5 +130,21 @@ class IosAppPreferences : AppPreferences {
     override suspend fun setUpdatePromptDay(day: Int) {
         defaults.setInteger(day.toLong(), KEY_UPDATE_PROMPT_DAY)
         _updatePromptDay.update { day }
+    }
+
+    // `floatForKey` answers 0 for a key never written, which is not the default — so probe.
+    private val _listenSpeed = MutableStateFlow(
+        if (defaults.objectForKey(KEY_LISTEN_SPEED) == null) {
+            ListenSpeed.DEFAULT
+        } else {
+            ListenSpeed.sanitized(defaults.floatForKey(KEY_LISTEN_SPEED))
+        },
+    )
+    override val listenSpeed: Flow<Float> = _listenSpeed.asStateFlow()
+
+    override suspend fun setListenSpeed(rate: Float) {
+        val sanitized = ListenSpeed.sanitized(rate)
+        defaults.setFloat(sanitized, KEY_LISTEN_SPEED)
+        _listenSpeed.update { sanitized }
     }
 }

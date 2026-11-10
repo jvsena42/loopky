@@ -17,6 +17,7 @@ import com.github.jvsena42.loopky.domain.model.DEFAULT_NEW_CARDS_PER_DAY
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.DeckAnnouncement
 import com.github.jvsena42.loopky.domain.model.ErrorReason
+import com.github.jvsena42.loopky.domain.model.ListenSpeed
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.SpeakMatcher
 import com.github.jvsena42.loopky.domain.model.SrsGrade
@@ -130,9 +131,12 @@ class StudySessionViewModel(
     /** What the in-flight pronunciation attempt grades against. See [targetFor]. */
     private var speakTarget: SpeakTarget? = null
 
-    /** The text last read aloud on this card and how many times in a row, for [listenRate]. */
+    /** The text last read aloud on this card and how many times in a row, for [ListenSpeed.forRepeat]. */
     private var lastListened: Pair<String, String>? = null
     private var listenRepeats = 0
+
+    /** The reader's chosen starting speed, collected so a change in Settings applies mid-session. */
+    private var listenSpeed = ListenSpeed.DEFAULT
 
     /**
      * True from a Listen tap until the platform reports the speech over ([onListenFinished]), so a
@@ -177,6 +181,7 @@ class StudySessionViewModel(
 
     init {
         load()
+        viewModelScope.launch { appPreferences.listenSpeed.collect { listenSpeed = it } }
         // The failing flush is usually the one started as this screen goes away, so the repository
         // replays its last failure — a collector attaching here still learns about it.
         viewModelScope.launch {
@@ -566,13 +571,13 @@ class StudySessionViewModel(
             ?: return
         val languageTag = (if (answerVisible) s.backLang else s.frontLang) ?: return
         val target = text to languageTag
-        listenRepeats = if (target == lastListened) {
-            (listenRepeats + 1).coerceAtMost(LISTEN_RATES.lastIndex)
-        } else {
-            0
+        listenRepeats = when {
+            target != lastListened -> 0
+            ListenSpeed.canSlowFurther(listenSpeed, listenRepeats) -> listenRepeats + 1
+            else -> listenRepeats
         }
         lastListened = target
-        val rate = LISTEN_RATES[listenRepeats]
+        val rate = ListenSpeed.forRepeat(listenSpeed, listenRepeats)
         setListening(true)
         listenTimeout?.cancel()
         listenTimeout = viewModelScope.launch {
@@ -872,9 +877,6 @@ class StudySessionViewModel(
          * at the end of it, so it has to be reachable in a couple of minutes.
          */
         internal const val PREVIEW_CARDS = 5
-
-        /** Normal speed, then two slower steps for repeat Listen taps; it stays at the last one. */
-        internal val LISTEN_RATES = listOf(1f, 0.75f, 0.5f)
 
         /** Long enough for a sentence at the slowest rate; only reached if no end is reported. */
         internal const val LISTEN_TIMEOUT_MILLIS = 15_000L

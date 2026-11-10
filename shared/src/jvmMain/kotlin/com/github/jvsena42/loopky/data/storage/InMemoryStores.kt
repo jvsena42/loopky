@@ -9,6 +9,7 @@ import com.github.jvsena42.loopky.domain.model.AppTheme
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.DailyStudyProgress
 import com.github.jvsena42.loopky.domain.model.KeyCustody
+import com.github.jvsena42.loopky.domain.model.ListenSpeed
 import com.github.jvsena42.loopky.domain.model.Session
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,6 +72,10 @@ class InMemoryAppPreferences : AppPreferences {
     private val _updatePromptDay = MutableStateFlow(NO_UPDATE_PROMPT_DAY)
     override val updatePromptDay: Flow<Int> = _updatePromptDay.asStateFlow()
     override suspend fun setUpdatePromptDay(day: Int) = _updatePromptDay.update { day }
+
+    private val _listenSpeed = MutableStateFlow(ListenSpeed.DEFAULT)
+    override val listenSpeed: Flow<Float> = _listenSpeed.asStateFlow()
+    override suspend fun setListenSpeed(rate: Float) = _listenSpeed.update { ListenSpeed.sanitized(rate) }
 }
 
 class InMemoryPendingReviewStore : PendingReviewStore {

@@ -84,6 +84,19 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `the listen speed starts at normal and is persisted on the device`() = runTest(mainDispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertEquals(1f, vm.state.value.listenSpeed)
+
+        vm.onListenSpeedChange(0.65f)
+        advanceUntilIdle()
+
+        assertEquals(0.65f, vm.state.value.listenSpeed)
+        assertEquals(0.65f, preferences.listenSpeedValue)
+    }
+
+    @Test
     fun `a stored opt-out survives into a new session`() = runTest(mainDispatcher) {
         preferences.setShareOnPubky(false)
 

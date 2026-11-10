@@ -143,6 +143,17 @@ interface AppPreferences {
     val updatePromptDay: Flow<Int>
 
     suspend fun setUpdatePromptDay(day: Int)
+
+    /**
+     * The speed Listen starts every card at, as a [com.github.jvsena42.loopky.domain.model.ListenSpeed]
+     * multiplier. Device-local: it is a reading-comfort choice, not a scheduling one, so it has no
+     * business in the synced study settings.
+     *
+     * Emits the current value immediately and again on every change.
+     */
+    val listenSpeed: Flow<Float>
+
+    suspend fun setListenSpeed(rate: Float)
 }
 
 internal const val PREFERENCES_NAME = "loopky.preferences"
@@ -166,3 +177,4 @@ internal const val KEY_UPDATE_PROMPT_DAY = "update_prompt_day"
 const val NO_UPDATE_PROMPT_DAY = Int.MIN_VALUE
 internal const val KEY_RECAP_DISMISSAL = "recap_dismissal"
 internal const val DEFAULT_RECAP_DISMISSAL = ""
+internal const val KEY_LISTEN_SPEED = "listen_speed"

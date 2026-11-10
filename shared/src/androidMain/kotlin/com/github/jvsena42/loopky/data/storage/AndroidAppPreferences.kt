@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.domain.model.AppTheme
+import com.github.jvsena42.loopky.domain.model.ListenSpeed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -140,6 +141,19 @@ class AndroidAppPreferences(context: Context) : AppPreferences {
             prefs.edit().putInt(KEY_UPDATE_PROMPT_DAY, day).apply()
         }
         _updatePromptDay.update { day }
+    }
+
+    private val _listenSpeed = MutableStateFlow(
+        ListenSpeed.sanitized(prefs.getFloat(KEY_LISTEN_SPEED, ListenSpeed.DEFAULT)),
+    )
+    override val listenSpeed: Flow<Float> = _listenSpeed.asStateFlow()
+
+    override suspend fun setListenSpeed(rate: Float) {
+        val sanitized = ListenSpeed.sanitized(rate)
+        withContext(Dispatchers.IO) {
+            prefs.edit().putFloat(KEY_LISTEN_SPEED, sanitized).apply()
+        }
+        _listenSpeed.update { sanitized }
     }
 }
 

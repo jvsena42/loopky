@@ -58,6 +58,7 @@ import com.github.jvsena42.loopky.domain.model.HomeserverLookup
 import com.github.jvsena42.loopky.domain.model.ImportDraft
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.KeySource
+import com.github.jvsena42.loopky.domain.model.ListenSpeed
 import com.github.jvsena42.loopky.domain.model.LocalAccount
 import com.github.jvsena42.loopky.domain.model.MediaRef
 import com.github.jvsena42.loopky.domain.model.ParsedRow
@@ -1543,6 +1544,7 @@ class FakeAppPreferences(
     backupReminderDay: Int = NO_BACKUP_REMINDER_DAY,
     recapDismissal: String = "",
     updatePromptDay: Int = NO_UPDATE_PROMPT_DAY,
+    listenSpeed: Float = ListenSpeed.DEFAULT,
 ) : AppPreferences {
     private val _shareOnPubky = MutableStateFlow(shareOnPubky)
     override val shareOnPubky: Flow<Boolean> = _shareOnPubky.asStateFlow()
@@ -1639,6 +1641,16 @@ class FakeAppPreferences(
 
     override suspend fun setUpdatePromptDay(day: Int) {
         _updatePromptDay.update { day }
+    }
+
+    private val _listenSpeed = MutableStateFlow(listenSpeed)
+    override val listenSpeed: Flow<Float> = _listenSpeed.asStateFlow()
+
+    /** The current value, for a test that asserts on it without collecting. */
+    val listenSpeedValue: Float get() = _listenSpeed.value
+
+    override suspend fun setListenSpeed(rate: Float) {
+        _listenSpeed.update { ListenSpeed.sanitized(rate) }
     }
 }
 
