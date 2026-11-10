@@ -14,9 +14,12 @@
     <action>Open a deck that was published with the Speak option enabled AND a front/back language pair, and start studying it</action>
     <action>Manual check: open a deck published before the language pair existed (or one whose pair is unset) and verify the card back shows neither the Listen nor the Speak button — an undeclared deck must not fall back to the phone's locale</action>
     <action>Verify the study card (resource-id: study_card) is shown front-side</action>
-    <action>Verify "Listen" (resource-id: study_listen) and "Speak" (resource-id: study_speak) are shown on the card FRONT — both sides carry them</action>
-    <action>Manual check: tap Listen here and verify the prompt is read in the deck's FRONT language, not the back's and not the phone's</action>
-    <action>Tap the card to reveal the back and verify both buttons are still shown</action>
+    <action>Verify "Listen" (resource-id: study_listen) and "Speak" (resource-id: study_speak) are NOT on the card front — by default they wait for the flip, so the prompt is not read or graded before the reader tries to recall the answer</action>
+    <action>Tap the card to reveal the back and verify both buttons are shown on the answer</action>
+    <action>Edit the deck, turn on "Listen and Speak on both sides" (resource-id: publish_both_sides_toggle, shown only while Listen or Speak is on), save, and study it again: verify both buttons are now on the card FRONT too</action>
+    <action>Manual check: tap Listen on the front and verify the prompt is read in the deck's FRONT language, not the back's and not the phone's</action>
+    <action>On a deck with Both directions on, reach a reversed card (its prompt is the card's back) and verify the buttons follow the face shown before the flip: absent with both sides off, present with it on</action>
+    <action>On a deck with Type the answer on, flip a card and verify neither button is on the masked answer, with both sides on or off; they appear once the answer is checked or given up on</action>
     <action>Tap the element with resource-id "study_speak"</action>
     <action>Verify an in-app rationale dialog appears first explaining that Speak listens to your pronunciation, with a Continue action (resource-id: permission_continue)</action>
     <action>Tap the element with resource-id "permission_continue" and verify the Android RECORD_AUDIO permission dialog then appears; grant it</action>
@@ -33,7 +36,7 @@
     <action>Tap Try again from that failure sheet and verify it goes straight back to the Listening sheet — a second listen started before the first recognizer is destroyed comes back as "Still listening" instead</action>
     <action>Manual check: set the deck to a language with no installed speech model and verify the sheet says "Language not installed" with a Close (resource-id: speak_failed_close) rather than a Try again that would repeat the same failure</action>
     <action>Dismiss the Listening sheet and verify the study card is shown again</action>
-    <action>Tap the Listen button (resource-id: study_listen) on the card back and verify — by ear — that the answer is spoken by a voice for the deck's back language, and the front (before reveal) by the front language's voice. This is the acceptance test; a green build says nothing about which voice was used.</action>
+    <action>Tap the Listen button (resource-id: study_listen) on the card back and verify — by ear — that the answer is spoken by a voice for the deck's back language, and, with both sides on, the front (before reveal) by the front language's voice. This is the acceptance test; a green build says nothing about which voice was used.</action>
     <action>With Settings → Listen speed at 1×, tap Listen three more times on the same side, letting each finish, and verify each read is slower than the last until the third, which matches the second slow one (1×, 0.75×, 0.5×, 0.5×). Flip the card or move to the next one and verify the first read there is back at 1×.</action>
     <action>Set Settings → Listen speed (resource-id: settings_listen_speed) to 0.65×, come back and verify — by ear — that the first read on every card is already slower, and that a second tap on the same side drops to the slowest speed (0.65×, 0.5×) and stays there</action>
     <action>Tap Listen and tap it again while it is still reading: verify the button is dimmed, the word is read once, and the card does NOT flip — on iOS a disabled button passes its tap to the card underneath</action>
