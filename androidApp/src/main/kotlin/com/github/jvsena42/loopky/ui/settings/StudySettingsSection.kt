@@ -26,6 +26,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -134,6 +137,8 @@ internal fun ListenSpeedSection(
     var draft by remember(speed) { mutableFloatStateOf(speed) }
     val locale = LocalConfiguration.current.locales[0]
     val format = remember(locale) { NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 } }
+    val label = stringResource(R.string.settings_listen_speed_label)
+    val speedText = "${format.format(ListenSpeed.sanitized(draft))}×"
 
     Column(
         modifier = Modifier
@@ -144,7 +149,7 @@ internal fun ListenSpeedSection(
         ListItem(
             headlineContent = {
                 Text(
-                    text = stringResource(R.string.settings_listen_speed_label),
+                    text = label,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.foregroundPrimary,
@@ -160,7 +165,7 @@ internal fun ListenSpeedSection(
             },
             trailingContent = {
                 Text(
-                    text = "${format.format(ListenSpeed.sanitized(draft))}×",
+                    text = speedText,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.foregroundPrimary,
@@ -183,6 +188,11 @@ internal fun ListenSpeedSection(
             ),
             modifier = Modifier
                 .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                // Without these TalkBack reads the slider as a nameless percentage of its range.
+                .semantics {
+                    contentDescription = label
+                    stateDescription = speedText
+                }
                 .testTag("settings_listen_speed"),
         )
     }
