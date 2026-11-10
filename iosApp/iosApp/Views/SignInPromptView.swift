@@ -76,6 +76,15 @@ extension View {
     }
 }
 
+/// How long a screen waits after its share prompt closes before navigating away.
+///
+/// SwiftUI drops a navigation path change made while an alert is still animating away, and the
+/// path keeps the new value, so assigning it again later changes nothing either: answering the
+/// prompt left the screen behind it stuck with a Done button that did nothing.
+enum AlertDismissal {
+    static let settle: Duration = .milliseconds(450)
+}
+
 enum SharePromptCopy {
     static func title(for prompt: DeckSharePrompt?) -> String {
         guard let prompt else { return "" }
