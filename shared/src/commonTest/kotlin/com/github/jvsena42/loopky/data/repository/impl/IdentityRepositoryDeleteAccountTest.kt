@@ -470,9 +470,32 @@ class IdentityRepositoryDeleteAccountTest {
         val reports = mutableListOf<Pair<Int, Int>>()
         repo.deleteAccount(deletePubkyApp = true) { done, total -> reports += done to total }.getOrThrow()
 
-        val total = reports.first().second
         assertTrue(reports.size >= pubkyAppLeft().size + 6, "$reports")
-        assertTrue(reports.all { it.second == total })
+        val (done, total) = reports.last()
+        assertEquals(total, done, "$reports")
+    }
+
+    @Test
+    fun progressEndsAtItsTotalWhenADeckTakesItsRecordsWithIt() = runTest {
+        seedHomeserver()
+        decks.decks["deck1"] = testDeck(id = "deck1")
+        // What `DeckRepository.delete` removes in one step: the deck's own records, and the tag
+        // record on its manifest, which lives outside the deck's directory.
+        val deckRecords = listOf(
+            PubkyPaths.manifest(TEST_PUBKY, "deck1"),
+            PubkyPaths.cardChunk(TEST_PUBKY, "deck1", 0),
+            PubkyPaths.cardChunk(TEST_PUBKY, "deck1", 1),
+            "$loopkyRoot/tags/decktag",
+        )
+        deckRecords.forEach { pubky.store[it] = "{}" }
+        decks.onDelete = { deckRecords.forEach(pubky.store::remove) }
+
+        val reports = mutableListOf<Pair<Int, Int>>()
+        repo.deleteAccount { done, total -> reports += done to total }.getOrThrow()
+
+        val (done, total) = reports.last()
+        assertEquals(total, done, "the dialog closed short of its own total: $reports")
+        assertEquals(reports.map { it.first }.sorted(), reports.map { it.first })
     }
 
     /** [pubky] with a hook run before every delete; a non-null answer replaces the delete. */

@@ -76,10 +76,10 @@ class AccountEraser(
             }
         }
         val owned = decks.listOwned()
-        // Taken before the decks go, so `total` covers the whole job. Best-effort: a listing we
-        // could not read still leaves the per-deck pass to do the bulk of the work, and step 2
-        // re-lists at the end anyway.
-        val strays = namespaceRecords(owner)
+        // A first estimate, so the dialog has a total before the decks go. A deck's own records go
+        // with the deck in step 1, so they are left out here; every later listing re-sizes the job.
+        val ownedRoots = owned.map { "${PubkyPaths.deckRoot(owner, it.id)}/" }
+        val strays = namespaceRecords(owner).filterNot { path -> ownedRoots.any { path.startsWith(it) } }
         val pubkyAppRecords = if (deletePubkyApp) footprints.pubkyAppRecords(owner) else emptyList()
         val progress = SweepProgress((owned.size + strays.size + pubkyAppRecords.size).coerceAtLeast(1), onProgress)
 
@@ -102,7 +102,9 @@ class AccountEraser(
         // Re-listed rather than reusing `strays`, which is stale by now. Counted from the returned
         // list rather than a shared variable: these run concurrently, and `failures++` from two
         // coroutines would under-report and sign the user out of an account that is still half there.
-        failures += namespaceRecords(owner)
+        val remaining = namespaceRecords(owner)
+        progress.expect(remaining.size + pubkyAppRecords.size)
+        failures += remaining
             .mapConcurrently { path -> deleteRecord(path).also { progress.step() } }
             .count { deleted -> !deleted }
 
@@ -208,6 +210,7 @@ class AccountEraser(
             records.foreign.isNotEmpty() -> throw PubkyAppFootprintChangedException(PubkyAppFootprint.Direct)
             records.unreadable.isNotEmpty() -> throw PubkyAppFootprintChangedException(PubkyAppFootprint.Unknown)
         }
+        progress.expect(records.loopkys.size)
         val profile = PubkyPaths.profile(owner)
         val (labels, rest) = records.loopkys.filterNot { it == profile }
             .partition { it.startsWith(PubkyPaths.tag(owner, "")) }
@@ -253,12 +256,25 @@ class AccountEraser(
  * `var done` incremented inside `mapConcurrently` is a data race; the worst case is only a progress
  * number that skips, but the fix is three lines.
  */
-private class SweepProgress(private val total: Int, private val report: (Int, Int) -> Unit) {
+private class SweepProgress(private var total: Int, private val report: (Int, Int) -> Unit) {
     private val lock = Mutex()
     private var done = 0
 
     suspend fun step() {
-        val current = lock.withLock { ++done }
-        report(current, total)
+        val (current, of) = lock.withLock { ++done to total }
+        report(current, of)
+    }
+
+    /**
+     * Re-sizes the job to [remaining] more steps once a listing has said what is left. Without it
+     * the dialog closed on "5 of 9": the first total counted a deck's records, and the deck then
+     * took them with it in one step.
+     */
+    suspend fun expect(remaining: Int) {
+        val (current, of) = lock.withLock {
+            total = (done + remaining).coerceAtLeast(1)
+            done to total
+        }
+        report(current, of)
     }
 }
