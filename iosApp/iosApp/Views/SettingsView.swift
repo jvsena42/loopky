@@ -10,6 +10,7 @@ struct SettingsView: View {
     var onShareOnPubkyChanged: (Bool) -> Void = { _ in }
     var onThemeChanged: (AppTheme) -> Void = { _ in }
     var onGoalChanged: (Int) -> Void = { _ in }
+    var onListenSpeedChanged: (Float) -> Void = { _ in }
     var onIntervalChanged: (StudyGrade, Int) -> Void = { _, _ in }
     var onSaveUnsplashKey: (String) -> Void = { _ in }
     var onRemoveUnsplashKey: () -> Void = {}
@@ -24,6 +25,8 @@ struct SettingsView: View {
     var onOpenBlockedUsers: () -> Void = {}
 
     @State private var unsplashKey = ""
+    /// The slider's position while dragged; committed on release, so a drag is one write.
+    @State private var listenSpeedDraft: Float?
 
     var body: some View {
         List {
@@ -31,6 +34,7 @@ struct SettingsView: View {
             appearanceSection
             languageSection
             studyingSection
+            listenSpeedSection
             sharingSection
             imageSearchSection
             aboutSection
@@ -208,6 +212,52 @@ struct SettingsView: View {
             }
         }
         .disabled(!state.canEditStudySettings)
+    }
+
+    /// Its own section rather than a row in `studyingSection`: that one is disabled until the
+    /// synced study record has been read, and this is a device preference with nothing to wait for.
+    private var listenSpeedSection: some View {
+        let speed = listenSpeedDraft ?? state.listenSpeed
+        return Section {
+            VStack(alignment: .leading, spacing: 8) {
+                // Not `settingRow`: a `LabeledContent` in a `VStack` drops its value under a
+                // two-line caption instead of keeping it beside the label.
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("settings_listen_speed_label")
+                        Text("settings_listen_speed_description")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Text(Self.speedLabel(speed))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                Slider(
+                    value: Binding(
+                        get: { Double(speed) },
+                        set: { listenSpeedDraft = Float($0) }
+                    ),
+                    in: Double(ListenSpeed.shared.MIN)...Double(ListenSpeed.shared.MAX),
+                    step: Double(ListenSpeed.shared.STEP)
+                ) { editing in
+                    guard !editing, let draft = listenSpeedDraft else { return }
+                    onListenSpeedChanged(ListenSpeed.shared.sanitized(rate: draft))
+                    listenSpeedDraft = nil
+                }
+                .tint(LoopkyColor.accentPrimary)
+                .accessibilityLabel(Text("settings_listen_speed_label"))
+                .accessibilityValue(Text(Self.speedLabel(speed)))
+                .accessibilityIdentifier("settings_listen_speed")
+            }
+        }
+    }
+
+    private static func speedLabel(_ speed: Float) -> String {
+        let rounded = ListenSpeed.shared.sanitized(rate: speed)
+        return rounded.formatted(.number.precision(.fractionLength(0...2))) + "×"
     }
 
     private func intervalRow(
