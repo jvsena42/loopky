@@ -54179,73 +54179,144 @@
         }
       }
     },
-    "speak_listening_hint": {
+    "speak_cancel": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zum Abbrechen tippen"
+            "value": "Abbrechen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tap to cancel"
+            "value": "Cancel"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toca para cancelar"
+            "value": "Cancelar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Touche pour annuler"
+            "value": "Annuler"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tocca per annullare"
+            "value": "Annulla"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "タップしてキャンセル"
+            "value": "キャンセル"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "탭하면 취소돼요"
+            "value": "취소"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toque para cancelar"
+            "value": "Cancelar"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nhấn để hủy"
+            "value": "Hủy"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "点按取消"
+            "value": "取消"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "點一下即可取消"
+            "value": "取消"
+          }
+        }
+      }
+    },
+    "speak_done": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fertig"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fatto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完了"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "완료"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concluir"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
           }
         }
       }

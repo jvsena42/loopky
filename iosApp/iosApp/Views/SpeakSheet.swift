@@ -12,6 +12,7 @@ struct SpeakSheet: View {
     let phase: Any?
     var onRetry: () -> Void = {}
     var onContinue: () -> Void = {}
+    var onDone: () -> Void = {}
     var onDismiss: () -> Void = {}
 
     var body: some View {
@@ -36,6 +37,8 @@ struct SpeakSheet: View {
         .presentationDragIndicator(.visible)
     }
 
+    private static let longTargetChars = 40
+
     private func listeningBody(_ target: String) -> some View {
         VStack(spacing: 14) {
             Text("speak_listening_prompt")
@@ -43,8 +46,9 @@ struct SpeakSheet: View {
                 .foregroundStyle(LoopkyColor.foregroundMuted)
             // What is shown is the card as written, asides included: the note is the context worth
             // seeing, even though the matcher drops it before comparing.
+            // A sentence at word size runs off the sheet and hides Done.
             Text(verbatim: target)
-                .font(.system(size: 26, weight: .heavy))
+                .font(.system(size: target.count > Self.longTargetChars ? 18 : 26, weight: .heavy))
                 .foregroundStyle(LoopkyColor.foregroundPrimary)
                 .multilineTextAlignment(.center)
             Image(systemName: "waveform")
@@ -52,8 +56,12 @@ struct SpeakSheet: View {
                 .foregroundStyle(LoopkyColor.accentPrimary)
                 .symbolEffect(.variableColor.iterative, options: .repeating)
                 .padding(.vertical, 8)
-            Button("speak_listening_hint", action: onDismiss)
-                .font(.system(size: 13, weight: .semibold))
+            // Done keeps what was said and grades it; Cancel throws the attempt away.
+            Button("speak_done", action: onDone)
+                .buttonStyle(.loopkyFilled)
+                .accessibilityIdentifier("speak_done")
+            Button("speak_cancel", action: onDismiss)
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(LoopkyColor.foregroundMuted)
                 .accessibilityIdentifier("speak_cancel")
         }

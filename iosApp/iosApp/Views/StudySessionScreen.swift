@@ -55,6 +55,7 @@ struct StudySessionScreen: View {
                 phase: (uiState as? StudySessionUiStateReviewing)?.speakPhase,
                 onRetry: { viewModel?.onSpeakRetry() },
                 onContinue: { viewModel?.onSpeakDismiss() },
+                onDone: { viewModel?.onSpeakDone() },
                 onDismiss: { viewModel?.onSpeakDismiss() }
             )
         }
@@ -185,7 +186,9 @@ struct StudySessionScreen: View {
                 ) { vm.onListenFinished() }
                 if !spoken { vm.onListenFinished() }
             case let listen as StudySessionEffectStartSpeechRecognition:
-                startListening(languageTag: listen.languageTag, vm: vm)
+                startListening(languageTag: listen.languageTag, window: listen.window, vm: vm)
+            case is StudySessionEffectFinishSpeechRecognition:
+                SpeechListener.shared.finish()
             case let haptic as StudySessionEffectHaptic:
                 Haptics.play(haptic.pattern)
             case is StudySessionEffectSpeakCorrectChime:
@@ -217,9 +220,10 @@ struct StudySessionScreen: View {
     ///
     /// Every failure goes back with its reason and is shown *in the sheet*: a sheet that closes on
     /// its own is indistinguishable from the app having dropped the tap.
-    private func startListening(languageTag: String, vm: StudySessionViewModel) {
+    private func startListening(languageTag: String, window: ListenWindow, vm: StudySessionViewModel) {
         SpeechListener.shared.listen(
             languageTag: languageTag,
+            window: window,
             onResult: { text in vm.onSpeechResult(text: text) },
             onFailure: { failure in vm.onSpeechError(reason: failure.shared) }
         )

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -21,9 +22,17 @@ import android.speech.SpeechRecognizer as AndroidSpeech
  */
 class AndroidSpeechRecognizer(private val context: Context) : SpeechRecognizer {
 
+    /** Ends the listen currently running, if any. Read and written on the main thread only. */
+    private var finishCurrent: (() -> Unit)? = null
+
     override fun isAvailable(): Boolean = AndroidSpeech.isRecognitionAvailable(context)
 
-    override fun listen(languageTag: String?): Flow<SpeechEvent> = callbackFlow {
+    override fun finish() {
+        finishCurrent?.invoke()
+    }
+
+    @Suppress("LongMethod")
+    override fun listen(languageTag: String?, window: ListenWindow): Flow<SpeechEvent> = callbackFlow {
         if (!AndroidSpeech.isRecognitionAvailable(context)) {
             trySend(SpeechEvent.Error(SpeechError.Unavailable))
             close()
@@ -36,6 +45,16 @@ class AndroidSpeechRecognizer(private val context: Context) : SpeechRecognizer {
         // engines; whichever lands first is the attempt's outcome, and the other is dropped rather
         // than overwriting a graded result with "didn't catch that".
         var delivered = false
+        // What the engine had heard so far. A stop that ends in an error or in nothing at all still
+        // grades these words, or a sentence cut short by Done or the cap would be thrown away.
+        var heard: String? = null
+        var stopping: Job? = null
+
+        fun deliver(text: String?, otherwise: SpeechError) {
+            delivered = true
+            trySend(if (text != null) SpeechEvent.Result(text) else SpeechEvent.Error(otherwise))
+            close()
+        }
 
         @Suppress("EmptyFunctionBlock")
         val listener = object : RecognitionListener {
@@ -46,22 +65,21 @@ class AndroidSpeechRecognizer(private val context: Context) : SpeechRecognizer {
             override fun onEndOfSpeech() {}
 
             override fun onPartialResults(partialResults: Bundle?) {
-                firstTranscript(partialResults)?.let { trySend(SpeechEvent.Partial(it)) }
+                firstTranscript(partialResults)?.let {
+                    heard = it
+                    trySend(SpeechEvent.Partial(it))
+                }
             }
 
             override fun onResults(results: Bundle?) {
                 if (delivered) return
-                delivered = true
-                val text = firstTranscript(results)
-                if (text != null) trySend(SpeechEvent.Result(text)) else trySend(SpeechEvent.Error(SpeechError.NoMatch))
-                close()
+                deliver(firstTranscript(results) ?: heard, SpeechError.NoMatch)
             }
 
             override fun onError(error: Int) {
                 if (delivered) return
-                delivered = true
-                trySend(SpeechEvent.Error(mapError(error)))
-                close()
+                val reason = mapError(error)
+                deliver(heard.takeIf { reason == SpeechError.NoMatch || stopping != null }, reason)
             }
 
             override fun onEvent(eventType: Int, params: Bundle?) {}
@@ -71,36 +89,42 @@ class AndroidSpeechRecognizer(private val context: Context) : SpeechRecognizer {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            // Engines may ignore these, which is why the sheet also has a Done button.
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, window.pauseMillis)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, window.pauseMillis)
             languageTag?.let { putExtra(RecognizerIntent.EXTRA_LANGUAGE, it) }
         }
         recognizer.startListening(intent)
 
-        // Some engines accept a listen and then never finish it — no result, no error, not even
-        // after the speech ends (an emulator's stub recognition service does exactly this). Nothing
-        // else ends the flow, so the sheet sits on "Say the word" for good. A pronunciation attempt
-        // is one word or a short phrase, so a cap this far out cannot truncate a real one: it asks
-        // the engine to finalise what it has, then reports rather than waiting forever.
-        launch {
-            delay(LISTEN_TIMEOUT)
-            if (delivered) return@launch
+        // Asks the engine to finalise what it has, then reports what was heard rather than waiting
+        // forever: some engines accept a listen and never finish it, not even after stopListening.
+        fun stop(otherwise: SpeechError) {
+            if (delivered || stopping != null) return
             recognizer.stopListening()
-            delay(FINALIZE_GRACE)
-            if (delivered) return@launch
-            delivered = true
-            trySend(SpeechEvent.Error(SpeechError.Unknown))
-            close()
+            stopping = launch {
+                delay(FINALIZE_GRACE)
+                if (!delivered) deliver(heard, otherwise)
+            }
+        }
+
+        val finish = { stop(SpeechError.NoMatch) }
+        finishCurrent = finish
+
+        // The cap also ends a listen the engine never finishes (an emulator's stub recognition
+        // service does exactly this), which would otherwise sit on "Say the word" for good.
+        launch {
+            delay(window.capMillis)
+            stop(SpeechError.Unknown)
         }
 
         awaitClose {
+            if (finishCurrent === finish) finishCurrent = null
             recognizer.stopListening()
             recognizer.destroy()
         }
     }
 
     private companion object {
-        /** Long enough that no single-word attempt can be cut off; short enough to end a hang. */
-        val LISTEN_TIMEOUT = 15.seconds
-
         /** [android.speech.SpeechRecognizer.stopListening] may still deliver — give it the chance. */
         val FINALIZE_GRACE = 3.seconds
     }

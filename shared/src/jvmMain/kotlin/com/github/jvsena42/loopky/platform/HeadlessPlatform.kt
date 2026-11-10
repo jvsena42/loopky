@@ -22,7 +22,7 @@ class NoSpeaker : Speaker {
 /** No microphone. [listen] completes immediately with the unavailable error rather than hanging. */
 class NoSpeechRecognizer : SpeechRecognizer {
     override fun isAvailable(): Boolean = false
-    override fun listen(languageTag: String?): Flow<SpeechEvent> =
+    override fun listen(languageTag: String?, window: ListenWindow): Flow<SpeechEvent> =
         flowOf(SpeechEvent.Error(SpeechError.Unavailable))
 }
 

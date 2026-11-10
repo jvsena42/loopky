@@ -48,6 +48,7 @@ import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 fun SpeakSheets(
     phase: SpeakPhase,
     onCancel: () -> Unit,
+    onDone: () -> Unit,
     onContinue: () -> Unit,
     onRetry: () -> Unit,
 ) {
@@ -73,7 +74,7 @@ fun SpeakSheets(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             when (phase) {
-                is SpeakPhase.Listening -> ListeningBody(phase.expected)
+                is SpeakPhase.Listening -> ListeningBody(phase.expected, onDone = onDone, onCancel = onCancel)
                 is SpeakPhase.Correct -> CorrectBody(phase.heard, onContinue)
                 is SpeakPhase.Wrong -> WrongBody(phase.heard, phase.expected, onRetry)
                 is SpeakPhase.Failed -> FailedBody(phase, onRetry = onRetry, onDismiss = onCancel)
@@ -84,7 +85,7 @@ fun SpeakSheets(
 }
 
 @Composable
-private fun ListeningBody(targetWord: String) {
+private fun ListeningBody(targetWord: String, onDone: () -> Unit, onCancel: () -> Unit) {
     val colors = LoopkyTheme.colors
     Text(
         text = stringResource(R.string.speak_listening_prompt),
@@ -99,7 +100,14 @@ private fun ListeningBody(targetWord: String) {
             .background(colors.accentSecondarySoft)
             .padding(horizontal = 20.dp, vertical = 10.dp),
     ) {
-        Text(text = targetWord, fontSize = 28.sp, fontWeight = FontWeight.W800, color = colors.accentSecondary)
+        Text(
+            text = targetWord,
+            // A whole sentence at word size runs to a dozen lines and pushes Done off the sheet.
+            fontSize = if (targetWord.length > LONG_TARGET_CHARS) 18.sp else 28.sp,
+            fontWeight = FontWeight.W800,
+            color = colors.accentSecondary,
+            textAlign = TextAlign.Center,
+        )
     }
     // Solid purple mic in a soft halo ring.
     Box(
@@ -120,12 +128,28 @@ private fun ListeningBody(targetWord: String) {
             Icon(Icons.Default.Mic, null, tint = colors.foregroundOnAccent, modifier = Modifier.size(36.dp))
         }
     }
+    // Done keeps what was said and grades it; Cancel throws the attempt away.
+    SheetButton(
+        label = stringResource(R.string.speak_done),
+        background = colors.accentSecondary,
+        contentColor = colors.foregroundOnAccent,
+        tag = "speak_done",
+        onClick = onDone,
+    )
     Text(
-        text = stringResource(R.string.speak_listening_hint),
-        fontSize = 13.sp,
+        text = stringResource(R.string.speak_cancel),
+        fontSize = 14.sp,
+        fontWeight = FontWeight.W600,
         color = colors.foregroundMuted,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onCancel)
+            .testTag("speak_cancel")
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     )
 }
+
+private const val LONG_TARGET_CHARS = 40
 
 @Composable
 private fun CorrectBody(heard: String, onContinue: () -> Unit) {
