@@ -186,6 +186,8 @@
     <string name="search_decks_title">Stapel</string>
     <string name="search_open_profile">Dieses Profil öffnen</string>
     <string name="search_open_deck">Diesen Stapel öffnen</string>
+    <string name="search_sign_in_link_title">Das ist ein Anmeldecode</string>
+    <string name="search_sign_in_link_body">Scanne ihn mit Pubky Ring, um die Anmeldung zu bestätigen. Loopky kann ihn nicht öffnen.</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">Nichts gefunden für „%1$s“</string>
     <string name="search_empty_subtitle">Versuch einen anderen Namen oder füge den pubky der Person ein, um sie direkt zu öffnen.</string>

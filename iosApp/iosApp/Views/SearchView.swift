@@ -34,6 +34,7 @@ struct SearchViewState {
     var isSearching = false
     var isEmpty = false
     var directHit: SearchDirectHit?
+    var isSignInLink = false
     var people: [SearchPersonData] = []
     var decks: [SearchDeckData] = []
 }
@@ -49,6 +50,7 @@ struct SearchView: View {
     /// Read a pubky off a QR code rather than typing 52 characters of base32.
     var onScan: () -> Void = {}
     var onOpenDirectHit: () -> Void = {}
+    var onGetPubkyRing: () -> Void = {}
     var onPersonTap: (String) -> Void = { _ in }
     var onFollowTap: (String) -> Void = { _ in }
     var onDeckTap: (String, String) -> Void = { _, _ in }
@@ -66,6 +68,7 @@ struct SearchView: View {
                     // asked for: certain, instant, and the only result that reaches an account no
                     // index has seen yet.
                     if let hit = state.directHit { directHitRow(hit) }
+                    if state.isSignInLink { signInLinkRow }
                     if state.isSearching { ProgressView().frame(maxWidth: .infinity) }
                     if !state.people.isEmpty { peopleSection }
                     if !state.decks.isEmpty { decksSection }
@@ -143,6 +146,27 @@ struct SearchView: View {
             .background(RoundedRectangle(cornerRadius: 20).fill(LoopkyColor.surfaceCard))
         }
         .buttonStyle(.plain)
+    }
+
+    /// A scanned Pubky Ring sign-in request: says where it goes instead of searching for it.
+    private var signInLinkRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("search_sign_in_link_title")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(LoopkyColor.foregroundPrimary)
+            Text("search_sign_in_link_body")
+                .font(.system(size: 13))
+                .foregroundColor(LoopkyColor.foregroundMuted)
+            Button("backup_ring_install", action: onGetPubkyRing)
+                .buttonStyle(LoopkySoftButtonStyle(fontSize: 14, verticalPadding: 12))
+                .padding(.top, 8)
+                .accessibilityIdentifier("search_get_ring")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 20).fill(LoopkyColor.surfaceCard))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("search_sign_in_link")
     }
 
     private var peopleSection: some View {

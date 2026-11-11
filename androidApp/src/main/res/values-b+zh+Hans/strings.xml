@@ -187,6 +187,8 @@
     <string name="search_decks_title">卡组</string>
     <string name="search_open_profile">打开此个人主页</string>
     <string name="search_open_deck">打开此卡组</string>
+    <string name="search_sign_in_link_title">这是一个登录码</string>
+    <string name="search_sign_in_link_body">请用 Pubky Ring 扫描以批准登录。Loopky 无法打开它。</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">没有找到“%1$s”的相关结果</string>
     <string name="search_empty_subtitle">换个名字试试，或者粘贴对方的 pubky 直接打开。</string>

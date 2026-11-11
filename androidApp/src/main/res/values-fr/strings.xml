@@ -186,6 +186,8 @@
     <string name="search_decks_title">Paquets</string>
     <string name="search_open_profile">Ouvrir ce profil</string>
     <string name="search_open_deck">Ouvrir ce paquet</string>
+    <string name="search_sign_in_link_title">C’est un code de connexion</string>
+    <string name="search_sign_in_link_body">Scanne-le avec Pubky Ring pour approuver la connexion. Loopky ne peut pas l’ouvrir.</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">Aucun résultat pour « %1$s »</string>
     <string name="search_empty_subtitle">Essaie un autre nom, ou colle son pubky pour ouvrir le profil directement.</string>

@@ -1,5 +1,7 @@
 package com.github.jvsena42.loopky.ui.search
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -103,6 +105,9 @@ fun DiscoverSearchBar(
                 }
                 is SearchEffect.ShowFollowError -> followError = effect.reason
                 is SearchEffect.RequireSignIn -> signInPrompt = effect.reason
+                is SearchEffect.OpenInstallPage -> {
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(effect.url))) }
+                }
             }
         }
     }
@@ -228,6 +233,7 @@ fun DiscoverSearchBar(
             onOpenDeck = viewModel::onOpenDeck,
             onFollowToggle = viewModel::onFollowToggle,
             onRequestDeck = { deckRequest.launch(uiState.query, isGuest = !uiState.isSignedIn) },
+            onGetPubkyRing = viewModel::onGetPubkyRing,
             modifier = Modifier
                 .fillMaxSize()
                 .semantics { testTagsAsResourceId = true }
