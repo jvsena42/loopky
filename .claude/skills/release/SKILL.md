@@ -123,7 +123,19 @@ merge commit.
    - Confirm it landed on the merge commit: `git rev-list -n1 <version>` equals `main`'s tip.
    - `git push origin <version>` (tags push fine; only branch pushes to `main` are blocked).
 
-9. **Watch the workflow, then do the two things it cannot**:
+9. **Watch the workflow, then do the things it cannot**:
+
+   Everything this step produces for the user goes in one folder, `~/Desktop/Loopky-<numeric_version>/`
+   (`mkdir -p` it first): the `.aab`, the Play "What's new" file and the `.ipa`.
+
+   **On macOS, start the iOS build first.** `release.yml` does not build iOS. If `uname -s` prints
+   `Darwin`, run the `ios-ipa` skill now, with that folder as its output directory, so the `.ipa` builds
+   while the workflow runs. That skill sets `disable-model-invocation`, so the Skill tool cannot
+   call it: read `.claude/skills/ios-ipa/SKILL.md` and follow its steps. Its `build-ipa.sh` runs in
+   the background; do not wait on it before watching the workflow. Its preconditions (a `TEAM_ID`
+   in `Local.xcconfig`, a clean `iosApp/`, a build number App Store Connect has not seen) stop the
+   iOS build only; report the failure in step 10 and carry on with the release. On any other OS,
+   skip it and say in step 10 that the `.ipa` still has to be built on a Mac with `/ios-ipa`.
 
    ```shell
    gh run watch "$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')"
@@ -140,7 +152,7 @@ merge commit.
      installed — and it is what gets uploaded to the Play Console by hand.
 
      ```shell
-     gh run download <run-id> --name play-bundle --dir .
+     gh run download <run-id> --name play-bundle --dir ~/Desktop/Loopky-<numeric_version>
      ```
 
    - **Rewrite the notes if step 7 said they needed it**:
@@ -171,7 +183,7 @@ merge commit.
        </pt-BR>
        ```
 
-     Write it to `build/play-release-notes-<numeric_version>.txt` (gitignored) and also print it,
+     Write it to `~/Desktop/Loopky-<numeric_version>/play-release-notes.txt` and also print it,
      so it can be pasted into the release form beside the `.aab`. If the range holds nothing an
      Android user would notice, say so and offer the generic "Bug fixes and improvements" in each
      language rather than inventing a feature.
@@ -184,7 +196,9 @@ merge commit.
     and print the release URL, the new Android `versionCode`/`versionName`, the iOS
     `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION`, `loopkyCliVersion`, the path to the `.aab`
     waiting for the Play Console and to its translated "What's new" file (and the Play version the
-    notes were written from), and the install one-liner from `cli/README.md`.
+    notes were written from), the path to the `.ipa` waiting for Transporter with the signing
+    identity `build-ipa.sh` printed (or why it was not built), and the install one-liner from
+    `cli/README.md`.
 
     Say out loud whether the `plugin` branch moved: the *Plugin branch* job copies
     `plugins/loopky/` there and checks it against the tag. It is what Anthropic's plugin directory
