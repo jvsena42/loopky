@@ -158,7 +158,7 @@ struct SearchView: View {
                 .font(.system(size: 13))
                 .foregroundColor(LoopkyColor.foregroundMuted)
             Button("backup_ring_install", action: onGetPubkyRing)
-                .buttonStyle(LoopkySoftButtonStyle(fontSize: 14, verticalPadding: 12))
+                .buttonStyle(.loopkySoft)
                 .padding(.top, 8)
                 .accessibilityIdentifier("search_get_ring")
         }

@@ -227,7 +227,10 @@ private fun SignInLinkRow(onGetPubkyRing: () -> Unit) {
         LoopkySecondaryButton(
             text = stringResource(R.string.backup_ring_install),
             onClick = onGetPubkyRing,
-            modifier = Modifier.padding(top = 8.dp).testTag("search_get_ring"),
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .testTag("search_get_ring")
+                .fillMaxWidth(),
         )
     }
 }
