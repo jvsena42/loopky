@@ -28,7 +28,8 @@ are running:
 - **No shell at all** (a chat app): the connector is the only door. If its tools are not there,
   tell the user to add it from Claude's connector directory — Settings → Connectors → Browse
   connectors, search for Loopky, or open https://claude.ai/directory/loopky — then sign in with
-  Pubky Ring when it asks.
+  Pubky Ring when it asks. Ask first whether they have Pubky Ring on their phone; if not, they
+  install it from https://pubkyring.app before adding the connector.
 - **A shell on the user's own machine** (a local terminal): **use the CLI**, with the workflow
   below. It is the complete client: `.apkg` imports, card files on disk, `--check-images`
   and `batch` exist only there. If `loopky` is missing, offer the install; mention
@@ -98,7 +99,11 @@ Through the connector:
    and `data.allowlist` verbatim — the hosts, and where their product keeps that setting. No
    package, script or retry can add a host for them.
 
-4. **Sign in:** `loopky login --json --timeout 300`. The user approves with Pubky Ring on their
+4. **Sign in.** First ask whether the user has Pubky Ring on their phone, since nothing else can
+   approve the sign-in. If they do not, run `loopky ring --json` and show them the QR code it
+   prints on stderr in a code block, with `data.install_url` as a link; they scan it with the
+   phone's camera, install Ring, and create or restore their key there. Then
+   `loopky login --json --timeout 300`. The user approves with Pubky Ring on their
    phone. Show them the QR code **and** the `auth_url` from the output in a code block — on the
    device they chat from, they may open the link instead of scanning. The link is a login secret
    until approved: show it only to them, nowhere else. Exit 13 means nobody approved in time; run

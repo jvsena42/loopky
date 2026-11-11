@@ -142,6 +142,7 @@ Ring](https://pubkyring.app) **v2.0 or newer** (older releases cannot read the l
 recovery phrase into it, and keep that phrase somewhere the phone is not. Losing it loses the account, and there is nobody to ask for it back.
 
 ```shell
+loopky ring                         # where to install Pubky Ring, with a QR for a phone's camera
 loopky login                        # QR for Pubky Ring, then waits for approval
 loopky login --export               # also prints the session secret, for LOOPKY_SESSION
 loopky login --timeout 120          # give up after two minutes instead of blocking forever

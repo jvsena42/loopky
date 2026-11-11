@@ -27,6 +27,7 @@ import com.github.jvsena42.loopky.cli.commands.importDryRun
 import com.github.jvsena42.loopky.cli.commands.login
 import com.github.jvsena42.loopky.cli.commands.logout
 import com.github.jvsena42.loopky.cli.commands.requireImageCheckOptions
+import com.github.jvsena42.loopky.cli.commands.ring
 import com.github.jvsena42.loopky.cli.commands.tagTrending
 import com.github.jvsena42.loopky.cli.commands.update
 import com.github.jvsena42.loopky.cli.commands.whoami
@@ -391,7 +392,10 @@ private const val COMPLETION_VERB = "completion"
 /** And the surface table, which is a constant this binary was compiled with. */
 private const val COMMANDS_VERB = "commands"
 
-private val PRE_KOIN_VERBS = setOf(UPDATE_VERB, COMPLETION_VERB, COMMANDS_VERB)
+/** Where to install Pubky Ring: a constant too, and wanted most before anything else works. */
+private const val RING_VERB = "ring"
+
+private val PRE_KOIN_VERBS = setOf(UPDATE_VERB, COMPLETION_VERB, COMMANDS_VERB, RING_VERB)
 
 /** `--version`, `--help` and a bare `loopky`: answered before anything is resolved, or null to go on. */
 @Suppress("ReturnCount")
@@ -432,6 +436,7 @@ private fun selfDescription(args: Args): ExitCode? {
 private suspend fun preKoin(args: Args, updates: Updates): CommandResult = when (args.verb) {
     COMPLETION_VERB -> completion(args)
     COMMANDS_VERB -> commandSurface()
+    RING_VERB -> ring(System.err::println)
     else -> update(args, updates.checker, updates.installation)
 }
 
@@ -455,6 +460,7 @@ internal val USAGE = """
                                 Print a QR code for Pubky Ring and wait for approval. --export also
                                 prints the session secret for LOOPKY_SESSION. --timeout exits 13
                                 when nobody approves in time.
+      ring                      Where to install Pubky Ring, with a QR code for a phone's camera.
       logout                    Forget the stored session.
       whoami                    Pubky, homeserver, capabilities, environment, session status.
       doctor [--homeserver <pubky>]

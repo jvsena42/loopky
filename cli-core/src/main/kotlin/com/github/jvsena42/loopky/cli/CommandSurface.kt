@@ -233,6 +233,13 @@ fun cliCommands(): List<CliCommand> = listOf(
         notBatchable = "A batch runs as one session; sign in before it.",
     ),
     CliCommand(
+        path = "ring",
+        summary = "where to install Pubky Ring, with a QR code to scan with a phone camera",
+        needsSession = false,
+        local = true,
+        notBatchable = "It prints an install link and does no homeserver work.",
+    ),
+    CliCommand(
         path = "logout",
         summary = "forget the stored session",
         notBatchable = "It would revoke the session the remaining operations run as.",
