@@ -42,6 +42,12 @@ object AuthorizePage {
             |<p class="who"><strong>$client</strong> is asking to manage your Loopky decks.
             |After you approve, you will be sent back to <strong>$domain</strong>.</p>
             |<p class="scope">Ring will ask for <code>/pub/loopky/:rw</code> only: your decks and cards. Nothing else on your account.</p>
+            |<details>
+            |<summary>Don't have Pubky Ring yet?</summary>
+            |<p class="hint">Install it on your phone first: it holds your key and approves this sign-in.
+            |Scan this with your phone's camera, or open <a href="$RING_INSTALL_URL">pubkyring.app</a>.</p>
+            |<div class="qr">$ringInstallQr</div>
+            |</details>
             |<a class="button" href="$deeplink">Open in Pubky Ring</a>
             |<p class="hint">On your phone? Tap the button, approve in Ring, then come back to this page.</p>
             |<details open>
@@ -63,7 +69,7 @@ object AuthorizePage {
         runCatching { URI(redirectUri).host }.getOrNull() ?: redirectUri
 
     /** The matrix as one SVG path: no raster, no external image, nothing for the CSP to allow. */
-    fun qrSvg(content: String): String {
+    fun qrSvg(content: String, label: String = "QR code for Pubky Ring"): String {
         val hints = mapOf(EncodeHintType.MARGIN to QR_MARGIN, EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M)
         val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0, hints)
         val path = buildString {
@@ -72,7 +78,7 @@ object AuthorizePage {
             }
         }
         return """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${matrix.width} ${matrix.height}" """ +
-            """shape-rendering="crispEdges" role="img" aria-label="QR code for Pubky Ring">""" +
+            """shape-rendering="crispEdges" role="img" aria-label="$label">""" +
             """<rect width="100%" height="100%" fill="#fff"/><path d="$path" fill="#000"/></svg>"""
     }
 
@@ -90,6 +96,12 @@ object AuthorizePage {
     }
 
     private const val QR_MARGIN = 2
+
+    /** Pubky Ring's page, which sends a phone to its store. The same one the apps and the CLI link to. */
+    const val RING_INSTALL_URL = "https://pubkyring.app"
+
+    /** A constant, so drawn once rather than per sign-in. */
+    private val ringInstallQr: String by lazy { qrSvg(RING_INSTALL_URL, label = "QR code to install Pubky Ring") }
 
     private const val STYLE = """
         body{margin:0;font-family:system-ui,sans-serif;background:#fbf7ef;color:#1a1326}
