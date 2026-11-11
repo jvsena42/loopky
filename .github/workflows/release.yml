@@ -783,7 +783,9 @@ jobs:
           set -euo pipefail
           git fetch origin plugin
           git worktree add "$RUNNER_TEMP/plugin" origin/plugin
-          rsync -a --delete plugins/loopky/ "$RUNNER_TEMP/plugin/plugins/loopky/"
+          # --checksum: both trees are fresh checkouts, so mtimes can match to the second, and a
+          # version bump keeps plugin.json's size. Without it rsync skipped the file on v1.12.0.
+          rsync -a --checksum --delete plugins/loopky/ "$RUNNER_TEMP/plugin/plugins/loopky/"
           cd "$RUNNER_TEMP/plugin"
           git add -A
           if git diff --cached --quiet; then
