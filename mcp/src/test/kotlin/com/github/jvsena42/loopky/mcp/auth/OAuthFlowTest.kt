@@ -56,6 +56,8 @@ class OAuthFlowTest {
         assertContains(html, "href=\"pubkyauth://")
         assertContains(html, "<svg")
         assertContains(html, "approve in Ring, then come back")
+        assertContains(html, "href=\"https://pubkyring.app\"")
+        assertContains(html, "aria-label=\"QR code to install Pubky Ring\"")
         assertEquals("DENY", page.headers["X-Frame-Options"])
         assertEquals("no-referrer", page.headers["Referrer-Policy"])
         assertEquals("no-store", page.headers[HttpHeaders.CacheControl])
