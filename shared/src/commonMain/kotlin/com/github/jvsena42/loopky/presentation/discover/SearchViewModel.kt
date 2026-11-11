@@ -10,7 +10,9 @@ import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
+import com.github.jvsena42.loopky.domain.model.SignInLinks
 import com.github.jvsena42.loopky.presentation.auth.SignInReason
+import com.github.jvsena42.loopky.presentation.onboarding.OnboardingViewModel
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.FlowPreview
@@ -54,6 +56,7 @@ import kotlinx.coroutines.launch
 class SearchViewModel(
     private val discoveryRepository: DiscoveryRepository,
     private val identityRepository: IdentityRepository,
+    private val pubkyRingInstallUrl: String = OnboardingViewModel.DEFAULT_INSTALL_URL,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SearchUiState())
     val state: StateFlow<SearchUiState> = _state.asStateFlow()
@@ -100,12 +103,15 @@ class SearchViewModel(
     fun onQueryChange(raw: String) {
         // Parsed on every keystroke rather than on the debounce: it is a local string test, and a
         // pasted link should offer itself immediately instead of after a pause.
-        val link = PubkyLinks.parse(raw)
-        val willSearch = link == null && raw.trim().length >= DiscoveryRepository.MIN_SEARCH_QUERY_LENGTH
+        val isSignInLink = SignInLinks.isIn(raw)
+        val link = if (isSignInLink) null else PubkyLinks.parse(raw)
+        val willSearch = link == null && !isSignInLink &&
+            raw.trim().length >= DiscoveryRepository.MIN_SEARCH_QUERY_LENGTH
         _state.update {
             it.copy(
                 query = raw,
                 directLink = link,
+                isSignInLink = isSignInLink,
                 isSearching = willSearch,
                 // Results belong to the query that produced them; keeping them under new text
                 // would show answers to a question that is no longer on screen.
@@ -131,8 +137,9 @@ class SearchViewModel(
             return
         }
         // An address already names its one answer; searching the indexer for it could only
-        // return the same account under a slower path, or nothing.
-        if (PubkyLinks.parse(query) != null) {
+        // return the same account under a slower path, or nothing. A sign-in link is never sent
+        // to the indexer at all: its secret would land in a search query and in the log.
+        if (SignInLinks.isIn(query) || PubkyLinks.parse(query) != null) {
             _state.update { it.copy(isSearching = false, hasSearched = false) }
             return
         }
@@ -228,6 +235,11 @@ class SearchViewModel(
         viewModelScope.launch { _effects.emit(SearchEffect.OpenDeck(authorPubky, deckId)) }
     }
 
+    /** A scanned sign-in code is Pubky Ring's to approve, so the way forward is getting Ring. */
+    fun onGetPubkyRing() {
+        viewModelScope.launch { _effects.emit(SearchEffect.OpenInstallPage(pubkyRingInstallUrl)) }
+    }
+
     /** Whatever the address resolved to — a deck link opens the deck, not its author. */
     fun onOpenLink(link: PubkyLink) {
         when (link) {
@@ -271,12 +283,14 @@ data class SearchUiState(
     val hasSearched: Boolean = false,
     /** The one thing the typed text already names, when it is an address rather than a query. */
     val directLink: PubkyLink? = null,
+    /** The text is a Pubky Ring sign-in request, which Loopky cannot act on and must not search. */
+    val isSignInLink: Boolean = false,
     val people: List<DiscoverPerson> = emptyList(),
     val decks: List<DiscoverDeck> = emptyList(),
 ) {
     /** Settled with nothing at all — the only case that draws the no-matches block. */
     val isEmpty: Boolean
-        get() = hasSearched && !isSearching && directLink == null && people.isEmpty() && decks.isEmpty()
+        get() = hasSearched && !isSearching && directLink == null && !isSignInLink && people.isEmpty() && decks.isEmpty()
 }
 
 sealed interface SearchEffect {
@@ -285,6 +299,8 @@ sealed interface SearchEffect {
 
     /** A follow that failed — the pill has already reverted, so this only explains why. */
     data class ShowFollowError(val reason: ErrorReason) : SearchEffect
+
+    data class OpenInstallPage(val url: String) : SearchEffect
 
     /** A guest reached for Follow. [reason] is what the prompt is about. */
     data class RequireSignIn(val reason: SignInReason) : SearchEffect
