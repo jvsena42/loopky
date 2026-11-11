@@ -125,8 +125,11 @@ merge commit.
 
 9. **Watch the workflow, then do the things it cannot**:
 
+   Everything this step produces for the user goes in one folder, `~/Desktop/Loopky-<numeric_version>/`
+   (`mkdir -p` it first): the `.aab`, the Play "What's new" file and the `.ipa`.
+
    **On macOS, start the iOS build first.** `release.yml` does not build iOS. If `uname -s` prints
-   `Darwin`, run the `ios-ipa` skill now, with its default output directory, so the `.ipa` builds
+   `Darwin`, run the `ios-ipa` skill now, with that folder as its output directory, so the `.ipa` builds
    while the workflow runs. That skill sets `disable-model-invocation`, so the Skill tool cannot
    call it: read `.claude/skills/ios-ipa/SKILL.md` and follow its steps. Its `build-ipa.sh` runs in
    the background; do not wait on it before watching the workflow. Its preconditions (a `TEAM_ID`
@@ -149,7 +152,7 @@ merge commit.
      installed — and it is what gets uploaded to the Play Console by hand.
 
      ```shell
-     gh run download <run-id> --name play-bundle --dir .
+     gh run download <run-id> --name play-bundle --dir ~/Desktop/Loopky-<numeric_version>
      ```
 
    - **Rewrite the notes if step 7 said they needed it**:
@@ -180,7 +183,7 @@ merge commit.
        </pt-BR>
        ```
 
-     Write it to `build/play-release-notes-<numeric_version>.txt` (gitignored) and also print it,
+     Write it to `~/Desktop/Loopky-<numeric_version>/play-release-notes.txt` and also print it,
      so it can be pasted into the release form beside the `.aab`. If the range holds nothing an
      Android user would notice, say so and offer the generic "Bug fixes and improvements" in each
      language rather than inventing a feature.
