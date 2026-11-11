@@ -260,7 +260,7 @@ class BatchTest {
      */
     @Test
     fun `refuses the verbs that cannot mean anything inside a run`() = runBlocking {
-        for (verb in listOf("batch", "login", "logout", "update", "completion", "commands")) {
+        for (verb in listOf("batch", "login", "ring", "logout", "update", "completion", "commands")) {
             val error = assertFailsWith<CliError>("`$verb` should be refused") {
                 batch(batchArgs(file("""["$verb"]""")), runner(), sinks)
             }

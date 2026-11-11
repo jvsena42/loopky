@@ -214,6 +214,7 @@ suspend fun login(
         stderr(TerminalQr.render(handle.authUrl))
         stderr("Scan this with Pubky Ring. `--url-only` prints the link instead of the code.")
     }
+    stderr("No Pubky Ring yet? Install it from $PUBKY_RING_INSTALL_URL (`loopky ring` shows a QR code).")
     stderr("")
     stderr("Requesting $CLI_CAPABILITIES only — this session cannot post, follow or edit a profile.")
     stderr(timeout?.let { "Waiting for approval (up to ${it}s)…" } ?: "Waiting for approval…")

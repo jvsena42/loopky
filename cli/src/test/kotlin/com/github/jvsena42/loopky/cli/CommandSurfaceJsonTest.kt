@@ -103,11 +103,11 @@ class CommandSurfaceJsonTest {
         assertTrue(surface.commands.all { ExitCode.Ok.code in it.exitCodes && ExitCode.Usage.code in it.exitCodes })
     }
 
-    /** Every command that reads or writes a record needs one; the four that do not are named. */
+    /** Every command that reads or writes a record needs one; the ones that do not are named. */
     @Test
     fun `needs_session is reported`() {
         assertEquals(
-            listOf("login", "doctor", "tag trending", "update", "completion", "commands"),
+            listOf("login", "ring", "doctor", "tag trending", "update", "completion", "commands"),
             surface.commands.filterNot { it.needsSession }.map { it.path },
         )
     }
@@ -150,9 +150,9 @@ class CommandSurfaceJsonTest {
 
     /** The one authority: `Batch.kt` validates against this, and the union above is drawn from it. */
     @Test
-    fun `the table names the six commands a batch may not contain`() {
+    fun `the table names the seven commands a batch may not contain`() {
         assertEquals(
-            listOf("login", "logout", "batch", "update", "completion", "commands"),
+            listOf("login", "ring", "logout", "batch", "update", "completion", "commands"),
             cliCommands().filter { it.notBatchable != null }.map { it.path },
         )
         assertTrue(cliCommands().filter { it.notBatchable != null }.all { !it.notBatchable.isNullOrBlank() })

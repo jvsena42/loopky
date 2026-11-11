@@ -68,7 +68,7 @@ class ToolCatalogTest {
         val served = tools.map { it.command.path }.toSet()
         listOf(
             "deck sync", "deck compact", "card check-images", "batch",
-            "login", "logout", "doctor", "update", "completion", "commands",
+            "login", "ring", "logout", "doctor", "update", "completion", "commands",
         ).forEach { assertFalse(it in served, "$it is served") }
         assertEquals(
             listOf(
