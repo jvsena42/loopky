@@ -43,6 +43,7 @@ import com.github.jvsena42.loopky.domain.model.ReportLimits
 import com.github.jvsena42.loopky.domain.model.ReportOutcome
 import com.github.jvsena42.loopky.domain.model.ReportSubject
 import com.github.jvsena42.loopky.domain.model.ReservedTags
+import com.github.jvsena42.loopky.domain.model.SignInLinks
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.TagLabels
 import com.github.jvsena42.loopky.util.Log
@@ -310,6 +311,7 @@ class DiscoveryRepositoryImpl(
         runSuspendCatching {
             require(content.isNotBlank()) { "Deck request is empty" }
             require(content.length <= PostKinds.MAX_CONTENT_LENGTH) { "Deck request is too long" }
+            require(!SignInLinks.isIn(content)) { "Deck request carries a sign-in link" }
             val owner = session.requireSession().identity.pubky
             val postId = PostIds.create(epochMillis() * MICROS_PER_MILLI)
             val body = loopkyJson.encodeToString(PostDto(content = content, kind = PostKinds.SHORT))

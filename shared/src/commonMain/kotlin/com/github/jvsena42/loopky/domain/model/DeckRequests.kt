@@ -18,7 +18,12 @@ object DeckRequests {
     /** One sentence or two. A longer brief is a deck outline, which is the maker's job. */
     const val MAX_LENGTH = 280
 
-    fun isValid(request: String): Boolean = request.trim().length in MIN_LENGTH..MAX_LENGTH
+    /** A sign-in link is refused outright: posting one publishes its secret ([SignInLinks]). */
+    fun isValid(request: String): Boolean =
+        request.trim().length in MIN_LENGTH..MAX_LENGTH && !SignInLinks.isIn(request)
+
+    /** What a request may start from: a search that was a scanned sign-in link starts empty. */
+    fun prefillFrom(text: String): String = if (SignInLinks.isIn(text)) "" else text.trim().take(MAX_LENGTH)
 
     /**
      * The post exactly as written: the platform's localized [lead], a blank line, then [request].

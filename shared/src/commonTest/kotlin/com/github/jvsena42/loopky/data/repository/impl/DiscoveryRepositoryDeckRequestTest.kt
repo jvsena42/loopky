@@ -12,6 +12,7 @@ import com.github.jvsena42.loopky.testing.FakeAppPreferences
 import com.github.jvsena42.loopky.testing.FakeHttpFetcher
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.RecordingTagRepository
+import com.github.jvsena42.loopky.testing.SIGN_IN_LINK
 import com.github.jvsena42.loopky.testing.deckRepository
 import com.github.jvsena42.loopky.testing.identityRepository
 import com.github.jvsena42.loopky.testing.signedInProvider
@@ -93,6 +94,16 @@ class DiscoveryRepositoryDeckRequestTest {
 
         assertTrue(repo.postDeckRequest("   ").isFailure)
         assertTrue(repo.postDeckRequest("x".repeat(PostKinds.MAX_CONTENT_LENGTH + 1)).isFailure)
+        assertEquals(before, pubky.puts.size)
+    }
+
+    @Test
+    fun `a request carrying a sign-in link is refused before anything is written`() = runTest {
+        val before = pubky.puts.size
+
+        val result = repo.postDeckRequest(DeckRequests.compose("Lead:", SIGN_IN_LINK))
+
+        assertTrue(result.isFailure)
         assertEquals(before, pubky.puts.size)
     }
 }

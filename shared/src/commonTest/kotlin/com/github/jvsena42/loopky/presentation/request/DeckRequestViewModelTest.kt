@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.presentation.request
 import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.domain.model.DeckRequests
 import com.github.jvsena42.loopky.testing.FakeDiscoveryRepository
+import com.github.jvsena42.loopky.testing.SIGN_IN_LINK
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -134,5 +135,20 @@ class DeckRequestViewModelTest {
         // The sheet seeds its field from this, so a retry posts what the preview shows.
         assertEquals("Japanese hiragana", vm.state.value.text)
         assertNotNull(vm.state.value.error)
+    }
+
+    @Test
+    fun `a scanned sign-in link is never prefilled or posted`() = runTest(mainDispatcher) {
+        val vm = DeckRequestViewModel(discovery)
+
+        vm.start(SIGN_IN_LINK)
+        assertEquals("", vm.state.value.text)
+
+        vm.onTextChange("Hiragana " + SIGN_IN_LINK.uppercase())
+        vm.onSubmit("Lead:")
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.canSubmit)
+        assertTrue(discovery.deckRequestPosts.isEmpty())
     }
 }

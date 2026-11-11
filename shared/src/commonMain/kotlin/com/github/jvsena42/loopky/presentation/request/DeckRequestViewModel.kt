@@ -33,7 +33,7 @@ class DeckRequestViewModel(
      */
     fun start(prefill: String) {
         if (_state.value.isPosting) return
-        _state.update { DeckRequestUiState(text = prefill.trim().take(DeckRequests.MAX_LENGTH)) }
+        _state.update { DeckRequestUiState(text = DeckRequests.prefillFrom(prefill)) }
     }
 
     fun onTextChange(text: String) {
