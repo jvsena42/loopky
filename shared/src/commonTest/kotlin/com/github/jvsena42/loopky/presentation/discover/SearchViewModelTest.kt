@@ -5,6 +5,7 @@ import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.testing.FakeDiscoveryRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
+import com.github.jvsena42.loopky.testing.SIGN_IN_LINK
 import com.github.jvsena42.loopky.testing.testDeck
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -293,5 +294,48 @@ class SearchViewModelTest {
     private companion object {
         /** A real-shaped pubky: 52 z-base-32 characters. */
         const val PUBKY = "ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1u"
+    }
+
+    // ── sign-in links ────────────────────────────────────────────────────
+
+    @Test
+    fun aScannedSignInLinkIsNamedAndNeverSearched() = runTest {
+        val vm = viewModel()
+
+        vm.onQueryChange(SIGN_IN_LINK)
+        advanceUntilIdle()
+
+        val state = vm.state.value
+        assertTrue(state.isSignInLink)
+        assertNull(state.directLink)
+        assertFalse(state.isSearching)
+        assertFalse(state.hasSearched)
+        assertFalse(state.isEmpty)
+        assertTrue(discovery.peopleQueries.isEmpty(), "sent to the indexer: ${discovery.peopleQueries}")
+    }
+
+    @Test
+    fun clearingASignInLinkGoesBackToAnOrdinaryQuery() = runTest {
+        val vm = viewModel()
+        vm.onQueryChange(SIGN_IN_LINK)
+        vm.onQueryChange("ada")
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.isSignInLink)
+        assertEquals(listOf("ada"), discovery.peopleQueries)
+    }
+
+    @Test
+    fun gettingPubkyRingOpensItsInstallPage() = runTest {
+        val vm = viewModel()
+        val effects = mutableListOf<SearchEffect>()
+        val collector = launch { vm.effects.toList(effects) }
+        advanceUntilIdle()
+
+        vm.onGetPubkyRing()
+        advanceUntilIdle()
+
+        assertEquals(listOf<SearchEffect>(SearchEffect.OpenInstallPage("https://pubkyring.app")), effects)
+        collector.cancel()
     }
 }

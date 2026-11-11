@@ -17,6 +17,7 @@
     <action>Verify the post is on the account's pubky.app feed with both tags, and listed by the indexer under /v0/search/posts/by_tag/deck-request</action>
     <action>Open Discover and type a query no deck matches (e.g. "zzqx hiragana") into "search_input". Verify "search_empty" and, under it, "search_request_deck". Tap its button "deck_request_cta" and verify the sheet opens OVER the search results with the query already in "deck_request_input"</action>
     <action>Swipe the sheet down and verify nothing was posted and the search results are still there</action>
+    <action>SIGN-IN LINK. Paste (or scan) a "pubkyauth://signin_grant?…&amp;secret=…" URL into "search_input" and verify "search_sign_in_link" reads "This is a sign-in code", with no "search_loading", no "search_empty" and no "search_request_deck". Then type it into "deck_request_input" from any other entry point and verify "deck_request_submit" stays disabled</action>
     <action>Search for a query that matches PEOPLE but no deck, and verify "search_request_deck" is still offered under the people</action>
     <action>On Discover, select a topic chip whose browse comes back empty (or two chips no deck shares) and verify "discover_browse_empty" with "discover_request_deck" under it; tapping it prefills the topic label(s)</action>
     <action>Clear the topic and scroll browse until "browse_more" stops appearing, and verify "discover_request_deck" sits at the very foot of the list, with an empty prefill</action>

@@ -681,7 +681,7 @@ topic with no decks and the foot of Discover — one sheet (`DeckRequestViewMode
 prefilled with the query or topic that came up empty. `DiscoveryRepository.postDeckRequest` writes
 a `short` post (no embed, nothing attached) to the reader's `/pub/pubky.app/posts/` and labels it
 with both of `DeckRequests.TAGS`, so `/v0/search/posts/by_tag/deck-request` is the list of every
-request on the network — the input a deck-building automation reads. Four details:
+request on the network — the input a deck-building automation reads. Five details:
 
 - **The body is a localized lead, a blank line, then the request verbatim** (`DeckRequests.compose`).
   Whatever follows the first `\n\n` is the reader's own words, whatever language the lead is in.
@@ -690,6 +690,12 @@ request on the network — the input a deck-building automation reads. Four deta
 - **The labels are the delivery, so they are not best-effort** — unlike the recap's. A failed label
   deletes the post again and fails the call, so a retry writes one request rather than an
   unlabelled one nobody will find plus a second one.
+- **A `pubkyauth://` link is never a request** (`SignInLinks`). Search's QR scanner is the only
+  one in the app, so a reader trying to approve the Claude connector's sign-in scans its QR there;
+  searched as text it found nothing, offered a request prefilled with it, and two were posted with
+  the link's `secret` in them. Search now names the link and neither searches nor offers a request,
+  the sheet will not prefill one, `DeckRequests.isValid` refuses one, and `postDeckRequest` refuses
+  one as the layer no caller can skip.
 - **Not gated by `shareOnPubky`**, for the recap's reason: it is only ever reached from "Post
   request", under a preview of the post and its tags. Guests are stopped by the sign-in prompt
   (`SignInReason.RequestDeck`) before the sheet opens.

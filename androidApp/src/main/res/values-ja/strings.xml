@@ -187,6 +187,8 @@
     <string name="search_decks_title">デッキ</string>
     <string name="search_open_profile">このプロフィールを開く</string>
     <string name="search_open_deck">このデッキを開く</string>
+    <string name="search_sign_in_link_title">これはサインイン用のコードです</string>
+    <string name="search_sign_in_link_body">Pubky Ring でスキャンしてサインインを承認してください。Loopky では開けません。</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">「%1$s」に一致する結果はありません</string>
     <string name="search_empty_subtitle">別の名前を試すか、相手の pubky を貼り付けて直接開いてください。</string>

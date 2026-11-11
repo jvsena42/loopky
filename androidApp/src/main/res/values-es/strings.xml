@@ -186,6 +186,8 @@
     <string name="search_decks_title">Mazos</string>
     <string name="search_open_profile">Abrir este perfil</string>
     <string name="search_open_deck">Abrir este mazo</string>
+    <string name="search_sign_in_link_title">Esto es un código de inicio de sesión</string>
+    <string name="search_sign_in_link_body">Escanéalo con Pubky Ring para aprobar el inicio de sesión. Loopky no puede abrirlo.</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">No se encontró nada para “%1$s”</string>
     <string name="search_empty_subtitle">Prueba con otro nombre, o pega su pubky para abrir su perfil directamente.</string>

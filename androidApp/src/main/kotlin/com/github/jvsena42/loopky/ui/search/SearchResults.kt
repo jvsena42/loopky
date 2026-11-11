@@ -37,6 +37,7 @@ import com.github.jvsena42.loopky.presentation.discover.DiscoverDeck
 import com.github.jvsena42.loopky.presentation.discover.DiscoverPerson
 import com.github.jvsena42.loopky.presentation.discover.SearchUiState
 import com.github.jvsena42.loopky.ui.components.AuthorRow
+import com.github.jvsena42.loopky.ui.components.LoopkySecondaryButton
 import com.github.jvsena42.loopky.ui.discover.DeckRow
 import com.github.jvsena42.loopky.ui.discover.SectionHeader
 import com.github.jvsena42.loopky.ui.discover.SectionHint
@@ -63,6 +64,7 @@ internal fun SearchResults(
     onFollowToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
     onRequestDeck: () -> Unit = {},
+    onGetPubkyRing: () -> Unit = {},
 ) {
     val deckColumns = deckGridColumns()
     LazyColumn(
@@ -80,6 +82,9 @@ internal fun SearchResults(
         // index has seen yet.
         state.directLink?.let { link ->
             item(key = "direct") { DirectHitRow(link = link, onClick = { onOpenLink(link) }) }
+        }
+        if (state.isSignInLink) {
+            item(key = "sign_in_link") { SignInLinkRow(onGetPubkyRing = onGetPubkyRing) }
         }
         if (state.isSearching) {
             item(key = "searching") {
@@ -191,6 +196,41 @@ private fun DirectHitRow(link: PubkyLink, onClick: () -> Unit) {
             },
             color = colors.foregroundMuted,
             fontSize = 12.sp,
+        )
+    }
+}
+
+/** A scanned Pubky Ring sign-in request: says where it goes instead of searching for it. */
+@Composable
+private fun SignInLinkRow(onGetPubkyRing: () -> Unit) {
+    val colors = LoopkyTheme.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("search_sign_in_link")
+            .clip(RoundedCornerShape(20.dp))
+            .background(colors.surfaceCard)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.search_sign_in_link_title),
+            color = colors.foregroundPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = stringResource(R.string.search_sign_in_link_body),
+            color = colors.foregroundMuted,
+            fontSize = 13.sp,
+        )
+        LoopkySecondaryButton(
+            text = stringResource(R.string.backup_ring_install),
+            onClick = onGetPubkyRing,
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .testTag("search_get_ring")
+                .fillMaxWidth(),
         )
     }
 }

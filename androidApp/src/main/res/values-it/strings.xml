@@ -186,6 +186,8 @@
     <string name="search_decks_title">Mazzi</string>
     <string name="search_open_profile">Apri questo profilo</string>
     <string name="search_open_deck">Apri questo mazzo</string>
+    <string name="search_sign_in_link_title">Questo è un codice di accesso</string>
+    <string name="search_sign_in_link_body">Scansionalo con Pubky Ring per approvare l’accesso. Loopky non può aprirlo.</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">Nessun risultato per “%1$s”</string>
     <string name="search_empty_subtitle">Prova un altro nome, oppure incolla il suo pubky per aprire direttamente il profilo.</string>

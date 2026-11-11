@@ -190,6 +190,8 @@
     <string name="search_decks_title">牌組</string>
     <string name="search_open_profile">開啟這個個人檔案</string>
     <string name="search_open_deck">開啟這個牌組</string>
+    <string name="search_sign_in_link_title">這是一個登入碼</string>
+    <string name="search_sign_in_link_body">請用 Pubky Ring 掃描以核准登入。Loopky 無法開啟它。</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">找不到「%1$s」的結果</string>
     <string name="search_empty_subtitle">試試其他名稱，或貼上對方的 pubky 直接開啟。</string>

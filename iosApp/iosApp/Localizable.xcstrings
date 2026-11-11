@@ -39908,6 +39908,148 @@
         }
       }
     },
+    "search_sign_in_link_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanne ihn mit Pubky Ring, um die Anmeldung zu bestätigen. Loopky kann ihn nicht öffnen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan it with Pubky Ring to approve the sign-in. Loopky can’t open it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escanéalo con Pubky Ring para aprobar el inicio de sesión. Loopky no puede abrirlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanne-le avec Pubky Ring pour approuver la connexion. Loopky ne peut pas l’ouvrir."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scansionalo con Pubky Ring per approvare l’accesso. Loopky non può aprirlo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky Ring でスキャンしてサインインを承認してください。Loopky では開けません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky Ring으로 스캔해 로그인을 승인하세요. Loopky에서는 열 수 없습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escaneie com o Pubky Ring para aprovar o login. O Loopky não consegue abri-lo."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hãy quét mã bằng Pubky Ring để chấp thuận đăng nhập. Loopky không mở được mã này."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请用 Pubky Ring 扫描以批准登录。Loopky 无法打开它。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請用 Pubky Ring 掃描以核准登入。Loopky 無法開啟它。"
+          }
+        }
+      }
+    },
+    "search_sign_in_link_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das ist ein Anmeldecode"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is a sign-in code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto es un código de inicio de sesión"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C’est un code de connexion"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo è un codice di accesso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これはサインイン用のコードです"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로그인 코드입니다"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este é um código de login"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đây là mã đăng nhập"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是一个登录码"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這是一個登入碼"
+          }
+        }
+      }
+    },
     "secure_screen_recording_body": {
       "extractionState": "manual",
       "localizations": {

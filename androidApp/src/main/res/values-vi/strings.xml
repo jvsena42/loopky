@@ -190,6 +190,8 @@
     <string name="search_decks_title">Bộ thẻ</string>
     <string name="search_open_profile">Mở hồ sơ này</string>
     <string name="search_open_deck">Mở bộ thẻ này</string>
+    <string name="search_sign_in_link_title">Đây là mã đăng nhập</string>
+    <string name="search_sign_in_link_body">Hãy quét mã bằng Pubky Ring để chấp thuận đăng nhập. Loopky không mở được mã này.</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">Không tìm thấy kết quả cho “%1$s”</string>
     <string name="search_empty_subtitle">Thử một tên khác, hoặc dán pubky của họ để mở trực tiếp.</string>

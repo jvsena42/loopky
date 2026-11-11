@@ -19,6 +19,7 @@ struct SearchScreen: View {
     @State private var effectSink: FlowEffectSink?
     @State private var signInReason: SignInReason?
     @State private var isScanning = false
+    @Environment(\.openURL) private var openURL
     @State private var followError: String?
 
     var body: some View {
@@ -28,6 +29,7 @@ struct SearchScreen: View {
             onSubmit: { viewModel?.onSubmit() },
             onScan: { isScanning = true },
             onOpenDirectHit: { viewModel?.onSubmit() },
+            onGetPubkyRing: { viewModel?.onGetPubkyRing() },
             onPersonTap: { viewModel?.onOpenProfile(pubky: $0) },
             onFollowTap: { viewModel?.onFollowToggle(pubky: $0) },
             onDeckTap: { author, deckId in
@@ -72,6 +74,7 @@ struct SearchScreen: View {
             isSearching: state.isSearching,
             isEmpty: state.isEmpty,
             directHit: state.directLink.map(directHit),
+            isSignInLink: state.isSignInLink,
             people: state.people.map { person in
                 let identity = IdentityData(person.identity)
                 return SearchPersonData(
@@ -117,6 +120,8 @@ struct SearchScreen: View {
                 onOpenProfile(open.pubky)
             case let open as SearchEffectOpenDeck:
                 onOpenDeck(open.deckId, open.authorPubky)
+            case let install as SearchEffectOpenInstallPage:
+                if let url = URL(string: install.url) { openURL(url) }
             case let require as SearchEffectRequireSignIn:
                 signInReason = require.reason
             case let failed as SearchEffectShowFollowError:

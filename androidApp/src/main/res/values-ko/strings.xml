@@ -187,6 +187,8 @@
     <string name="search_decks_title">덱</string>
     <string name="search_open_profile">이 프로필 열기</string>
     <string name="search_open_deck">이 덱 열기</string>
+    <string name="search_sign_in_link_title">로그인 코드입니다</string>
+    <string name="search_sign_in_link_body">Pubky Ring으로 스캔해 로그인을 승인하세요. Loopky에서는 열 수 없습니다.</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">“%1$s”에 대한 결과가 없어요</string>
     <string name="search_empty_subtitle">다른 이름으로 검색하거나, 상대의 pubky를 붙여넣어 바로 열어 보세요.</string>

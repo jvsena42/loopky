@@ -186,6 +186,8 @@
     <string name="search_decks_title">Baralhos</string>
     <string name="search_open_profile">Abrir este perfil</string>
     <string name="search_open_deck">Abrir este baralho</string>
+    <string name="search_sign_in_link_title">Este é um código de login</string>
+    <string name="search_sign_in_link_body">Escaneie com o Pubky Ring para aprovar o login. O Loopky não consegue abri-lo.</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">Nada encontrado para “%1$s”</string>
     <string name="search_empty_subtitle">Tente outro nome, ou cole o pubky da pessoa para abri-la diretamente.</string>

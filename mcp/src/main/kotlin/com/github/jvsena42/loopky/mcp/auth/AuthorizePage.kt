@@ -47,6 +47,7 @@ object AuthorizePage {
             |<details open>
             |<summary>Or scan with Pubky Ring on another device</summary>
             |<div class="qr">${qrSvg(pending.authorizationUrl)}</div>
+            |<p class="hint">Scan it with Pubky Ring. The Loopky app cannot approve a sign-in.</p>
             |</details>
             |<p id="status" aria-live="polite">Waiting for your approval…</p>
             |<p class="retry" id="retry" hidden><a href="">Start again</a></p>
