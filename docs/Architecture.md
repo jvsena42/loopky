@@ -903,6 +903,9 @@ connector's page, pubky.app. `SignerRepository` is the whole surface; Settings â
   and the link is dropped from the intent once read so a relaunch from recents cannot replay it.
   `AndroidPubkyRingPresence` ignores Loopky's own handler, or a device with no Ring would report
   Ring installed whenever the alias is on.
+- **Search** recognises a pasted link and, with a key held, offers Approve in Loopky: the link goes
+  through `SignInInbox`, an in-memory hand-off taken once, to `SessionsViewModel`. Without a key
+  the row offers Pubky Ring, as before.
 - **iOS** does not claim `pubkyauth`. A scheme cannot be switched on with the key, and iOS picks
   arbitrarily between apps claiming one, so a static claim would take Ring users' links. Scan
   (`QrScannerSheet`) and `PasteButton` are the way in, as in Bitkit.
