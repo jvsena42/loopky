@@ -19,9 +19,9 @@ object SignInLinks {
      * is none.
      */
     fun extract(text: String): String? {
-        val match = LINK.find(text)?.value?.trimEnd(*TRAILING) ?: return null
+        val match = LINK.find(text)?.value?.trimEnd { it in TRAILING } ?: return null
         return SCHEME + match.substring(SCHEME.length)
     }
 
-    private val TRAILING = charArrayOf('.', ',', ';', ')', '>', '"', '\'')
+    private val TRAILING = setOf('.', ',', ';', ')', '>', '"', '\'')
 }

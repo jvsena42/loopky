@@ -11,9 +11,9 @@ import com.github.jvsena42.loopky.signer.PubkyAuthHandler
 import com.github.jvsena42.loopky.ui.components.loopkyImageLoader
 import com.github.jvsena42.loopky.ui.importflow.sweepImportSpools
 import com.github.jvsena42.loopky.util.Log
+import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
-import org.koin.android.ext.android.get
 import org.koin.core.logger.Level
 import uniffi.pubkycore.RustlsInit
 import uniffi.pubkycore.initLogging

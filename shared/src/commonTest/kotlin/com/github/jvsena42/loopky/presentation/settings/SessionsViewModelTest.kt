@@ -124,7 +124,7 @@ class SessionsViewModelTest {
     }
 
     @Test
-    fun `revoking removes the row, and this device's own row is never revoked`() = runTest(dispatcher) {
+    fun `revoking removes the row and never touches this device's own`() = runTest(dispatcher) {
         val vm = SessionsViewModel(signer)
         advanceUntilIdle()
 

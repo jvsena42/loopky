@@ -44,6 +44,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -255,6 +257,7 @@ private fun SessionsScreen(
     confirming?.let { session ->
         AlertDialog(
             onDismissRequest = { confirming = null },
+            modifier = Modifier.semantics { testTagsAsResourceId = true },
             title = { Text(stringResource(R.string.sessions_revoke_dialog_title, appName(session.clientId))) },
             text = { Text(stringResource(R.string.sessions_revoke_dialog_message)) },
             confirmButton = {
@@ -348,8 +351,10 @@ private fun ApprovalSheet(
         containerColor = colors.surfaceCard,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
     ) {
+        // A sheet is its own window, so the activity root's flag does not reach these tags.
         Column(
             modifier = Modifier
+                .semantics { testTagsAsResourceId = true }
                 .fillMaxWidth()
                 .contentPane(PaneWidth.Focused)
                 .navigationBarsPadding()

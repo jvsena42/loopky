@@ -77,7 +77,8 @@ class SignerRepositoryImplJvmTest {
 
     @Test
     fun `strips bidi controls from the name a request gives itself`() {
-        val request = repository().inspect(grantLink("/pub/loopky/:rw").replace("cid=mcp.loopky.app", "cid=evil%E2%80%AEppa.ykpool")).getOrThrow()
+        val link = grantLink("/pub/loopky/:rw").replace("cid=mcp.loopky.app", "cid=evil%E2%80%AEppa.ykpool")
+        val request = repository().inspect(link).getOrThrow()
         assertEquals("evilppa.ykpool", request.clientId)
     }
 
