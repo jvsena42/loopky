@@ -145,6 +145,13 @@ private suspend fun withWriteRetry(
     }
 }
 
+/** A session-authenticated call that is not a record write — listing or revoking grants. */
+internal suspend fun sessionCallWithRetry(
+    session: SessionProvider,
+    revalidator: SessionRevalidator,
+    attempt: suspend (secret: String) -> Result<String>,
+): Result<String> = withWriteRetry(session, revalidator, attempt)
+
 /** Session-authenticated PUT with expiry and rate-limit retries. */
 internal suspend fun PubkyClient.putWithSessionRetry(
     url: String,

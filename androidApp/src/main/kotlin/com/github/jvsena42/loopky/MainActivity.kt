@@ -38,6 +38,7 @@ import com.github.jvsena42.loopky.ui.theme.isDark
 import com.github.jvsena42.loopky.ui.update.InAppUpdateRoute
 import com.github.jvsena42.loopky.ui.util.importFileUri
 import com.github.jvsena42.loopky.ui.util.pubkyLink
+import com.github.jvsena42.loopky.ui.util.signInLink
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -155,6 +156,16 @@ class MainActivity : ComponentActivity() {
         val fileUri = intent.importFileUri()
         if (fileUri != null) {
             spool(fileUri)
+            return
+        }
+        val signIn = intent.signInLink()
+        if (signIn != null) {
+            // Dropped, not kept on the intent: relaunched from recents, it would raise the sheet
+            // again for a relay channel long gone.
+            intent.data = null
+            if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0) {
+                pendingOpen.value = PendingOpen.SignIn(signIn)
+            }
             return
         }
         val link = intent.pubkyLink()

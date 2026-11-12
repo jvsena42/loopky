@@ -1,6 +1,6 @@
 # Loopky Privacy Policy
 
-**Last updated:** 18 October 2026
+**Last updated:** 12 November 2026
 
 Loopky is a flashcards app built on [Pubky](https://pubky.org). This policy describes what happens
 to your information when you use it.
@@ -68,6 +68,13 @@ homeserver. **Signing out deletes both the session secret and any key Loopky is 
 Loopky holds the only copy of your key, it warns you before doing that, because the account cannot
 be recovered afterwards.
 
+**Approving other apps.** When Loopky holds your key, it can approve another app's sign-in — the
+`loopky` tool, the connector for Claude, or any Pubky app — the way Pubky Ring does. The approval
+is signed on your device and sent, encrypted to that app, through the Pubky auth relay; your key
+never leaves the device. Settings → Sessions lists the apps you approved by asking your homeserver,
+and revoking one there tells your homeserver to end it. Loopky keeps no record of its own of what
+you approved.
+
 Backing up is your choice and your action. Loopky can show you a recovery phrase, create a
 passphrase-encrypted recovery file for you to save wherever you like, or hand your key to Pubky
 Ring. Anything that leaves the app — a file you save to Drive or Files, a phrase you write down —
@@ -111,7 +118,7 @@ has its own operator and its own privacy practices.
 | Service | When | What reaches it |
 |---|---|---|
 | **Your Pubky homeserver** | Whenever you read or write your content | Your content, your public key, your session secret, your IP address |
-| **Pubky auth relay** (`httprelay.pubky.app`) | Sign-in only | The encrypted approval handed back by Pubky Ring, your IP address |
+| **Pubky auth relay** (`httprelay.pubky.app`) | Sign-in only, including when Loopky approves another app's sign-in | The encrypted approval, from Pubky Ring or from Loopky, and your IP address |
 | **Pubky Nexus indexer** (`nexus.pubky.app`) | Search, discovery, trending topics, profile pictures | Your search terms, the public keys and decks you look up, your IP address |
 | **Homegate** (`homegate.pubky.app`) | Signing up for a new homeserver account only | Your phone number if you verify by SMS, or Lightning payment details if you pay. Your phone number is handled by Homegate and is never stored by Loopky |
 | **Unsplash** (`api.unsplash.com`) | Only when you search for a picture from the web | Your search terms and your IP address, under [Unsplash's privacy policy](https://unsplash.com/privacy) |
@@ -131,7 +138,8 @@ virtual server rented from Contabo. **If you never add it, none of this section 
 **What it stores, for as long as you stay connected:**
 
 - **Your public key**, and when you connected and last used it.
-- **The Pubky session secret** that Pubky Ring grants it when you approve the connection. It can
+- **The Pubky session secret** that Pubky Ring, or Loopky if it holds your key, grants it when you
+  approve the connection. It can
   write only Loopky's own storage area (`/pub/loopky/`), never your profile, posts or follows. It
   is encrypted with AES-GCM under a key that is kept on the server outside the database and never
   leaves it.
@@ -152,7 +160,8 @@ held in memory to limit request rates, and are not logged.
 **How long it is kept, and how to remove it.** Claude's access tokens last an hour and are renewed
 with a refresh token that lasts 90 days from its last use.
 
-- **Revoke the connector in Pubky Ring**, where it appears as `mcp.loopky.app`. From then on it
+- **Revoke the connector in Pubky Ring**, or in Loopky under Settings → Sessions if Loopky holds
+  your key. It appears as `mcp.loopky.app`. From then on it
   cannot write anything for you. It finds out the next time Claude uses a Loopky tool, when your
   homeserver refuses the session, and then deletes everything above for your key. Until that
   happens the encrypted session stays on the server, though it no longer works.
@@ -187,11 +196,12 @@ processing is governed by Apple's or Google's privacy policy, not this one.
 
 ## 8. Camera, photos and images
 
-**The camera is used for one thing: reading a QR code that holds someone's pubky**, so you can add
-them without typing a long key by hand. Loopky reads only the text decoded from the code. No photo
+**The camera is used for two things: reading a QR code that holds someone's pubky**, so you can add
+them without typing a long key by hand, **and reading another app's sign-in code** in Settings →
+Sessions, when Loopky holds your key. Loopky reads only the text decoded from the code. No photo
 or video is captured, saved or uploaded, and the camera runs only while that scanner is open. The
 permission is requested the first time you open it, and scanning is optional — you can always type
-or paste a pubky instead.
+or paste a pubky or a sign-in link instead.
 
 Choosing a picture for a card uses the system photo picker — `PhotosPicker` on iOS, the Android
 photo picker on Android. Both run outside Loopky and hand it only the one image you select, so

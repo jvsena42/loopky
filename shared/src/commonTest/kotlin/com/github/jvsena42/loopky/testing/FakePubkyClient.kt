@@ -429,7 +429,27 @@ class FakePubkyClient : PubkyClient {
     }
 
     override fun parseAuthUrl(url: String): Result<String> = unused()
-    override suspend fun auth(url: String, secretKey: String): Result<String> = unused()
+
+    /** Each approval as `(url, secretKey)`. */
+    val approvals = mutableListOf<Pair<String, String>>()
+    var authResult: Result<String> = Result.success("Authorization success")
+
+    override suspend fun auth(url: String, secretKey: String): Result<String> {
+        approvals += url to secretKey
+        return authResult
+    }
+
+    /** What [listGrants] answers: the FFI's JSON array. */
+    var grantsJson: Result<String> = Result.success("[]")
+    val revokedGrants = mutableListOf<String>()
+    var revokeGrantResult: Result<String> = Result.success("Grant revoked")
+
+    override suspend fun listGrants(sessionSecret: String): Result<String> = grantsJson
+
+    override suspend fun revokeGrant(sessionSecret: String, grantId: String): Result<String> {
+        revokedGrants += grantId
+        return revokeGrantResult
+    }
     override suspend fun publish(
         recordName: String,
         recordContent: String,

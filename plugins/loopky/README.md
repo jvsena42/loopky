@@ -3,7 +3,7 @@
 Build [Loopky](https://loopky.app) flashcard decks by asking Claude or Codex for them — from a topic, your
 notes, or an existing Anki `.apkg`. Loopky is a free spaced-repetition app, an Anki alternative for
 Android and iOS with listening and speaking practice built in. The plugin teaches
-Claude the `loopky` CLI workflow — install, check the network, sign in with Pubky Ring, dry-run,
+Claude the `loopky` CLI workflow — install, check the network, sign in with Loopky or Pubky Ring, dry-run,
 publish, verify — and how to write cards that work with Loopky's typing, Listen and Speak modes.
 You study the result in the Loopky app on Android or iOS.
 
@@ -44,7 +44,7 @@ stops and asks you to.
 
 In a cloud environment (Claude Code on the web, Codex), the skill suggests the hosted **Loopky
 connector** instead: find Loopky under Settings → Connectors → Browse connectors (or open
-<https://claude.ai/directory/loopky>), connect, and sign in once with Pubky Ring, with no install, no allowlist and no hourly phone sign-in. To use the CLI there
+<https://claude.ai/directory/loopky>), connect, and approve the one sign-in in Loopky (Settings → Sessions) or Pubky Ring, with no install, no allowlist and no hourly phone sign-in. To use the CLI there
 anyway, install `loopky` in the environment's setup script and add the hosts `loopky doctor` lists
 to the environment's allowlist.
 
@@ -60,7 +60,7 @@ section 6 of the policy says what, and how to remove it. The full policy is at [
 | Service | When | What reaches it |
 | --- | --- | --- |
 | **Your Pubky homeserver** (`homeserver.pubky.app` by default) | Every deck read and write | The decks and cards you publish, your public key, your session, your IP address |
-| **Pubky auth relay** (`httprelay.pubky.app`) | `loopky login` only | The encrypted approval from Pubky Ring, your IP address |
+| **Pubky auth relay** (`httprelay.pubky.app`) | `loopky login` only | The encrypted approval from Loopky or Pubky Ring, your IP address |
 | **pkarr relays** (`pkarr.pubky.app`, `pkarr.pubky.org`) | Finding your homeserver | The public key being looked up, your IP address |
 | **Pubky Nexus** (`nexus.pubky.app`) | `tag trending` and other indexer reads | What is looked up, your IP address |
 | **GitHub** (`github.com`, `release-assets.githubusercontent.com`) | Installing, `loopky update`, and a once-a-day version check | A download request, your IP address |
@@ -81,8 +81,9 @@ published as written, so don't put personal details in a deck.
 - **Add hosts to a sandbox's network allowlist.** In a cloud session, `loopky` needs the Pubky hosts
   `loopky doctor` lists. Only you can add them (environment settings → *Network access: Custom*);
   the skill tells Claude to stop and show you the list rather than retry.
-- **Approve the login.** You scan the QR code (or open the link) with
-  [Pubky Ring](https://pubkyring.app) on your phone.
+- **Approve the login.** You scan the QR code (or open the link) on your phone: in Loopky under
+  Settings → Sessions if your account was made there, otherwise with
+  [Pubky Ring](https://pubkyring.app).
 
 ## Keeping it in step with the binary
 

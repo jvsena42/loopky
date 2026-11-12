@@ -457,7 +457,7 @@ internal val USAGE = """
 
     IDENTITY
       login [--export] [--qr-out FILE] [--url-only] [--timeout SECONDS]
-                                Print a QR code for Pubky Ring and wait for approval. --export also
+                                Print a QR code for Loopky or Pubky Ring and wait for approval. --export also
                                 prints the session secret for LOOPKY_SESSION. --timeout exits 13
                                 when nobody approves in time.
       ring                      Where to install Pubky Ring, with a QR code for a phone's camera.

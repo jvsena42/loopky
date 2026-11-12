@@ -97,6 +97,7 @@ internal data class LocalKey(
         pubky = pubky,
         backedUpBy = backedUpBy,
         hasPhrase = mnemonic != null,
+        registered = registered,
     )
 }
 

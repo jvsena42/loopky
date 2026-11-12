@@ -22,6 +22,7 @@ import uniffi.pubkycore.getHomeserver as ffiGetHomeserver
 import uniffi.pubkycore.getPublicKeyFromSecretKey as ffiGetPublicKeyFromSecretKey
 import uniffi.pubkycore.getSignupToken as ffiGetSignupToken
 import uniffi.pubkycore.list as ffiList
+import uniffi.pubkycore.listGrants as ffiListGrants
 import uniffi.pubkycore.mnemonicPhraseToKeypair as ffiMnemonicPhraseToKeypair
 import uniffi.pubkycore.parseAuthUrl as ffiParseAuthUrl
 import uniffi.pubkycore.pollGrantAuthFlowHandle as ffiPollGrantAuthFlowHandle
@@ -35,6 +36,7 @@ import uniffi.pubkycore.republishHomeserver as ffiRepublishHomeserver
 import uniffi.pubkycore.resolve as ffiResolve
 import uniffi.pubkycore.resolveHttps as ffiResolveHttps
 import uniffi.pubkycore.revalidateSession as ffiRevalidateSession
+import uniffi.pubkycore.revokeGrant as ffiRevokeGrant
 import uniffi.pubkycore.revokeOwnGrant as ffiRevokeOwnGrant
 import uniffi.pubkycore.signIn as ffiSignIn
 import uniffi.pubkycore.signOut as ffiSignOut
@@ -140,6 +142,12 @@ class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : Pubky
     override fun parseAuthUrl(url: String) = runFfi { ffiParseAuthUrl(url) }
     override suspend fun auth(url: String, secretKey: String) =
         runFfiSuspend { ffiAuth(url, secretKey) }
+
+    override suspend fun listGrants(sessionSecret: String) =
+        runFfiSuspend { ffiListGrants(sessionSecret) }
+
+    override suspend fun revokeGrant(sessionSecret: String, grantId: String) =
+        runFfiSuspend { ffiRevokeGrant(sessionSecret, grantId) }
 
     // --- Records (secret-key auth) --------------------------------------------
     override suspend fun publish(recordName: String, recordContent: String, secretKey: String) =

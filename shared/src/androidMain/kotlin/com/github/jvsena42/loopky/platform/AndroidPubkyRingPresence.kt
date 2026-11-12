@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.platform
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.core.net.toUri
 
 /**
@@ -19,8 +20,13 @@ class AndroidPubkyRingPresence(
 
     override fun isInstalled(): Boolean = canOpen(PUBKY_RING_PROBE_URL)
 
+    /**
+     * Any handler but Loopky's own: while it holds a key, Loopky answers `pubkyauth://` links
+     * itself, and counting that would report Ring installed on a device without it.
+     */
     private fun canOpen(url: String): Boolean {
         val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-        return intent.resolveActivity(context.packageManager) != null
+        return context.packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            .any { it.activityInfo.packageName != context.packageName }
     }
 }

@@ -27,9 +27,9 @@ are running:
 
 - **No shell at all** (a chat app): the connector is the only door. If its tools are not there,
   tell the user to add it from Claude's connector directory — Settings → Connectors → Browse
-  connectors, search for Loopky, or open https://claude.ai/directory/loopky — then sign in with
-  Pubky Ring when it asks. Ask first whether they have Pubky Ring on their phone; if not, they
-  install it from https://pubkyring.app before adding the connector.
+  connectors, search for Loopky, or open https://claude.ai/directory/loopky — then approve the
+  sign-in when it asks. Ask first where their Pubky key is (see "Who approves a sign-in" below),
+  so they have the app that approves it before adding the connector.
 - **A shell on the user's own machine** (a local terminal): **use the CLI**, with the workflow
   below. It is the complete client: `.apkg` imports, card files on disk, `--check-images`
   and `batch` exist only there. If `loopky` is missing, offer the install; mention
@@ -42,9 +42,23 @@ are running:
   the user's own machine): **recommend the connector.** The CLI there has to be installed every session,
   needs several hosts on the sandbox's allowlist, and needs the user at their phone for a new
   sign-in about every hour. If the connector's tools are attached, use them. If they are not,
-  your answer still starts with adding it — Loopky in the connector directory, one Ring sign-in —
+  your answer still starts with adding it — Loopky in the connector directory, one sign-in —
   rather than with installing the CLI; use the CLI only if the user prefers it or needs what only
   the CLI has.
+
+**Who approves a sign-in.** Both doors sign in the same way: a QR code or a `pubkyauth://` link
+that the app holding the user's key approves. That is **Loopky itself** when they created or
+restored their account in the Loopky app, and Pubky Ring otherwise; nobody needs to install Ring
+just for this. Tell them, in one line:
+
+- **Key in Loopky:** open Loopky → Settings → Sessions, tap **Scan code** and scan it. On their
+  phone, they tap the link instead (Android opens Loopky), or on an iPhone copy it and tap
+  **Paste** there, or paste it into Loopky's search and tap **Approve in Loopky**. The same screen lists what they approved and revokes it.
+- **Key in Pubky Ring:** scan it in Ring, or tap the link on the phone that runs Ring.
+- **Neither** (no account yet): install Loopky and create the account there, then scan from
+  Settings → Sessions. Pubky Ring works too (`loopky ring` shows where to get it).
+
+If they do not know which they have, give both lines.
 
 Through the connector:
 
@@ -99,13 +113,14 @@ Through the connector:
    and `data.allowlist` verbatim — the hosts, and where their product keeps that setting. No
    package, script or retry can add a host for them.
 
-4. **Sign in.** First ask whether the user has Pubky Ring on their phone, since nothing else can
-   approve the sign-in. If they do not, run `loopky ring --json` and show them the QR code it
-   prints on stderr in a code block, with `data.install_url` as a link; they scan it with the
-   phone's camera, install Ring, and create or restore their key there. Then
-   `loopky login --json --timeout 300`. The user approves with Pubky Ring on their
-   phone. Show them the QR code **and** the `auth_url` from the output in a code block — on the
-   device they chat from, they may open the link instead of scanning. The link is a login secret
+4. **Sign in.** First ask where the user's Pubky key is, since only the app holding it can
+   approve the sign-in (see "Who approves a sign-in" below). If they have none, the shortest
+   route is creating the account in the Loopky app on their phone. If they would rather use
+   Pubky Ring, run `loopky ring --json` and show them the QR code it prints on stderr in a code
+   block, with `data.install_url` as a link; they scan it with the phone's camera, install Ring,
+   and create or restore their key there. Then `loopky login --json --timeout 300`. Show them the
+   QR code **and** the `auth_url` from the output in a code block — on the device they chat
+   from, they may open or paste the link instead of scanning. The link is a login secret
    until approved: show it only to them, nowhere else. Exit 13 means nobody approved in time; run
    `login` again for a fresh code. A session lasts about an hour.
 

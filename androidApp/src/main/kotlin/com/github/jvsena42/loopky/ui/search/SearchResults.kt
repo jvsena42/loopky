@@ -65,6 +65,7 @@ internal fun SearchResults(
     modifier: Modifier = Modifier,
     onRequestDeck: () -> Unit = {},
     onGetPubkyRing: () -> Unit = {},
+    onApproveSignIn: () -> Unit = {},
 ) {
     val deckColumns = deckGridColumns()
     LazyColumn(
@@ -84,7 +85,13 @@ internal fun SearchResults(
             item(key = "direct") { DirectHitRow(link = link, onClick = { onOpenLink(link) }) }
         }
         if (state.isSignInLink) {
-            item(key = "sign_in_link") { SignInLinkRow(onGetPubkyRing = onGetPubkyRing) }
+            item(key = "sign_in_link") {
+                SignInLinkRow(
+                    canApprove = state.canApproveSignIn,
+                    onApprove = onApproveSignIn,
+                    onGetPubkyRing = onGetPubkyRing,
+                )
+            }
         }
         if (state.isSearching) {
             item(key = "searching") {
@@ -200,9 +207,12 @@ private fun DirectHitRow(link: PubkyLink, onClick: () -> Unit) {
     }
 }
 
-/** A scanned Pubky Ring sign-in request: says where it goes instead of searching for it. */
+/**
+ * A pasted sign-in request: says where it goes instead of searching for it. With the key held
+ * here, Loopky approves it itself; otherwise the way on is Pubky Ring.
+ */
 @Composable
-private fun SignInLinkRow(onGetPubkyRing: () -> Unit) {
+private fun SignInLinkRow(canApprove: Boolean, onApprove: () -> Unit, onGetPubkyRing: () -> Unit) {
     val colors = LoopkyTheme.colors
     Column(
         modifier = Modifier
@@ -224,14 +234,25 @@ private fun SignInLinkRow(onGetPubkyRing: () -> Unit) {
             color = colors.foregroundMuted,
             fontSize = 13.sp,
         )
-        LoopkySecondaryButton(
-            text = stringResource(R.string.backup_ring_install),
-            onClick = onGetPubkyRing,
-            modifier = Modifier
-                .padding(top = 8.dp)
-                .testTag("search_get_ring")
-                .fillMaxWidth(),
-        )
+        if (canApprove) {
+            LoopkySecondaryButton(
+                text = stringResource(R.string.search_sign_in_link_approve),
+                onClick = onApprove,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .testTag("search_approve_sign_in")
+                    .fillMaxWidth(),
+            )
+        } else {
+            LoopkySecondaryButton(
+                text = stringResource(R.string.backup_ring_install),
+                onClick = onGetPubkyRing,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .testTag("search_get_ring")
+                    .fillMaxWidth(),
+            )
+        }
     }
 }
 

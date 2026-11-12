@@ -19,6 +19,7 @@ enum DeckRoute: Hashable, Identifiable {
     case friendProfile(String)
     case followList(String, FollowSource)
     case blockedUsers
+    case sessions
     case tagBrowse(String)
     case recap(Int)
 
@@ -39,6 +40,7 @@ enum DeckRoute: Hashable, Identifiable {
         case .friendProfile(let pubky): return "friend-\(pubky)"
         case .followList(let pubky, let source): return "follows-\(pubky)-\(source.name)"
         case .blockedUsers: return "blocked-users"
+        case .sessions: return "sessions"
         case .tagBrowse(let tag): return "tag-\(tag)"
         case .recap(let year): return "recap-\(year)"
         }
@@ -131,7 +133,8 @@ struct RootView: View {
                 onOpenRecap: { deckPath.append(.recap($0)) },
                 onBackUpNow: { isBackingUp = true },
                 isGuest: isGuest,
-                onSignIn: { leaveGuestShell() }
+                onSignIn: { leaveGuestShell() },
+                onOpenSessions: { deckPath.append(.sessions) }
             )
             .navigationDestination(for: DeckRoute.self) { route in
                 deckDestination(route)
@@ -234,10 +237,13 @@ struct RootView: View {
             SettingsScreen(
                 onSignedOut: { signOut() },
                 onBackUpNow: { isBackingUp = true },
-                onOpenBlockedUsers: { deckPath.append(.blockedUsers) }
+                onOpenBlockedUsers: { deckPath.append(.blockedUsers) },
+                onOpenSessions: { deckPath.append(.sessions) }
             )
         case .blockedUsers:
             BlockedUsersScreen()
+        case .sessions:
+            SessionsScreen()
         case .study(let deckId):
             StudySessionScreen(
                 deckId: deckId,

@@ -84,6 +84,7 @@ fun DiscoverRoute(
      */
     isGuest: Boolean = false,
     onSignIn: () -> Unit = {},
+    onOpenSessions: () -> Unit = {},
 ) {
     val viewModel = koinViewModel<DiscoverViewModel>()
     val searchBarState = rememberSearchBarState()
@@ -144,6 +145,7 @@ fun DiscoverRoute(
                 onOpenDeck = onOpenDeck,
                 onSignIn = onSignIn,
                 state = searchBarState,
+                onOpenSessions = onOpenSessions,
             )
         },
         onOpenAuthor = viewModel::onOpenAuthor,

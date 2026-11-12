@@ -6,6 +6,7 @@ import com.github.jvsena42.loopky.data.homegate.MethodAvailability
 import com.github.jvsena42.loopky.data.nexus.NexusResourceSorting
 import com.github.jvsena42.loopky.data.storage.PendingSignup
 import com.github.jvsena42.loopky.data.storage.SignupTokenStore
+import com.github.jvsena42.loopky.domain.model.AuthorizedSession
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.DailyStudyProgress
@@ -33,6 +34,7 @@ import com.github.jvsena42.loopky.domain.model.ReportSubject
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Separator
 import com.github.jvsena42.loopky.domain.model.Session
+import com.github.jvsena42.loopky.domain.model.SignInRequest
 import com.github.jvsena42.loopky.domain.model.SrsGrade
 import com.github.jvsena42.loopky.domain.model.SrsState
 import com.github.jvsena42.loopky.domain.model.StudyFeatures
@@ -282,6 +284,41 @@ interface KeyBackupRepository {
 
     /** Additive: having written the words down does not retire the file. */
     suspend fun markBackedUp(method: BackupMethod)
+}
+
+/**
+ * Loopky as a signer: approving another app's `pubkyauth://` request with the key it holds, the
+ * way Pubky Ring does, and listing or revoking the apps approved so far. Only for an account whose
+ * key is on this device; with Ring holding it, every call fails with
+ * [com.github.jvsena42.loopky.domain.model.SignInRefusal.NoKeyHere].
+ *
+ * Nothing here logs a link: each carries the relay secret its approval travels over.
+ */
+interface SignerRepository {
+
+    /**
+     * Whether a registered key is held here, so a sign-in link can be approved. Android enables its
+     * `pubkyauth://` handler from this, and only from this.
+     */
+    val canApprove: Flow<Boolean>
+
+    /**
+     * Read [text] as a sign-in request — the link itself, or text with one in it. Fails with
+     * `SignInRefusedException` for anything Loopky will not approve, before anything is shown.
+     */
+    fun inspect(text: String): Result<SignInRequest>
+
+    /**
+     * Sign [request] with the held key and post the approval to its relay. Re-reads the link first,
+     * so what is signed is exactly what [inspect] returned and the user saw.
+     */
+    suspend fun approve(request: SignInRequest): Result<Unit>
+
+    /** Every app the account has approved, newest first. */
+    suspend fun authorizedSessions(): Result<List<AuthorizedSession>>
+
+    /** Revoke one app's grant. Refuses this device's own: that is sign-out, which lives in Settings. */
+    suspend fun revoke(grantId: String): Result<Unit>
 }
 
 /** One question in the confirm quiz: which word belongs at [position] (1-based, as displayed). */

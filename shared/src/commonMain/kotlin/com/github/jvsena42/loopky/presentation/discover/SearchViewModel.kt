@@ -7,12 +7,14 @@ import com.github.jvsena42.loopky.data.pubky.PubkyLinks
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
+import com.github.jvsena42.loopky.data.repository.SignerRepository
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.ErrorReason
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.SignInLinks
 import com.github.jvsena42.loopky.presentation.auth.SignInReason
 import com.github.jvsena42.loopky.presentation.onboarding.OnboardingViewModel
+import com.github.jvsena42.loopky.presentation.settings.SignInInbox
 import com.github.jvsena42.loopky.util.Log
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.FlowPreview
@@ -56,6 +58,8 @@ import kotlinx.coroutines.launch
 class SearchViewModel(
     private val discoveryRepository: DiscoveryRepository,
     private val identityRepository: IdentityRepository,
+    private val signerRepository: SignerRepository,
+    private val signInInbox: SignInInbox,
     private val pubkyRingInstallUrl: String = OnboardingViewModel.DEFAULT_INSTALL_URL,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SearchUiState())
@@ -77,6 +81,11 @@ class SearchViewModel(
             val session = runSuspendCatching { identityRepository.currentSession() }.getOrNull()
                 ?: runSuspendCatching { identityRepository.loadPersistedSession() }.getOrNull()
             _state.update { it.copy(isSignedIn = session != null) }
+        }
+        viewModelScope.launch {
+            signerRepository.canApprove.collect { canApprove ->
+                _state.update { it.copy(canApproveSignIn = canApprove) }
+            }
         }
         viewModelScope.launch {
             typed
@@ -236,6 +245,14 @@ class SearchViewModel(
     }
 
     /** A scanned sign-in code is Pubky Ring's to approve, so the way forward is getting Ring. */
+    /** A pasted sign-in link, approved in Settings → Sessions with the key Loopky holds. */
+    fun onApproveSignInLink() {
+        val state = _state.value
+        if (!state.isSignInLink || !state.canApproveSignIn) return
+        signInInbox.deliver(state.query)
+        viewModelScope.launch { _effects.emit(SearchEffect.OpenSessions) }
+    }
+
     fun onGetPubkyRing() {
         viewModelScope.launch { _effects.emit(SearchEffect.OpenInstallPage(pubkyRingInstallUrl)) }
     }
@@ -283,8 +300,10 @@ data class SearchUiState(
     val hasSearched: Boolean = false,
     /** The one thing the typed text already names, when it is an address rather than a query. */
     val directLink: PubkyLink? = null,
-    /** The text is a Pubky Ring sign-in request, which Loopky cannot act on and must not search. */
+    /** The text is a sign-in request, which must never be searched. */
     val isSignInLink: Boolean = false,
+    /** Loopky holds the key, so a sign-in link here can be approved rather than sent to Ring. */
+    val canApproveSignIn: Boolean = false,
     val people: List<DiscoverPerson> = emptyList(),
     val decks: List<DiscoverDeck> = emptyList(),
 ) {
@@ -301,6 +320,9 @@ sealed interface SearchEffect {
     data class ShowFollowError(val reason: ErrorReason) : SearchEffect
 
     data class OpenInstallPage(val url: String) : SearchEffect
+
+    /** The pasted sign-in link is waiting in [SignInInbox] for Settings → Sessions. */
+    data object OpenSessions : SearchEffect
 
     /** A guest reached for Follow. [reason] is what the prompt is about. */
     data class RequireSignIn(val reason: SignInReason) : SearchEffect

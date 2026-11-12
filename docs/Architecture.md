@@ -875,6 +875,44 @@ HTTP basic auth, so a staging send answers 401 and only production builds can fi
   the bot tags the offending *file* under `pubky.app/tags/`, a subject Nexus refuses to index
   (§7.7), so Loopky cannot see it. Deletions and bans still reach Loopky, through the admin API.
 
+### 7.10 Loopky as a signer
+
+An account created or restored in Loopky holds its key here (§7.5), so Loopky approves other apps'
+`pubkyauth://` sign-ins itself, the way Pubky Ring does: the `loopky` CLI's login, the Claude
+connector's page, pubky.app. `SignerRepository` is the whole surface; Settings → Sessions
+(`SessionsViewModel`) is the one screen.
+
+- **Reading.** A link is parsed by the FFI's `parse_auth_url`, never in Kotlin, so the capabilities
+  shown are the ones `auth` signs. Only `signin_grant` is approved. Refused before anything is
+  shown: signup links (Loopky creates no accounts for others), legacy `pubkyauth:///?` links (they
+  yield a cookie session that `list_grants` never shows, so it could not be revoked here), and a
+  request for `/` or `/pub/` (the whole account, or every app's data), and any permission but `r`/`w`: `e` hands the requester encryption keys derived from the identity secret, which no revoke takes back and the sheet could not show. The `cid` is the requester's
+  own choice of name, so control and bidi characters are stripped and the copy calls it a claim.
+- **Approving.** `approve` re-reads the link and requires the held key to be registered and to be
+  the signed-in account's. The ViewModel binds Approve to the link on screen and drops a second link
+  while a sheet is open, so a link arriving mid-review cannot take the tap. Callbacks in the link
+  (`x-success` …) are not followed.
+- **Grants.** `list_grants`/`revoke_grant` need a root session, which is what a held key signs in
+  with; a Ring session is scoped and would get a 403, which is why the screen is offered only with a
+  held key. This device's own grant is found by revalidating (the stored `Session` keeps no
+  `grant_id`) and is never revocable from the list: that is sign-out. A failed lookup fails both
+  calls rather than leaving the row unprotected.
+- **Android** answers the scheme through `.MainActivityPubkyAuth`, an activity-alias disabled in the
+  manifest and switched by `PubkyAuthHandler` from `SignerRepository.canApprove`, so a Ring user's
+  links keep going to Ring. It filters only host `signin_grant`, `Intent.signInLink` checks the same,
+  and the link is dropped from the intent once read so a relaunch from recents cannot replay it.
+  `AndroidPubkyRingPresence` ignores Loopky's own handler, or a device with no Ring would report
+  Ring installed whenever the alias is on.
+- **Search** recognises a pasted link and, with a key held, offers Approve in Loopky: the link goes
+  through `SignInInbox`, an in-memory hand-off taken once, to `SessionsViewModel`. Without a key
+  the row offers Pubky Ring, as before.
+- **iOS** does not claim `pubkyauth`. A scheme cannot be switched on with the key, and iOS picks
+  arbitrarily between apps claiming one, so a static claim would take Ring users' links. Scan
+  (`QrScannerSheet`) and `PasteButton` are the way in, as in Bitkit.
+
+Nothing records what was approved: the homeserver's grant list is the record, which is also why the
+adoption dashboard cannot count sign-ins Loopky approved.
+
 ## 8. Data model & persistence
 
 ### 8.0 Homeserver layout (canonical)

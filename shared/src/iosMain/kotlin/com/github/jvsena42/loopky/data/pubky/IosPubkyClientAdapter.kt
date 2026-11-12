@@ -63,6 +63,12 @@ class IosPubkyClientAdapter(private val raw: RawPubkyClient) : PubkyClient {
     override suspend fun auth(url: String, secretKey: String) =
         runFfiSuspend { raw.auth(url, secretKey) }
 
+    override suspend fun listGrants(sessionSecret: String) =
+        runFfiSuspend { raw.listGrants(sessionSecret) }
+
+    override suspend fun revokeGrant(sessionSecret: String, grantId: String) =
+        runFfiSuspend { raw.revokeGrant(sessionSecret, grantId) }
+
     // --- Records (secret-key auth) --------------------------------------------
     override suspend fun publish(recordName: String, recordContent: String, secretKey: String) =
         runFfiSuspend { raw.publish(recordName, recordContent, secretKey) }

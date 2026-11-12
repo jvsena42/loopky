@@ -10,6 +10,7 @@ struct SettingsScreen: View {
     var onSignedOut: () -> Void = {}
     var onBackUpNow: () -> Void = {}
     var onOpenBlockedUsers: () -> Void = {}
+    var onOpenSessions: () -> Void = {}
 
     @Environment(\.openURL) private var openURL
 
@@ -48,7 +49,8 @@ struct SettingsScreen: View {
             onOpenAppSettings: {
                 if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
             },
-            onOpenBlockedUsers: onOpenBlockedUsers
+            onOpenBlockedUsers: onOpenBlockedUsers,
+            onOpenSessions: onOpenSessions
         )
         .overlay(alignment: .bottom) {
             if let toast {

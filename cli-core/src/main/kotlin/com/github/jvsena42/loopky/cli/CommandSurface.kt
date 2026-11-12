@@ -218,7 +218,7 @@ val COMPLETION_SHELLS = listOf("bash", "zsh", "fish")
 fun cliCommands(): List<CliCommand> = listOf(
     CliCommand(
         path = "login",
-        summary = "print a QR code for Pubky Ring and wait for approval",
+        summary = "print a QR code for Loopky or Pubky Ring and wait for approval",
         options = listOf(
             CliOption("export", "also print the session secret, for LOOPKY_SESSION", OptionValue.Switch),
             CliOption("qr-out", "write the QR code to a file", OptionValue.Path),

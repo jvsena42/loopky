@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -40,6 +41,7 @@ import com.github.jvsena42.loopky.ui.restore.RestoreFileRoute
 import com.github.jvsena42.loopky.ui.restore.RestorePhraseRoute
 import com.github.jvsena42.loopky.ui.restore.RestoreStartRoute
 import com.github.jvsena42.loopky.ui.settings.BlockedUsersRoute
+import com.github.jvsena42.loopky.ui.settings.SessionsRoute
 import com.github.jvsena42.loopky.ui.settings.SettingsRoute
 import com.github.jvsena42.loopky.ui.signup.InviteCodeRoute
 import com.github.jvsena42.loopky.ui.signup.LightningVerificationRoute
@@ -82,21 +84,7 @@ internal fun LoopkyNavHost(
         if (pendingOpen == null || currentRoute == null || currentRoute == Routes.ONBOARDING) {
             return@LaunchedEffect
         }
-        when (pendingOpen) {
-            is PendingOpen.Link -> {
-                when (val link = pendingOpen.link) {
-                    is PubkyLink.Profile -> navController.navigateTo(Routes.friendProfile(link.pubky))
-                    is PubkyLink.Deck ->
-                        navController.navigateTo(Routes.deckDetail(link.deckId, link.pubky))
-                }
-                currentPendingHandled()
-            }
-            // Not cleared here: navigating is only half of it, and the file still has to reach
-            // the screen. BulkImportRoute clears it once the ViewModel has taken it. navigateTo
-            // dedups the current destination, so the re-run this effect gets when the route
-            // changes is a no-op.
-            is PendingOpen.File -> navController.navigateTo(Routes.IMPORT_BULK)
-        }
+        navController.routePendingOpen(pendingOpen, onHandled = currentPendingHandled)
     }
 
     NavHost(navController = navController, startDestination = Routes.ONBOARDING) {
@@ -172,6 +160,7 @@ internal fun LoopkyNavHost(
                 onNavigateSettings = {
                     navController.navigateTo(Routes.settings())
                 },
+                onNavigateSessions = { navController.navigateTo(Routes.SESSIONS) },
                 onNavigateFollows = { pubky, source ->
                     navController.navigateTo(Routes.followList(pubky, source))
                 },
@@ -204,10 +193,18 @@ internal fun LoopkyNavHost(
                 onBackUpNow = { navController.navigateTo(Routes.BACKUP_START) },
                 focus = entry.arguments?.getString("focus"),
                 onOpenBlockedUsers = { navController.navigateTo(Routes.BLOCKED_USERS) },
+                onOpenSessions = { navController.navigateTo(Routes.SESSIONS) },
             )
         }
         composable(Routes.BLOCKED_USERS) {
             BlockedUsersRoute(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SESSIONS) {
+            SessionsRoute(
+                incomingLink = (pendingOpen as? PendingOpen.SignIn)?.link,
+                onIncomingHandled = currentPendingHandled,
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(
             route = Routes.DECK_DETAIL,
@@ -699,5 +696,23 @@ private fun NavGraphBuilder.recapDestination(navController: NavHostController) {
             year = backStackEntry.arguments?.getInt("year") ?: 0,
             onBack = { navController.popBackStack() },
         )
+    }
+}
+
+private fun NavController.routePendingOpen(pendingOpen: PendingOpen, onHandled: () -> Unit) {
+    when (pendingOpen) {
+        is PendingOpen.Link -> {
+            when (val link = pendingOpen.link) {
+                is PubkyLink.Profile -> navigateTo(Routes.friendProfile(link.pubky))
+                is PubkyLink.Deck -> navigateTo(Routes.deckDetail(link.deckId, link.pubky))
+            }
+            onHandled()
+        }
+        // Not cleared here: navigating is only half of it, and the file still has to reach the
+        // screen. BulkImportRoute clears it once the ViewModel has taken it. navigateTo dedups the
+        // current destination, so the re-run the effect gets when the route changes is a no-op.
+        is PendingOpen.File -> navigateTo(Routes.IMPORT_BULK)
+        // Cleared by SessionsRoute once its ViewModel has the link, as with a file.
+        is PendingOpen.SignIn -> navigateTo(Routes.SESSIONS)
     }
 }

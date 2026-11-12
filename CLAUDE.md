@@ -17,7 +17,7 @@ A fresh session has none of this in context, so establish it before the first ed
   iOS is the XcodeBuildMCP CLI / `xcodebuildmcp` MCP server (see Build & run below), never bare
   `xcodebuild`, `xcrun` or `simctl`. Their skills — `android-cli` and `xcodebuildmcp-cli` — are
   installed; invoke the relevant one rather than reconstructing commands from memory.
-- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 33 numbered
+- **`journeys/` is the end-to-end suite, and it is how UI work is verified.** 34 numbered
   `journeys/*.xml` scripts (onboarding, import, study, discovery, signup/restore …) driven by hand
   on a device. Read `journeys/README.md` first — the driving traps, and what has never been run on
   a device, neither of which a green build says anything about — then re-run the journeys your
@@ -449,6 +449,15 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
   label as typed, so folding in `removeTag` or a Nexus read derives the id of a record that was
   never written, and the old one is never cleaned up. And the **reserved check runs on the folded
   label** — `loopky_deck` is not reserved as typed and is once stored. Architecture.md §7.7 point 5a.
+- **Loopky is a signer for other apps while it holds the key, and only then.** Settings → Sessions
+  approves another app's `pubkyauth://signin_grant` request with the held key and lists/revokes the
+  account's grants (`SignerRepository`, Architecture.md §7.10). Five things not to undo. Links are
+  parsed by the FFI, never in Kotlin, so what is shown is what is signed. Root, `/pub/`, any `e` (encryption keys), signup and
+  legacy links are **refused**, not warned about. Approve takes the link that was on screen, and a
+  second link never replaces an open sheet. Android's handler is an activity-alias **disabled in the
+  manifest** and enabled from `canApprove`, so Ring users keep Ring; iOS claims **no** scheme for
+  the same reason, which is why it is scan and paste only. And the Ring presence probe skips
+  Loopky's own package, or the alias makes Ring look installed.
 - **Announcing a deck is opt-in, per action.** `DiscoveryRepository.announceDeck` writes a `pubky.app` post so a create/follow/clone reaches the user's followers, gated by `AppPreferences.shareOnPubky` (default on) *and* a confirm prompt each time. Off means never asked and never posted — the gate is on the write itself, not only in the ViewModels. **"Share" here means announcing, never visibility**: published decks are public either way (spec §11), and copy that blurs the two describes a privacy control Loopky does not have. Announcing is best-effort: a failed post must never roll back the deck, follow or clone. See Architecture.md §7.7 for the two things the post record has to get right.
 - **A block is pubky.app's mute record, and a blocked account is not shown anywhere (#577).**
   `blockUser` writes `/pub/pubky.app/mutes/{pubky}` (`created_at` in **microseconds**, as

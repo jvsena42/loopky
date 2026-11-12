@@ -23,6 +23,7 @@ struct SettingsView: View {
     var onBackUpNow: () -> Void = {}
     var onOpenAppSettings: () -> Void = {}
     var onOpenBlockedUsers: () -> Void = {}
+    var onOpenSessions: () -> Void = {}
 
     @State private var unsplashKey = ""
     /// The slider's position while dragged; committed on release, so a drag is one write.
@@ -99,6 +100,18 @@ struct SettingsView: View {
                 Button("settings_back_up_account", action: onBackUpNow)
                     .tint(LoopkyColor.accentSecondary)
                     .accessibilityIdentifier("settings_back_up_account")
+                // Only a key held here can approve other apps or list their grants.
+                Button(action: onOpenSessions) {
+                    HStack {
+                        Text("settings_sessions")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(LoopkyColor.foregroundMuted)
+                    }
+                }
+                .tint(LoopkyColor.foregroundPrimary)
+                .accessibilityIdentifier("settings_sessions")
             }
         } header: {
             Text("settings_section_identity")

@@ -45,6 +45,7 @@ fun MainScreen(
     onNavigateStudy: (String?) -> Unit = {},
     onNavigateProfile: (String) -> Unit = {},
     onNavigateSettings: () -> Unit = {},
+    onNavigateSessions: () -> Unit = {},
     onNavigateFollows: (pubky: String, source: FollowSource) -> Unit = { _, _ -> },
     onNavigateRecap: (year: Int) -> Unit = {},
     /** Opens the backup menu, from Profile's card or the daily reminder sheet. */
@@ -141,6 +142,7 @@ fun MainScreen(
                     LoopkyTab.DISCOVER -> DiscoverRoute(
                         onOpenProfile = onNavigateProfile,
                         onOpenDeck = onNavigateDeckDetail,
+                        onOpenSessions = onNavigateSessions,
                     )
                     LoopkyTab.PROFILE -> ProfileRoute(
                         onSignedOut = onSignOut,

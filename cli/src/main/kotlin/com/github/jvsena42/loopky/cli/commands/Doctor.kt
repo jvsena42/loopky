@@ -99,7 +99,7 @@ internal suspend fun doctor(
         ?: "pkarr record of $homeserver names no ordinary domain".takeIf { resolvedHost == null }
 
     val targets = buildList {
-        add(Target(RELAY_URL, "login (Pubky Ring approval)"))
+        add(Target(RELAY_URL, "login (sign-in approval)"))
         PKARR_RELAYS.forEach { add(Target(it, "finding any homeserver (pkarr; either relay is enough)")) }
         homeserverHost?.let { add(Target("https://$it/", "every deck read and write")) }
         add(Target(environment.indexer, "tag trending and indexer reads"))

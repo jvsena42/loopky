@@ -98,6 +98,9 @@ object Routes {
     /** The accounts the signed-in user has blocked, reached from Settings (#577). */
     const val BLOCKED_USERS = "settings/blocked"
 
+    /** The apps this account approved, and the approval of a new one (Loopky as a signer). */
+    const val SESSIONS = "settings/sessions"
+
     const val RECAP = "recap/{year}"
 
     /** [Routes.SETTINGS]'s `focus` value for the Unsplash access key row. */

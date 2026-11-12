@@ -9,9 +9,12 @@ import kotlinx.serialization.json.JsonPrimitive
 import java.net.URI
 
 /**
- * The sign-in page (#486). It names the client and the redirect domain — Ring's own prompt shows
- * the capabilities and not who asked, so this line is the phishing defence — and offers both the
- * QR code and the `pubkyauth://` button, because on a phone the browser and Ring share a screen.
+ * The sign-in page. It names the client and the redirect domain — Ring's own prompt shows the
+ * capabilities and not who asked, so this line is the phishing defence — and offers both the QR
+ * code and the `pubkyauth://` button, because on a phone the browser and the signer share a screen.
+ *
+ * Either signer approves it: Pubky Ring, or Loopky itself when the account was made in Loopky and
+ * its key is there (Settings → Sessions). Loopky leads, since most connector users already have it.
  *
  * Every script and style is nonced: the CSP has no `'unsafe-inline'`, so a stray injection in
  * the client name could at worst render as text.
@@ -38,27 +41,30 @@ object AuthorizePage {
             |</head>
             |<body>
             |<main>
-            |<h1>Sign in with Pubky Ring</h1>
+            |<h1>Sign in with Loopky</h1>
             |<p class="who"><strong>$client</strong> is asking to manage your Loopky decks.
             |After you approve, you will be sent back to <strong>$domain</strong>.</p>
-            |<p class="scope">Ring will ask for <code>/pub/loopky/:rw</code> only: your decks and cards. Nothing else on your account.</p>
-            |<details>
-            |<summary>Don't have Pubky Ring yet?</summary>
-            |<p class="hint">Install it on your phone first: it holds your key and approves this sign-in.
-            |Scan this with your phone's camera, or open <a href="$RING_INSTALL_URL">pubkyring.app</a>.</p>
-            |<div class="qr">$ringInstallQr</div>
-            |</details>
-            |<a class="button" href="$deeplink">Open in Pubky Ring</a>
-            |<p class="hint">On your phone? Tap the button, approve in Ring, then come back to this page.</p>
+            |<p class="scope">You will be asked for <code>/pub/loopky/:rw</code> only: your decks and cards. Nothing else on your account.</p>
             |<details open>
-            |<summary>Or scan with Pubky Ring on another device</summary>
+            |<summary>Scan with your phone</summary>
             |<div class="qr">${qrSvg(pending.authorizationUrl)}</div>
-            |<p class="hint">Scan it with Pubky Ring. The Loopky app cannot approve a sign-in.</p>
+            |<p class="hint">In Loopky, open Settings → Sessions and tap Scan code. If your key is in Pubky Ring, scan it with Ring instead.</p>
+            |</details>
+            |<a class="button" href="$deeplink">Open in Loopky or Pubky Ring</a>
+            |<p class="hint">On your phone? Tap the button, approve, then come back to this page.
+            |On an iPhone with your account in Loopky, copy the link instead and paste it in Loopky under Settings → Sessions.</p>
+            |<button class="secondary" id="copy" type="button">Copy sign-in link</button>
+            |<details>
+            |<summary>No Loopky account on your phone yet?</summary>
+            |<p class="hint">Get Loopky, create your account in it, and come back to scan this code.
+            |Scan this with your phone's camera, or open <a href="$LOOPKY_INSTALL_URL">loopky.app</a>.</p>
+            |<div class="qr">$loopkyInstallQr</div>
+            |<p class="hint">Already use Pubky Ring? Get it at <a href="$RING_INSTALL_URL">pubkyring.app</a>.</p>
             |</details>
             |<p id="status" aria-live="polite">Waiting for your approval…</p>
             |<p class="retry" id="retry" hidden><a href="">Start again</a></p>
             |</main>
-            |<script nonce="$nonce">$SCRIPT_PREFIX$txnLiteral$SCRIPT</script>
+            |<script nonce="$nonce">$SCRIPT_PREFIX$txnLiteral;const link = ${linkLiteral(pending.authorizationUrl)}$SCRIPT</script>
             |</body>
             |</html>
             |
@@ -69,7 +75,7 @@ object AuthorizePage {
         runCatching { URI(redirectUri).host }.getOrNull() ?: redirectUri
 
     /** The matrix as one SVG path: no raster, no external image, nothing for the CSP to allow. */
-    fun qrSvg(content: String, label: String = "QR code for Pubky Ring"): String {
+    fun qrSvg(content: String, label: String = "Sign-in QR code"): String {
         val hints = mapOf(EncodeHintType.MARGIN to QR_MARGIN, EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M)
         val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0, hints)
         val path = buildString {
@@ -100,8 +106,18 @@ object AuthorizePage {
     /** Pubky Ring's page, which sends a phone to its store. The same one the apps and the CLI link to. */
     const val RING_INSTALL_URL = "https://pubkyring.app"
 
+    /** Loopky's site, which sends a phone to its store. */
+    const val LOOPKY_INSTALL_URL = "https://loopky.app"
+
     /** A constant, so drawn once rather than per sign-in. */
-    private val ringInstallQr: String by lazy { qrSvg(RING_INSTALL_URL, label = "QR code to install Pubky Ring") }
+    private val loopkyInstallQr: String by lazy { qrSvg(LOOPKY_INSTALL_URL, label = "QR code to get Loopky") }
+
+    /**
+     * The link as a JS string literal. `<` is escaped too: the literal sits inside a `<script>`
+     * element, where a `</script>` would end it.
+     */
+    private fun linkLiteral(link: String): String =
+        Json.encodeToString(JsonPrimitive.serializer(), JsonPrimitive(link)).replace("<", "\\u003c")
 
     private const val STYLE = """
         body{margin:0;font-family:system-ui,sans-serif;background:#fbf7ef;color:#1a1326}
@@ -110,6 +126,8 @@ object AuthorizePage {
         .button{display:block;text-align:center;background:#ff6a1f;color:#fff;text-decoration:none;
           padding:.9rem 1rem;border-radius:.75rem;font-weight:600}
         .hint,.scope{color:#5a5266;font-size:.95rem}
+        .secondary{display:block;width:100%;background:#efe9dd;color:#1a1326;border:0;
+          padding:.8rem 1rem;border-radius:.75rem;font:inherit;font-weight:600;cursor:pointer}
         .qr{background:#fff;padding:1rem;border-radius:.75rem;margin-top:.75rem}
         .qr svg{display:block;width:100%;max-width:16rem;margin:0 auto}
         summary{cursor:pointer;margin-top:1.5rem}
@@ -132,8 +150,13 @@ object AuthorizePage {
           if (reply.status === 'approved') { say('Approved. Sending you back…'); location.replace(reply.redirect); }
           else if (reply.status === 'pending') setTimeout(tick, 2000);
           else if (reply.status === 'expired') say('This sign-in timed out.', true);
-          else say('Ring did not approve this sign-in.', true);
+          else say('This sign-in was not approved.', true);
         }
         tick();
+        const copy = document.getElementById('copy');
+        copy.addEventListener('click', async () => {
+          try { await navigator.clipboard.writeText(link); copy.textContent = 'Copied. Paste it in Loopky.'; }
+          catch (e) { copy.textContent = 'Could not copy. Use the button above.'; }
+        });
     """
 }
