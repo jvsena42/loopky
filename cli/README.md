@@ -140,8 +140,8 @@ hand. Rebuild it in the fork with `./build_desktop.sh linux|macos|all` and copy
 holding your key approves the session.
 
 - **You created or restored your account in the Loopky app:** open Loopky → Settings → Sessions and
-  tap **Scan code**. On the phone itself, tap the link (Android) or copy it and tap **Paste link**
-  (iPhone). That screen also lists the sessions you approved and revokes them. Nothing else to
+  tap **Scan code**. On the phone itself, tap the link (Android), or on an iPhone copy it and tap
+  **Paste** there, or paste it into Loopky's search and tap **Approve in Loopky**. That screen also lists the sessions you approved and revokes them. Nothing else to
   install.
 - **Your key is in Pubky Ring:** scan with [Pubky Ring](https://pubkyring.app) **v2.0 or newer**
   (older releases cannot read the login QR).

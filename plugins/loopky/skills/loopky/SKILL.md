@@ -52,8 +52,8 @@ restored their account in the Loopky app, and Pubky Ring otherwise; nobody needs
 just for this. Tell them, in one line:
 
 - **Key in Loopky:** open Loopky → Settings → Sessions, tap **Scan code** and scan it. On their
-  phone, they tap the link instead (Android opens Loopky) or copy it and tap **Paste link** there
-  (iPhone). The same screen lists what they approved and revokes it.
+  phone, they tap the link instead (Android opens Loopky), or on an iPhone copy it and tap
+  **Paste** there, or paste it into Loopky's search and tap **Approve in Loopky**. The same screen lists what they approved and revokes it.
 - **Key in Pubky Ring:** scan it in Ring, or tap the link on the phone that runs Ring.
 - **Neither** (no account yet): install Loopky and create the account there, then scan from
   Settings → Sessions. Pubky Ring works too (`loopky ring` shows where to get it).
