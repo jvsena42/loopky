@@ -67,7 +67,22 @@ interface PubkyClient {
     suspend fun startAuthFlow(capabilities: String): Result<String>
     suspend fun awaitAuthApproval(): Result<String>
     fun parseAuthUrl(url: String): Result<String>
+
+    /**
+     * Approve someone else's `pubkyauth://` request with a key Loopky holds, as Pubky Ring does.
+     * The SDK signs exactly the capabilities in [url]; it is the caller's job to have shown them.
+     */
     suspend fun auth(url: String, secretKey: String): Result<String>
+
+    /**
+     * The account's active grants, as a JSON array of `grant_id`, `client_id`, `capabilities`
+     * (comma-separated), `issued_at`, `expires_at` (Unix seconds). Needs a **root** session — the
+     * one a held key signs in with; a Ring session is scoped and gets a 403.
+     */
+    suspend fun listGrants(sessionSecret: String): Result<String>
+
+    /** Revoke one grant by id, ending every session minted from it. Root session, as [listGrants]. */
+    suspend fun revokeGrant(sessionSecret: String, grantId: String): Result<String>
 
     // --- Records (secret-key auth) --------------------------------------------
     suspend fun publish(

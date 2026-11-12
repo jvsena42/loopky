@@ -83,6 +83,12 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
         Loopky.auth(url: url, secretKey: secretKey)
     }
 
+    func listGrants(sessionSecret: String) -> [String] { Loopky.listGrants(sessionSecret: sessionSecret) }
+
+    func revokeGrant(sessionSecret: String, grantId: String) -> [String] {
+        Loopky.revokeGrant(sessionSecret: sessionSecret, grantId: grantId)
+    }
+
     // MARK: - Records (secret-key auth)
 
     func publish(recordName: String, recordContent: String, secretKey: String) -> [String] {

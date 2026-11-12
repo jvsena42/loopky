@@ -15,6 +15,7 @@ import com.github.jvsena42.loopky.data.repository.ImportRepository
 import com.github.jvsena42.loopky.data.repository.KeyBackupRepository
 import com.github.jvsena42.loopky.data.repository.MediaRepository
 import com.github.jvsena42.loopky.data.repository.SettingsRepository
+import com.github.jvsena42.loopky.data.repository.SignerRepository
 import com.github.jvsena42.loopky.data.repository.SignupRepository
 import com.github.jvsena42.loopky.data.repository.SrsRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
@@ -29,6 +30,7 @@ import com.github.jvsena42.loopky.data.repository.impl.KeyBackupRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.MediaRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SessionRevalidatorImpl
 import com.github.jvsena42.loopky.data.repository.impl.SettingsRepositoryImpl
+import com.github.jvsena42.loopky.data.repository.impl.SignerRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SignupRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SrsRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.TagRepositoryImpl
@@ -66,6 +68,7 @@ import com.github.jvsena42.loopky.presentation.request.DeckRequestViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
 import com.github.jvsena42.loopky.presentation.settings.BlockedUsersViewModel
+import com.github.jvsena42.loopky.presentation.settings.SessionsViewModel
 import com.github.jvsena42.loopky.presentation.settings.SettingsViewModel
 import com.github.jvsena42.loopky.presentation.signup.InviteCodeViewModel
 import com.github.jvsena42.loopky.presentation.signup.LightningVerificationViewModel
@@ -143,6 +146,9 @@ fun sharedModule(): Module = module {
         )
     }
     single<KeyBackupRepository> { KeyBackupRepositoryImpl(pubky = get(), keyStore = get()) }
+    single<SignerRepository> {
+        SignerRepositoryImpl(pubky = get(), keyStore = get(), session = get(), revalidator = get())
+    }
     single<PriceSource> { PriceClient(http = get(), nowMillis = ::epochMillis) }
 
     single<SessionRevalidator> { SessionRevalidatorImpl(get(), get(), get(), get()) }
@@ -251,6 +257,7 @@ fun sharedModule(): Module = module {
     }
     viewModel { DeckRequestViewModel(discoveryRepository = get()) }
     viewModel { BlockedUsersViewModel(discoveryRepository = get()) }
+    viewModel { SessionsViewModel(signerRepository = get()) }
     viewModel { params ->
         ReportViewModel(
             accountPubky = params.get(0),

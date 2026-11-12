@@ -38,6 +38,8 @@ sealed interface KeyCustody {
          * that would render nothing.
          */
         val hasPhrase: Boolean = true,
+        /** False for a key held only so it can be registered: it has no account to sign in to. */
+        val registered: Boolean = true,
     ) : KeyCustody {
         val isBackedUp: Boolean get() = backedUpBy.isNotEmpty()
     }

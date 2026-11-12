@@ -38,6 +38,8 @@ interface RawPubkyClient {
     fun awaitAuthApproval(): List<String>
     fun parseAuthUrl(url: String): List<String>
     fun auth(url: String, secretKey: String): List<String>
+    fun listGrants(sessionSecret: String): List<String>
+    fun revokeGrant(sessionSecret: String, grantId: String): List<String>
 
     // --- Records (secret-key auth) --------------------------------------------
     fun publish(recordName: String, recordContent: String, secretKey: String): List<String>
