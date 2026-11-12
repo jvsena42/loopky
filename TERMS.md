@@ -1,6 +1,6 @@
 # Loopky Terms of Service
 
-**Last updated:** 6 November 2026
+**Last updated:** 12 November 2026
 
 These terms cover the Loopky apps for Android and iOS, the `loopky` command line tool, the Loopky
 plugin for AI agents, and the website at [loopky.app](https://loopky.app). Using any of them means
@@ -119,10 +119,10 @@ Loopky itself, open an issue at
 
 ---
 
-## 7. The command line tool and AI agents
+## 7. The command line tool, AI agents and other apps
 
-The `loopky` command line tool and the agent plugin act with a session you approve, and that
-session is limited by design: it **can write only Loopky's own data** (`/pub/loopky/`). It cannot
+The `loopky` command line tool and the agent plugin act with a session you approve, in Pubky Ring
+or, if Loopky holds your key, in Loopky itself. That session is limited by design: it **can write only Loopky's own data** (`/pub/loopky/`). It cannot
 post, follow or edit your profile elsewhere on Pubky.
 
 Within that limit, an agent you run acts for you. A deck an agent creates is published under your
@@ -131,6 +131,14 @@ import or add cards offer a dry run that reports what would be written; use it.
 
 A sign-in link shown by the tool is a login secret until you approve it. Do not paste it anywhere
 other people can read.
+
+**Approving other apps with Loopky.** If Loopky holds your key, it can approve another app's
+sign-in, such as the `loopky` tool, the connector for Claude or any other Pubky app, from Settings →
+Sessions. Approving gives that app the access its request lists, under your key, until you revoke
+it there. The name a request shows is chosen by the app that made it, so approve only a sign-in you
+started yourself, in an app you trust. What that app then does with its access is between you and
+the app, under its own terms, not these. Loopky refuses a request for your whole account or for
+every app's data; use Pubky Ring if you mean to grant one.
 
 ---
 
@@ -155,7 +163,7 @@ Loopky is not directed at children under 13.
 To the fullest extent the law allows, the Loopky project and its contributors are not liable for
 any claim, damages or other liability arising from the software or its use. That includes lost
 decks or study progress, a lost key or account, content published by you or by an agent acting for
-you, and anything a homeserver or another third-party service does or fails to do.
+you, anything an app you approved does with its access, and anything a homeserver or another third-party service does or fails to do.
 
 Some places do not allow some of these limits. Where that is so, they apply only as far as the law
 permits.
