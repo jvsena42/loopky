@@ -282,6 +282,7 @@ private struct ApprovalSheetView: View {
         case .wholeaccount: return "refusal_whole_account"
         case .oldformat: return "refusal_old_format"
         case .nokeyhere: return "refusal_no_key"
+        case .keymaterial: return "refusal_key_material"
         default: return "refusal_not_a_link"
         }
     }

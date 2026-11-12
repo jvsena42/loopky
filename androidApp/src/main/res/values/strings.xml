@@ -471,6 +471,7 @@
     <string name="refusal_old_format">This sign-in code uses an older format that Loopky doesn\'t approve. Open it in Pubky Ring instead.</string>
     <string name="refusal_creates_account">This link creates a new account. Open it in Pubky Ring instead.</string>
     <string name="refusal_whole_account">This asks for your whole account, or every app\'s data on it. Loopky never approves that. Use Pubky Ring if you trust the app.</string>
+    <string name="refusal_key_material">This asks for encryption keys made from your Pubky key, which can\'t be taken back once shared. Loopky never shares them. Use Pubky Ring if you trust the app.</string>
     <string name="refusal_no_key">Pubky Ring holds your key, so approve this sign-in in Pubky Ring.</string>
     <string name="blocked_users_loading">Loading blocked accounts…</string>
     <string name="blocked_users_empty">You haven\'t blocked any accounts.</string>

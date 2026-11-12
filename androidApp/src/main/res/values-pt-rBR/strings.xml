@@ -451,6 +451,7 @@
     <string name="refusal_old_format">Este código de login usa um formato antigo que o Loopky não aprova. Abra-o no Pubky Ring.</string>
     <string name="refusal_creates_account">Este link cria uma conta nova. Abra-o no Pubky Ring.</string>
     <string name="refusal_whole_account">Isso pede sua conta inteira, ou os dados de todos os apps nela. O Loopky nunca aprova isso. Use o Pubky Ring se confiar no app.</string>
+    <string name="refusal_key_material">Isso pede chaves de criptografia geradas a partir da sua chave Pubky, que não podem ser recuperadas depois de compartilhadas. O Loopky nunca as compartilha. Use o Pubky Ring se confiar no app.</string>
     <string name="refusal_no_key">O Pubky Ring guarda sua chave, então aprove este login no Pubky Ring.</string>
     <string name="blocked_users_loading">Carregando contas bloqueadas…</string>
     <string name="blocked_users_empty">Você não bloqueou nenhuma conta.</string>

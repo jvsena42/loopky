@@ -470,6 +470,7 @@
     <string name="refusal_old_format">這個登入碼使用 Loopky 不核准的舊格式。請改用 Pubky Ring 開啟。</string>
     <string name="refusal_creates_account">這個連結會建立新帳號。請改用 Pubky Ring 開啟。</string>
     <string name="refusal_whole_account">這會要求你的整個帳號，或帳號中所有應用程式的資料。Loopky 從不核准這種要求。如果你信任該應用程式，請使用 Pubky Ring。</string>
+    <string name="refusal_key_material">這會要求由你的 Pubky 金鑰衍生的加密金鑰，一旦分享就無法收回。Loopky 從不分享這些金鑰。如果你信任該應用程式，請使用 Pubky Ring。</string>
     <string name="refusal_no_key">你的金鑰在 Pubky Ring 中，請在 Pubky Ring 中核准這次登入。</string>
     <string name="blocked_users_loading">正在載入已封鎖的帳號…</string>
     <string name="blocked_users_empty">你還沒有封鎖任何帳號。</string>

@@ -59,6 +59,11 @@ internal class SignerRepositoryImpl(
         }
         val access = (details["capabilities"] as? JsonArray).orEmpty().map { element ->
             val capability = element.jsonObject
+            // Only read and write can be shown, so anything else is refused rather than signed
+            // unseen; `e` hands over keys derived from the identity secret.
+            if (capability.string("permission").orEmpty().any { it != 'r' && it != 'w' }) {
+                refuse(SignInRefusal.KeyMaterial)
+            }
             RequestedAccess(
                 path = capability.string("path") ?: refuse(SignInRefusal.NotASignInLink),
                 canWrite = capability.string("permission").orEmpty().contains('w'),

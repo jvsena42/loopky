@@ -470,6 +470,7 @@
     <string name="refusal_old_format">Mã đăng nhập này dùng định dạng cũ mà Loopky không duyệt. Hãy mở nó trong Pubky Ring.</string>
     <string name="refusal_creates_account">Liên kết này tạo một tài khoản mới. Hãy mở nó trong Pubky Ring.</string>
     <string name="refusal_whole_account">Yêu cầu này đòi toàn bộ tài khoản của bạn, hoặc dữ liệu của mọi ứng dụng trên đó. Loopky không bao giờ duyệt điều đó. Hãy dùng Pubky Ring nếu bạn tin tưởng ứng dụng.</string>
+    <string name="refusal_key_material">Yêu cầu này đòi các khóa mã hóa được tạo từ khóa Pubky của bạn, và không thể thu hồi sau khi đã chia sẻ. Loopky không bao giờ chia sẻ chúng. Hãy dùng Pubky Ring nếu bạn tin tưởng ứng dụng.</string>
     <string name="refusal_no_key">Pubky Ring giữ khóa của bạn, nên hãy duyệt lần đăng nhập này trong Pubky Ring.</string>
     <string name="blocked_users_loading">Đang tải tài khoản bị chặn…</string>
     <string name="blocked_users_empty">Bạn chưa chặn tài khoản nào.</string>

@@ -14463,6 +14463,77 @@
         }
       }
     },
+    "refusal_key_material": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das verlangt Verschlüsselungsschlüssel, die aus deinem Pubky-Schlüssel abgeleitet sind und sich nach dem Teilen nicht zurückholen lassen. Loopky gibt sie nie heraus. Nutze Pubky Ring, wenn du der App vertraust."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This asks for encryption keys made from your Pubky key, which can't be taken back once shared. Loopky never shares them. Use Pubky Ring if you trust the app."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto pide claves de cifrado derivadas de tu clave Pubky, que no se pueden recuperar una vez compartidas. Loopky nunca las comparte. Usa Pubky Ring si confías en la app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cela demande des clés de chiffrement dérivées de ta clé Pubky, impossibles à reprendre une fois partagées. Loopky ne les partage jamais. Utilise Pubky Ring si tu fais confiance à l’app."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiede chiavi di crittografia derivate dalla tua chiave Pubky, che una volta condivise non si possono riprendere. Loopky non le condivide mai. Usa Pubky Ring se ti fidi dell’app."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky の鍵から作られる暗号鍵を要求しています。一度渡すと取り戻せません。Loopky はこれを渡しません。アプリを信頼できる場合は Pubky Ring を使ってください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky 키에서 만들어지는 암호화 키를 요청합니다. 한 번 공유하면 되돌릴 수 없습니다. Loopky는 이를 절대 공유하지 않습니다. 앱을 신뢰한다면 Pubky Ring을 사용하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isso pede chaves de criptografia geradas a partir da sua chave Pubky, que não podem ser recuperadas depois de compartilhadas. O Loopky nunca as compartilha. Use o Pubky Ring se confiar no app."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu này đòi các khóa mã hóa được tạo từ khóa Pubky của bạn, và không thể thu hồi sau khi đã chia sẻ. Loopky không bao giờ chia sẻ chúng. Hãy dùng Pubky Ring nếu bạn tin tưởng ứng dụng."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这会请求由你的 Pubky 密钥派生的加密密钥，一旦共享就无法收回。Loopky 从不共享这些密钥。如果你信任该应用，请使用 Pubky Ring。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這會要求由你的 Pubky 金鑰衍生的加密金鑰，一旦分享就無法收回。Loopky 從不分享這些金鑰。如果你信任該應用程式，請使用 Pubky Ring。"
+          }
+        }
+      }
+    },
     "refusal_no_key": {
       "extractionState": "manual",
       "localizations": {

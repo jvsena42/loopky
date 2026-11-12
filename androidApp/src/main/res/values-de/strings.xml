@@ -451,6 +451,7 @@
     <string name="refusal_old_format">Dieser Anmeldecode hat ein älteres Format, das Loopky nicht bestätigt. Öffne ihn stattdessen in Pubky Ring.</string>
     <string name="refusal_creates_account">Dieser Link erstellt ein neues Konto. Öffne ihn stattdessen in Pubky Ring.</string>
     <string name="refusal_whole_account">Das verlangt dein ganzes Konto oder die Daten aller Apps darauf. Loopky bestätigt das nie. Nutze Pubky Ring, wenn du der App vertraust.</string>
+    <string name="refusal_key_material">Das verlangt Verschlüsselungsschlüssel, die aus deinem Pubky-Schlüssel abgeleitet sind und sich nach dem Teilen nicht zurückholen lassen. Loopky gibt sie nie heraus. Nutze Pubky Ring, wenn du der App vertraust.</string>
     <string name="refusal_no_key">Pubky Ring verwahrt deinen Schlüssel, also bestätige diese Anmeldung in Pubky Ring.</string>
     <string name="blocked_users_loading">Blockierte Konten werden geladen…</string>
     <string name="blocked_users_empty">Du hast keine Konten blockiert.</string>

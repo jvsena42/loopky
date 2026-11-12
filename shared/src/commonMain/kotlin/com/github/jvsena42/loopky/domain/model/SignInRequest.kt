@@ -57,6 +57,12 @@ enum class SignInRefusal {
      */
     WholeAccount,
 
+    /**
+     * The request asks for encryption keys (`e`), which the SDK derives from the identity secret
+     * and hands over with the approval. Revoking the grant cannot take them back.
+     */
+    KeyMaterial,
+
     /** No key on this device can sign: Pubky Ring holds it, or nobody is signed in. */
     NoKeyHere,
 }

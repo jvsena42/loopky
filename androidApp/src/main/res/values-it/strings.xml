@@ -451,6 +451,7 @@
     <string name="refusal_old_format">Questo codice di accesso usa un formato vecchio che Loopky non approva. Aprilo invece in Pubky Ring.</string>
     <string name="refusal_creates_account">Questo link crea un nuovo account. Aprilo invece in Pubky Ring.</string>
     <string name="refusal_whole_account">Chiede l’intero account, o i dati di tutte le app al suo interno. Loopky non lo approva mai. Usa Pubky Ring se ti fidi dell’app.</string>
+    <string name="refusal_key_material">Chiede chiavi di crittografia derivate dalla tua chiave Pubky, che una volta condivise non si possono riprendere. Loopky non le condivide mai. Usa Pubky Ring se ti fidi dell’app.</string>
     <string name="refusal_no_key">La tua chiave è in Pubky Ring, quindi approva questo accesso in Pubky Ring.</string>
     <string name="blocked_users_loading">Caricamento account bloccati…</string>
     <string name="blocked_users_empty">Non hai bloccato nessun account.</string>

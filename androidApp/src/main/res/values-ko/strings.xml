@@ -458,6 +458,7 @@
     <string name="refusal_old_format">이 로그인 코드는 Loopky가 승인하지 않는 이전 형식입니다. Pubky Ring에서 여세요.</string>
     <string name="refusal_creates_account">이 링크는 새 계정을 만듭니다. Pubky Ring에서 여세요.</string>
     <string name="refusal_whole_account">계정 전체 또는 계정에 있는 모든 앱의 데이터를 요청합니다. Loopky는 이를 절대 승인하지 않습니다. 앱을 신뢰한다면 Pubky Ring을 사용하세요.</string>
+    <string name="refusal_key_material">Pubky 키에서 만들어지는 암호화 키를 요청합니다. 한 번 공유하면 되돌릴 수 없습니다. Loopky는 이를 절대 공유하지 않습니다. 앱을 신뢰한다면 Pubky Ring을 사용하세요.</string>
     <string name="refusal_no_key">키가 Pubky Ring에 있으므로 이 로그인은 Pubky Ring에서 승인하세요.</string>
     <string name="blocked_users_loading">차단한 계정을 불러오는 중…</string>
     <string name="blocked_users_empty">차단한 계정이 없어요.</string>

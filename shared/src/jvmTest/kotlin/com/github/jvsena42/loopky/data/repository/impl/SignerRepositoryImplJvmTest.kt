@@ -168,6 +168,12 @@ class SignerRepositoryImplJvmTest {
         assertTrue(fake.revokedGrants.isEmpty())
     }
 
+    @Test
+    fun `refuses a request for encryption keys`() {
+        assertRefused(SignInRefusal.KeyMaterial) { repository().inspect(keysLink("/pub/pubky.app/:rwe")).getOrThrow() }
+        assertRefused(SignInRefusal.KeyMaterial) { repository().inspect(keysLink("/pub/loopky/:e")).getOrThrow() }
+    }
+
     private fun assertRefused(reason: SignInRefusal, block: suspend () -> Unit) = runTest {
         val error = runCatching { block() }.exceptionOrNull()
         assertEquals(reason, (error as? SignInRefusedException)?.reason, "got: $error")
@@ -182,6 +188,9 @@ class SignerRepositoryImplJvmTest {
 
         fun grantLink(caps: String) =
             "pubkyauth://signin_grant?caps=$caps&relay=$RELAY&secret=$CHANNEL_SECRET&cid=mcp.loopky.app&cpk=$CLIENT_KEY"
+
+        fun keysLink(caps: String) =
+            "pubkyauth://signin_grant?caps=$caps&relay=$RELAY&epk=$CHANNEL_SECRET&af=v1&cid=mcp.loopky.app&cpk=$CLIENT_KEY"
 
         fun heldKey() = LocalKey(secretKeyHex = SECRET_HEX, pubky = TEST_PUBKY)
     }

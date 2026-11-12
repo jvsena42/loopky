@@ -465,6 +465,7 @@
     <string name="refusal_old_format">このサインイン用のコードは、Loopky が承認しない古い形式です。Pubky Ring で開いてください。</string>
     <string name="refusal_creates_account">このリンクは新しいアカウントを作成します。Pubky Ring で開いてください。</string>
     <string name="refusal_whole_account">アカウント全体、またはそこにあるすべてのアプリのデータを要求しています。Loopky はこれを承認しません。アプリを信頼できる場合は Pubky Ring を使ってください。</string>
+    <string name="refusal_key_material">Pubky の鍵から作られる暗号鍵を要求しています。一度渡すと取り戻せません。Loopky はこれを渡しません。アプリを信頼できる場合は Pubky Ring を使ってください。</string>
     <string name="refusal_no_key">鍵は Pubky Ring にあるため、このサインインは Pubky Ring で承認してください。</string>
     <string name="blocked_users_loading">ブロック中のアカウントを読み込んでいます…</string>
     <string name="blocked_users_empty">ブロックしているアカウントはありません。</string>

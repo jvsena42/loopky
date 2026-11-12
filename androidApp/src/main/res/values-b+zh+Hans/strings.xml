@@ -458,6 +458,7 @@
     <string name="refusal_old_format">这个登录码使用 Loopky 不批准的旧格式。请改用 Pubky Ring 打开。</string>
     <string name="refusal_creates_account">这个链接会创建新账号。请改用 Pubky Ring 打开。</string>
     <string name="refusal_whole_account">这会请求你的整个账号，或账号中所有应用的数据。Loopky 从不批准这种请求。如果你信任该应用，请使用 Pubky Ring。</string>
+    <string name="refusal_key_material">这会请求由你的 Pubky 密钥派生的加密密钥，一旦共享就无法收回。Loopky 从不共享这些密钥。如果你信任该应用，请使用 Pubky Ring。</string>
     <string name="refusal_no_key">你的密钥在 Pubky Ring 中，请在 Pubky Ring 中批准这次登录。</string>
     <string name="blocked_users_loading">正在加载已屏蔽的账号…</string>
     <string name="blocked_users_empty">你还没有屏蔽任何账号。</string>

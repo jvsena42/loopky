@@ -437,6 +437,7 @@ private fun RefusedContent(refusal: SignInRefusal?, onDismiss: () -> Unit) {
                 SignInRefusal.CreatesAccount -> R.string.refusal_creates_account
                 SignInRefusal.WholeAccount -> R.string.refusal_whole_account
                 SignInRefusal.NoKeyHere -> R.string.refusal_no_key
+                SignInRefusal.KeyMaterial -> R.string.refusal_key_material
                 SignInRefusal.OldFormat -> R.string.refusal_old_format
                 SignInRefusal.NotASignInLink, null -> R.string.refusal_not_a_link
             },
