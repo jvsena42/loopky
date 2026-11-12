@@ -14,7 +14,7 @@
   "interface": {
     "displayName": "Loopky",
     "shortDescription": "Anki-style flashcards",
-    "longDescription": "Ask for flashcards and Codex builds a Loopky deck with the loopky CLI: from a topic, your notes or an existing Anki .apkg. It checks the network, signs you in with Pubky Ring, dry-runs before writing and verifies what was stored. Language decks get a declared pair, so the free Loopky app on Android and iOS can read cards aloud and grade spoken answers. Decks are public; the CLI can write only Loopky's own data.",
+    "longDescription": "Ask for flashcards and Codex builds a Loopky deck with the loopky CLI: from a topic, your notes or an existing Anki .apkg. It checks the network, signs you in through the Loopky app or Pubky Ring, dry-runs before writing and verifies what was stored. Language decks get a declared pair, so the free Loopky app on Android and iOS can read cards aloud and grade spoken answers. Decks are public; the CLI can write only Loopky's own data.",
     "developerName": "Joao Victor Sena",
     "category": "Productivity",
     "capabilities": [],

@@ -44,8 +44,8 @@ moving target for the one command here that runs unreviewed shell as the user.
 **On Windows there is no `loopky` build.** Use the **Loopky connector for Claude** instead: it
 runs the same commands on a hosted server, so there is nothing to install. Add
 [Loopky](https://claude.ai/directory/loopky) from Claude's connector directory (Settings →
-Connectors → Browse connectors), or `https://mcp.loopky.app/mcp` as a custom connector, and sign
-in once with Pubky Ring. If you need the CLI itself on a Windows machine, run the Linux build
+Connectors → Browse connectors), or `https://mcp.loopky.app/mcp` as a custom connector, and approve
+the one sign-in in Loopky (Settings → Sessions) or Pubky Ring. If you need the CLI itself on a Windows machine, run the Linux build
 inside WSL — `install.sh` works there unchanged.
 
 **Coming from the Windows build** (1.9.0 and earlier)? It cannot update itself any more: it will
@@ -757,7 +757,7 @@ rather than stopped, so an approval landing as the process exits still persists 
 whoami` answers it. The code that was on screen is spent either way — the FFI's auth flow is a
 single slot the first poll takes — so the recovery is `loopky login` again rather than a retry.
 
-8 from `login` means Ring approved an identity on the other network (#507). The session is
+8 from `login` means the signer (Loopky or Ring) approved an identity on the other network (#507). The session is
 stored and valid there, so the recovery is the next command under the `--env` the message names,
 not another scan; before #507 `login` answered 0 and the *next* command exited 8. `data` is the
 login's ordinary result, with `session_environment` saying which network and, under `--export`, the
