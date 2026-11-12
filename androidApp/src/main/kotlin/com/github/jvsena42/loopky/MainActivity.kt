@@ -160,7 +160,12 @@ class MainActivity : ComponentActivity() {
         }
         val signIn = intent.signInLink()
         if (signIn != null) {
-            pendingOpen.value = PendingOpen.SignIn(signIn)
+            // Dropped, not kept on the intent: relaunched from recents, it would raise the sheet
+            // again for a relay channel long gone.
+            intent.data = null
+            if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0) {
+                pendingOpen.value = PendingOpen.SignIn(signIn)
+            }
             return
         }
         val link = intent.pubkyLink()

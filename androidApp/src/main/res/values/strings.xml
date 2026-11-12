@@ -445,11 +445,12 @@
     <string name="sessions_revoke_failed">Couldn\'t revoke that session. Try again.</string>
     <string name="sessions_unknown_app">Unknown app</string>
     <string name="sessions_signed_in_on">Signed in %1$s</string>
-    <string name="sessions_access_loopky">Your Loopky decks and cards</string>
+    <string name="sessions_access_loopky">Read and write your Loopky decks</string>
+    <string name="sessions_access_loopky_read">Read your Loopky decks</string>
     <string name="sessions_access_read">Read %1$s</string>
     <string name="sessions_access_write">Read and write %1$s</string>
     <string name="approval_title">Sign in with Loopky?</string>
-    <string name="approval_body">%1$s wants to sign in to your account.</string>
+    <string name="approval_body">An app calling itself “%1$s” wants to sign in to your account.</string>
     <string name="approval_body_unknown">An app wants to sign in to your account.</string>
     <string name="approval_access_label">It\'s asking for</string>
     <string name="approval_access_none">Only proof that it\'s you</string>
@@ -466,8 +467,9 @@
     <string name="approval_refused_title">Loopky can\'t approve this</string>
     <string name="approval_close">Close</string>
     <string name="refusal_not_a_link">That isn\'t a sign-in code.</string>
+    <string name="refusal_old_format">This sign-in code uses an older format that Loopky doesn\'t approve. Open it in Pubky Ring instead.</string>
     <string name="refusal_creates_account">This link creates a new account. Open it in Pubky Ring instead.</string>
-    <string name="refusal_whole_account">This asks for full control of your account. Loopky never approves that. Use Pubky Ring if you trust the app.</string>
+    <string name="refusal_whole_account">This asks for your whole account, or every app\'s data on it. Loopky never approves that. Use Pubky Ring if you trust the app.</string>
     <string name="refusal_no_key">Pubky Ring holds your key, so approve this sign-in in Pubky Ring.</string>
     <string name="blocked_users_loading">Loading blocked accounts…</string>
     <string name="blocked_users_empty">You haven\'t blocked any accounts.</string>

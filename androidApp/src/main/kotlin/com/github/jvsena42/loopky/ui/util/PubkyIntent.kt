@@ -26,5 +26,13 @@ fun Intent.pubkyLink(): PubkyLink? {
  * The `pubkyauth://` sign-in request this intent opened Loopky with, reaching it through the
  * handler alias (only enabled while a key is held). Never logged: it carries the relay secret.
  */
-fun Intent.signInLink(): String? =
-    dataString?.takeIf { action == Intent.ACTION_VIEW && SignInLinks.isIn(it) }
+fun Intent.signInLink(): String? {
+    val uri = data ?: return null
+    val isGrantSignIn = action == Intent.ACTION_VIEW &&
+        uri.scheme.equals(SIGN_IN_SCHEME, ignoreCase = true) &&
+        uri.host.equals(SIGN_IN_GRANT_HOST, ignoreCase = true)
+    return dataString?.takeIf { isGrantSignIn && SignInLinks.isIn(it) }
+}
+
+private const val SIGN_IN_SCHEME = "pubkyauth"
+private const val SIGN_IN_GRANT_HOST = "signin_grant"

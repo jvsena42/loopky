@@ -123,7 +123,7 @@ fun SessionsRoute(
     state.approval?.let { approval ->
         ApprovalSheet(
             approval = approval,
-            onApprove = viewModel::onApprove,
+            onApprove = { viewModel.onApprove(approval.shownLink) },
             onDismiss = viewModel::onDismissApproval,
         )
     }
@@ -337,9 +337,14 @@ private fun ApprovalSheet(
     onDismiss: () -> Unit,
 ) {
     val colors = LoopkyTheme.colors
+    val approving = approval.phase == ApprovalPhase.Approving
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        // Not swipeable mid-approval: the sheet would hide while the ViewModel keeps it open.
+        sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = { !approving },
+        ),
         containerColor = colors.surfaceCard,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
     ) {
@@ -427,6 +432,7 @@ private fun RefusedContent(refusal: SignInRefusal?, onDismiss: () -> Unit) {
                 SignInRefusal.CreatesAccount -> R.string.refusal_creates_account
                 SignInRefusal.WholeAccount -> R.string.refusal_whole_account
                 SignInRefusal.NoKeyHere -> R.string.refusal_no_key
+                SignInRefusal.OldFormat -> R.string.refusal_old_format
                 SignInRefusal.NotASignInLink, null -> R.string.refusal_not_a_link
             },
         ),
@@ -474,7 +480,8 @@ private fun appName(clientId: String): String =
 
 @Composable
 private fun accessLabel(access: RequestedAccess): String = when {
-    access.isLoopkyOnly -> stringResource(R.string.sessions_access_loopky)
+    access.isLoopkyOnly && access.canWrite -> stringResource(R.string.sessions_access_loopky)
+    access.isLoopkyOnly -> stringResource(R.string.sessions_access_loopky_read)
     access.canWrite -> stringResource(R.string.sessions_access_write, access.path)
     else -> stringResource(R.string.sessions_access_read, access.path)
 }
