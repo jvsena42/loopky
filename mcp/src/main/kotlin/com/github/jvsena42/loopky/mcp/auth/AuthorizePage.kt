@@ -75,7 +75,7 @@ object AuthorizePage {
         runCatching { URI(redirectUri).host }.getOrNull() ?: redirectUri
 
     /** The matrix as one SVG path: no raster, no external image, nothing for the CSP to allow. */
-    fun qrSvg(content: String, label: String = "QR code for Pubky Ring"): String {
+    fun qrSvg(content: String, label: String = "Sign-in QR code"): String {
         val hints = mapOf(EncodeHintType.MARGIN to QR_MARGIN, EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M)
         val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0, hints)
         val path = buildString {

@@ -208,13 +208,19 @@ suspend fun login(
     // encrypted blob back into a usable session — and stderr is precisely the stream an agent
     // harness captures into a transcript that may be logged or pasted into an issue.
     if (args.has("url-only")) {
-        stderr("This URL is a credential until you approve it in Ring — treat it like a password.")
+        stderr("This URL is a credential until you approve it — treat it like a password.")
         stderr(handle.authUrl)
     } else {
         stderr(TerminalQr.render(handle.authUrl))
-        stderr("Scan this with Pubky Ring. `--url-only` prints the link instead of the code.")
+        stderr(
+            "Scan this in Loopky (Settings → Sessions → Scan code) if your account was made there, " +
+                "or with Pubky Ring. `--url-only` prints the link instead of the code.",
+        )
     }
-    stderr("No Pubky Ring yet? Install it from $PUBKY_RING_INSTALL_URL (`loopky ring` shows a QR code).")
+    stderr(
+        "No account on your phone yet? Create one in the Loopky app, or install Pubky Ring from " +
+            "$PUBKY_RING_INSTALL_URL (`loopky ring` shows a QR code).",
+    )
     stderr("")
     stderr("Requesting $CLI_CAPABILITIES only — this session cannot post, follow or edit a profile.")
     stderr(timeout?.let { "Waiting for approval (up to ${it}s)…" } ?: "Waiting for approval…")
@@ -291,7 +297,7 @@ internal fun loginMismatchMessage(
     environment: CliEnvironment,
     replaced: Session?,
 ): String = buildString {
-    append("Ring approved an identity on $other (homeserver ${session.homeserver}), but this login ran ")
+    append("The signer approved an identity on $other (homeserver ${session.homeserver}), but this login ran ")
     append("for ${environment.name}. The session is stored, so no new scan is needed: run the next ")
     append("commands with --env $other (or LOOPKY_ENV=$other). ")
     if (replaced != null && replaced.sessionSecret != session.sessionSecret) {

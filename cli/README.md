@@ -135,15 +135,23 @@ hand. Rebuild it in the fork with `./build_desktop.sh linux|macos|all` and copy
 
 ## Use
 
-**Your key lives in Pubky Ring, so install it before the first login.** `loopky login` has no
-password to take and no key of its own: it prints a QR, and the phone app on the other end of that
-scan is what approves the session. So the order is Ring first, then this — install [Pubky
-Ring](https://pubkyring.app) **v2.0 or newer** (older releases cannot read the login QR), put your
-recovery phrase into it, and keep that phrase somewhere the phone is not. Losing it loses the account, and there is nobody to ask for it back.
+**Your key lives on your phone, in Loopky or in Pubky Ring, and that app approves the login.**
+`loopky login` has no password to take and no key of its own: it prints a QR, and the phone app
+holding your key approves the session.
+
+- **You created or restored your account in the Loopky app:** open Loopky → Settings → Sessions and
+  tap **Scan code**. On the phone itself, tap the link (Android) or copy it and tap **Paste link**
+  (iPhone). That screen also lists the sessions you approved and revokes them. Nothing else to
+  install.
+- **Your key is in Pubky Ring:** scan with [Pubky Ring](https://pubkyring.app) **v2.0 or newer**
+  (older releases cannot read the login QR).
+- **No account yet:** the quickest route is to install Loopky and create it there.
+
+Either way, keep your recovery phrase somewhere the phone is not. Losing it loses the account, and there is nobody to ask for it back.
 
 ```shell
 loopky ring                         # where to install Pubky Ring, with a QR for a phone's camera
-loopky login                        # QR for Pubky Ring, then waits for approval
+loopky login                        # QR for Loopky or Pubky Ring, then waits for approval
 loopky login --export               # also prints the session secret, for LOOPKY_SESSION
 loopky login --timeout 120          # give up after two minutes instead of blocking forever
 loopky whoami --json
@@ -614,7 +622,7 @@ once these hosts are added (production):
 
 | Host | Needed for |
 | --- | --- |
-| `httprelay.pubky.app` | `login` — where the Ring approval arrives |
+| `httprelay.pubky.app` | `login` — where the approval from Loopky or Ring arrives |
 | `pkarr.pubky.app` **or** `pkarr.pubky.org` | finding any homeserver. Either one is enough: pkarr races them |
 | `homeserver.pubky.app` | every deck read and write |
 | `nexus.pubky.app` | `tag trending` and every indexer read |
