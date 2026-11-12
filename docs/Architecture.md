@@ -886,7 +886,7 @@ connector's page, pubky.app. `SignerRepository` is the whole surface; Settings â
   shown are the ones `auth` signs. Only `signin_grant` is approved. Refused before anything is
   shown: signup links (Loopky creates no accounts for others), legacy `pubkyauth:///?` links (they
   yield a cookie session that `list_grants` never shows, so it could not be revoked here), and a
-  request for `/` or `/pub/` (the whole account, or every app's data). The `cid` is the requester's
+  request for `/` or `/pub/` (the whole account, or every app's data), and any permission but `r`/`w`: `e` hands the requester encryption keys derived from the identity secret, which no revoke takes back and the sheet could not show. The `cid` is the requester's
   own choice of name, so control and bidi characters are stripped and the copy calls it a claim.
 - **Approving.** `approve` re-reads the link and requires the held key to be registered and to be
   the signed-in account's. The ViewModel binds Approve to the link on screen and drops a second link

@@ -452,7 +452,7 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
 - **Loopky is a signer for other apps while it holds the key, and only then.** Settings → Sessions
   approves another app's `pubkyauth://signin_grant` request with the held key and lists/revokes the
   account's grants (`SignerRepository`, Architecture.md §7.10). Five things not to undo. Links are
-  parsed by the FFI, never in Kotlin, so what is shown is what is signed. Root, `/pub/`, signup and
+  parsed by the FFI, never in Kotlin, so what is shown is what is signed. Root, `/pub/`, any `e` (encryption keys), signup and
   legacy links are **refused**, not warned about. Approve takes the link that was on screen, and a
   second link never replaces an open sheet. Android's handler is an activity-alias **disabled in the
   manifest** and enabled from `canApprove`, so Ring users keep Ring; iOS claims **no** scheme for
