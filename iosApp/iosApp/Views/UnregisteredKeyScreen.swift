@@ -127,7 +127,7 @@ struct UnregisteredKeyScreen: View {
         // `backedUpBy` is empty and `hasPhrase` true because this key has just been restored from
         // a phrase and has no backup recorded yet — the VM only reads `custody is Loopky` anyway.
         let custody: KeyCustody = loopkyHoldsKey
-            ? KeyCustodyLoopky(pubky: pubky, backedUpBy: Set(), hasPhrase: true)
+            ? KeyCustodyLoopky(pubky: pubky, backedUpBy: Set(), hasPhrase: true, registered: false)
             : KeyCustodyExternal()
         let vm = IosDependencies.shared.unregisteredKeyViewModel(pubky: pubky, custody: custody)
         viewModel = vm

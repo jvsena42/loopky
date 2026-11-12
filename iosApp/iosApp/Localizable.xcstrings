@@ -1,6 +1,193 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "approval_access_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It's asking for"
+          }
+        }
+      }
+    },
+    "approval_access_none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only proof that it's you"
+          }
+        }
+      }
+    },
+    "approval_approve": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approve"
+          }
+        }
+      }
+    },
+    "approval_beyond_loopky": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This reaches beyond your Loopky decks. Approve only if you started this sign-in yourself and trust the app."
+          }
+        }
+      }
+    },
+    "approval_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An app calling itself “%1$@” wants to sign in to your account."
+          }
+        }
+      }
+    },
+    "approval_body_unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An app wants to sign in to your account."
+          }
+        }
+      }
+    },
+    "approval_close": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        }
+      }
+    },
+    "approval_deny": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deny"
+          }
+        }
+      }
+    },
+    "approval_done": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "approval_done_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go back to %1$@ to continue."
+          }
+        }
+      }
+    },
+    "approval_done_body_unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go back to the app to continue."
+          }
+        }
+      }
+    },
+    "approval_done_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approved"
+          }
+        }
+      }
+    },
+    "approval_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't approve. If the code has expired, start the sign-in again."
+          }
+        }
+      }
+    },
+    "approval_only_if_you_started": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approve only if you started this sign-in yourself."
+          }
+        }
+      }
+    },
+    "approval_refused_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopky can't approve this"
+          }
+        }
+      }
+    },
+    "approval_retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        }
+      }
+    },
+    "approval_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in with Loopky?"
+          }
+        }
+      }
+    },
     "backup_done_label": {
       "extractionState": "manual",
       "localizations": {
@@ -13181,6 +13368,281 @@
           "stringUnit": {
             "state": "translated",
             "value": "已全部關閉"
+          }
+        }
+      }
+    },
+    "refusal_creates_account": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This link creates a new account. Open it in Pubky Ring instead."
+          }
+        }
+      }
+    },
+    "refusal_no_key": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky Ring holds your key, so approve this sign-in in Pubky Ring."
+          }
+        }
+      }
+    },
+    "refusal_not_a_link": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That isn't a sign-in code."
+          }
+        }
+      }
+    },
+    "refusal_old_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This sign-in code uses an older format that Loopky doesn't approve. Open it in Pubky Ring instead."
+          }
+        }
+      }
+    },
+    "refusal_whole_account": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This asks for your whole account, or every app's data on it. Loopky never approves that. Use Pubky Ring if you trust the app."
+          }
+        }
+      }
+    },
+    "sessions_access_loopky": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read and write your Loopky decks"
+          }
+        }
+      }
+    },
+    "sessions_access_loopky_read": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read your Loopky decks"
+          }
+        }
+      }
+    },
+    "sessions_access_read": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read %1$@"
+          }
+        }
+      }
+    },
+    "sessions_access_write": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read and write %1$@"
+          }
+        }
+      }
+    },
+    "sessions_caption": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps you signed in to with Loopky, such as the Loopky CLI or the Claude connector. Revoking one signs it out."
+          }
+        }
+      }
+    },
+    "sessions_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No apps yet. To sign in to the Loopky CLI, the Claude connector or another Pubky app, scan its sign-in code here."
+          }
+        }
+      }
+    },
+    "sessions_loading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading sessions…"
+          }
+        }
+      }
+    },
+    "sessions_paste": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste link"
+          }
+        }
+      }
+    },
+    "sessions_paste_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There's no sign-in link on the clipboard."
+          }
+        }
+      }
+    },
+    "sessions_revoke": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoke"
+          }
+        }
+      }
+    },
+    "sessions_revoke_cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "sessions_revoke_dialog_message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It's signed out right away and has to sign in again to reach your account."
+          }
+        }
+      }
+    },
+    "sessions_revoke_dialog_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoke %1$@?"
+          }
+        }
+      }
+    },
+    "sessions_revoke_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't revoke that session. Try again."
+          }
+        }
+      }
+    },
+    "sessions_ring_holds_key": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubky Ring holds your key, so it approves your sign-ins and lists your sessions."
+          }
+        }
+      }
+    },
+    "sessions_scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan code"
+          }
+        }
+      }
+    },
+    "sessions_signed_in_on": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed in %1$@"
+          }
+        }
+      }
+    },
+    "sessions_this_device": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This device"
+          }
+        }
+      }
+    },
+    "sessions_unknown_app": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown app"
+          }
+        }
+      }
+    },
+    "settings_sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions"
           }
         }
       }
@@ -39920,7 +40382,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scan it with Pubky Ring to approve the sign-in. Loopky can’t open it."
+            "value": "Approve it in Loopky under Settings → Sessions, or scan it with Pubky Ring if your key is there."
           }
         },
         "es": {
