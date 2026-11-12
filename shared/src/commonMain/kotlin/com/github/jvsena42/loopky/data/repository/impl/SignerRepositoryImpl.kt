@@ -52,7 +52,8 @@ internal class SignerRepositoryImpl(
             .getOrElse { refuse(SignInRefusal.NotASignInLink) }
 
         when (details.string("kind")) {
-            KIND_SIGNIN, KIND_SIGNIN_GRANT -> Unit
+            KIND_SIGNIN_GRANT -> Unit
+            KIND_SIGNIN -> refuse(SignInRefusal.OldFormat)
             KIND_SIGNUP, KIND_SIGNUP_GRANT -> refuse(SignInRefusal.CreatesAccount)
             else -> refuse(SignInRefusal.NotASignInLink)
         }
@@ -63,9 +64,9 @@ internal class SignerRepositoryImpl(
                 canWrite = capability.string("permission").orEmpty().contains('w'),
             )
         }
-        if (access.any { it.path == ROOT_PATH }) refuse(SignInRefusal.WholeAccount)
+        if (access.any { it.path.trimEnd('/') in WHOLE_ACCOUNT_PATHS }) refuse(SignInRefusal.WholeAccount)
 
-        SignInRequest(link = link, clientId = details.string("client_id"), access = access)
+        SignInRequest(link = link, clientId = details.string("client_id")?.let(::displayableClientId), access = access)
     }
 
     override suspend fun approve(request: SignInRequest): Result<Unit> = runSuspendCatching {
@@ -107,15 +108,25 @@ internal class SignerRepositoryImpl(
     }
 
     /**
-     * Read from a revalidation, since the stored session does not keep it. Null for a cookie
-     * session, which has no grant, so no row is marked as this device and none needs protecting.
+     * Read from a revalidation, since the stored session does not keep it. Null only for a cookie
+     * session, which has no grant to protect. A failed read throws rather than answering null:
+     * null would unmark this device's row and let [revoke] sign the device out behind sign-out.
      */
     private suspend fun ownGrantId(): String? {
-        val secret = session.current()?.sessionSecret ?: return null
-        return runSuspendCatching { pubky.revalidateSession(secret).getOrThrow() }
-            .mapCatching { loopkyJson.parseToJsonElement(it).jsonObject.string("grant_id") }
-            .getOrNull()
+        val secret = session.current()?.sessionSecret ?: refuse(SignInRefusal.NoKeyHere)
+        val payload = pubky.revalidateSession(secret).getOrThrow()
+        return loopkyJson.parseToJsonElement(payload).jsonObject.string("grant_id")
     }
+
+    /**
+     * The `cid` is whatever the requester chose to call itself, so control and bidi characters
+     * are dropped and the length capped before it is put in a sentence.
+     */
+    private fun displayableClientId(raw: String): String? =
+        raw.filterNot { it.isISOControl() || it in BIDI_CONTROLS }
+            .trim()
+            .take(MAX_CLIENT_ID_CHARS)
+            .takeIf { it.isNotEmpty() }
 
     private fun JsonObject.toAuthorizedSession(ownGrant: String?): AuthorizedSession {
         val grantId = requireNotNull(string("grant_id")) { "Grant without an id" }
@@ -149,6 +160,11 @@ internal class SignerRepositoryImpl(
         const val KIND_SIGNIN_GRANT = "signin_grant"
         const val KIND_SIGNUP = "signup"
         const val KIND_SIGNUP_GRANT = "signup_grant"
-        const val ROOT_PATH = "/"
+        val WHOLE_ACCOUNT_PATHS = setOf("", "/pub")
+        const val MAX_CLIENT_ID_CHARS = 64
+        val BIDI_CONTROLS = setOf(
+            '\u061C', '\u200E', '\u200F', '\u202A', '\u202B', '\u202C', '\u202D', '\u202E',
+            '\u2066', '\u2067', '\u2068', '\u2069',
+        )
     }
 }

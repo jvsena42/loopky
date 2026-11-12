@@ -78,6 +78,7 @@ import com.github.jvsena42.loopky.presentation.report.ReportViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestoreFileViewModel
 import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
 import com.github.jvsena42.loopky.presentation.settings.BlockedUsersViewModel
+import com.github.jvsena42.loopky.presentation.settings.SessionsViewModel
 import com.github.jvsena42.loopky.presentation.settings.SettingsViewModel
 import com.github.jvsena42.loopky.presentation.signup.InviteCodeViewModel
 import com.github.jvsena42.loopky.presentation.signup.LightningVerificationViewModel
@@ -286,6 +287,8 @@ object IosDependencies {
         koin.get { parametersOf(pubky) }
 
     fun blockedUsersViewModel(): BlockedUsersViewModel = koin.get()
+
+    fun sessionsViewModel(): SessionsViewModel = koin.get()
 
     /** [deck] null reports the profile of [accountPubky]; a deck reports the deck and its author. */
     fun reportViewModel(accountPubky: String, deck: Deck?): ReportViewModel =

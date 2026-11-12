@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.platform
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.core.net.toUri
 
 /**
@@ -25,7 +26,7 @@ class AndroidPubkyRingPresence(
      */
     private fun canOpen(url: String): Boolean {
         val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-        return context.packageManager.queryIntentActivities(intent, 0)
+        return context.packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
             .any { it.activityInfo.packageName != context.packageName }
     }
 }

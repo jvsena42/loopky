@@ -62,7 +62,7 @@ class SessionsViewModelTest {
         assertEquals(ApprovalPhase.Reviewing, vm.state.value.approval?.phase)
         assertEquals(0, signer.approved.size)
 
-        vm.onApprove()
+        vm.onApprove(LINK)
         advanceUntilIdle()
         assertEquals(ApprovalPhase.Approved, vm.state.value.approval?.phase)
         assertEquals(1, signer.approved.size)
@@ -74,13 +74,31 @@ class SessionsViewModelTest {
     }
 
     @Test
+    fun `a second link does not replace the one on screen`() = runTest(dispatcher) {
+        val vm = SessionsViewModel(signer)
+        advanceUntilIdle()
+
+        vm.onSignInLink(LINK)
+        vm.onSignInLink(OTHER_LINK)
+        assertEquals(LINK, vm.state.value.approval?.shownLink)
+
+        vm.onApprove(OTHER_LINK)
+        advanceUntilIdle()
+        assertEquals(0, signer.approved.size)
+
+        vm.onApprove(LINK)
+        advanceUntilIdle()
+        assertEquals(listOf(LINK), signer.approved.map { it.link })
+    }
+
+    @Test
     fun `a refused link offers no approval`() = runTest(dispatcher) {
         signer.refusal = SignInRefusal.WholeAccount
         val vm = SessionsViewModel(signer)
         advanceUntilIdle()
 
         vm.onSignInLink(LINK)
-        vm.onApprove()
+        vm.onApprove(LINK)
         advanceUntilIdle()
 
         assertEquals(ApprovalPhase.Refused, vm.state.value.approval?.phase)
@@ -95,12 +113,12 @@ class SessionsViewModelTest {
         advanceUntilIdle()
 
         vm.onSignInLink(LINK)
-        vm.onApprove()
+        vm.onApprove(LINK)
         advanceUntilIdle()
         assertEquals(ApprovalPhase.Failed, vm.state.value.approval?.phase)
 
         signer.approveResult = Result.success(Unit)
-        vm.onApprove()
+        vm.onApprove(LINK)
         advanceUntilIdle()
         assertEquals(ApprovalPhase.Approved, vm.state.value.approval?.phase)
     }
@@ -152,5 +170,6 @@ class SessionsViewModelTest {
 
     private companion object {
         const val LINK = "pubkyauth://signin_grant?caps=/pub/loopky/:rw"
+        const val OTHER_LINK = "pubkyauth://signin_grant?caps=/pub/pubky.app/:rw"
     }
 }

@@ -38,7 +38,6 @@ class SessionsViewModel(
     val effects: SharedFlow<SessionsEffect> = _effects.asSharedFlow()
 
     private var loadJob: Job? = null
-    private var approveJob: Job? = null
 
     init {
         load()
@@ -48,7 +47,10 @@ class SessionsViewModel(
 
     /** A link from a deeplink, the scanner or the clipboard, or text with one in it. */
     fun onSignInLink(text: String) {
-        if (approveJob?.isActive == true) return
+        // A sheet already open keeps its request: swapping it under the reader's finger would
+        // turn their Approve into an approval of something they never read.
+        val open = _state.value.approval
+        if (open != null && open.phase != ApprovalPhase.Refused && open.phase != ApprovalPhase.Approved) return
         val inspected = signerRepository.inspect(text)
         val request = inspected.getOrNull()
         val refusal = (inspected.exceptionOrNull() as? SignInRefusedException)?.reason
@@ -64,11 +66,13 @@ class SessionsViewModel(
         }
     }
 
-    fun onApprove() {
+    /** [shownLink] is the link of the request the reader approved; anything else is refused. */
+    fun onApprove(shownLink: String) {
         val approval = _state.value.approval ?: return
         val request = approval.request ?: return
+        if (request.link != shownLink) return
         if (approval.phase != ApprovalPhase.Reviewing && approval.phase != ApprovalPhase.Failed) return
-        approveJob = viewModelScope.launch {
+        viewModelScope.launch {
             _state.update { it.copy(approval = approval.copy(phase = ApprovalPhase.Approving, failure = null)) }
             signerRepository.approve(request)
                 .onSuccess {
@@ -113,7 +117,7 @@ class SessionsViewModel(
                     }
                 }
                 .onFailure { err ->
-                    Log.e(TAG, "onRevoke: FAILED — ${err.message}", err)
+                    Log.e(TAG, "onRevoke: FAILED — ${err::class.simpleName}")
                     _state.update { it.copy(revoking = it.revoking - grantId) }
                     _effects.emit(SessionsEffect.RevokeFailed(err.toErrorReason()))
                 }
@@ -133,7 +137,7 @@ class SessionsViewModel(
             signerRepository.authorizedSessions()
                 .onSuccess { sessions -> _state.update { it.copy(isLoading = false, sessions = sessions) } }
                 .onFailure { err ->
-                    Log.e(TAG, "load: FAILED — ${err.message}", err)
+                    Log.e(TAG, "load: FAILED — ${err::class.simpleName}")
                     _state.update { it.copy(isLoading = false, errorReason = err.toErrorReason()) }
                 }
         }
@@ -168,6 +172,9 @@ data class ApprovalUiState(
     /** Who is asking, or null for a legacy link that does not say. */
     val clientId: String? get() = request?.clientId
     val access: List<RequestedAccess> get() = request?.access.orEmpty()
+
+    /** What [SessionsViewModel.onApprove] has to be handed back. */
+    val shownLink: String get() = request?.link.orEmpty()
     val reachesBeyondLoopky: Boolean get() = request?.reachesBeyondLoopky == true
 }
 

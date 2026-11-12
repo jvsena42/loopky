@@ -65,15 +65,20 @@ class SignerRepositoryImplJvmTest {
     }
 
     @Test
-    fun `reads a legacy sign-in, which names no client`() {
-        val request = repository().inspect(LEGACY_LINK).getOrThrow()
-        assertEquals(null, request.clientId)
-        assertEquals(listOf(RequestedAccess("/pub/loopky/", canWrite = true)), request.access)
+    fun `refuses a legacy sign-in, whose session the grant list would never show`() {
+        assertRefused(SignInRefusal.OldFormat) { repository().inspect(LEGACY_LINK).getOrThrow() }
     }
 
     @Test
-    fun `refuses the whole account`() {
+    fun `refuses the whole account, and every app's data under pub`() {
         assertRefused(SignInRefusal.WholeAccount) { repository().inspect(grantLink("/:rw")).getOrThrow() }
+        assertRefused(SignInRefusal.WholeAccount) { repository().inspect(grantLink("/pub/:rw")).getOrThrow() }
+    }
+
+    @Test
+    fun `strips bidi controls from the name a request gives itself`() {
+        val request = repository().inspect(grantLink("/pub/loopky/:rw").replace("cid=mcp.loopky.app", "cid=evil%E2%80%AEppa.ykpool")).getOrThrow()
+        assertEquals("evilppa.ykpool", request.clientId)
     }
 
     @Test
@@ -152,6 +157,14 @@ class SignerRepositoryImplJvmTest {
         assertTrue(repo.revoke("mine").isFailure)
 
         assertEquals(listOf("theirs"), fake.revokedGrants)
+    }
+
+    @Test
+    fun `revokes nothing when it cannot tell which grant is this device's`() = runTest {
+        fake.revalidateResult = Result.failure(IllegalStateException("rate limited"))
+
+        assertTrue(repository().revoke("theirs").isFailure)
+        assertTrue(fake.revokedGrants.isEmpty())
     }
 
     private fun assertRefused(reason: SignInRefusal, block: suspend () -> Unit) = runTest {

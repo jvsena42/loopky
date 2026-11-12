@@ -41,13 +41,19 @@ enum class SignInRefusal {
     /** Not a `pubkyauth://` request, or one the SDK cannot read. */
     NotASignInLink,
 
+    /**
+     * A legacy `pubkyauth:///?` link. It yields a cookie session, which the homeserver's grant list
+     * never shows, so Settings → Sessions could neither list nor revoke what it approved.
+     */
+    OldFormat,
+
     /** A signup link: it asks the signer to create an account, which Loopky does not do for others. */
     CreatesAccount,
 
     /**
      * The request asks for the root capability — every path, and the power to list and revoke
-     * grants. Loopky refuses it outright rather than leaving one tap between a phishing QR and the
-     * whole account.
+     * grants — or for all of `/pub/`, every app's data. Loopky refuses both outright rather than
+     * leaving one tap between a phishing QR and the whole account.
      */
     WholeAccount,
 
