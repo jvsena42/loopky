@@ -112,6 +112,7 @@ fun SettingsRoute(
     /** Which row to open and focus on arrival — see [Routes.SETTINGS_FOCUS_UNSPLASH]. */
     focus: String? = null,
     onOpenBlockedUsers: () -> Unit = {},
+    onOpenSessions: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val appVersion = rememberAppVersion()
@@ -146,6 +147,7 @@ fun SettingsRoute(
         onCopyHomeserverClick = viewModel::onCopyHomeserverClick,
         onShareOnPubkyChange = viewModel::onShareOnPubkyChange,
         onBlockedUsersClick = onOpenBlockedUsers,
+        onSessionsClick = onOpenSessions,
         onThemeModeChange = viewModel::onThemeModeChange,
         onNewCardsGoalChange = viewModel::onNewCardsGoalChange,
         onListenSpeedChange = viewModel::onListenSpeedChange,
@@ -178,6 +180,7 @@ private fun SettingsScreen(
     onCopyHomeserverClick: () -> Unit,
     onShareOnPubkyChange: (Boolean) -> Unit,
     onBlockedUsersClick: () -> Unit,
+    onSessionsClick: () -> Unit,
     onThemeModeChange: (AppTheme) -> Unit,
     onNewCardsGoalChange: (Int) -> Unit,
     onListenSpeedChange: (Float) -> Unit,
@@ -349,6 +352,13 @@ private fun SettingsScreen(
                             label = stringResource(R.string.settings_back_up_account),
                             onClick = onBackUpNow,
                             modifier = Modifier.testTag("settings_back_up_account"),
+                        )
+                        // Only a key held here can approve other apps or list their grants.
+                        SettingsDivider()
+                        SettingsNavRow(
+                            label = stringResource(R.string.settings_sessions),
+                            onClick = onSessionsClick,
+                            modifier = Modifier.testTag("settings_sessions"),
                         )
                     }
                 }
@@ -998,6 +1008,7 @@ private fun SettingsScreenPreview() {
             onCopyHomeserverClick = {},
             onShareOnPubkyChange = {},
             onBlockedUsersClick = {},
+            onSessionsClick = {},
             onThemeModeChange = {},
             onNewCardsGoalChange = {},
             onListenSpeedChange = {},

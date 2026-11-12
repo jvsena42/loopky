@@ -216,6 +216,25 @@
             </intent-filter>
         </activity>
 
+        <!-- Loopky as a signer: answers `pubkyauth://signin_grant` links (the CLI's login, the
+             Claude connector's page, other Pubky apps) only while it holds a registered key.
+             Disabled here and switched by PubkyAuthHandler, because a device whose key is in
+             Pubky Ring must keep sending these links to Ring. No `signup_grant`: Loopky does not
+             create accounts for other apps. -->
+        <activity-alias
+            android:name=".MainActivityPubkyAuth"
+            android:enabled="false"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pubkyauth" />
+                <data android:host="signin_grant" />
+            </intent-filter>
+        </activity-alias>
+
         <!-- play-services-code-scanner's manifest pins its trampoline to portrait, and Play
              attributes the merged entry to Loopky. 16.1.0 is the newest release, so the
              restriction is dropped here rather than by a bump (#340). -->

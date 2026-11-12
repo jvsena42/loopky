@@ -3,14 +3,17 @@ package com.github.jvsena42.loopky
 import android.app.Application
 import coil3.SingletonImageLoader
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.repository.SignerRepository
 import com.github.jvsena42.loopky.data.storage.resolveStartupEnvironment
 import com.github.jvsena42.loopky.data.unsplash.deobfuscateUnsplashKey
 import com.github.jvsena42.loopky.di.initKoinAndroid
+import com.github.jvsena42.loopky.signer.PubkyAuthHandler
 import com.github.jvsena42.loopky.ui.components.loopkyImageLoader
 import com.github.jvsena42.loopky.ui.importflow.sweepImportSpools
 import com.github.jvsena42.loopky.util.Log
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
+import org.koin.android.ext.android.get
 import org.koin.core.logger.Level
 import uniffi.pubkycore.RustlsInit
 import uniffi.pubkycore.initLogging
@@ -61,5 +64,6 @@ class LoopkyApp : Application() {
             androidLogger(if (BuildConfig.DEBUG) Level.INFO else Level.NONE)
             androidContext(this@LoopkyApp)
         }
+        PubkyAuthHandler(context = this, signer = get<SignerRepository>()).start()
     }
 }

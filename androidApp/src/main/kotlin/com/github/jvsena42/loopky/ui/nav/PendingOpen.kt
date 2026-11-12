@@ -14,4 +14,9 @@ internal sealed interface PendingOpen {
     data class Link(val link: PubkyLink) : PendingOpen
 
     data class File(val state: IncomingFile) : PendingOpen
+
+    /** A `pubkyauth://` request for Settings → Sessions to show for approval. */
+    data class SignIn(val link: String) : PendingOpen {
+        override fun toString(): String = "SignIn(…)"
+    }
 }

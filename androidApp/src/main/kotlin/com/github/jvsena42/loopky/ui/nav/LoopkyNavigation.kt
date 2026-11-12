@@ -40,6 +40,7 @@ import com.github.jvsena42.loopky.ui.restore.RestoreFileRoute
 import com.github.jvsena42.loopky.ui.restore.RestorePhraseRoute
 import com.github.jvsena42.loopky.ui.restore.RestoreStartRoute
 import com.github.jvsena42.loopky.ui.settings.BlockedUsersRoute
+import com.github.jvsena42.loopky.ui.settings.SessionsRoute
 import com.github.jvsena42.loopky.ui.settings.SettingsRoute
 import com.github.jvsena42.loopky.ui.signup.InviteCodeRoute
 import com.github.jvsena42.loopky.ui.signup.LightningVerificationRoute
@@ -96,6 +97,8 @@ internal fun LoopkyNavHost(
             // dedups the current destination, so the re-run this effect gets when the route
             // changes is a no-op.
             is PendingOpen.File -> navController.navigateTo(Routes.IMPORT_BULK)
+            // Cleared by SessionsRoute once its ViewModel has the link, as with a file.
+            is PendingOpen.SignIn -> navController.navigateTo(Routes.SESSIONS)
         }
     }
 
@@ -204,10 +207,18 @@ internal fun LoopkyNavHost(
                 onBackUpNow = { navController.navigateTo(Routes.BACKUP_START) },
                 focus = entry.arguments?.getString("focus"),
                 onOpenBlockedUsers = { navController.navigateTo(Routes.BLOCKED_USERS) },
+                onOpenSessions = { navController.navigateTo(Routes.SESSIONS) },
             )
         }
         composable(Routes.BLOCKED_USERS) {
             BlockedUsersRoute(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SESSIONS) {
+            SessionsRoute(
+                incomingLink = (pendingOpen as? PendingOpen.SignIn)?.link,
+                onIncomingHandled = currentPendingHandled,
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(
             route = Routes.DECK_DETAIL,

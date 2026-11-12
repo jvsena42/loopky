@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.ui.util
 import android.content.Intent
 import com.github.jvsena42.loopky.data.pubky.PubkyLink
 import com.github.jvsena42.loopky.data.pubky.PubkyLinks
+import com.github.jvsena42.loopky.domain.model.SignInLinks
 
 /**
  * The Loopky address this intent carries, if any.
@@ -20,3 +21,10 @@ fun Intent.pubkyLink(): PubkyLink? {
     }
     return text?.let(PubkyLinks::parse)
 }
+
+/**
+ * The `pubkyauth://` sign-in request this intent opened Loopky with, reaching it through the
+ * handler alias (only enabled while a key is held). Never logged: it carries the relay secret.
+ */
+fun Intent.signInLink(): String? =
+    dataString?.takeIf { action == Intent.ACTION_VIEW && SignInLinks.isIn(it) }
