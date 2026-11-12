@@ -160,6 +160,7 @@ internal fun LoopkyNavHost(
                 onNavigateSettings = {
                     navController.navigateTo(Routes.settings())
                 },
+                onNavigateSessions = { navController.navigateTo(Routes.SESSIONS) },
                 onNavigateFollows = { pubky, source ->
                     navController.navigateTo(Routes.followList(pubky, source))
                 },

@@ -189,6 +189,7 @@
     <string name="search_open_deck">このデッキを開く</string>
     <string name="search_sign_in_link_title">これはサインイン用のコードです</string>
     <string name="search_sign_in_link_body">Loopky の 設定 → セッション で承認するか、鍵が Pubky Ring にある場合は Pubky Ring でスキャンしてください。</string>
+    <string name="search_sign_in_link_approve">Loopkyで承認</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">「%1$s」に一致する結果はありません</string>
     <string name="search_empty_subtitle">別の名前を試すか、相手の pubky を貼り付けて直接開いてください。</string>

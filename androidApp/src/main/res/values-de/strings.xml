@@ -188,6 +188,7 @@
     <string name="search_open_deck">Diesen Stapel öffnen</string>
     <string name="search_sign_in_link_title">Das ist ein Anmeldecode</string>
     <string name="search_sign_in_link_body">Bestätige ihn in Loopky unter Einstellungen → Sitzungen oder scanne ihn mit Pubky Ring, falls dein Schlüssel dort ist.</string>
+    <string name="search_sign_in_link_approve">In Loopky bestätigen</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">Nichts gefunden für „%1$s“</string>
     <string name="search_empty_subtitle">Versuch einen anderen Namen oder füge den pubky der Person ein, um sie direkt zu öffnen.</string>

@@ -192,6 +192,7 @@
     <string name="search_open_deck">開啟這個牌組</string>
     <string name="search_sign_in_link_title">這是一個登入碼</string>
     <string name="search_sign_in_link_body">在 Loopky 的 設定 → 工作階段 中核准它；如果你的金鑰在 Pubky Ring 中，也可以用 Pubky Ring 掃描。</string>
+    <string name="search_sign_in_link_approve">在 Loopky 中核准</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">找不到「%1$s」的結果</string>
     <string name="search_empty_subtitle">試試其他名稱，或貼上對方的 pubky 直接開啟。</string>

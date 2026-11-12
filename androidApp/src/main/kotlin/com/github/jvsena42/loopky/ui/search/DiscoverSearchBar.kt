@@ -74,12 +74,14 @@ fun DiscoverSearchBar(
     onSignIn: () -> Unit,
     state: SearchBarState,
     modifier: Modifier = Modifier,
+    onOpenSessions: () -> Unit = {},
 ) {
     val viewModel = koinViewModel<SearchViewModel>()
     val context = LocalContext.current
     val colors = LoopkyTheme.colors
     val currentOpenProfile by rememberUpdatedState(onOpenProfile)
     val currentOpenDeck by rememberUpdatedState(onOpenDeck)
+    val currentOpenSessions by rememberUpdatedState(onOpenSessions)
     var followError by remember { mutableStateOf<ErrorReason?>(null) }
     var signInPrompt by remember { mutableStateOf<SignInReason?>(null) }
     val textFieldState = rememberTextFieldState()
@@ -105,6 +107,10 @@ fun DiscoverSearchBar(
                 }
                 is SearchEffect.ShowFollowError -> followError = effect.reason
                 is SearchEffect.RequireSignIn -> signInPrompt = effect.reason
+                is SearchEffect.OpenSessions -> {
+                    state.animateToCollapsed()
+                    currentOpenSessions()
+                }
                 is SearchEffect.OpenInstallPage -> {
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(effect.url))) }
                 }
@@ -234,6 +240,7 @@ fun DiscoverSearchBar(
             onFollowToggle = viewModel::onFollowToggle,
             onRequestDeck = { deckRequest.launch(uiState.query, isGuest = !uiState.isSignedIn) },
             onGetPubkyRing = viewModel::onGetPubkyRing,
+            onApproveSignIn = viewModel::onApproveSignInLink,
             modifier = Modifier
                 .fillMaxSize()
                 .semantics { testTagsAsResourceId = true }

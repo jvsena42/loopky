@@ -192,6 +192,7 @@
     <string name="search_open_deck">Mở bộ thẻ này</string>
     <string name="search_sign_in_link_title">Đây là mã đăng nhập</string>
     <string name="search_sign_in_link_body">Duyệt trong Loopky tại Cài đặt → Phiên đăng nhập, hoặc quét bằng Pubky Ring nếu khóa của bạn ở đó.</string>
+    <string name="search_sign_in_link_approve">Phê duyệt trong Loopky</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">Không tìm thấy kết quả cho “%1$s”</string>
     <string name="search_empty_subtitle">Thử một tên khác, hoặc dán pubky của họ để mở trực tiếp.</string>

@@ -133,7 +133,8 @@ struct RootView: View {
                 onOpenRecap: { deckPath.append(.recap($0)) },
                 onBackUpNow: { isBackingUp = true },
                 isGuest: isGuest,
-                onSignIn: { leaveGuestShell() }
+                onSignIn: { leaveGuestShell() },
+                onOpenSessions: { deckPath.append(.sessions) }
             )
             .navigationDestination(for: DeckRoute.self) { route in
                 deckDestination(route)

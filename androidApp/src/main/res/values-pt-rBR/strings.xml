@@ -188,6 +188,7 @@
     <string name="search_open_deck">Abrir este baralho</string>
     <string name="search_sign_in_link_title">Este é um código de login</string>
     <string name="search_sign_in_link_body">Aprove no Loopky em Configurações → Sessões, ou leia com o Pubky Ring se sua chave estiver lá.</string>
+    <string name="search_sign_in_link_approve">Aprovar no Loopky</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">Nada encontrado para “%1$s”</string>
     <string name="search_empty_subtitle">Tente outro nome, ou cole o pubky da pessoa para abri-la diretamente.</string>

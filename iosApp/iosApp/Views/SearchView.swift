@@ -35,6 +35,7 @@ struct SearchViewState {
     var isEmpty = false
     var directHit: SearchDirectHit?
     var isSignInLink = false
+    var canApproveSignIn = false
     var people: [SearchPersonData] = []
     var decks: [SearchDeckData] = []
 }
@@ -51,6 +52,7 @@ struct SearchView: View {
     var onScan: () -> Void = {}
     var onOpenDirectHit: () -> Void = {}
     var onGetPubkyRing: () -> Void = {}
+    var onApproveSignIn: () -> Void = {}
     var onPersonTap: (String) -> Void = { _ in }
     var onFollowTap: (String) -> Void = { _ in }
     var onDeckTap: (String, String) -> Void = { _, _ in }
@@ -148,7 +150,8 @@ struct SearchView: View {
         .buttonStyle(.plain)
     }
 
-    /// A scanned Pubky Ring sign-in request: says where it goes instead of searching for it.
+    /// A pasted sign-in request: says where it goes instead of searching for it. With the key held
+    /// here, Loopky approves it itself; otherwise the way on is Pubky Ring.
     private var signInLinkRow: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("search_sign_in_link_title")
@@ -157,10 +160,17 @@ struct SearchView: View {
             Text("search_sign_in_link_body")
                 .font(.system(size: 13))
                 .foregroundColor(LoopkyColor.foregroundMuted)
-            Button("backup_ring_install", action: onGetPubkyRing)
-                .buttonStyle(.loopkySoft)
-                .padding(.top, 8)
-                .accessibilityIdentifier("search_get_ring")
+            if state.canApproveSignIn {
+                Button("search_sign_in_link_approve", action: onApproveSignIn)
+                    .buttonStyle(.loopkySoft)
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("search_approve_sign_in")
+            } else {
+                Button("backup_ring_install", action: onGetPubkyRing)
+                    .buttonStyle(.loopkySoft)
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("search_get_ring")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)

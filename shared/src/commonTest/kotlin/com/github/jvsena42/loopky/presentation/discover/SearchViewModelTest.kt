@@ -3,8 +3,10 @@ package com.github.jvsena42.loopky.presentation.discover
 import com.github.jvsena42.loopky.data.pubky.PubkyLink
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.domain.model.Tag
+import com.github.jvsena42.loopky.presentation.settings.SignInInbox
 import com.github.jvsena42.loopky.testing.FakeDiscoveryRepository
 import com.github.jvsena42.loopky.testing.FakeIdentityRepository
+import com.github.jvsena42.loopky.testing.FakeSignerRepository
 import com.github.jvsena42.loopky.testing.SIGN_IN_LINK
 import com.github.jvsena42.loopky.testing.testDeck
 import kotlinx.coroutines.CompletableDeferred
@@ -44,9 +46,14 @@ class SearchViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private val signer = FakeSignerRepository()
+    private val inbox = SignInInbox()
+
     private fun viewModel() = SearchViewModel(
         discoveryRepository = discovery,
         identityRepository = identity,
+        signerRepository = signer,
+        signInInbox = inbox,
     )
 
     private fun person(pubky: String, name: String) = PubkyIdentity(pubky, name, null, null)
@@ -323,6 +330,37 @@ class SearchViewModelTest {
 
         assertFalse(vm.state.value.isSignInLink)
         assertEquals(listOf("ada"), discovery.peopleQueries)
+    }
+
+    @Test
+    fun aSignInLinkIsHandedToSessionsWhenLoopkyHoldsTheKey() = runTest {
+        val vm = viewModel()
+        val effects = mutableListOf<SearchEffect>()
+        val collector = launch { vm.effects.toList(effects) }
+        vm.onQueryChange(SIGN_IN_LINK)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.canApproveSignIn)
+
+        vm.onApproveSignInLink()
+        advanceUntilIdle()
+
+        assertEquals(listOf<SearchEffect>(SearchEffect.OpenSessions), effects)
+        assertEquals(SIGN_IN_LINK, inbox.take())
+        collector.cancel()
+    }
+
+    @Test
+    fun aSignInLinkStaysPutWhenPubkyRingHoldsTheKey() = runTest {
+        signer.canApproveFlow.value = false
+        val vm = viewModel()
+        vm.onQueryChange(SIGN_IN_LINK)
+        advanceUntilIdle()
+
+        vm.onApproveSignInLink()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.canApproveSignIn)
+        assertNull(inbox.take())
     }
 
     @Test

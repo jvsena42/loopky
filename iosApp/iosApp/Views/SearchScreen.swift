@@ -12,6 +12,8 @@ struct SearchScreen: View {
     /// Browsing without an account: following a person from here raises a prompt instead.
     var isGuest: Bool = false
     var onSignIn: () -> Void = {}
+    /// A pasted sign-in link, waiting in the shared inbox for Settings → Sessions.
+    var onOpenSessions: () -> Void = {}
 
     @State private var viewModel: SearchViewModel?
     @State private var uiState: SearchUiState?
@@ -30,6 +32,7 @@ struct SearchScreen: View {
             onScan: { isScanning = true },
             onOpenDirectHit: { viewModel?.onSubmit() },
             onGetPubkyRing: { viewModel?.onGetPubkyRing() },
+            onApproveSignIn: { viewModel?.onApproveSignInLink() },
             onPersonTap: { viewModel?.onOpenProfile(pubky: $0) },
             onFollowTap: { viewModel?.onFollowToggle(pubky: $0) },
             onDeckTap: { author, deckId in
@@ -75,6 +78,7 @@ struct SearchScreen: View {
             isEmpty: state.isEmpty,
             directHit: state.directLink.map(directHit),
             isSignInLink: state.isSignInLink,
+            canApproveSignIn: state.canApproveSignIn,
             people: state.people.map { person in
                 let identity = IdentityData(person.identity)
                 return SearchPersonData(
@@ -120,6 +124,8 @@ struct SearchScreen: View {
                 onOpenProfile(open.pubky)
             case let open as SearchEffectOpenDeck:
                 onOpenDeck(open.deckId, open.authorPubky)
+            case is SearchEffectOpenSessions:
+                onOpenSessions()
             case let install as SearchEffectOpenInstallPage:
                 if let url = URL(string: install.url) { openURL(url) }
             case let require as SearchEffectRequireSignIn:

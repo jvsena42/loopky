@@ -188,6 +188,7 @@
     <string name="search_open_deck">Abrir este mazo</string>
     <string name="search_sign_in_link_title">Esto es un código de inicio de sesión</string>
     <string name="search_sign_in_link_body">Apruébalo en Loopky en Configuración → Sesiones, o escanéalo con Pubky Ring si tu clave está ahí.</string>
+    <string name="search_sign_in_link_approve">Aprobar en Loopky</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">No se encontró nada para “%1$s”</string>
     <string name="search_empty_subtitle">Prueba con otro nombre, o pega su pubky para abrir su perfil directamente.</string>

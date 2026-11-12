@@ -25,6 +25,7 @@ struct MainView: View {
     var isGuest: Bool = false
     /// Leave the guest shell for the sign-in flow.
     var onSignIn: () -> Void = {}
+    var onOpenSessions: () -> Void = {}
 
     /// Search is presented over the tabs rather than pushed: it is a way to reach a screen, not a
     /// place in the tab hierarchy, and dismissing it must return to whatever tab asked for it.
@@ -42,7 +43,8 @@ struct MainView: View {
                     onDeckTap(deckId, author)
                 },
                 isGuest: isGuest,
-                onSignIn: { isSearching = false; onSignIn() }
+                onSignIn: { isSearching = false; onSignIn() },
+                onOpenSessions: { isSearching = false; onOpenSessions() }
             )
         }
     }

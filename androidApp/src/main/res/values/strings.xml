@@ -192,6 +192,7 @@
     <string name="search_open_deck">Open this deck</string>
     <string name="search_sign_in_link_title">This is a sign-in code</string>
     <string name="search_sign_in_link_body">Approve it in Loopky under Settings → Sessions, or scan it with Pubky Ring if your key is there.</string>
+    <string name="search_sign_in_link_approve">Approve in Loopky</string>
     <string name="search_empty_emoji">🔍</string>
     <string name="search_empty_title">Nothing found for “%1$s”</string>
     <string name="search_empty_subtitle">Try a different name, or paste their pubky to open them directly.</string>

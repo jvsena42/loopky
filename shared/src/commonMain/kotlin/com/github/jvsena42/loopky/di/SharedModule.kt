@@ -70,6 +70,7 @@ import com.github.jvsena42.loopky.presentation.restore.RestorePhraseViewModel
 import com.github.jvsena42.loopky.presentation.settings.BlockedUsersViewModel
 import com.github.jvsena42.loopky.presentation.settings.SessionsViewModel
 import com.github.jvsena42.loopky.presentation.settings.SettingsViewModel
+import com.github.jvsena42.loopky.presentation.settings.SignInInbox
 import com.github.jvsena42.loopky.presentation.signup.InviteCodeViewModel
 import com.github.jvsena42.loopky.presentation.signup.LightningVerificationViewModel
 import com.github.jvsena42.loopky.presentation.signup.LocalSignupViewModel
@@ -146,6 +147,7 @@ fun sharedModule(): Module = module {
         )
     }
     single<KeyBackupRepository> { KeyBackupRepositoryImpl(pubky = get(), keyStore = get()) }
+    single { SignInInbox() }
     single<SignerRepository> {
         SignerRepositoryImpl(pubky = get(), keyStore = get(), session = get(), revalidator = get())
     }
@@ -257,7 +259,7 @@ fun sharedModule(): Module = module {
     }
     viewModel { DeckRequestViewModel(discoveryRepository = get()) }
     viewModel { BlockedUsersViewModel(discoveryRepository = get()) }
-    viewModel { SessionsViewModel(signerRepository = get()) }
+    viewModel { SessionsViewModel(signerRepository = get(), signInInbox = get()) }
     viewModel { params ->
         ReportViewModel(
             accountPubky = params.get(0),
@@ -355,7 +357,12 @@ fun sharedModule(): Module = module {
         DiscoverViewModel(discoveryRepository = get(), tagRepository = get(), identityRepository = get())
     }
     viewModel {
-        SearchViewModel(discoveryRepository = get(), identityRepository = get())
+        SearchViewModel(
+            discoveryRepository = get(),
+            identityRepository = get(),
+            signerRepository = get(),
+            signInInbox = get(),
+        )
     }
     viewModel { params ->
         TagBrowseViewModel(

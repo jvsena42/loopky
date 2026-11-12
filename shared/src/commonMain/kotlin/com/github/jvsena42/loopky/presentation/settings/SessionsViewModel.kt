@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
  */
 class SessionsViewModel(
     private val signerRepository: SignerRepository,
+    private val signInInbox: SignInInbox,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SessionsUiState())
     val state: StateFlow<SessionsUiState> = _state.asStateFlow()
@@ -41,6 +42,7 @@ class SessionsViewModel(
 
     init {
         load()
+        signInInbox.take()?.let(::onSignInLink)
     }
 
     fun onRetry() = load()
