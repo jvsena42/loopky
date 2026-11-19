@@ -9,7 +9,7 @@
 # change what it runs. Dependabot proposes digest bumps for both in one PR (#522), but only while
 # Adoptium rebuilds these jammy tags: a long stretch with no PR means check the tags, not that
 # the image is current.
-FROM --platform=linux/amd64 eclipse-temurin:17-jdk-jammy@sha256:43f4431cc895d37ceb115e2e1f160545ec45caee9c1cb4246fc6bb879d58aeda AS builder
+FROM --platform=linux/amd64 eclipse-temurin:17-jdk-jammy@sha256:76751c16a2a07ec0960e659a2603491f8c79d95592173f6c0df8bf8ebab257cc AS builder
 
 ENV GRADLE_USER_HOME=/gradle
 WORKDIR /src
@@ -18,7 +18,7 @@ COPY . /src
 # No Android SDK in the image and none needed: `:mcp` reaches only `:shared`'s jvm() target.
 RUN ./gradlew --no-daemon --stacktrace :mcp:installDist
 
-FROM --platform=linux/amd64 eclipse-temurin:17-jre-jammy@sha256:8993f1aed8b25fcea7a7047a7949c1866fa558fc6830d938c22c4f13b26be9d7 AS runtime
+FROM --platform=linux/amd64 eclipse-temurin:17-jre-jammy@sha256:aa6381384f8db99762fa7d0d3c2b5de58874e5f12c96df4c13a1455376ae0ed1 AS runtime
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y curl \
