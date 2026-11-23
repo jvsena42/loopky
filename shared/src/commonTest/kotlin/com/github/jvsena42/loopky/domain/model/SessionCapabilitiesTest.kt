@@ -54,4 +54,28 @@ class SessionCapabilitiesTest {
     fun `a neighbouring namespace does not grant it`() {
         assertFalse(Capability("/pub/pubky.apple/:rw").grantsWriteTo("/pub/pubky.app/"))
     }
+
+    @Test
+    fun `the headless scope can write deck tags but not pubky app`() {
+        val session = fakeSession().copy(
+            capabilities = listOf(
+                Capability("/pub/loopky/:rw"),
+                Capability("/pub/pubky.app/tags/:rw"),
+                Capability("/pub/social/v1/tags/:rw"),
+            ),
+        )
+        assertTrue(session.canWriteDeckTags)
+        assertFalse(session.canWritePubkyApp)
+    }
+
+    @Test
+    fun `a login from before the tags scope cannot write deck tags`() {
+        val session = fakeSession().copy(capabilities = listOf(Capability("/pub/loopky/:rw")))
+        assertFalse(session.canWriteDeckTags)
+    }
+
+    @Test
+    fun `the apps' session can write deck tags`() {
+        assertTrue(fakeSession().canWriteDeckTags)
+    }
 }

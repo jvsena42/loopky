@@ -69,6 +69,14 @@ data class Session(
      */
     val canWritePubkyApp: Boolean
         get() = capabilities.any { it.grantsWriteTo(PUBKY_APP_NAMESPACE) }
+
+    /**
+     * Whether this session can write the tag records Nexus indexes. False for a CLI login or MCP
+     * connection made before the scope gained `/pub/pubky.app/tags/` (#616): its deck tags fail
+     * to write, so its decks drop out of discovery until the user signs in again.
+     */
+    val canWriteDeckTags: Boolean
+        get() = capabilities.any { it.grantsWriteTo(PUBKY_APP_TAGS) }
 }
 
 /**
@@ -99,3 +107,4 @@ value class Capability(val value: String) {
 
 /** The namespace pubky.app's own records live under — profiles, posts, follows and their tags. */
 private const val PUBKY_APP_NAMESPACE = "/pub/pubky.app/"
+private const val PUBKY_APP_TAGS = "/pub/pubky.app/tags/"

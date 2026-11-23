@@ -2,7 +2,9 @@ package com.github.jvsena42.loopky.data.repository.impl
 
 import com.github.jvsena42.loopky.data.nexus.HttpError
 import com.github.jvsena42.loopky.data.nexus.NexusClient
+import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.pubky.TagDto
+import com.github.jvsena42.loopky.domain.model.Capability
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
 import com.github.jvsena42.loopky.domain.model.Tag
@@ -10,6 +12,7 @@ import com.github.jvsena42.loopky.testing.CountingRevalidator
 import com.github.jvsena42.loopky.testing.FakeHttpFetcher
 import com.github.jvsena42.loopky.testing.FakePubkyClient
 import com.github.jvsena42.loopky.testing.TEST_PUBKY
+import com.github.jvsena42.loopky.testing.fakeSession
 import com.github.jvsena42.loopky.testing.signedInProvider
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -30,17 +33,30 @@ class TagRepositoryImplTest {
     private val deckUri = PubkyUri("pubky://$TEST_PUBKY/pub/loopky/decks/deck1/manifest.json")
     private val profileUri = PubkyUri("pubky://$TEST_PUBKY/pub/pubky.app/profile.json")
 
-    /** Deck subjects are indexed as generic resources, so their records live in `pub/loopky`. */
+    /** Where Nexus reads tags since pubky/pubky-nexus#1129, for every subject. */
     private fun tagUrlFor(label: String, subject: PubkyUri = deckUri): String {
+        val tagId = pubky.createTagId(subject.value, label).getOrThrow()
+        return "pubky://$TEST_PUBKY/pub/pubky.app/tags/$tagId"
+    }
+
+    private fun pubkyAppTagUrlFor(label: String, subject: PubkyUri): String = tagUrlFor(label, subject)
+
+    /** Where deck tags lived from #40 until #616, and the copy the Nexus before #1129 indexes. */
+    private fun loopkyTagUrlFor(label: String, subject: PubkyUri = deckUri): String {
         val tagId = pubky.createTagId(subject.value, label).getOrThrow()
         return "pubky://$TEST_PUBKY/pub/loopky/tags/$tagId"
     }
 
-    /** Profile subjects must stay in the pubky.app namespace to reach the user graph. */
-    private fun pubkyAppTagUrlFor(label: String, subject: PubkyUri): String {
-        val tagId = pubky.createTagId(subject.value, label).getOrThrow()
-        return "pubky://$TEST_PUBKY/pub/pubky.app/tags/$tagId"
-    }
+    private fun narrowRepo(): TagRepositoryImpl = TagRepositoryImpl(
+        pubky = pubky,
+        session = MutableSessionProvider().apply {
+            set(fakeSession().copy(capabilities = listOf(Capability("/pub/loopky/:rw"))))
+        },
+        revalidator = CountingRevalidator(),
+        nexus = NexusClient(http, baseUrl = NEXUS_BASE),
+    )
+
+    private fun indexedPuts() = pubky.puts.map { it.first }.filter { "/pub/pubky.app/" in it }
 
     // ── putTag ───────────────────────────────────────────────────────────
 
@@ -57,13 +73,29 @@ class TagRepositoryImplTest {
     }
 
     @Test
-    fun putTagOnADeckWritesIntoTheLoopkyNamespace() = runTest {
-        // Nexus only indexes a deck manifest subject when the record itself sits outside
-        // pubky.app — under pubky.app the watcher drops it silently (#40).
+    fun putTagOnADeckWritesBothFoldersUntilProductionNexusMoves() = runTest {
+        // The Nexus before #1129 indexes a manifest tag only from pub/loopky, the one after it only
+        // from pub/pubky.app (#616).
         repo.putTag(deckUri, Tag("spanish")).getOrThrow()
 
-        val url = pubky.puts.single().first
-        assertTrue(url.startsWith("pubky://$TEST_PUBKY/pub/loopky/tags/"), "was $url")
+        assertEquals(listOf(loopkyTagUrlFor("spanish"), tagUrlFor("spanish")), pubky.puts.map { it.first })
+    }
+
+    @Test
+    fun aSessionWithoutTheTagsScopeWritesTheLoopkyCopyOnly() = runTest {
+        narrowRepo().putTag(deckUri, Tag("spanish")).getOrThrow()
+
+        assertEquals(listOf(loopkyTagUrlFor("spanish")), pubky.puts.map { it.first })
+    }
+
+    @Test
+    fun aSessionWithoutTheTagsScopeRemovesTheLoopkyCopyOnly() = runTest {
+        pubky.store[loopkyTagUrlFor("spanish")] = "{}"
+
+        narrowRepo().removeTag(deckUri, Tag("spanish")).getOrThrow()
+
+        assertEquals(listOf(loopkyTagUrlFor("spanish")), pubky.deletes)
+        assertTrue(pubky.puts.isEmpty())
     }
 
     @Test
@@ -99,7 +131,7 @@ class TagRepositoryImplTest {
         val result = repo.putTag(deckUri, Tag("a".repeat(20)))
 
         assertTrue(result.isSuccess)
-        assertEquals(expected = 1, actual = pubky.puts.size)
+        assertEquals(expected = 1, actual = indexedPuts().size)
     }
 
     @Test
@@ -107,7 +139,7 @@ class TagRepositoryImplTest {
         repo.putTag(deckUri, Tag("🇧🇷")).getOrThrow()
         repo.putTag(deckUri, Tag("🔥".repeat(20))).getOrThrow()
 
-        assertEquals(listOf(tagUrlFor("🇧🇷"), tagUrlFor("🔥".repeat(20))), pubky.puts.map { it.first })
+        assertEquals(listOf(tagUrlFor("🇧🇷"), tagUrlFor("🔥".repeat(20))), indexedPuts())
         assertTrue(repo.putTag(deckUri, Tag("🔥".repeat(21))).isFailure)
     }
 
@@ -118,7 +150,7 @@ class TagRepositoryImplTest {
             repo.putTag(deckUri, Tag(it)).getOrThrow()
         }
 
-        assertEquals(setOf(tagUrlFor("bioquimica-basica")), pubky.puts.map { it.first }.toSet())
+        assertEquals(setOf(tagUrlFor("bioquimica-basica")), indexedPuts().toSet())
     }
 
     @Test
@@ -154,15 +186,27 @@ class TagRepositoryImplTest {
     }
 
     @Test
-    fun removeTagAlsoClearsThePreNamespaceRoutingRecord() = runTest {
-        // Deck tags used to be written (and silently never indexed) under pubky.app.
-        val legacyUrl = pubkyAppTagUrlFor("spanish", deckUri)
-        pubky.store[legacyUrl] = "{}"
+    fun removeTagDeletesBothCopies() = runTest {
+        repo.putTag(deckUri, Tag("spanish")).getOrThrow()
+        pubky.puts.clear()
 
         repo.removeTag(deckUri, Tag("spanish")).getOrThrow()
 
-        assertTrue(legacyUrl !in pubky.store)
-        assertEquals(listOf(tagUrlFor("spanish"), legacyUrl), pubky.deletes)
+        assertEquals(listOf(tagUrlFor("spanish"), loopkyTagUrlFor("spanish")), pubky.deletes)
+        assertTrue(pubky.puts.isEmpty())
+    }
+
+    @Test
+    fun removingATagOnlyInTheLoopkyFolderRewritesItWhereNexusReadsDeletes() = runTest {
+        // Nexus after #1129 skips a DEL under pub/loopky and keeps the edge, so the record is put
+        // under pub/pubky.app and deleted there, where the DEL reaches the same edge.
+        pubky.store[loopkyTagUrlFor("spanish")] = "{}"
+
+        repo.removeTag(deckUri, Tag("spanish")).getOrThrow()
+
+        assertEquals(listOf(tagUrlFor("spanish")), pubky.puts.map { it.first })
+        assertEquals(listOf(tagUrlFor("spanish"), loopkyTagUrlFor("spanish"), tagUrlFor("spanish")), pubky.deletes)
+        assertTrue(pubky.store.keys.none { "/tags/" in it })
     }
 
     @Test
@@ -206,7 +250,7 @@ class TagRepositoryImplTest {
         assertTrue(pubky.puts.isEmpty())
 
         assertTrue(repo.putReservedTag(deckUri, ReservedTags.DECK).isSuccess)
-        assertEquals(expected = 1, actual = pubky.puts.size)
+        assertEquals(expected = 1, actual = indexedPuts().size)
     }
 
     @Test
@@ -226,8 +270,14 @@ class TagRepositoryImplTest {
         repo.putReservedTag(profileUri, ReservedTags.USER).getOrThrow()
         repo.putReservedTag(deckUri, ReservedTags.DECK).getOrThrow()
 
-        assertEquals(pubkyAppTagUrlFor(ReservedTags.USER.value, profileUri), pubky.puts[0].first)
-        assertEquals(tagUrlFor(ReservedTags.DECK.value), pubky.puts[1].first)
+        assertEquals(
+            listOf(
+                pubkyAppTagUrlFor(ReservedTags.USER.value, profileUri),
+                loopkyTagUrlFor(ReservedTags.DECK.value),
+                tagUrlFor(ReservedTags.DECK.value),
+            ),
+            pubky.puts.map { it.first },
+        )
     }
 
     @Test
