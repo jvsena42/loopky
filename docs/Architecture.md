@@ -1746,7 +1746,8 @@ have to exist — `:shared` is one Koin graph and a missing binding is a start-u
 
 ### 13.2 Capabilities: Loopky's folder and the two tag folders, nothing else
 
-The apps request `DEFAULT_CAPABILITIES` (`/pub/loopky/:rw,/pub/pubky.app/:rw`). The CLI and the MCP
+The apps request `DEFAULT_CAPABILITIES` (`/pub/loopky/:rw,/pub/pubky.app/:rw,/pub/social/v1/:rw,/priv/social/v1/:rw`;
+the `social/v1` pair since #616, ahead of the migration). The CLI and the MCP
 server request `/pub/loopky/:rw,/pub/pubky.app/tags/:rw,/pub/social/v1/tags/:rw`, and the guarantee
 that buys is **structural rather than a flag somebody remembered to set**: an agent session cannot
 write a post, a follow or a profile edit under any bug or any prompt injection, because it was

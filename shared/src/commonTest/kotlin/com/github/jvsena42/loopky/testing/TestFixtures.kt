@@ -10,6 +10,7 @@ import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
+import com.github.jvsena42.loopky.data.repository.IdentityRepository
 import com.github.jvsena42.loopky.data.repository.MediaRepository
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.impl.AccountEraser
@@ -45,7 +46,7 @@ fun fakeSession(pubky: String = TEST_PUBKY, displayName: String? = "Tester"): Se
         bio = null,
     ),
     sessionSecret = "session-secret-$pubky",
-    capabilities = listOf(Capability("/pub/loopky/:rw"), Capability("/pub/pubky.app/:rw")),
+    capabilities = IdentityRepository.DEFAULT_CAPABILITIES.split(',').map(::Capability),
     homeserver = "homeserverpk",
 )
 
