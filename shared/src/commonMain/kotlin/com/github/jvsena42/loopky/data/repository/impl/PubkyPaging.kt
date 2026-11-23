@@ -56,6 +56,26 @@ internal suspend fun PubkyClient.listAllEntriesWithSession(
 }
 
 /**
+ * Every entry under [prefix], read with [sessionSecret] when given, or a failure: a run that
+ * stopped early is a failure here, never a result. A 404 is the caller's to read as empty.
+ */
+internal suspend fun PubkyClient.listEveryEntry(
+    prefix: String,
+    sessionSecret: String? = null,
+): Result<List<String>> = runSuspendCatching {
+    val listing = pageThrough(LIST_PAGE_SIZE) { cursor ->
+        if (sessionSecret == null) {
+            list(prefix, cursor = cursor, limit = LIST_PAGE_SIZE)
+        } else {
+            listWithSession(prefix, sessionSecret, cursor, LIST_PAGE_SIZE)
+        }
+    }
+    listing.failure?.let { throw it }
+    check(!listing.truncated) { "the listing of $prefix stopped before its end" }
+    listing.entries
+}
+
+/**
  * [listAllEntries], best-effort: whatever pages could be read before a failure, rather than an
  * error. For sweeps that hold a second source of paths and must make progress regardless.
  */

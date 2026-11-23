@@ -5,6 +5,7 @@ import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.pubky.SocialEpochs
 import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.pubky.deleteWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.isNotFound
@@ -54,6 +55,7 @@ class AccountEraser(
     private val preferences: AppPreferences,
     private val unsplashKeyStore: UnsplashKeyStore,
     private val deckCache: DeckCacheStore,
+    private val epochs: SocialEpochs = SocialEpochs(pubky),
 ) {
 
     private val footprints = PubkyAppFootprintReader(pubky)
@@ -68,7 +70,12 @@ class AccountEraser(
      * is still [PubkyAppFootprint.LoopkyOnly] or [PubkyAppFootprint.Empty] when the sweep starts:
      * otherwise it throws [PubkyAppFootprintChangedException] before deleting anything.
      */
-    suspend fun erase(owner: String, deletePubkyApp: Boolean, onProgress: (Int, Int) -> Unit) {
+    suspend fun erase(owner: String, deletePubkyApp: Boolean, onProgress: (Int, Int) -> Unit) =
+        // Beside Loopky's own migration (#616), its copies and flip could land after the sweep and
+        // put the deleted account back in Discover; exclusive waits for it and keeps it out.
+        epochs.exclusive(owner) { eraseHeld(owner, deletePubkyApp, onProgress) }
+
+    private suspend fun eraseHeld(owner: String, deletePubkyApp: Boolean, onProgress: (Int, Int) -> Unit) {
         if (deletePubkyApp) {
             // Asked again rather than trusting the dialog: another app may have written since it opened.
             val now = footprints.classify(owner)

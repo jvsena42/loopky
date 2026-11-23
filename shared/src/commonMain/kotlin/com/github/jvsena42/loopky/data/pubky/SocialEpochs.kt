@@ -1,8 +1,14 @@
 package com.github.jvsena42.loopky.data.pubky
 
 import com.github.jvsena42.loopky.util.epochMillis
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 
 /**
  * Which [SocialLayout] each user's social records are in (#616).
@@ -17,19 +23,37 @@ import kotlinx.coroutines.sync.withLock
  * Loopky runs. A read that fails for any reason but a 404 throws: a write routed on a guess would
  * land where Nexus ignores it.
  *
- * [of] waits while [migrating] holds the user, so a write made during Loopky's own migration lands
- * in `social/v1` after it rather than in a `pubky.app` tree that was just copied.
+ * **A write runs inside [writing], not after [layoutOf].** Loopky's own migration copies the
+ * `pubky.app` tree and then flips; a write that picked its layout before the copy and landed after
+ * it would be lost to the flip, or an unfollow undone by it. [writing] holds the layout until the
+ * write is done, and [exclusive] waits for every such write and keeps new ones out. Both are
+ * reentrant within one coroutine, so a write inside a write, or [of] inside [exclusive], goes
+ * through; [exclusive] inside [writing] would wait for itself, so it throws.
  */
 class SocialEpochs(
     private val pubky: PubkyClient,
     private val now: () -> Long = ::epochMillis,
 ) {
     private val known = mutableMapOf<String, Pair<SocialEpoch, Long>>()
-    private val migrations = mutableMapOf<String, Mutex>()
+    private val gates = mutableMapOf<String, Gate>()
     private val lock = Mutex()
 
+    /** Per user: writes in flight, and the exclusive holder's release when there is one. */
+    private class Gate {
+        var writers = 0
+        var exclusiveDone: CompletableDeferred<Unit>? = null
+        var drained: CompletableDeferred<Unit>? = null
+    }
+
+    /** What this coroutine already holds, so a nested call does not wait for itself. */
+    private class Held(val user: String, val exclusive: Boolean) : AbstractCoroutineContextElement(Key) {
+        companion object Key : CoroutineContext.Key<Held>
+    }
+
+    private suspend fun held(user: String): Held? = coroutineContext[Held]?.takeIf { it.user == user }
+
     suspend fun of(user: String): SocialEpoch {
-        lock.withLock { migrations[user] }?.withLock { }
+        if (held(user) == null) awaitNoExclusive(user)
         lock.withLock { known[user] }?.let { (epoch, at) ->
             if (epoch == SocialEpoch.V1 || now() - at < V0_TTL_MILLIS) return epoch
         }
@@ -41,7 +65,32 @@ class SocialEpochs(
         return epoch
     }
 
+    /** For a read. A write goes through [writing], which keeps the answer true until it is done. */
     suspend fun layoutOf(user: String): SocialLayout = SocialLayout.of(of(user))
+
+    /** Runs [block] with [user]'s layout, which no migration changes until [block] returns. */
+    suspend fun <T> writing(user: String, block: suspend (SocialLayout) -> T): T {
+        if (held(user) != null) return block(layoutOf(user))
+        while (true) {
+            val wait = lock.withLock {
+                val gate = gates.getOrPut(user) { Gate() }
+                gate.exclusiveDone.also { if (it == null) gate.writers++ }
+            } ?: break
+            wait.await()
+        }
+        try {
+            return withContext(Held(user, exclusive = false)) { block(layoutOf(user)) }
+        } finally {
+            // NonCancellable: a release skipped by a cancelled lock() would hold the user for good.
+            withContext(NonCancellable) {
+                lock.withLock {
+                    val gate = gates.getValue(user)
+                    gate.writers--
+                    if (gate.writers == 0) gate.drained?.complete(Unit)
+                }
+            }
+        }
+    }
 
     /** For Loopky's own write of [user]'s `social/v1/profile.json`, which flips them. */
     suspend fun markV1(user: String) {
@@ -49,12 +98,49 @@ class SocialEpochs(
     }
 
     /**
-     * Runs [block] while [of] holds back for [user]. Not reentrant: nothing inside [block] may call
-     * [of] for [user].
+     * Runs [block] once every [writing] for [user] has finished, while new ones and [of] wait: for
+     * the migration, and for anything that must not run beside it, like erasing the account.
      */
-    suspend fun <T> migrating(user: String, block: suspend () -> T): T {
-        val gate = lock.withLock { migrations.getOrPut(user) { Mutex() } }
-        return gate.withLock { block() }
+    suspend fun <T> exclusive(user: String, block: suspend () -> T): T {
+        when (held(user)?.exclusive) {
+            true -> return block()
+            false -> error("exclusive() inside writing() for the same user would wait for itself")
+            null -> Unit
+        }
+        val mine = CompletableDeferred<Unit>()
+        var drained: CompletableDeferred<Unit>? = null
+        while (true) {
+            val wait = lock.withLock {
+                val gate = gates.getOrPut(user) { Gate() }
+                gate.exclusiveDone.also { other ->
+                    if (other == null) {
+                        gate.exclusiveDone = mine
+                        drained = if (gate.writers > 0) CompletableDeferred<Unit>().also { gate.drained = it } else null
+                    }
+                }
+            } ?: break
+            wait.await()
+        }
+        try {
+            drained?.await()
+            return withContext(Held(user, exclusive = true)) { block() }
+        } finally {
+            withContext(NonCancellable) {
+                lock.withLock {
+                    val gate = gates.getValue(user)
+                    gate.exclusiveDone = null
+                    gate.drained = null
+                }
+            }
+            mine.complete(Unit)
+        }
+    }
+
+    private suspend fun awaitNoExclusive(user: String) {
+        while (true) {
+            val wait = lock.withLock { gates[user]?.exclusiveDone } ?: return
+            wait.await()
+        }
     }
 
     private companion object {

@@ -127,13 +127,14 @@ class DiscoveryRepositoryImpl(
 
     override suspend fun followUser(pubky: String): Result<Unit> = runSuspendCatching {
         val owner = session.requireSession().identity.pubky
-        val layout = epochs.layoutOf(owner)
-        // pubky.app has always written microseconds; Loopky wrote milliseconds to v0, which no reader
-        // compares. A v1 record follows the spec.
-        val createdAt = if (layout == SocialLayout.SocialV1) epochMillis() * MICROS_PER_MILLI else epochMillis()
-        val body = loopkyJson.encodeToString(FollowDto(created_at = createdAt))
-        this.pubky.putWithSessionRetry(layout.follow(owner, pubky), body, session, revalidator)
-            .getOrThrow()
+        epochs.writing(owner) { layout ->
+            // pubky.app has always written microseconds; Loopky wrote milliseconds to v0, which no
+            // reader compares. A v1 record follows the spec.
+            val createdAt = if (layout == SocialLayout.SocialV1) epochMillis() * MICROS_PER_MILLI else epochMillis()
+            val body = loopkyJson.encodeToString(FollowDto(created_at = createdAt))
+            this.pubky.putWithSessionRetry(layout.follow(owner, pubky), body, session, revalidator)
+                .getOrThrow()
+        }
         // Updates the cache only if it has already been loaded, matching `followDeck`'s handling
         // of the subscription map. Seeding it from a single follow — which is what this did —
         // published a one-element set as the complete follow list to the next `following()`, and
@@ -144,8 +145,9 @@ class DiscoveryRepositoryImpl(
 
     override suspend fun unfollowUser(pubky: String): Result<Unit> = runSuspendCatching {
         val owner = session.requireSession().identity.pubky
-        this.pubky.deleteWithSessionRetry(epochs.layoutOf(owner).follow(owner, pubky), session, revalidator)
-            .getOrThrow()
+        epochs.writing(owner) { layout ->
+            this.pubky.deleteWithSessionRetry(layout.follow(owner, pubky), session, revalidator).getOrThrow()
+        }
         cacheLock.withLock { cache?.remove(pubky) }
         Unit
     }
@@ -161,8 +163,9 @@ class DiscoveryRepositoryImpl(
         val owner = session.requireSession().identity.pubky
         require(pubky != owner) { "You cannot block yourself" }
         val body = loopkyJson.encodeToString(MuteDto(created_at = epochMillis() * MICROS_PER_MILLI))
-        this.pubky.putWithSessionRetry(epochs.layoutOf(owner).mute(owner, pubky), body, session, revalidator)
-            .getOrThrow()
+        epochs.writing(owner) { layout ->
+            this.pubky.putWithSessionRetry(layout.mute(owner, pubky), body, session, revalidator).getOrThrow()
+        }
         blockedAccounts.add(pubky)
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = true))
         dropFollowsOf(pubky)
@@ -171,8 +174,9 @@ class DiscoveryRepositoryImpl(
 
     override suspend fun unblockUser(pubky: String): Result<Unit> = runSuspendCatching {
         val owner = session.requireSession().identity.pubky
-        this.pubky.deleteWithSessionRetry(epochs.layoutOf(owner).mute(owner, pubky), session, revalidator)
-            .getOrThrow()
+        epochs.writing(owner) { layout ->
+            this.pubky.deleteWithSessionRetry(layout.mute(owner, pubky), session, revalidator).getOrThrow()
+        }
         blockedAccounts.remove(pubky)
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = false))
         Unit
@@ -271,22 +275,26 @@ class DiscoveryRepositoryImpl(
             // strictly as its own file records, so a URL there was invisible. See
             // DeckAnnouncement.content. A `short` embed is how Nexus spells "repost", and it then
             // demands the embedded URI already be an indexed post — see PostKinds.
-            val uri = writePost(announcement.content, link = announcement.deckUri.value).reference
-            Log.d(TAG, "announceDeck: ${announcement.kind} -> $uri")
-            tagAnnouncement(uri, announcement.tags)
-            uri
+            inOwnLayout {
+                val uri = writePost(announcement.content, link = announcement.deckUri.value).reference
+                Log.d(TAG, "announceDeck: ${announcement.kind} -> $uri")
+                tagAnnouncement(uri, announcement.tags)
+                uri
+            }
         }.onFailure { Log.w(TAG, "announceDeck: FAILED — ${it.message}", it) }
 
     override suspend fun postRecap(content: String, url: String): Result<PubkyUri> =
         runSuspendCatching {
             require(content.length <= PostKinds.MAX_CONTENT_LENGTH) { "Recap post is too long" }
             // The same two constraints as announceDeck: a `link` embed, and no attachments.
-            val uri = writePost(content, link = url).reference
-            // Best-effort, after the post so the subject exists: a failed label must not turn a
-            // post that was written into a failure the reader retries into a second post.
-            tagRepository.putReservedTag(uri, ReservedTags.RECAP)
-                .onFailure { Log.w(TAG, "postRecap: tag FAILED — ${it.message}") }
-            uri
+            inOwnLayout {
+                val uri = writePost(content, link = url).reference
+                // Best-effort, after the post so the subject exists: a failed label must not turn a
+                // post that was written into a failure the reader retries into a second post.
+                tagRepository.putReservedTag(uri, ReservedTags.RECAP)
+                    .onFailure { Log.w(TAG, "postRecap: tag FAILED — ${it.message}") }
+                uri
+            }
         }.onFailure { Log.w(TAG, "postRecap: FAILED — ${it.message}", it) }
 
     override suspend fun postDeckRequest(content: String): Result<PubkyUri> =
@@ -294,19 +302,21 @@ class DiscoveryRepositoryImpl(
             require(content.isNotBlank()) { "Deck request is empty" }
             require(content.length <= PostKinds.MAX_CONTENT_LENGTH) { "Deck request is too long" }
             require(!SignInLinks.isIn(content)) { "Deck request carries a sign-in link" }
-            val written = writePost(content, link = null)
-            val path = written.file
-            val uri = written.reference
-            for (tag in DeckRequests.TAGS) {
-                tagRepository.putTag(uri, tag).onFailure { err ->
-                    // Labels already written stay: a tag on a deleted post indexes nothing.
-                    this.pubky.deleteWithSessionRetry(path, session, revalidator)
-                        .onFailure { Log.w(TAG, "postDeckRequest: rollback FAILED — ${it.message}") }
-                    throw err
+            inOwnLayout {
+                val written = writePost(content, link = null)
+                val path = written.file
+                val uri = written.reference
+                for (tag in DeckRequests.TAGS) {
+                    tagRepository.putTag(uri, tag).onFailure { err ->
+                        // Labels already written stay: a tag on a deleted post indexes nothing.
+                        this.pubky.deleteWithSessionRetry(path, session, revalidator)
+                            .onFailure { Log.w(TAG, "postDeckRequest: rollback FAILED — ${it.message}") }
+                        throw err
+                    }
                 }
+                Log.d(TAG, "postDeckRequest -> $path")
+                uri
             }
-            Log.d(TAG, "postDeckRequest -> $path")
-            uri
         }.onFailure { Log.w(TAG, "postDeckRequest: FAILED — ${it.message}", it) }
 
     /**
@@ -772,9 +782,19 @@ class DiscoveryRepositoryImpl(
      * without. The id is a microsecond timestamp ([PostIds]); two posts inside one millisecond would
      * share it, which takes two taps a millisecond apart.
      */
+    /**
+     * A post and the labels on it in one layout: a migration between the two would leave the labels
+     * in `social/v1` naming the post by its `pubky.app` address (#616).
+     */
+    private suspend fun <T> inOwnLayout(block: suspend () -> T): T =
+        epochs.writing(session.requireSession().identity.pubky) { block() }
+
     private suspend fun writePost(content: String, link: String?): WrittenPost {
         val owner = session.requireSession().identity.pubky
-        val layout = epochs.layoutOf(owner)
+        return epochs.writing(owner) { layout -> writePostIn(layout, owner, content, link) }
+    }
+
+    private suspend fun writePostIn(layout: SocialLayout, owner: String, content: String, link: String?): WrittenPost {
         val postId = PostIds.create(epochMillis() * MICROS_PER_MILLI)
         val body = when (layout) {
             SocialLayout.Legacy -> loopkyJson.encodeToString(

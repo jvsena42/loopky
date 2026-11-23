@@ -560,9 +560,6 @@ internal class IdentityRepositoryImpl(
         selfTaggedThisProcess = true
         scope.launch {
             val owner = session.identity.pubky
-            val profileUri = PubkyUri(
-                runSuspendCatching { epochs.layoutOf(owner) }.getOrDefault(SocialLayout.Legacy).profile(owner),
-            )
             // Re-checked here, not only at the call site: nothing cancels this, and
             // `AccountEraser` removes exactly this record and treats failing to as fatal, because
             // it is the only thing that takes an account out of Discover and search. A write that
@@ -572,7 +569,13 @@ internal class IdentityRepositoryImpl(
                 selfTaggedThisProcess = false
                 return@launch
             }
-            tagRepository.putReservedTag(profileUri, ReservedTags.USER)
+            // The subject and the tag's folder from one layout: a migration between the two would
+            // put a v1 tag on the pubky.app profile address.
+            runSuspendCatching {
+                epochs.writing(owner) { layout ->
+                    tagRepository.putReservedTag(PubkyUri(layout.profile(owner)), ReservedTags.USER).getOrThrow()
+                }
+            }
                 .onSuccess { Log.d(TAG, "selfTag: ${ReservedTags.USER.value} written") }
                 .onFailure {
                     selfTaggedThisProcess = false
@@ -665,7 +668,13 @@ internal class IdentityRepositoryImpl(
         val putResult = if (migrated) {
             Result.success("migrated")
         } else {
-            pubky.putWithSession(epochs.layoutOf(currentPubky).profile(currentPubky), json, session.sessionSecret)
+            epochs.writing(currentPubky) { layout ->
+                // v1 refuses what v0 took; Nexus would drop the record and the edit with it.
+                if (layout == SocialLayout.SocialV1 && socialProfile(dto) == null) {
+                    error("A name needs 3 to 50 characters, and a bio at most 160.")
+                }
+                pubky.putWithSession(layout.profile(currentPubky), json, session.sessionSecret)
+            }
         }
 
         if (putResult.isFailure) {

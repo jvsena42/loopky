@@ -18,6 +18,7 @@ import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
+import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.TagLabels
 import com.github.jvsena42.loopky.util.Log
@@ -92,13 +93,14 @@ class TagRepositoryImpl(
         val owner = current.identity.pubky
         val tagId = pubky.createTagId(subjectUri.value, label).getOrThrow()
         val body = tagBody(subjectUri, label)
-        val indexed = epochs.layoutOf(owner).tag(owner, tagId)
-        if (!isSocialSubject(subjectUri)) {
-            pubky.putWithSessionRetry(PubkyPaths.loopkyTag(owner, tagId), body, session, revalidator).getOrThrow()
-            if (!current.canWriteTo(indexed)) return@runSuspendCatching
+        epochs.writing(owner) { layout ->
+            val indexed = layout.tag(owner, tagId)
+            if (!isSocialSubject(subjectUri)) {
+                pubky.putWithSessionRetry(PubkyPaths.loopkyTag(owner, tagId), body, session, revalidator).getOrThrow()
+                if (!current.canWriteTo(indexed)) return@writing
+            }
+            pubky.putWithSessionRetry(indexed, body, session, revalidator).getOrThrow()
         }
-        pubky.putWithSessionRetry(indexed, body, session, revalidator).getOrThrow()
-        Unit
     }
 
     private suspend fun erase(subjectUri: PubkyUri, tag: Tag): Result<Unit> = runSuspendCatching {
@@ -108,7 +110,17 @@ class TagRepositoryImpl(
         val current = session.requireSession()
         val owner = current.identity.pubky
         val tagId = pubky.createTagId(subjectUri.value, label).getOrThrow()
-        val layout = epochs.layoutOf(owner)
+        epochs.writing(owner) { layout -> eraseIn(layout, current, subjectUri, label, tagId) }
+    }
+
+    private suspend fun eraseIn(
+        layout: SocialLayout,
+        current: Session,
+        subjectUri: PubkyUri,
+        label: String,
+        tagId: String,
+    ) {
+        val owner = current.identity.pubky
         val indexed = layout.tag(owner, tagId)
         // A session older than #616 can't touch the indexed folder: it clears the older copies only.
         val canWriteIndexed = isSocialSubject(subjectUri) || current.canWriteTo(indexed)

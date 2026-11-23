@@ -46,12 +46,12 @@ class IdentityRepositoryMigrationTest {
     @Test
     fun aLoopkyOnlyAccountMovesWhenItsProfileIsEdited() = runTest {
         pubky.store[v0] = """{"name":"Ana"}"""
-        pubky.store[SocialLayout.Legacy.follow(TEST_PUBKY, "friendpk")] = """{"created_at":5}"""
+        pubky.store[SocialLayout.Legacy.follow(TEST_PUBKY, FRIEND)] = """{"created_at":5}"""
 
         repo.updateProfile(name = "Ana B", bio = "hi").getOrThrow()
 
         assertEquals("""{"name":"Ana B","bio":"hi"}""", pubky.store[v1])
-        assertTrue(SocialLayout.SocialV1.follow(TEST_PUBKY, "friendpk") in pubky.store)
+        assertTrue(SocialLayout.SocialV1.follow(TEST_PUBKY, FRIEND) in pubky.store)
         assertEquals("""{"name":"Ana"}""", pubky.store[v0], "the v0 tree is left as it was")
     }
 
@@ -62,6 +62,22 @@ class IdentityRepositoryMigrationTest {
         repo.updateProfile(name = "Ana", bio = null).getOrThrow()
 
         assertTrue("Ana" in pubky.store.getValue(v0))
+        assertFalse(v1 in pubky.store)
+    }
+
+    @Test
+    fun aProfileV1WouldRefuseIsNotWrittenThere() = runTest {
+        pubky.store[v1] = """{"name":"Ana"}"""
+
+        assertTrue(repo.updateProfile(name = "Al", bio = null).isFailure)
+        assertEquals("""{"name":"Ana"}""", pubky.store[v1])
+    }
+
+    @Test
+    fun aShortNameKeepsANewAccountInPubkyAppUntilAValidOne() = runTest {
+        repo.updateProfile(name = "Al", bio = null).getOrThrow()
+
+        assertTrue("Al" in pubky.store.getValue(v0))
         assertFalse(v1 in pubky.store)
     }
 
@@ -81,6 +97,9 @@ class IdentityRepositoryMigrationTest {
         assertEquals("""{"name":"Ana"}""", pubky.store[v1])
     }
 }
+
+/** A pubky v1 takes as a followee: 52 characters of z-base32. */
+private const val FRIEND = "ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1u"
 
 private class SingleSessionStore : SecureSessionStore {
     override val location: String = "in memory"

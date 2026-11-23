@@ -1,20 +1,16 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
-import com.github.jvsena42.loopky.data.pubky.FollowDto
-import com.github.jvsena42.loopky.data.pubky.MuteDto
-import com.github.jvsena42.loopky.data.pubky.PostDto
-import com.github.jvsena42.loopky.data.pubky.PostKinds
 import com.github.jvsena42.loopky.data.pubky.ProfileDto
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.SocialEpochs
 import com.github.jvsena42.loopky.data.pubky.SocialLayout
-import com.github.jvsena42.loopky.data.pubky.SocialPostDto
-import com.github.jvsena42.loopky.data.pubky.SocialPostKinds
-import com.github.jvsena42.loopky.data.pubky.TagDto
 import com.github.jvsena42.loopky.data.pubky.isNotFound
 import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
 import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.util.Log
+import com.github.jvsena42.loopky.util.epochMillis
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlin.concurrent.Volatile
@@ -26,28 +22,36 @@ import kotlin.concurrent.Volatile
  * records, so nobody else moves an account only Loopky wrote to. This copies what
  * `pubky-social-migrator` 1.0.0-rc.2 would, for the records Loopky writes: a post `posts/{id}`
  * becomes `posts/{id}/{id}.json`, a `pubky.app` reference takes its v1 spelling, a tag's id is
- * derived again from its rewritten target, a mute moves under `/priv/`, and `created_at` is kept.
+ * derived again from its rewritten target, a mute moves under `/priv/`, and `created_at` is kept. A
+ * record the v1 reader would refuse is skipped, as the reference skips it.
  *
- * Four things not to undo:
- * - It runs only once production Nexus reads `social/v1` ([servesSocialV1]). Before that, a flip
- *   would leave the account indexed from a tree Nexus does not read.
- * - Only a [PubkyAppFootprint.LoopkyOnly] or [PubkyAppFootprint.Empty] account is moved. Any other
- *   is pubky.app's to migrate, and an Unknown one is asked again next time.
+ * Things not to undo:
+ * - It runs only once production Nexus reads `social/v1` ([servesSocialV1]).
+ * - Only a [PubkyAppFootprint.LoopkyOnly] or [PubkyAppFootprint.Empty] account is moved, and the
+ *   copy runs inside [SocialEpochs.exclusive], so no write of this process lands in the tree
+ *   being copied. Another device's write is caught by listing `pubky.app` again before the flip.
  * - `profile.json` goes last, because writing it is the flip: Nexus ignores every `social/v1`
  *   record written before it, so an interrupted run changes nothing and the next one finishes it.
- *   The v0 tree is left in place, as the reference migrator leaves it.
- * - Until the flip nothing in `social/v1` is indexed, and the classification proved every record
- *   there is Loopky's, so a copy whose source has gone since an earlier run is deleted. A copy that
- *   is already there is not written again; the reference migrator does not overwrite one either.
+ *   Until then the classification proved every record in `social/v1` is Loopky's, so a copy whose
+ *   source has gone since an earlier run is deleted. The v0 tree is left in place.
+ * - `/priv/social/v1/_migrated.json` is written after the flip, in the reference's shape: it is
+ *   what tells pubky.app's migrator the account is done, and without it that migrator would copy
+ *   back every record deleted from `social/v1` since, from the `pubky.app` tree left in place.
  */
 internal class SocialMigrator(
     private val pubky: PubkyClient,
     private val footprint: PubkyAppFootprintReader,
     private val epochs: SocialEpochs,
     private val servesSocialV1: suspend () -> Boolean,
+    private val now: () -> Long = ::epochMillis,
 ) {
     @Volatile
     private var nexusReady = false
+
+    /** Answers that hold for the life of the process unless a new profile is written. */
+    private val settled = mutableMapOf<String, MigrationOutcome>()
+    private val flagChecked = mutableSetOf<String>()
+    private val settledLock = Mutex()
 
     /**
      * Migrates [session]'s account if it should be. [newProfile] is a profile the caller is about to
@@ -55,95 +59,139 @@ internal class SocialMigrator(
      */
     suspend fun migrate(session: Session, newProfile: ProfileDto? = null): MigrationOutcome {
         val owner = session.identity.pubky
-        return epochs.migrating(owner) { migrateHeld(session, owner, newProfile) }
+        // Asked outside the hold first: an account that will not move must not hold its writes.
+        when (val first = refusal(session, owner, newProfile)) {
+            null -> Unit
+            MigrationOutcome.AlreadyV1 -> return first.also { completeFlag(session, owner) }
+            else -> return first
+        }
+        return epochs.exclusive(owner) {
+            refusal(session, owner, newProfile) ?: migrateHeld(session, owner, newProfile)
+        }
     }
 
     private suspend fun migrateHeld(session: Session, owner: String, newProfile: ProfileDto?): MigrationOutcome {
-        refusal(session, owner)?.let { return it }
-        val plan = plan(owner, newProfile) ?: return MigrationOutcome.NoProfile
-        val present = existingV1(owner, session.sessionSecret)
-        for (stale in present - plan.writes.keys - V1.profile(owner)) {
-            pubky.deleteWithSession(stale, session.sessionSecret).getOrThrow()
+        repeat(MAX_PASSES) {
+            val plan = when (val planned = plan(owner, newProfile)) {
+                is Planned.Refused -> return settle(owner, planned.outcome, newProfile)
+                is Planned.Ready -> planned.plan
+            }
+            if (flipped(owner)) return MigrationOutcome.AlreadyV1
+            val present = existingV1(owner, session.sessionSecret)
+            for (stale in present - plan.writes.keys - V1.profile(owner)) {
+                pubky.deleteWithSession(stale, session.sessionSecret).getOrThrow()
+            }
+            for ((path, body) in plan.writes) {
+                if (path !in present) pubky.putWithSession(path, body, session.sessionSecret).getOrThrow()
+            }
+            // Another device of this account may have written to pubky.app since the listing.
+            if (v0Records(owner) != plan.sources) return@repeat
+            if (flipped(owner)) return MigrationOutcome.AlreadyV1
+            pubky.putWithSession(V1.profile(owner), plan.profile, session.sessionSecret).getOrThrow()
+            epochs.markV1(owner)
+            writeFlag(session, owner, plan)
+            Log.d(TAG, "migrated ${plan.writes.size} records and the profile, skipped ${plan.skipped.size}")
+            return MigrationOutcome.Migrated(plan.writes.size)
         }
-        for ((path, body) in plan.writes) {
-            if (path !in present) pubky.putWithSession(path, body, session.sessionSecret).getOrThrow()
-        }
-        pubky.putWithSession(V1.profile(owner), plan.profile, session.sessionSecret).getOrThrow()
-        epochs.markV1(owner)
-        Log.d(TAG, "migrated ${plan.writes.size} records and the profile")
-        return MigrationOutcome.Migrated(plan.writes.size)
+        error("pubky.app kept changing during the migration")
     }
 
     /** Why [owner] is not migrated now, or null when it should be. */
-    private suspend fun refusal(session: Session, owner: String): MigrationOutcome? {
+    private suspend fun refusal(session: Session, owner: String, newProfile: ProfileDto?): MigrationOutcome? {
         // First, being free: the CLI and MCP sessions never hold these, and load a session per command.
         if (!session.canWriteTo(V1.profile(owner)) || !session.canWriteTo(V1.mute(owner, owner))) {
             return MigrationOutcome.MissingScope
         }
-        if (hasV1Profile(owner)) {
-            epochs.markV1(owner)
-            return MigrationOutcome.AlreadyV1
-        }
+        if (flipped(owner)) return MigrationOutcome.AlreadyV1
         if (!nexusReady) nexusReady = servesSocialV1()
         if (!nexusReady) return MigrationOutcome.NexusNotReady
+        if (newProfile == null) settledLock.withLock { settled[owner] }?.let { return it }
         val found = footprint.classify(owner)
-        return if (found == PubkyAppFootprint.LoopkyOnly || found == PubkyAppFootprint.Empty) {
-            null
-        } else {
-            MigrationOutcome.NotLoopkys(found)
+        return when (found) {
+            PubkyAppFootprint.LoopkyOnly, PubkyAppFootprint.Empty -> null
+            // Unknown is a read that failed, so it is asked again next time.
+            PubkyAppFootprint.Unknown -> MigrationOutcome.NotLoopkys(found)
+            else -> settle(owner, MigrationOutcome.NotLoopkys(found), newProfile)
         }
     }
 
-    private suspend fun hasV1Profile(owner: String): Boolean = pubky.get(V1.profile(owner)).fold(
-        onSuccess = { true },
-        onFailure = { if (it.isNotFound()) false else throw it },
+    private suspend fun settle(owner: String, outcome: MigrationOutcome, newProfile: ProfileDto?): MigrationOutcome {
+        if (newProfile == null) settledLock.withLock { settled[owner] = outcome }
+        return outcome
+    }
+
+    private suspend fun flipped(owner: String): Boolean {
+        val exists = pubky.get(V1.profile(owner)).fold(
+            onSuccess = { true },
+            onFailure = { if (it.isNotFound()) false else throw it },
+        )
+        if (exists) epochs.markV1(owner)
+        return exists
+    }
+
+    /**
+     * @property writes every v1 record to hold, by path.
+     * @property migrated the owner-relative v0 paths behind [writes], for the flag.
+     * @property skipped the owner-relative v0 paths the v1 reader would refuse.
+     * @property sources every v0 record the plan was made from, to tell whether it went stale.
+     */
+    private class Plan(
+        val writes: Map<String, String>,
+        val profile: String,
+        val migrated: List<String>,
+        val skipped: List<String>,
+        val sources: Set<String>,
     )
 
-    private class Plan(val writes: Map<String, String>, val profile: String)
+    private sealed interface Planned {
+        class Ready(val plan: Plan) : Planned
+        class Refused(val outcome: MigrationOutcome) : Planned
+    }
 
-    /** Every v1 write for [owner]'s v0 records, or null when there is no named profile to flip with. */
-    private suspend fun plan(owner: String, newProfile: ProfileDto?): Plan? {
+    private suspend fun plan(owner: String, newProfile: ProfileDto?): Planned {
         val profile = newProfile ?: readOrNull(V0.profile(owner), ProfileDto.serializer())
-        val name = profile?.name?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            ?: return Planned.Refused(MigrationOutcome.NoProfile)
+        val v1Profile = socialProfile(profile) ?: return Planned.Refused(MigrationOutcome.InvalidProfile)
         val writes = linkedMapOf<String, String>()
-        val records = listWhole(layoutRoot(V0, owner)).filterNot { it.endsWith("/") }
-        for (path in records) {
-            when {
-                path.startsWith(V0.postsRoot(owner)) -> {
-                    val id = path.removePrefix(V0.postsRoot(owner))
-                    writes[V1.postVersion(owner, id)] = encode(SocialPostDto.serializer(), post(read(path, PostDto.serializer())))
-                }
-                path.startsWith(V0.followsRoot(owner)) -> {
-                    val followee = requireNotNull(V0.followeeOf(path)) { "unexpected follow path" }
-                    writes[V1.follow(owner, followee)] = encode(FollowDto.serializer(), read(path, FollowDto.serializer()))
-                }
-                path.startsWith(V0.mutesRoot(owner)) -> {
-                    val mutee = requireNotNull(V0.muteeOf(path)) { "unexpected mute path" }
-                    writes[V1.mute(owner, mutee)] = encode(MuteDto.serializer(), read(path, MuteDto.serializer()))
-                }
-                path.startsWith(V0.tagsRoot(owner)) -> {
-                    val tag = read(path, TagDto.serializer())
-                    val moved =
-                        TagDto(uri = rewrite(tag.uri), label = foldLabel(tag.label), created_at = tag.created_at)
-                    val id = pubky.createTagId(moved.uri, moved.label).getOrThrow()
-                    writes[V1.tag(owner, id)] = encode(TagDto.serializer(), moved)
-                }
+        val sources = v0Records(owner)
+        val migrated = mutableListOf<String>()
+        if (V0.profile(owner) in sources) migrated += relative(owner, V0.profile(owner))
+        val skipped = mutableListOf<String>()
+        for (path in sources.sorted()) {
+            if (path == V0.profile(owner)) continue
+            val moved = move(owner, path)
+            if (moved == null) {
+                skipped += relative(owner, path)
+            } else {
+                writes[moved.first] = moved.second
+                migrated += relative(owner, path)
             }
         }
-        val v1Profile = SocialProfileDto(
-            name = name,
-            bio = profile.bio?.trim()?.ifEmpty { null },
-            image = profile.image?.let(::rewrite),
-        )
-        return Plan(writes, encode(SocialProfileDto.serializer(), v1Profile))
+        return Planned.Ready(Plan(writes, encoded(SocialProfileDto.serializer(), v1Profile), migrated, skipped, sources))
     }
+
+    /** The v1 path and body for one v0 record, or null when the v1 reader would refuse it. */
+    private suspend fun move(owner: String, path: String): Pair<String, String>? {
+        val kind = V0_ROOTS.firstOrNull { path.startsWith(it(owner)) }
+            // The classification admits nothing else, so another app wrote it since: stop, copy nothing.
+            ?: error("unexpected record in pubky.app: ${relative(owner, path)}")
+        val key = path.removePrefix(kind(owner))
+        val json = pubky.get(path).getOrThrow()
+        return when (kind) {
+            V0::postsRoot -> movedPost(owner, key, json)
+            V0::followsRoot -> movedFollow(owner, key, json)
+            V0::mutesRoot -> movedMute(owner, key, json)
+            else -> movedTag(owner, json) { uri, label -> pubky.createTagId(uri, label).getOrThrow() }
+        }
+    }
+
+    private suspend fun v0Records(owner: String): Set<String> =
+        listWhole(layoutRoot(V0, owner)).filterNot { it.endsWith("/") }.toSet()
 
     /** Every record already under [owner]'s `social/v1` roots, the private mutes included. */
     private suspend fun existingV1(owner: String, sessionSecret: String): Set<String> {
         val public = listWhole(layoutRoot(V1, owner))
-        val mutes = pubky.listAllEntriesWithSession(V1.mutesRoot(owner), sessionSecret).getOrElse {
-            if (it.isNotFound()) emptyList() else throw it
-        }
+        val mutes = listWhole(V1.mutesRoot(owner), sessionSecret)
         return (public + mutes).filterNot { it.endsWith("/") }.toSet()
     }
 
@@ -151,31 +199,57 @@ internal class SocialMigrator(
      * Every entry under [prefix], or a throw. A partial listing here would skip copies and delete
      * good ones as stale, and the flip after it would make the loss permanent.
      */
-    private suspend fun listWhole(prefix: String): List<String> = pubky.listAllEntries(prefix).getOrElse {
-        if (it.isNotFound()) emptyList() else throw it
+    private suspend fun listWhole(prefix: String, sessionSecret: String? = null): List<String> =
+        pubky.listEveryEntry(prefix, sessionSecret).getOrElse { if (it.isNotFound()) emptyList() else throw it }
+
+    private suspend fun writeFlag(session: Session, owner: String, plan: Plan) {
+        val flag = MigrationFlagDto(
+            migrated_at = now() * MICROS_PER_MILLI,
+            transform_rev = TRANSFORM_REV,
+            skipped = if (plan.skipped.isEmpty()) emptyMap() else mapOf(SKIP_INVALID to plan.skipped.sorted()),
+            migrated = plan.migrated.sorted(),
+        )
+        // After the flip, so a failure here leaves a migrated account: completeFlag writes it next time.
+        pubky.putWithSession(flagPath(owner), encoded(MigrationFlagDto.serializer(), flag), session.sessionSecret)
+            .onFailure { Log.w(TAG, "flag write FAILED — ${it.message}") }
     }
 
-    private suspend fun <T> read(path: String, serializer: KSerializer<T>): T =
-        loopkyJson.decodeFromString(serializer, pubky.get(path).getOrThrow())
+    /**
+     * Writes the flag a run that flipped [owner] could not, once a launch finds it missing on an
+     * account that is still Loopky's and whose every copy is in place. Asked once per process.
+     */
+    private suspend fun completeFlag(session: Session, owner: String) {
+        if (!settledLock.withLock { flagChecked.add(owner) }) return
+        val missing = pubky.getWithSession(flagPath(owner), session.sessionSecret)
+            .fold(onSuccess = { false }, onFailure = { if (it.isNotFound()) true else throw it })
+        if (!missing) return
+        val found = footprint.classify(owner)
+        if (found != PubkyAppFootprint.LoopkyOnly && found != PubkyAppFootprint.Empty) return
+        val plan = (plan(owner, newProfile = null) as? Planned.Ready)?.plan ?: return
+        if (!existingV1(owner, session.sessionSecret).containsAll(plan.writes.keys)) return
+        writeFlag(session, owner, plan)
+    }
 
     private suspend fun <T> readOrNull(path: String, serializer: KSerializer<T>): T? = pubky.get(path).fold(
         onSuccess = { loopkyJson.decodeFromString(serializer, it) },
         onFailure = { if (it.isNotFound()) null else throw it },
     )
 
-    private fun <T> encode(serializer: KSerializer<T>, value: T): String = loopkyJson.encodeToString(serializer, value)
-
-    private fun post(post: PostDto) = SocialPostDto(
-        content = post.content,
-        kind = if (post.kind == PostKinds.SHORT) SocialPostKinds.NOTE else post.kind,
-        parent = post.parent?.let(::rewrite),
-        embed = post.embed?.uri?.let(::rewrite),
-    )
-
     private companion object {
         const val TAG = "Loopky/SocialMigrator"
         val V0 = SocialLayout.Legacy
         val V1 = SocialLayout.SocialV1
+        val V0_ROOTS = listOf(V0::postsRoot, V0::followsRoot, V0::mutesRoot, V0::tagsRoot)
+
+        /** A second device's write during one pass is caught by the next; a steady stream is not. */
+        const val MAX_PASSES = 3
+
+        /** `transformRev` of pubky-social-migrator 1.0.0-rc.2: a flag at or above it is a finished run. */
+        const val TRANSFORM_REV = 4
+        const val SKIP_INVALID = "invalid"
+
+        fun flagPath(owner: String) = "pubky://$owner/priv/social/v1/_migrated.json"
+        fun relative(owner: String, path: String) = path.removePrefix("pubky://$owner/")
     }
 }
 
@@ -190,8 +264,11 @@ internal sealed interface MigrationOutcome {
     /** pubky.app's to migrate, or not readable enough to tell. */
     data class NotLoopkys(val footprint: PubkyAppFootprint) : MigrationOutcome
 
-    /** No profile with a name, which v1 requires; the first profile Loopky writes migrates it. */
+    /** No profile, which v1 requires; the first profile Loopky writes migrates it. */
     data object NoProfile : MigrationOutcome
+
+    /** A profile v1 refuses (a name outside 3–50 characters, a bio over 160); the next valid edit migrates it. */
+    data object InvalidProfile : MigrationOutcome
     data class Migrated(val records: Int) : MigrationOutcome
 }
 
@@ -203,30 +280,14 @@ internal data class SocialProfileDto(
     val image: String? = null,
 )
 
-/**
- * A `pubky://` reference in its v1 spelling, as the reference migrator rewrites it: a profile, post
- * or follow under anyone's `/pub/pubky.app/` moves to `/pub/social/v1/`. Everything else, a deck
- * included, stays as written.
- */
-internal fun rewrite(uri: String): String {
-    if (!uri.startsWith("pubky://")) return uri
-    val host = uri.removePrefix("pubky://").substringBefore('/')
-    val path = uri.removePrefix("pubky://$host/")
-    val legacy = "pub/pubky.app/"
-    if (!path.startsWith(legacy)) return uri
-    val rest = path.removePrefix(legacy)
-    val segments = rest.split('/')
-    val v1 = SocialLayout.SocialV1
-    return when {
-        rest == "profile.json" -> v1.profile(host)
-        segments.size == 2 && segments[0] == "posts" && segments[1].isNotEmpty() -> v1.post(host, segments[1])
-        segments.size == 2 && segments[0] == "follows" && segments[1].isNotEmpty() -> v1.follow(host, segments[1])
-        else -> uri
-    }
-}
-
-/** The v1 label fold: trimmed, ASCII letters lowercased. Loopky's labels are already folded (#479). */
-internal fun foldLabel(label: String): String =
-    label.trim().map { if (it in 'A'..'Z') it + ('a' - 'A') else it }.joinToString("")
+/** The reference migrator's `_migrated.json`; wire names are the spec's. */
+@Suppress("ConstructorParameterNaming")
+@Serializable
+internal data class MigrationFlagDto(
+    val migrated_at: Long,
+    val transform_rev: Int,
+    val skipped: Map<String, List<String>>,
+    val migrated: List<String>,
+)
 
 private fun layoutRoot(layout: SocialLayout, owner: String) = layout.profile(owner).removeSuffix("profile.json")

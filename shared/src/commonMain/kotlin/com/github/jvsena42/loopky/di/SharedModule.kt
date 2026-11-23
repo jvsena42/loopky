@@ -137,6 +137,7 @@ fun sharedModule(): Module = module {
             preferences = get(),
             unsplashKeyStore = get(),
             deckCache = get(),
+            epochs = get(),
         )
     }
 
