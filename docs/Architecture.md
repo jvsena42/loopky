@@ -528,10 +528,11 @@ the same id until production moves, and removing a tag that only the Loopky fold
 under pubky.app and deletes it there, so the DEL reaches the edge. Drop the Loopky copy once
 production has deployed.
 
-This couples Loopky's deck discovery to pubky.app: tags on Loopky's own decks live in another
-app's namespace, and the CLI and MCP scopes reach into it (§13.2). Nexus was asked to accept
-`social/v1/tags/` from every user or to index app folders again
-(pubky/pubky-nexus#1247).
+This couples Loopky's deck discovery to pubky.app while a user is `v0`: tags on Loopky's own decks
+live in another app's namespace, and the CLI and MCP scopes reach into it (§13.2). Nexus declined
+to index `social/v1/tags/` for `v0` users or app folders again (pubky/pubky-nexus#1247), so the way
+out is moving the account to `v1`, which Loopky does itself for the accounts only it wrote to
+(§8.0).
 
 Points 1 and 2 below describe the Nexus before #1129, which production still runs.
 
@@ -973,6 +974,25 @@ it handles that write and ignores their `pubky.app` writes from then on, handlin
 events in order. `SocialEpochs` reads that file, not Nexus's `epoch` field, which can lag; `v1` is
 kept for good and `v0` re-read after five minutes. `SocialLayout` holds both path sets. A `v1` post's
 `embed` is the URI string and its short kind is `note` (`SocialPostDto`).
+
+**Loopky moves its own accounts (#616).** pubky.app migrates the accounts that use it, with
+`pubky-social-migrator`. An account only Loopky wrote to (`PubkyAppFootprint.LoopkyOnly`, or Empty)
+is nobody else's to move, so `SocialMigrator` copies it the way that migrator would: same post ids,
+`pubky.app` references rewritten to their v1 spelling, tag ids derived again from the rewritten
+subject, mutes moved under `/priv/`, `created_at` kept, the v0 tree left in place. It runs in the
+background on every session load and sign-in, and a profile edit goes through it, which is how a
+new account starts in `v1`. Four things not to undo:
+
+- It waits for production Nexus: `NexusClient.servesSocialV1` asks `/v1/info`, which #1129 added
+  (200 on staging, 404 on production today). No flag to flip at release.
+- `profile.json` is written **last**, because that write is the flip; Nexus ignores every `social/v1`
+  record written before it. An interrupted run changed nothing indexed, and the next one deletes the
+  copies whose source has gone since and writes only what is missing. Neither migrator overwrites a
+  file the other wrote.
+- While it runs, `SocialEpochs.migrating` holds `of()` back for that user, so a tag or follow made
+  meanwhile is routed after the flip instead of into a tree that was just copied.
+- It needs a session holding `/pub/social/v1/` and `/priv/social/v1/` (#621). An older Ring session
+  is left in `v0` until the user signs in again.
 
 **`manifest.json`:**
 

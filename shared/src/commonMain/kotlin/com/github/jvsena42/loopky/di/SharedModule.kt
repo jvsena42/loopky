@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.di
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.nexus.ClientCompatibility
+import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.price.PriceClient
 import com.github.jvsena42.loopky.data.price.PriceSource
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
@@ -30,10 +31,12 @@ import com.github.jvsena42.loopky.data.repository.impl.IdentityRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.ImportRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.KeyBackupRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.MediaRepositoryImpl
+import com.github.jvsena42.loopky.data.repository.impl.PubkyAppFootprintReader
 import com.github.jvsena42.loopky.data.repository.impl.SessionRevalidatorImpl
 import com.github.jvsena42.loopky.data.repository.impl.SettingsRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SignerRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.SignupRepositoryImpl
+import com.github.jvsena42.loopky.data.repository.impl.SocialMigrator
 import com.github.jvsena42.loopky.data.repository.impl.SrsRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.TagRepositoryImpl
 import com.github.jvsena42.loopky.data.storage.UpdatePromptGate
@@ -148,6 +151,16 @@ fun sharedModule(): Module = module {
             decks = get(),
             scope = get(REPOSITORY_SCOPE),
             epochs = get(),
+            migrator = get(),
+        )
+    }
+    single {
+        val nexus = get<NexusClient>()
+        SocialMigrator(
+            pubky = get(),
+            footprint = PubkyAppFootprintReader(get()),
+            epochs = get(),
+            servesSocialV1 = { nexus.servesSocialV1() },
         )
     }
     single<KeyBackupRepository> { KeyBackupRepositoryImpl(pubky = get(), keyStore = get()) }

@@ -16,15 +16,20 @@ import kotlinx.coroutines.sync.withLock
  * again after [V0_TTL_MILLIS], because pubky.app can migrate the user from another device while
  * Loopky runs. A read that fails for any reason but a 404 throws: a write routed on a guess would
  * land where Nexus ignores it.
+ *
+ * [of] waits while [migrating] holds the user, so a write made during Loopky's own migration lands
+ * in `social/v1` after it rather than in a `pubky.app` tree that was just copied.
  */
 class SocialEpochs(
     private val pubky: PubkyClient,
     private val now: () -> Long = ::epochMillis,
 ) {
     private val known = mutableMapOf<String, Pair<SocialEpoch, Long>>()
+    private val migrations = mutableMapOf<String, Mutex>()
     private val lock = Mutex()
 
     suspend fun of(user: String): SocialEpoch {
+        lock.withLock { migrations[user] }?.withLock { }
         lock.withLock { known[user] }?.let { (epoch, at) ->
             if (epoch == SocialEpoch.V1 || now() - at < V0_TTL_MILLIS) return epoch
         }
@@ -41,6 +46,15 @@ class SocialEpochs(
     /** For Loopky's own write of [user]'s `social/v1/profile.json`, which flips them. */
     suspend fun markV1(user: String) {
         lock.withLock { known[user] = SocialEpoch.V1 to now() }
+    }
+
+    /**
+     * Runs [block] while [of] holds back for [user]. Not reentrant: nothing inside [block] may call
+     * [of] for [user].
+     */
+    suspend fun <T> migrating(user: String, block: suspend () -> T): T {
+        val gate = lock.withLock { migrations.getOrPut(user) { Mutex() } }
+        return gate.withLock { block() }
     }
 
     private companion object {

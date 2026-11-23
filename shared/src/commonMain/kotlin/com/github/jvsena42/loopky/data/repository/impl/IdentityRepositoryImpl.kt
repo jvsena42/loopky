@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.data.pubky.MintedKeypair
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.pubky.ProfileDto
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
+import com.github.jvsena42.loopky.data.pubky.SocialEpoch
 import com.github.jvsena42.loopky.data.pubky.SocialEpochs
 import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.pubky.asSignupUrl
@@ -76,6 +77,8 @@ internal class IdentityRepositoryImpl(
      */
     private val scope: CoroutineScope,
     private val epochs: SocialEpochs = SocialEpochs(pubky),
+    /** Moves a Loopky-only account to `social/v1` (#616); null where nothing migrates. */
+    private val migrator: SocialMigrator? = null,
 ) : IdentityRepository {
 
     override val keyCustody: Flow<KeyCustody> = localKeyStore.custody
@@ -94,6 +97,7 @@ internal class IdentityRepositoryImpl(
             sessionStore.save(session)
         }
         sessionProvider.set(session)
+        migrateInBackground(session)
         selfTagAsLoopkyUser(session)
         followPendingDeck()
         return session
@@ -490,6 +494,7 @@ internal class IdentityRepositoryImpl(
     private suspend fun persistSession(session: Session): Session {
         sessionStore.save(session)
         sessionProvider.set(session)
+        migrateInBackground(session)
         selfTagAsLoopkyUser(session)
         followPendingDeck()
 
@@ -576,6 +581,20 @@ internal class IdentityRepositoryImpl(
         }
     }
 
+    /**
+     * Started before the self-tag and the pending follow, so their writes wait on the migration's
+     * hold in [SocialEpochs] and land in whichever layout it leaves. Nobody waits on the result: a
+     * failed run changed nothing Nexus reads, and the next session load tries again.
+     */
+    private fun migrateInBackground(session: Session) {
+        val migrator = migrator ?: return
+        scope.launch {
+            runSuspendCatching { migrator.migrate(session) }
+                .onSuccess { Log.d(TAG, "migration: $it") }
+                .onFailure { Log.w(TAG, "migration: will retry on the next session load — ${it::class.simpleName}") }
+        }
+    }
+
     /** Reset on sign-out so the next account announces itself too. */
     private var selfTaggedThisProcess = false
 
@@ -640,8 +659,14 @@ internal class IdentityRepositoryImpl(
             image = publishedAvatar ?: session.identity.avatarUrl,
         )
         val json = loopkyJson.encodeToString(ProfileDto.serializer(), dto)
-        val profilePath = epochs.layoutOf(currentPubky).profile(currentPubky)
-        val putResult = pubky.putWithSession(profilePath, json, session.sessionSecret)
+        // An account still in pubky.app's layout that Loopky may move takes this profile as its flip.
+        val migrated = migrator != null && epochs.of(currentPubky) == SocialEpoch.V0 &&
+            runSuspendCatching { migrator.migrate(session, dto) }.getOrNull() is MigrationOutcome.Migrated
+        val putResult = if (migrated) {
+            Result.success("migrated")
+        } else {
+            pubky.putWithSession(epochs.layoutOf(currentPubky).profile(currentPubky), json, session.sessionSecret)
+        }
 
         if (putResult.isFailure) {
             val err = putResult.exceptionOrNull()

@@ -8,6 +8,7 @@ import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.pubky.SocialEpochs
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
@@ -16,6 +17,7 @@ import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.impl.AccountEraser
 import com.github.jvsena42.loopky.data.repository.impl.DeckRepositoryImpl
 import com.github.jvsena42.loopky.data.repository.impl.IdentityRepositoryImpl
+import com.github.jvsena42.loopky.data.repository.impl.SocialMigrator
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.data.storage.DeckCacheStore
 import com.github.jvsena42.loopky.data.storage.LocalKeyStore
@@ -251,7 +253,11 @@ internal fun identityRepository(
     deckCache: DeckCacheStore = FakeDeckCacheStore(),
     /** Defaults to the caller's scope so `runTest` can await the fire-and-forget cleanup. */
     scope: CoroutineScope = CoroutineScope(SupervisorJob()),
+    epochs: SocialEpochs = SocialEpochs(pubky),
+    migrator: SocialMigrator? = null,
 ): IdentityRepositoryImpl = IdentityRepositoryImpl(
+    epochs = epochs,
+    migrator = migrator,
     pubky = pubky,
     sessionStore = sessionStore,
     sessionProvider = sessionProvider,

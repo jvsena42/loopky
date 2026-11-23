@@ -40,6 +40,18 @@ class NexusClient(
             }
         }
 
+    /**
+     * Whether this indexer runs pubky/pubky-nexus#1129, which reads `/pub/social/v1/`. Its `/v1`
+     * API came with it, so `/v1/info` answers 200 there and 404 on an older one. Any other answer
+     * throws: a guess either way would start or withhold a migration (#616).
+     */
+    suspend fun servesSocialV1(): Boolean {
+        val answer = http.get("$baseUrl/v1/info")
+        val error = answer.exceptionOrNull() ?: return true
+        if ((error as? HttpError)?.statusCode == HTTP_NOT_FOUND) return false
+        throw error
+    }
+
     /** Tag labels starting with [prefix] — powers tag-input autocomplete. */
     suspend fun searchTagsByPrefix(
         prefix: String,
@@ -258,6 +270,7 @@ class NexusClient(
     companion object {
         private const val TAG = "Loopky/Nexus"
         private const val HTTP_BAD_REQUEST = 400
+        private const val HTTP_NOT_FOUND = 404
 
         /** Nexus rejects a shorter pubky prefix than this on `/search/users/by_id`. */
         const val MIN_USER_ID_PREFIX = 3
