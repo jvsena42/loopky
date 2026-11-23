@@ -94,6 +94,15 @@ class SocialEpochsTest {
     }
 
     @Test
+    fun aReinstatedAccountIsAskedAgain() = runTest {
+        epochs.markV1(USER)
+        epochs.retire(USER)
+        epochs.reinstate(USER)
+
+        assertEquals(SocialEpoch.V0, epochs.of(USER), "the erase deleted the v1 profile")
+    }
+
+    @Test
     fun aWriteAsksAgainWhenTheCacheSaysV0() = runTest {
         assertEquals(SocialEpoch.V0, epochs.of(USER))
         // Another device flips the user inside the cache's lifetime.

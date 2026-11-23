@@ -115,8 +115,12 @@ class SocialEpochs(
         lock.withLock { retired += user }
     }
 
+    /** Also asks the homeserver again: the erase may have deleted the v1 profile a cached V1 stood for. */
     suspend fun reinstate(user: String) {
-        lock.withLock { retired -= user }
+        lock.withLock {
+            retired -= user
+            known -= user
+        }
     }
 
     suspend fun isRetired(user: String): Boolean = lock.withLock { user in retired }
