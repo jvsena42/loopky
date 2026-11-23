@@ -379,6 +379,10 @@
     <string name="profile_edit_name_placeholder">Seu nome</string>
     <string name="profile_edit_bio_label">BIO</string>
     <string name="profile_edit_bio_placeholder">Conte sobre você...</string>
+    <string name="profile_edit_name_error">Use de 3 a 50 caracteres.</string>
+    <string name="profile_edit_bio_error">Use no máximo 160 caracteres.</string>
+    <string name="profile_save_failed">Não foi possível salvar seu perfil. Verifique sua conexão e tente novamente.</string>
+    <string name="profile_save_sign_in_again">Saia e entre de novo para editar seu perfil.</string>
     <string name="profile_save">Salvar</string>
     <string name="profile_name_nudge_title">Como podemos te chamar?</string>
     <string name="profile_name_nudge_body">Adicione um nome para as pessoas saberem de quem são estes baralhos.</string>
@@ -1057,4 +1061,7 @@
     <string name="sign_in_prompt_report_body">A denúncia é enviada pela sua própria conta e bloqueia a conta denunciada para você. Precisa de uma conta, mas não de e-mail.</string>
     <string name="onboarding_policy_terms">Termos de Uso</string>
     <string name="settings_terms">Termos de uso</string>
+    <string name="force_update_title">Atualize o Loopky</string>
+    <string name="force_update_message">Esta versão do Loopky não funciona mais com a rede à qual se conecta. Atualize para continuar usando.</string>
+    <string name="force_update_action">Atualizar</string>
 </resources>

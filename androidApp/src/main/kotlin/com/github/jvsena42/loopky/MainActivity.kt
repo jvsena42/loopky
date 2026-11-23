@@ -35,6 +35,7 @@ import com.github.jvsena42.loopky.ui.nav.PendingOpen
 import com.github.jvsena42.loopky.ui.theme.LoopkyTheme
 import com.github.jvsena42.loopky.ui.theme.applyApplicationNightMode
 import com.github.jvsena42.loopky.ui.theme.isDark
+import com.github.jvsena42.loopky.ui.update.ForceUpdateRoute
 import com.github.jvsena42.loopky.ui.update.InAppUpdateRoute
 import com.github.jvsena42.loopky.ui.util.importFileUri
 import com.github.jvsena42.loopky.ui.util.pubkyLink
@@ -104,6 +105,8 @@ class MainActivity : ComponentActivity() {
                             onPendingOpenHandled = { pendingOpen.value = null },
                         )
                         InAppUpdateRoute()
+                        // Last, so it covers everything above, the update prompt included.
+                        ForceUpdateRoute()
                     }
                 }
             }

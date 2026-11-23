@@ -17,10 +17,10 @@ internal object PubkyUris {
         return owner.ifEmpty { null }
     }
 
-    /** True when [uri] is exactly some user's pubky.app profile record. */
+    /** True when [uri] is exactly some user's profile record, in either [SocialLayout]. */
     fun isProfile(uri: String): Boolean {
         val owner = ownerOf(uri) ?: return false
-        return uri == PubkyPaths.profile(owner)
+        return uri == SocialLayout.Legacy.profile(owner) || uri == SocialLayout.SocialV1.profile(owner)
     }
 
     /**
@@ -32,10 +32,12 @@ internal object PubkyUris {
      */
     fun isPost(uri: String): Boolean {
         val owner = ownerOf(uri) ?: return false
-        val root = PubkyPaths.postsRoot(owner)
-        if (!uri.startsWith(root)) return false
-        val id = uri.removePrefix(root)
-        return id.isNotEmpty() && '/' !in id
+        // The v1 form is the versionless reference, `posts/{id}`, not a version's file.
+        return listOf(SocialLayout.Legacy, SocialLayout.SocialV1).any { layout ->
+            val root = layout.postsRoot(owner)
+            val id = uri.removePrefix(root)
+            uri.startsWith(root) && id.isNotEmpty() && '/' !in id
+        }
     }
 
     /**

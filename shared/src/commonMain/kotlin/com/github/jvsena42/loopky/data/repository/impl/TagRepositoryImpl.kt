@@ -7,6 +7,8 @@ import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.PubkyUris
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.pubky.SocialEpochs
+import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.pubky.TagDto
 import com.github.jvsena42.loopky.data.pubky.deleteWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.isNotFound
@@ -16,6 +18,7 @@ import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.repository.TaggedSubject
 import com.github.jvsena42.loopky.domain.model.PubkyUri
 import com.github.jvsena42.loopky.domain.model.ReservedTags
+import com.github.jvsena42.loopky.domain.model.Session
 import com.github.jvsena42.loopky.domain.model.Tag
 import com.github.jvsena42.loopky.domain.model.TagLabels
 import com.github.jvsena42.loopky.util.Log
@@ -29,18 +32,26 @@ import kotlinx.serialization.encodeToString
  * these records network-wide, which is what makes [trending] answerable — a single homeserver has
  * no global view.
  *
- * **Which namespace the record goes in is decided by the subject**, because Nexus has two ingest
- * paths and picks between them on the record's own path (Architecture.md §7.7):
+ * **Every record goes in pubky.app's folder, `/pub/pubky.app/tags/`, whatever it tags.** Since
+ * pubky/pubky-nexus#1129 Nexus reads tags only there and in `/pub/social/v1/tags/`, and routes each
+ * by its subject: a profile or post joins the user/post graph, a deck manifest becomes a generic
+ * resource. `/pub/loopky/tags/`, where deck tags lived from #40 until #616, is skipped for PUT and
+ * DEL alike, though the edges indexed from it stay.
  *
- * - subject is a pubky.app `profile.json` or `posts/{id}` → [PubkyPaths.tag], the pubky.app
- *   namespace, indexed into the user/post graph — the only one `/v0/tags/hot`,
- *   `/v0/search/users/by_tags` and `/v0/search/posts/by_tag/{label}` can see;
- * - anything else, i.e. a deck manifest → [PubkyPaths.loopkyTag], indexed as a generic resource
- *   (reachable from `/v0/stream/resources?app=loopky`).
+ * **A deck tag is written to both folders until production Nexus runs #1129.** The Nexus before it
+ * indexes a deck manifest only from `/pub/loopky/tags/` and drops it under pubky.app; the Nexus
+ * after it does the opposite. The tag id is the same in both, so both copies name one edge. A
+ * session without `/pub/pubky.app/tags/` (a CLI login or MCP connection older than #616) writes the
+ * Loopky copy only. Drop the Loopky copy once production has deployed.
  *
- * Putting a deck manifest subject in the pubky.app namespace is not merely suboptimal: the
- * watcher rejects the record and the tag is never indexed at all, silently. That is what Loopky
- * did before issue #40.
+ * This couples Loopky's deck discovery to pubky.app: tags on Loopky's own decks have to live in
+ * another app's namespace, and the CLI and MCP scopes reach into it (`/pub/pubky.app/tags/:rw`).
+ * Nexus was asked to accept `social/v1/tags/` from every user or to index app folders again
+ * (pubky/pubky-nexus#1247); either would let this move out of pubky.app's folder.
+ *
+ * **A user in `social/v1` ([SocialEpochs]) gets `/pub/social/v1/tags/{id}.json` instead**, since Nexus
+ * ignores their pubky.app writes. Removing a tag they wrote before the flip goes through the same
+ * write-then-delete as an old Loopky-folder tag: Nexus moved the edge to the social/v1 address.
  *
  * Labels are folded by [TagLabels] and checked against the spec (1–20 chars, no whitespace) before
  * hashing so the derived id always matches what the indexer validates. The resource path does no
@@ -52,6 +63,7 @@ class TagRepositoryImpl(
     private val session: SessionProvider,
     private val revalidator: SessionRevalidator,
     private val nexus: NexusClient,
+    private val epochs: SocialEpochs = SocialEpochs(pubky),
 ) : TagRepository {
 
     override suspend fun putTag(subjectUri: PubkyUri, tag: Tag): Result<Unit> = runSuspendCatching {
@@ -77,49 +89,75 @@ class TagRepositoryImpl(
 
     private suspend fun write(subjectUri: PubkyUri, tag: Tag): Result<Unit> = runSuspendCatching {
         val label = sanitizeLabel(TagLabels.fold(tag.value)).getOrThrow()
-        val owner = session.requireSession().identity.pubky
+        val current = session.requireSession()
+        val owner = current.identity.pubky
         val tagId = pubky.createTagId(subjectUri.value, label).getOrThrow()
-        val body = loopkyJson.encodeToString(
-            TagDto(uri = subjectUri.value, label = label, created_at = epochMillis()),
-        )
-        pubky.putWithSessionRetry(
-            url = recordPath(owner, subjectUri, tagId),
-            content = body,
-            session = session,
-            revalidator = revalidator,
-        ).getOrThrow()
-        Unit
+        val body = tagBody(subjectUri, label)
+        epochs.writing(owner) { layout ->
+            val indexed = layout.tag(owner, tagId)
+            if (!isSocialSubject(subjectUri)) {
+                pubky.putWithSessionRetry(PubkyPaths.loopkyTag(owner, tagId), body, session, revalidator).getOrThrow()
+                if (!current.canWriteTo(indexed)) return@writing
+            }
+            pubky.putWithSessionRetry(indexed, body, session, revalidator).getOrThrow()
+        }
     }
 
     private suspend fun erase(subjectUri: PubkyUri, tag: Tag): Result<Unit> = runSuspendCatching {
         // Not folded: a record written before #479 is keyed by the label as it was typed, and
         // folding here would derive the id of a record that was never there.
         val label = sanitizeLabel(tag.verbatim()).getOrThrow()
-        val owner = session.requireSession().identity.pubky
+        val current = session.requireSession()
+        val owner = current.identity.pubky
         val tagId = pubky.createTagId(subjectUri.value, label).getOrThrow()
-        val path = recordPath(owner, subjectUri, tagId)
-        // A record that is not there is the outcome being asked for, so a 404 is success — the
-        // same rule the legacy delete below has always followed. A tag written before #40 lives
-        // only at the legacy path, and failing here would report removing it as an error.
-        pubky.deleteWithSessionRetry(path, session, revalidator).getOrElse { err ->
-            if (err.isNotFound()) Log.d(TAG, "removeTag: no record at $path") else throw err
-        }
-
-        // Decks were tagged in the pubky.app namespace before #40. Those records were never
-        // indexed, but they are still sitting on the homeserver — clear them out as we go.
-        val legacyPath = PubkyPaths.tag(owner, tagId)
-        if (path != legacyPath) {
-            pubky.deleteWithSessionRetry(legacyPath, session, revalidator).onFailure {
-                Log.d(TAG, "removeTag: no legacy record at $legacyPath — ${it.message}")
-            }
-        }
-        Unit
+        epochs.writing(owner) { layout -> eraseIn(layout, current, subjectUri, label, tagId) }
     }
 
+    private suspend fun eraseIn(
+        layout: SocialLayout,
+        current: Session,
+        subjectUri: PubkyUri,
+        label: String,
+        tagId: String,
+    ) {
+        val owner = current.identity.pubky
+        val indexed = layout.tag(owner, tagId)
+        // A session older than #616 can't touch the indexed folder: it clears the older copies only.
+        val canWriteIndexed = isSocialSubject(subjectUri) || current.canWriteTo(indexed)
+        val removed = canWriteIndexed && deleteIfPresent(indexed)
+
+        // Copies in a folder Nexus no longer reads for this user: `/pub/loopky/tags/` for a deck tag
+        // (#616), and pubky.app's for a user migrated to social/v1. Nexus keeps their edges and
+        // skips the DEL there, so a tag found only there is written again where it reads tags and
+        // deleted there; the tag id is the same in every folder.
+        val olderCopies = buildList {
+            if (layout != SocialLayout.Legacy) add(SocialLayout.Legacy.tag(owner, tagId))
+            if (!isSocialSubject(subjectUri)) add(PubkyPaths.loopkyTag(owner, tagId))
+        }
+        val hadOlderCopy = olderCopies.map { deleteIfPresent(it) }.any { it }
+        if (hadOlderCopy && canWriteIndexed && !removed) {
+            pubky.putWithSessionRetry(indexed, tagBody(subjectUri, label), session, revalidator).getOrThrow()
+            pubky.deleteWithSessionRetry(indexed, session, revalidator).getOrThrow()
+        }
+    }
+
+    /** A record that is not there is the outcome being asked for, so a 404 is not a failure. */
+    private suspend fun deleteIfPresent(path: String): Boolean =
+        pubky.deleteWithSessionRetry(path, session, revalidator).fold(
+            onSuccess = { true },
+            onFailure = { err ->
+                if (!err.isNotFound()) throw err
+                Log.d(TAG, "removeTag: no record at $path")
+                false
+            },
+        )
+
     override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): Result<List<Tag>> {
+        // Another app or a web URL can carry `loopky-deck` too, and its labels must not become topics.
         val resources = nexus.resourcesByTag(ReservedTags.DECK.value, sampleSize)
             .onFailure { Log.w(TAG, "trendingDeckTags: FAILED — ${it.message}") }
             .getOrElse { return Result.failure(it) }
+            .filter { PubkyUris.parseDeckManifest(it.details.uri) != null }
 
         val decksPerLabel = mutableMapOf<String, Int>()
         val taggersPerLabel = mutableMapOf<String, Int>()
@@ -225,19 +263,12 @@ private fun requireReserved(tag: Tag): Result<Unit> =
         )
     }
 
-/**
- * See [TagRepositoryImpl]: Nexus routes on the record's own namespace, so the subject picks it.
- *
- * Posts join profiles on the pubky.app side as of #39: a deck announcement is a post, and tagging
- * it is the only way a deck's topics can reach the global tag index — a manifest can only ever be
- * a generic resource, and resource tags never trend (Architecture.md §7.7).
- */
-private fun recordPath(owner: String, subjectUri: PubkyUri, tagId: String): String =
-    if (PubkyUris.isProfile(subjectUri.value) || PubkyUris.isPost(subjectUri.value)) {
-        PubkyPaths.tag(owner, tagId)
-    } else {
-        PubkyPaths.loopkyTag(owner, tagId)
-    }
+private fun tagBody(subjectUri: PubkyUri, label: String): String =
+    loopkyJson.encodeToString(TagDto(uri = subjectUri.value, label = label, created_at = epochMillis()))
+
+/** A pubky.app profile or post: never tagged under `/pub/loopky/tags/`, so there is no old record to clear. */
+private fun isSocialSubject(subjectUri: PubkyUri): Boolean =
+    PubkyUris.isProfile(subjectUri.value) || PubkyUris.isPost(subjectUri.value)
 
 /**
  * The label as it was typed, for anything that has to address a record that already exists: a

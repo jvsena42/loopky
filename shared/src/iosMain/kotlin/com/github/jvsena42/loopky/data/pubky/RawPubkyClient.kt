@@ -68,6 +68,10 @@ interface RawPubkyClient {
     ): List<String>
 
     fun deleteWithSession(url: String, sessionSecret: String): List<String>
+    fun getWithSession(url: String, sessionSecret: String): List<String>
+
+    /** The payload is a JSON array of the listed entries, as [list] returns. */
+    fun listWithSession(url: String, sessionSecret: String, cursor: String?, limit: Int?): List<String>
 
     // --- pubky-app-specs helpers ------------------------------------------------
     fun createTagId(uri: String, label: String): List<String>

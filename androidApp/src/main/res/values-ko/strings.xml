@@ -385,6 +385,10 @@
     <string name="profile_edit_name_placeholder">이름</string>
     <string name="profile_edit_bio_label">소개</string>
     <string name="profile_edit_bio_placeholder">나를 소개해 주세요...</string>
+    <string name="profile_edit_name_error">3~50자로 입력하세요.</string>
+    <string name="profile_edit_bio_error">160자 이내로 입력하세요.</string>
+    <string name="profile_save_failed">프로필을 저장하지 못했습니다. 연결을 확인하고 다시 시도하세요.</string>
+    <string name="profile_save_sign_in_again">프로필을 수정하려면 로그아웃한 뒤 다시 로그인하세요.</string>
     <string name="profile_save">저장</string>
     <string name="profile_name_nudge_title">어떻게 불러 드릴까요?</string>
     <string name="profile_name_nudge_body">이름을 추가하면 누구의 덱인지 다른 사람들이 알 수 있어요.</string>
@@ -1069,4 +1073,7 @@
     <string name="sign_in_prompt_report_body">신고는 내 계정으로 보내지고, 해당 계정을 차단해요. 계정이 필요하지만 이메일은 필요 없어요.</string>
     <string name="onboarding_policy_terms">이용약관</string>
     <string name="settings_terms">이용약관</string>
+    <string name="force_update_title">Loopky 업데이트</string>
+    <string name="force_update_message">이 버전의 Loopky는 연결하는 네트워크에서 더 이상 작동하지 않습니다. 계속 사용하려면 업데이트하세요.</string>
+    <string name="force_update_action">업데이트</string>
 </resources>

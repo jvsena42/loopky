@@ -44,7 +44,7 @@ object AuthorizePage {
             |<h1>Sign in with Loopky</h1>
             |<p class="who"><strong>$client</strong> is asking to manage your Loopky decks.
             |After you approve, you will be sent back to <strong>$domain</strong>.</p>
-            |<p class="scope">You will be asked for <code>/pub/loopky/:rw</code> only: your decks and cards. Nothing else on your account.</p>
+            |<p class="scope">You will be asked for <code>/pub/loopky/:rw</code>, your decks and cards, and for <code>/pub/pubky.app/tags/:rw</code> and <code>/pub/social/v1/tags/:rw</code>, so your decks' tags reach discovery. It cannot post, follow or edit your profile.</p>
             |<details open>
             |<summary>Scan with your phone</summary>
             |<div class="qr">${qrSvg(pending.authorizationUrl)}</div>

@@ -126,10 +126,10 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
     layer. They are Pubky-only: writes and reads go through `PubkyClient`, with an in-memory
     per-session cache. No SQLDelight — the app is not offline-first, Pubky is the single source of
     truth. `TagRepositoryImpl` also reads trending, tagged subjects and tagger counts from the
-    Nexus indexer (`data/nexus/NexusClient`, §7.6). **Which namespace a tag record goes in depends
-    on its subject** — a profile in `/pub/pubky.app/tags/`, a deck manifest in `/pub/loopky/tags/`
-    — because that decides whether Nexus indexes it at all; read Architecture.md §7.7 before
-    touching tag writes.
+    Nexus indexer (`data/nexus/NexusClient`, §7.6). **Tag records go in `/pub/pubky.app/tags/`,
+    and a deck manifest's also in `/pub/loopky/tags/`** until production Nexus runs
+    pubky/pubky-nexus#1129, which reads only the first; read Architecture.md §7.7 before touching
+    tag writes.
   - `data/pubky/` — `PubkyClient` interface + DTOs (`ManifestDto`, `CardDto`, `MediaRefDto` in `DeckDtos.kt`, `ProfileDto`) and path helpers (`PubkyPaths`, `Hashing`) that map between domain models and the on-homeserver JSON layout defined in `docs/Architecture.md §8.0`. `SessionProvider`/`MutableSessionProvider` is the tiny read-only abstraction repos use to author writes without depending on `IdentityRepository`. `SessionRevalidator` + `SessionRetry` + `SessionPayloadParser` handle expired-session retry.
   - `data/pubky/PubkyClient.kt` — the single interface that wraps `pubky-core-ffi-fork`. All Pubky calls must route through this. It is a **thin** 1:1 mirror of the FFI surface (keys, mnemonics, recovery, auth, records, DHT). Do not add deck/card concepts here — those belong in repositories. It is a plain interface Koin-binds per platform, not `expect`/`actual`: Android and desktop share `UniffiPubkyClient` (jvmSharedMain, over the JNA bindings); on iOS, Swift's `IosPubkyClient` implements the `[status, payload]` `RawPubkyClient` pass-through and `IosPubkyClientAdapter` wraps it into the contract (see Build & run above) — it is real, and has been driven against a homeserver.
   - `data/storage/` — `SecureSessionStore` interface for persisting the signed-in `Session`, backed by the platform keystore via Liftric KVault (`AndroidSecureSessionStore` wraps EncryptedSharedPreferences; `IosSecureSessionStore` wraps Keychain). This resolves the secret-storage open question — see "Non-obvious rules" below. Non-secret preferences use the separate `AppPreferences` (SharedPreferences / NSUserDefaults) in the same package — don't put a plain setting through the keystore, or a secret through `AppPreferences`.
@@ -207,15 +207,16 @@ Kotlin lint is detekt (`config/detekt/detekt.yml`, with `detekt-formatting` + `d
 
 ### Non-obvious rules
 
-- **The CLI's session can only write `/pub/loopky/`, and that is structural, not a setting.**
-  `:cli` asks Ring for `/pub/loopky/:rw` and never `DEFAULT_CAPABILITIES`, so an agent session
-  cannot write a post, a follow or a profile edit under any bug or any prompt injection — it was
-  never handed the capability. Three consequences not to undo. The announce confirmation (#39) is
+- **The CLI's session can write `/pub/loopky/` and the two tag folders, nothing else, and that is
+  structural, not a setting.** `:cli` and the MCP server ask Ring for
+  `/pub/loopky/:rw,/pub/pubky.app/tags/:rw,/pub/social/v1/tags/:rw` and never
+  `DEFAULT_CAPABILITIES`, so an agent session cannot write a post, a follow or a profile edit under
+  any bug or any prompt injection — it was never handed the capability. The tag folders were added
+  in #616 because Nexus stopped indexing `/pub/loopky/tags/` (§7.7 point 0); widening further, to
+  `/pub/pubky.app/:rw`, fixes nothing and gives away everything. The announce confirmation (#39) is
   gone **by construction** rather than behind a `--no-announce` flag: there is nothing to confirm.
-  Deck tags still work, because `TagRepositoryImpl` routes on the *subject* and a deck manifest's
-  tag record lives in `/pub/loopky/tags/` (§7.7) — so widening the scope "so tagging works" fixes
-  nothing and gives away everything. And `whoami` reports no display name, because that lives in
-  `/pub/pubky.app/profile.json`; adding one means widening the scope.
+  And `whoami` reports no display name, because that lives in `/pub/pubky.app/profile.json`; adding
+  one means widening the scope.
 - **`loopky` ships as a single `native-image` binary, and "single" is a property that has to be
   enforced rather than assumed.** `native-image` does **not** fail when it cannot fold a JDK native
   library into the executable — it emits the library *beside* it and reports success. Anything that

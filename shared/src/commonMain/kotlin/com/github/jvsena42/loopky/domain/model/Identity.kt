@@ -40,14 +40,24 @@ fun PubkyIdentity.avatarDisplayUrl(indexerBaseUrl: String): String? {
 
     val path = raw.removePrefix(PUBKY_SCHEME)
     val user = path.substringBefore('/', missingDelimiterValue = "")
-    val fileId = path.substringAfter(PUBKY_APP_FILES, missingDelimiterValue = "").trim('/')
-    if (user.isEmpty() || fileId.isEmpty() || '/' in fileId) return null
-
-    return "${indexerBaseUrl.trimEnd('/')}/static/files/$user/$fileId/main"
+    val base = indexerBaseUrl.trimEnd('/')
+    // A `social/v1` file is `{hash}.{ext}` with no File node, which Nexus serves under `/v1/static`.
+    val v1Name = fileNameAfter(path, SOCIAL_V1_FILES)
+    val v0Id = fileNameAfter(path, PUBKY_APP_FILES)
+    return when {
+        user.isEmpty() -> null
+        v1Name != null -> "$base/v1/static/files/$user/$v1Name/main"
+        v0Id != null -> "$base/static/files/$user/$v0Id/main"
+        else -> null
+    }
 }
+
+private fun fileNameAfter(path: String, folder: String): String? =
+    path.substringAfter(folder, missingDelimiterValue = "").trim('/').takeIf { it.isNotEmpty() && '/' !in it }
 
 private const val PUBKY_SCHEME = "pubky://"
 private const val PUBKY_APP_FILES = "/pub/pubky.app/files/"
+private const val SOCIAL_V1_FILES = "/pub/social/v1/files/"
 
 data class Session(
     val identity: PubkyIdentity,
@@ -59,16 +69,33 @@ data class Session(
      * Whether this session was granted write access to the pubky.app namespace.
      *
      * True for the two apps, which ask for `DEFAULT_CAPABILITIES`; false for the headless client,
-     * which asks for `/pub/loopky/:rw` and nothing else (#54). The point of asking is that a
-     * pubky.app write from a session without the capability is not a *failure worth reporting* —
-     * it is a request that should never have been made, and making it costs a round trip and
-     * writes a warning about something working exactly as designed.
+     * which asks for `/pub/loopky/` and the tag folders only (#54, #616). The point of asking is
+     * that a pubky.app write from a session without the capability is not a *failure worth
+     * reporting* — it is a request that should never have been made, and making it costs a round
+     * trip and writes a warning about something working exactly as designed.
      *
      * Only ever a reason to **skip** an optional write, never to substitute one. A caller that
      * genuinely needs the namespace should fail rather than silently do something else.
      */
     val canWritePubkyApp: Boolean
         get() = capabilities.any { it.grantsWriteTo(PUBKY_APP_NAMESPACE) }
+
+    /**
+     * Whether this session can write the tag records Nexus indexes. False for a CLI login or MCP
+     * connection made before the scope gained `/pub/pubky.app/tags/` (#616): its deck tags fail
+     * to write, so its decks drop out of discovery until the user signs in again.
+     */
+    val canWriteDeckTags: Boolean
+        get() = capabilities.any { it.grantsWriteTo(PUBKY_APP_TAGS) }
+
+    /**
+     * Whether this session was granted writes at [url], a `pubky://{owner}/…` address. A hint for
+     * skipping a write the scope rules out, like [canWritePubkyApp]; the homeserver enforces it.
+     */
+    fun canWriteTo(url: String): Boolean {
+        val path = "/" + url.removePrefix("pubky://").substringAfter('/', missingDelimiterValue = "")
+        return capabilities.any { it.grantsWriteTo(path) }
+    }
 }
 
 /**
@@ -99,3 +126,4 @@ value class Capability(val value: String) {
 
 /** The namespace pubky.app's own records live under — profiles, posts, follows and their tags. */
 private const val PUBKY_APP_NAMESPACE = "/pub/pubky.app/"
+private const val PUBKY_APP_TAGS = "/pub/pubky.app/tags/"

@@ -2,6 +2,9 @@ package com.github.jvsena42.loopky.data.pubky
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -113,6 +116,15 @@ class IosPubkyClientAdapter(private val raw: RawPubkyClient) : PubkyClient {
 
     override suspend fun deleteWithSession(url: String, sessionSecret: String) =
         runFfiSuspend { raw.deleteWithSession(url, sessionSecret) }
+
+    override suspend fun getWithSession(url: String, sessionSecret: String) =
+        runFfiSuspend { raw.getWithSession(url, sessionSecret) }
+
+    override suspend fun listWithSession(url: String, sessionSecret: String, cursor: String?, limit: UShort?) =
+        runFfiSuspend { raw.listWithSession(url, sessionSecret, cursor, limit?.toInt()) }.map { payload ->
+            val entries = Json.decodeFromString(ListSerializer(String.serializer()), payload)
+            Json.encodeToString(ListSerializer(String.serializer()), entries.map { toPubkyUrl(url, it) })
+        }
 
     // --- pubky-app-specs helpers ------------------------------------------------
     override fun createTagId(uri: String, label: String) =

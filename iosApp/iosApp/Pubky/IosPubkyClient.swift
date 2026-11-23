@@ -140,8 +140,16 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
 
     // MARK: - Records (session auth)
 
+    /// `putWithSession` and `deleteWithSession` refuse any URL without `/pub/`, so a `/priv/` record
+    /// (a v1 mute, #616) goes through the typed storage calls, which take any path the session can write.
     func putWithSession(url: String, content: String, sessionSecret: String) -> [String] {
-        Loopky.putWithSession(url: url, content: content, sessionSecret: sessionSecret)
+        guard isPrivate(url) else {
+            return Loopky.putWithSession(url: url, content: content, sessionSecret: sessionSecret)
+        }
+        return typed {
+            try Loopky.sessionPutBytes(pathOrAddress: url, content: Data(content.utf8), sessionSecret: sessionSecret)
+            return ""
+        }
     }
 
     func putBytesBase64WithSession(
@@ -156,7 +164,56 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
     }
 
     func deleteWithSession(url: String, sessionSecret: String) -> [String] {
-        Loopky.deleteWithSession(url: url, sessionSecret: sessionSecret)
+        guard isPrivate(url) else {
+            return Loopky.deleteWithSession(url: url, sessionSecret: sessionSecret)
+        }
+        return typed {
+            try Loopky.sessionDelete(pathOrAddress: url, sessionSecret: sessionSecret)
+            return ""
+        }
+    }
+
+    func getWithSession(url: String, sessionSecret: String) -> [String] {
+        typed { try utf8(Loopky.sessionGetBytes(pathOrAddress: url, sessionSecret: sessionSecret)) }
+    }
+
+    func listWithSession(url: String, sessionSecret: String, cursor: String?, limit: KotlinInt?) -> [String] {
+        typed {
+            let options = StorageListOptions(
+                reverse: false,
+                shallow: false,
+                limit: limit.map { UInt16(truncating: $0) },
+                cursor: cursor
+            )
+            let page = try Loopky.sessionList(pathOrAddress: url, sessionSecret: sessionSecret, options: options)
+            return try utf8(JSONSerialization.data(withJSONObject: page.entries))
+        }
+    }
+
+    /// `pubky://{key}/priv/…`: a `/priv/` deeper in a public path is a public record.
+    private func isPrivate(_ url: String) -> Bool {
+        let rest = url.hasPrefix("pubky://") ? url.dropFirst("pubky://".count) : Substring(url)
+        guard let slash = rest.firstIndex(of: "/") else { return false }
+        return rest[rest.index(after: slash)...].hasPrefix("priv/")
+    }
+
+    private func utf8(_ data: Data) throws -> String {
+        guard let text = String(bytes: data, encoding: .utf8) else {
+            throw NSError(domain: "Loopky", code: 0, userInfo: [NSLocalizedDescriptionKey: "Response is not UTF-8"])
+        }
+        return text
+    }
+
+    /// The typed UniFFI functions throw instead of returning `[error, payload]`. A server answer is
+    /// restated in the prose `PubkyError.status` parses, so a 404 reads as one on the Kotlin side.
+    private func typed(_ call: () throws -> String) -> [String] {
+        do {
+            return ["false", try call()]
+        } catch PubkyCoreError.Server(let status, let details) {
+            return ["true", "Server responded with an error: \(status) - \(details)"]
+        } catch {
+            return ["true", "\(error)"]
+        }
     }
 
     // MARK: - pubky-app-specs helpers

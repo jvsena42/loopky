@@ -392,6 +392,10 @@
     <string name="profile_edit_name_placeholder">Tên của bạn</string>
     <string name="profile_edit_bio_label">GIỚI THIỆU</string>
     <string name="profile_edit_bio_placeholder">Kể một chút về bạn...</string>
+    <string name="profile_edit_name_error">Dùng từ 3 đến 50 ký tự.</string>
+    <string name="profile_edit_bio_error">Dùng tối đa 160 ký tự.</string>
+    <string name="profile_save_failed">Không thể lưu hồ sơ. Hãy kiểm tra kết nối và thử lại.</string>
+    <string name="profile_save_sign_in_again">Hãy đăng xuất rồi đăng nhập lại để sửa hồ sơ.</string>
     <string name="profile_save">Lưu</string>
     <!-- The one-time invitation to name a nameless profile. Warm and short by design: it asks
          for something optional, and "Not now" is remembered so it is never asked twice. -->
@@ -1132,4 +1136,7 @@
     <string name="sign_in_prompt_report_body">Báo cáo được gửi từ tài khoản của chính bạn và sẽ chặn tài khoản đó giúp bạn. Cần có tài khoản nhưng không cần email.</string>
     <string name="onboarding_policy_terms">Điều khoản sử dụng</string>
     <string name="settings_terms">Điều khoản sử dụng</string>
+    <string name="force_update_title">Cập nhật Loopky</string>
+    <string name="force_update_message">Phiên bản Loopky này không còn hoạt động với mạng mà nó kết nối. Hãy cập nhật để tiếp tục sử dụng.</string>
+    <string name="force_update_action">Cập nhật</string>
 </resources>

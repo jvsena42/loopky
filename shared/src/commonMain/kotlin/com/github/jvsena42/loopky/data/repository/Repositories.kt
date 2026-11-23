@@ -220,7 +220,13 @@ interface IdentityRepository {
     ): Result<Unit>
 
     companion object {
-        const val DEFAULT_CAPABILITIES = "/pub/loopky/:rw,/pub/pubky.app/:rw"
+        /**
+         * The `social/v1` pair is asked for before Loopky writes there (#616): pubky.app moves a
+         * user to `/pub/social/v1/` and their blocks to `/priv/social/v1/`, and a Ring session that
+         * already holds both keeps working after that without signing in again.
+         */
+        const val DEFAULT_CAPABILITIES =
+            "/pub/loopky/:rw,/pub/pubky.app/:rw,/pub/social/v1/:rw,/priv/social/v1/:rw"
     }
 }
 
@@ -1581,3 +1587,6 @@ data class StudySettingsSnapshot(
 /** Delete account was asked to remove pubky.app, but the account no longer holds only Loopky's records. */
 class PubkyAppFootprintChangedException(val now: PubkyAppFootprint) :
     IllegalStateException("pubky.app is now $now; nothing was deleted")
+
+/** The homeserver refused a profile write: the session lacks the scope, and only a new sign-in grants it. */
+class ProfileWriteRefusedException : IllegalStateException("Please sign out and sign back in to enable profile editing.")

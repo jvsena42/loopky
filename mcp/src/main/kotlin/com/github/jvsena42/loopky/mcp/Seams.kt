@@ -49,7 +49,7 @@ interface SessionSecrets {
  * slot (#214). Implemented over the FFI's handle-based grant functions.
  */
 interface RingLogin {
-    /** Starts a flow for `/pub/loopky/:rw` only, under the server's own client id. */
+    /** Starts a flow for [LOOPKY_CAPABILITIES] only, under the server's own client id. */
     suspend fun start(): PendingLogin
     suspend fun poll(flowId: String): LoginPoll
     suspend fun cancel(flowId: String)
@@ -75,5 +75,12 @@ sealed interface LoginPoll {
     data object Expired : LoginPoll
 }
 
-/** The only capability the server ever asks Ring for — the CLI's scope, so it can never post or follow. */
-const val LOOPKY_CAPABILITIES = "/pub/loopky/:rw"
+/**
+ * The only capabilities the server ever asks Ring for — the CLI's scope, so it can never post or
+ * follow. The two tag folders are where Nexus reads deck tags since pubky/pubky-nexus#1129 (#616);
+ * they tie the connector to pubky.app's namespace until Nexus indexes an app's own folder again.
+ */
+const val LOOPKY_CAPABILITIES = "/pub/loopky/:rw,/pub/pubky.app/tags/:rw,/pub/social/v1/tags/:rw"
+
+/** [LOOPKY_CAPABILITIES] one grant per entry, as the homeserver lists them on a session. */
+val LOOPKY_CAPABILITY_LIST: List<String> = LOOPKY_CAPABILITIES.split(',')

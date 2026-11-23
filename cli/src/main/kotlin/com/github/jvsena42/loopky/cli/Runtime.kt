@@ -91,6 +91,7 @@ suspend fun requireSession(
     identity: IdentityRepository,
     environment: CliEnvironment,
     env: (String) -> String? = System::getenv,
+    warn: (String) -> Unit = System.err::println,
 ): Session {
     val injected = env("LOOPKY_SESSION")?.trim()?.takeIf { it.isNotEmpty() }
     val session = if (injected != null) {
@@ -105,8 +106,18 @@ suspend fun requireSession(
             )
     }
     checkEnvironmentAgrees(session, environment)
+    if (!session.canWriteDeckTags) warn(OLD_SCOPE_WARNING)
     return session
 }
+
+/**
+ * Printed for a session granted before [com.github.jvsena42.loopky.cli.commands.CLI_CAPABILITIES]
+ * gained the tag folders (#616). Its deck tags reach only the Nexus that still reads
+ * `/pub/loopky/tags/`, so once that Nexus is gone its decks leave discovery.
+ */
+internal const val OLD_SCOPE_WARNING =
+    "loopky: this login predates the tag scope, so new deck tags will stop reaching discovery. " +
+        "Run `loopky login` again to fix it."
 
 /**
  * Refuse a `LOOPKY_SESSION` that is not a session secret at all.

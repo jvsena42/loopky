@@ -37,7 +37,7 @@ import kotlin.time.TimeSource
  * otherwise lock them out with the key sitting in the keystore.
  * Only a rejection triggers it — a network failure says nothing about the session — and only for
  * the signed-in pubky's own registered key. A backed-up key is left alone; its owner can restore.
- * And never into a wider scope than the session had: the CLI's `/pub/loopky/:rw` is structural.
+ * And never into a wider scope than the session had: the CLI's narrow scope is structural.
  */
 internal class SessionRevalidatorImpl(
     private val pubky: PubkyClient,

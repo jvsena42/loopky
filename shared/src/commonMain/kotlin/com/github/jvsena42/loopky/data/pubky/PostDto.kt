@@ -42,3 +42,39 @@ internal object PostKinds {
     /** `post_short_content_max_length` — the cap every kind but `long` is held to. */
     const val MAX_CONTENT_LENGTH = 2_000
 }
+
+/**
+ * Body of a `pubky-social-specs` 1.x post (`/pub/social/v1/posts/{id}/{editId}.json`), for a user in
+ * [SocialEpoch.V1]. Three differences from [PostDto]: `embed` is the URI alone, `attachments` are
+ * objects, and the short kind is [SocialPostKinds.NOTE]. A `link` embed still carries no
+ * relationship Nexus has to resolve first, so an announcement keeps `kind: link`.
+ */
+@Serializable
+internal data class SocialPostDto(
+    val content: String,
+    val kind: String = SocialPostKinds.NOTE,
+    val parent: String? = null,
+    val embed: String? = null,
+    val attachments: List<SocialAttachmentDto> = emptyList(),
+)
+
+@Serializable
+internal data class SocialAttachmentDto(val uri: String)
+
+/** `PubkySocialPostKind`, serialized lowercase. Nexus drops a post of any other kind. */
+internal object SocialPostKinds {
+    const val NOTE = "note"
+    const val LINK = "link"
+}
+
+/**
+ * The same post in the v0 shape, so rules written for pubky.app posts judge a v1 one too: `note` is
+ * `short`, and a URI embed is a `link` embed (the only kind Loopky writes).
+ */
+internal fun SocialPostDto.asLegacy(): PostDto = PostDto(
+    content = content,
+    kind = if (kind == SocialPostKinds.NOTE) PostKinds.SHORT else kind,
+    parent = parent,
+    embed = embed?.let { PostEmbedDto(kind = PostKinds.LINK, uri = it) },
+    attachments = attachments.map { it.uri }.ifEmpty { null },
+)

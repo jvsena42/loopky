@@ -98,8 +98,19 @@ struct ProfileScreen: View {
             followingCount: state.followingCount.map { Int(truncating: $0) },
             followerCount: state.followerCount.map { Int(truncating: $0) },
             showEditSheet: state.showEditSheet,
+            showNameError: state.showNameError,
+            showBioError: state.showBioError,
+            saveErrorKey: saveErrorKey(state.editSaveError),
             isSaving: state.isSaving
         )
+    }
+
+    private func saveErrorKey(_ error: ProfileSaveError?) -> LocalizedStringKey? {
+        switch error {
+        case .needssignin: return "profile_save_sign_in_again"
+        case .failed: return "profile_save_failed"
+        default: return nil
+        }
     }
 
     private func attach() {
@@ -118,8 +129,6 @@ struct ProfileScreen: View {
                 flash(NSLocalizedString("profile_copied", comment: ""))
             case let open as ProfileEffectOpenUrl:
                 if let url = URL(string: open.url) { openURL(url) }
-            case let error as ProfileEffectShowError:
-                flash(error.message)
             default:
                 break
             }
@@ -169,5 +178,9 @@ struct ProfileViewState {
     var followingCount: Int?
     var followerCount: Int?
     var showEditSheet: Bool = false
+    var showNameError: Bool = false
+    var showBioError: Bool = false
+    /// Shown in the edit sheet, which covers anything the screen itself could draw.
+    var saveErrorKey: LocalizedStringKey?
     var isSaving: Bool = false
 }

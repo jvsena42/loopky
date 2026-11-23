@@ -6,6 +6,7 @@ import com.github.jvsena42.loopky.cli.SCHEMA_VERSION
 import com.github.jvsena42.loopky.cli.testDeck
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.pubky.PubkyError
+import com.github.jvsena42.loopky.domain.model.Capability
 import com.github.jvsena42.loopky.domain.model.Card
 import com.github.jvsena42.loopky.domain.model.CardSide
 import com.github.jvsena42.loopky.mcp.FakeSecrets
@@ -287,6 +288,32 @@ class ToolDispatcherTest {
         val notes = envelope["notes"]!!.jsonArray.map { it.jsonPrimitive.content }
         assertTrue(notes.any { "300px" in it }, notes.toString())
         assertNull(envelope["error"])
+    }
+
+    /** A connection from before #616 holds `/pub/loopky/:rw` only; its deck tags no longer reach Nexus. */
+    @Test
+    fun `a connection without the tag scope is told to reconnect when it writes a deck`() = runBlocking {
+        val oldScope = { pubky: String, secret: String ->
+            val session = sessionFor(pubky, secret).copy(capabilities = listOf(Capability("/pub/loopky/:rw")))
+            FakeTenant(secret, session, decks = FakeDeckRepository(testDeck("d1")))
+        }
+        val (dispatcher, _) = dispatcher(oldScope)
+
+        val edited = dispatcher.call(alice, "deck_edit", args("""{"deck_id":"d1","title":"New"}""")).envelope()
+        val listed = dispatcher.call(alice, "deck_list", args("{}")).envelope()
+
+        val notes = edited["notes"]!!.jsonArray.map { it.jsonPrimitive.content }
+        assertTrue(notes.any { "reconnect the Loopky connector" in it }, notes.toString())
+        assertTrue(listed["notes"]?.jsonArray.orEmpty().none { "reconnect" in it.jsonPrimitive.content })
+    }
+
+    @Test
+    fun `a connection with the current scope gets no reconnect note`() = runBlocking {
+        val (dispatcher, _) = dispatcher(tenantWith(FakeDeckRepository(testDeck("d1"))))
+
+        val edited = dispatcher.call(alice, "deck_edit", args("""{"deck_id":"d1","title":"New"}""")).envelope()
+
+        assertTrue(edited["notes"]?.jsonArray.orEmpty().none { "reconnect" in it.jsonPrimitive.content })
     }
 
     @Test

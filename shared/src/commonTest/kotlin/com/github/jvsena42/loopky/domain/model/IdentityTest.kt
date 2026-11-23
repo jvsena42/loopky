@@ -23,6 +23,15 @@ class IdentityTest {
         identity(avatarUrl = avatarUrl).avatarDisplayUrl(indexer)
 
     @Test
+    fun aSocialV1AvatarIsServedFromTheV1StaticRoute() {
+        assertEquals(
+            "$indexer/v1/static/files/bzbjrj9a8/8Z8CWH8NVYQY39ZEBFGKQWWEKG.png/main",
+            avatar("pubky://bzbjrj9a8/pub/social/v1/files/8Z8CWH8NVYQY39ZEBFGKQWWEKG.png"),
+        )
+        assertNull(avatar("pubky://bzbjrj9a8/pub/social/v1/files/a/b.png"))
+    }
+
+    @Test
     fun displayNameWinsOverPubky() {
         assertEquals('C', identity(displayName = "Cosmic-Crystal-Panda").avatarInitial)
     }

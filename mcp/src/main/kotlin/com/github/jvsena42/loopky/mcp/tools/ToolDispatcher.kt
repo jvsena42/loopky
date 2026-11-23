@@ -136,6 +136,7 @@ class ToolDispatcher(
     @Suppress("CyclomaticComplexMethod") // one arm per served command, as the CLI's `route`
     private suspend fun route(args: Args, tenant: Tenant, notes: MutableList<String>): CommandResult {
         val note: (String) -> Unit = { notes += it }
+        if (args.verb in TAG_WRITING_VERBS && !tenant.session.canWriteDeckTags) note(OLD_SCOPE_NOTE)
         // Progress is a counter for a terminal; a tool result carries the totals. Dropped.
         val progress: (String) -> Unit = {}
         return when (args.verb) {
@@ -228,3 +229,10 @@ class ToolDispatcher(
             "The session is still linked; retry in a moment."
     }
 }
+
+/** The tools whose decks carry tags, which a connection older than #616 can no longer index. */
+private val TAG_WRITING_VERBS = setOf("deck create", "deck edit", "import")
+
+private const val OLD_SCOPE_NOTE =
+    "This connection was made before Loopky asked for the tag folders, so this deck's tags will stop " +
+        "reaching discovery. Ask the user to reconnect the Loopky connector."

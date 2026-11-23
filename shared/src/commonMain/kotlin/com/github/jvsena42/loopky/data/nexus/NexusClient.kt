@@ -29,7 +29,28 @@ class NexusClient(
      * Public because the indexer also serves profile pictures, which callers build URLs for.
      */
     val baseUrl: String,
+    /** Told when the indexer answers 410 or 426; null where nothing shows a force-update screen. */
+    private val compatibility: ClientCompatibility? = null,
 ) {
+
+    private suspend fun fetch(url: String): Result<String> =
+        http.get(url).onFailure { error ->
+            if ((error as? HttpError)?.statusCode in ClientCompatibility.OUTDATED_STATUSES) {
+                compatibility?.markOutdated()
+            }
+        }
+
+    /**
+     * Whether this indexer runs pubky/pubky-nexus#1129, which reads `/pub/social/v1/`. Its `/v1`
+     * API came with it, so `/v1/info` answers 200 there and 404 on an older one. Any other answer
+     * throws: a guess either way would start or withhold a migration (#616).
+     */
+    suspend fun servesSocialV1(): Boolean {
+        val answer = http.get("$baseUrl/v1/info")
+        val error = answer.exceptionOrNull() ?: return true
+        if ((error as? HttpError)?.statusCode == HTTP_NOT_FOUND) return false
+        throw error
+    }
 
     /** Tag labels starting with [prefix] — powers tag-input autocomplete. */
     suspend fun searchTagsByPrefix(
@@ -38,7 +59,7 @@ class NexusClient(
     ): Result<List<String>> = runSuspendCatching {
         val encoded = encodeUriComponent(prefix)
         withIndexerRetry("searchTagsByPrefix") {
-            val body = http.get("$baseUrl/v0/search/tags/by_prefix/$encoded?limit=$limit").getOrThrow()
+            val body = fetch("$baseUrl/v0/search/tags/by_prefix/$encoded?limit=$limit").getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
         }
     }
@@ -56,7 +77,7 @@ class NexusClient(
         val url = "$baseUrl/v0/search/users/by_name/${encodeUriComponent(prefix)}" +
             "?limit=${limit.coerceIn(1, MAX_USER_SEARCH_LIMIT)}"
         withIndexerRetry("searchUsersByName") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
         }
     }
@@ -73,16 +94,16 @@ class NexusClient(
         val url = "$baseUrl/v0/search/users/by_id/${encodeUriComponent(prefix)}" +
             "?limit=${limit.coerceIn(1, MAX_USER_SEARCH_LIMIT)}"
         withIndexerRetry("searchUsersById") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
         }
     }
 
     /**
-     * Loopky resources carrying [label] — the label → URIs read behind global browse. Only tag
-     * records written outside the pubky.app namespace reach this index, which is why deck tags live
-     * under `/pub/loopky/tags/`. `app` is that namespace, so this cannot return another app's
-     * resources.
+     * Resources carrying [label] — the label → URIs read behind global browse. The stream is not
+     * scoped to Loopky: a label is shared by every app and by tagged web URLs, so callers must keep
+     * only the subjects they recognise (`PubkyUris.parseDeckManifest`). Nexus answers the old `app`
+     * filter with a 400 from pubky/pubky-nexus#1129 on.
      *
      * [skip] indexes the indexer's *raw* sorted set, not the entries that come back: Nexus drops a
      * resource whose details no longer resolve, so a page is routinely shorter than [limit] with
@@ -125,14 +146,13 @@ class NexusClient(
     ): List<NexusResourceDto> {
         val url = buildString {
             append("$baseUrl/v0/stream/resources")
-            append("?app=$LOOPKY_APP")
-            append("&tags=${encodeUriComponent(label)}")
+            append("?tags=${encodeUriComponent(label)}")
             append("&sorting=${sorting.wire}")
             append("&limit=${limit.coerceIn(1, MAX_RESOURCE_LIMIT)}")
             append("&skip=$skip")
         }
         return withIndexerRetry("resourcesByTag") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(NexusResourceDto.serializer()), body)
         }
     }
@@ -147,7 +167,7 @@ class NexusClient(
             "&limit_tags=$MAX_TAGS_PER_RESOURCE" +
             "&limit_taggers=1"
         withIndexerRetry("resourceByUri") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(NexusResourceTagsDto.serializer(), body)
         }
     }
@@ -178,7 +198,7 @@ class NexusClient(
             "?tags=${encodeUriComponent(label)}" +
             "&limit=${limit.coerceIn(1, MAX_PROFILE_TAG_LIMIT)}"
         withIndexerRetry("usersByProfileTag") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(NexusScoredUserDto.serializer()), body)
                 .map { it.user_id }
         }
@@ -196,7 +216,7 @@ class NexusClient(
         val url = "$baseUrl/v0/search/posts/by_tag/${encodeUriComponent(label)}" +
             "?limit=${limit.coerceIn(1, MAX_POST_SEARCH_LIMIT)}"
         withIndexerRetry("postAuthorsByTag") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(NexusPostKeyDto.serializer()), body)
                 .mapNotNull { it.post_key.substringBefore(':').takeIf { author -> author.isNotEmpty() } }
                 .distinct()
@@ -215,7 +235,7 @@ class NexusClient(
         val url = "$baseUrl/v0/user/${encodeUriComponent(userId)}/taggers/${encodeUriComponent(label)}" +
             "?limit=${limit.coerceIn(1, MAX_USER_TAGGERS_LIMIT)}"
         withIndexerRetry("userTaggers") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(NexusTaggersDto.serializer(), body).users
         }
     }
@@ -225,7 +245,7 @@ class NexusClient(
         val url = "$baseUrl/v0/user/${encodeUriComponent(userId)}/taggers/${encodeUriComponent(label)}" +
             "?limit=1&viewer_id=${encodeUriComponent(tagger)}"
         withIndexerRetry("isTaggedBy") {
-            loopkyJson.decodeFromString(NexusTaggersDto.serializer(), http.get(url).getOrThrow()).relationship
+            loopkyJson.decodeFromString(NexusTaggersDto.serializer(), fetch(url).getOrThrow()).relationship
         }
     }
 
@@ -242,7 +262,7 @@ class NexusClient(
         val url = "$baseUrl/v0/user/${encodeUriComponent(userId)}/followers" +
             "?limit=${limit.coerceIn(1, MAX_FOLLOWS_LIMIT)}"
         withIndexerRetry("followers") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
         }
     }
@@ -250,9 +270,7 @@ class NexusClient(
     companion object {
         private const val TAG = "Loopky/Nexus"
         private const val HTTP_BAD_REQUEST = 400
-
-        /** The `/pub/{app}/tags/` segment Loopky writes deck tag records under. */
-        const val LOOPKY_APP = "loopky"
+        private const val HTTP_NOT_FOUND = 404
 
         /** Nexus rejects a shorter pubky prefix than this on `/search/users/by_id`. */
         const val MIN_USER_ID_PREFIX = 3

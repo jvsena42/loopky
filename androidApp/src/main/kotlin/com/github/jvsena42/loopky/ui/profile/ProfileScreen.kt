@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.ui.profile
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,7 +34,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -66,6 +66,7 @@ import com.github.jvsena42.loopky.R
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
 import com.github.jvsena42.loopky.presentation.profile.FollowSource
 import com.github.jvsena42.loopky.presentation.profile.ProfileEffect
+import com.github.jvsena42.loopky.presentation.profile.ProfileSaveError
 import com.github.jvsena42.loopky.presentation.profile.ProfileUiState
 import com.github.jvsena42.loopky.presentation.profile.ProfileViewModel
 import com.github.jvsena42.loopky.ui.components.LoopkyLoadingScreen
@@ -101,7 +102,6 @@ fun ProfileRoute(
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val currentSignedOut by rememberUpdatedState(onSignedOut)
-    var errorMessage by remember { mutableStateOf<String?>(null) }
     var shareTarget by remember { mutableStateOf<ShareLinkTarget?>(null) }
 
     LaunchedEffect(viewModel) {
@@ -121,7 +121,6 @@ fun ProfileRoute(
                 )
                 is ProfileEffect.CopyToClipboard -> clipboard.setText(AnnotatedString(effect.text))
                 is ProfileEffect.OpenUrl -> context.openUrl(effect.url)
-                is ProfileEffect.ShowError -> { errorMessage = effect.message }
             }
         }
     }
@@ -130,7 +129,6 @@ fun ProfileRoute(
     val currentOpenFollows by rememberUpdatedState(onOpenFollows)
     ProfileScreen(
         state = state,
-        errorMessage = errorMessage,
         onOpenSettings = onOpenSettings,
         onOpenFollows = { source ->
             state.identity?.let { currentOpenFollows(it.pubky, source) }
@@ -147,7 +145,6 @@ fun ProfileRoute(
         onEditNameChanged = viewModel::onEditNameChanged,
         onEditBioChanged = viewModel::onEditBioChanged,
         onSaveClick = viewModel::onSaveClick,
-        onDismissError = { errorMessage = null },
     )
 
     ShareLinkSheetHost(target = shareTarget, onDismiss = { shareTarget = null })
@@ -157,7 +154,6 @@ fun ProfileRoute(
 @Composable
 private fun ProfileScreen(
     state: ProfileUiState,
-    errorMessage: String?,
     onOpenSettings: () -> Unit,
     onOpenFollows: (FollowSource) -> Unit,
     onEditProfileClick: () -> Unit,
@@ -172,7 +168,6 @@ private fun ProfileScreen(
     onEditNameChanged: (String) -> Unit,
     onEditBioChanged: (String) -> Unit,
     onSaveClick: () -> Unit,
-    onDismissError: () -> Unit,
 ) {
     // Settings confirms sign-out and reassures that decks stay on the homeserver; this button
     // used to sign out immediately, which is a surprising outcome for one stray tap.
@@ -347,36 +342,14 @@ private fun ProfileScreen(
         StatusBarScrim(color = colors.surfacePrimary)
     }
 
-    // --- Error snackbar ---
-    if (errorMessage != null) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            Snackbar(
-                containerColor = colors.dangerSoft,
-                contentColor = colors.srsAgain,
-                action = {
-                    TextButton(
-                        onClick = onDismissError,
-                        colors = ButtonDefaults.textButtonColors(contentColor = colors.srsAgain),
-                    ) {
-                        Text(text = stringResource(R.string.profile_dismiss), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                },
-            ) {
-                Text(text = errorMessage, fontSize = 13.sp)
-            }
-        }
-    }
-
     // --- Edit Profile Sheet ---
     if (state.showEditSheet) {
         EditProfileSheet(
             editName = state.editName,
             editBio = state.editBio,
+            showNameError = state.showNameError,
+            showBioError = state.showBioError,
+            saveError = state.editSaveError,
             isSaving = state.isSaving,
             onDismiss = onDismissEditSheet,
             onNameChanged = onEditNameChanged,
@@ -391,6 +364,9 @@ private fun ProfileScreen(
 private fun EditProfileSheet(
     editName: String,
     editBio: String,
+    showNameError: Boolean,
+    showBioError: Boolean,
+    saveError: ProfileSaveError?,
     isSaving: Boolean,
     onDismiss: () -> Unit,
     onNameChanged: (String) -> Unit,
@@ -445,12 +421,10 @@ private fun EditProfileSheet(
                         )
                     },
                     singleLine = true,
+                    isError = showNameError,
+                    supportingText = fieldError(showNameError, R.string.profile_edit_name_error),
                     shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = colors.accentPrimary,
-                        unfocusedBorderColor = colors.borderSubtle,
-                        cursorColor = colors.accentPrimary,
-                    ),
+                    colors = editFieldColors(),
                 )
             }
 
@@ -477,12 +451,24 @@ private fun EditProfileSheet(
                     placeholder = {
                         Text(stringResource(R.string.profile_edit_bio_placeholder), fontSize = 15.sp, color = colors.foregroundMuted)
                     },
+                    isError = showBioError,
+                    supportingText = fieldError(showBioError, R.string.profile_edit_bio_error),
                     shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = colors.accentPrimary,
-                        unfocusedBorderColor = colors.borderSubtle,
-                        cursorColor = colors.accentPrimary,
+                    colors = editFieldColors(),
+                )
+            }
+
+            if (saveError != null) {
+                Text(
+                    text = stringResource(
+                        when (saveError) {
+                            ProfileSaveError.Failed -> R.string.profile_save_failed
+                            ProfileSaveError.NeedsSignIn -> R.string.profile_save_sign_in_again
+                        },
                     ),
+                    fontSize = 13.sp,
+                    color = colors.danger,
+                    modifier = Modifier.testTag("profile_edit_save_error"),
                 )
             }
 
@@ -503,6 +489,23 @@ private fun EditProfileSheet(
         }
     }
 }
+
+private fun fieldError(show: Boolean, @StringRes message: Int): (@Composable () -> Unit)? =
+    if (show) {
+        { Text(stringResource(message)) }
+    } else {
+        null
+    }
+
+@Composable
+private fun editFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = LoopkyTheme.colors.accentPrimary,
+    unfocusedBorderColor = LoopkyTheme.colors.borderSubtle,
+    cursorColor = LoopkyTheme.colors.accentPrimary,
+    errorBorderColor = LoopkyTheme.colors.danger,
+    errorSupportingTextColor = LoopkyTheme.colors.danger,
+    errorCursorColor = LoopkyTheme.colors.danger,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 /** Avatar, name, pubky and the two things you can do with your own profile. */
@@ -887,7 +890,6 @@ private fun ProfileScreenPreview() {
                 libraryCountsKnown = true,
                 dueCountKnown = true,
             ),
-            errorMessage = null,
             onOpenSettings = {},
             onOpenFollows = {},
             onEditProfileClick = {},
@@ -902,7 +904,6 @@ private fun ProfileScreenPreview() {
             onEditNameChanged = {},
             onEditBioChanged = {},
             onSaveClick = {},
-            onDismissError = {},
         )
     }
 }

@@ -657,8 +657,10 @@ study, each on its own line with an emoji.
 
 ## Limits worth knowing
 
-- The session can write only Loopky's own data (`/pub/loopky/`). It cannot post, follow or edit a
-  profile, and widening that is not an option.
+- The session can write Loopky's own data (`/pub/loopky/`) and tags. It cannot post, follow or edit
+  a profile, and widening that is not an option. If `loopky` warns that the login predates the tag
+  scope, or a connector result asks to reconnect, the user has to sign in again once, or the decks'
+  tags stop reaching discovery.
 - Published decks are public. There are no private decks.
 - With the CLI, a headless box with nobody at a phone can use `LOOPKY_SESSION`, minted with
   `loopky login --export` on a machine where the user can approve. It is a bearer token: never echo

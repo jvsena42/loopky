@@ -16,6 +16,14 @@ class PubkyUrisTest {
     }
 
     @Test
+    fun recognisesASocialV1ProfileAndPostReference() {
+        assertTrue(PubkyUris.isProfile("pubky://$PUBKY/pub/social/v1/profile.json"))
+        assertTrue(PubkyUris.isPost("pubky://$PUBKY/pub/social/v1/posts/0034A0X7NJ52G"))
+        // A version's file is not the post's address; tags name the versionless reference.
+        assertTrue(!PubkyUris.isPost("pubky://$PUBKY/pub/social/v1/posts/0034A0X7NJ52G/0034A0X7NJ52G.json"))
+    }
+
+    @Test
     fun rejectsNonProfileUris() {
         assertTrue(!PubkyUris.isProfile("pubky://$PUBKY/pub/loopky/decks/d1/manifest.json"))
         assertTrue(!PubkyUris.isProfile("pubky://$PUBKY/pub/pubky.app/profile.json/extra"))

@@ -91,11 +91,11 @@ private struct AppStoreUpdateSheet: View {
     }
 }
 
-private struct AppStoreLookup: Decodable {
+struct AppStoreLookup: Decodable {
     let results: [AppStoreListing]
 }
 
-private struct AppStoreListing: Decodable {
+struct AppStoreListing: Decodable {
     let version: String
     let trackViewUrl: URL
 

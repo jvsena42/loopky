@@ -419,7 +419,7 @@ Reads in use today:
 | Call | Endpoint | Used for |
 |---|---|---|
 | `searchTagsByPrefix` | `/v0/search/tags/by_prefix/{prefix}` | tag autocomplete (no caller yet — but it *does* reach deck labels, unlike the hot list) |
-| `resourcesByTag` | `/v0/stream/resources?app=loopky&tags=…&sorting=…&skip=…` | global deck browse (paged, `timeline`) **and** client-side deck-tag topics (`taggers_count`) |
+| `resourcesByTag` | `/v0/stream/resources?tags=…&sorting=…&skip=…` | global deck browse (paged, `timeline`) **and** client-side deck-tag topics (`taggers_count`). Not scoped to Loopky: every caller keeps only deck manifests (`PubkyUris.parseDeckManifest`) |
 | `resourceByUri` | `/v0/resource/by-uri` | per-deck tagger counts ("N followers") |
 | `usersByProfileTag` | `/v0/search/users/by_tags?tags=…` | the `loopky-user` directory — **404 on prod until it redeploys, see §7.7 point 9** |
 | `postAuthorsByTag` | `/v0/search/posts/by_tag/{label}` | deck-announcement authors, the directory's second source |
@@ -518,6 +518,24 @@ Non-obvious and invisible from Loopky's side — a rejected tag produces no erro
 it simply never appears. Verified against `pubky-nexus` and `pubky-app-specs` sources and
 live against staging (issue #40).
 
+**0. Since pubky/pubky-nexus#1129 the subject decides, not the folder (#616).** Nexus reads tag
+records only from `/pub/pubky.app/tags/` and `/pub/social/v1/tags/` (the latter for a user
+pubky.app has migrated), and routes each by its subject: a profile or post joins the user/post
+graph, a deck manifest, URL or file becomes a generic resource. `/pub/loopky/tags/` is skipped for
+PUT and DEL alike; edges indexed from it before stay. Staging runs this since 2026-11-20, production
+not yet, so **a deck tag is written to both `/pub/loopky/tags/` and `/pub/pubky.app/tags/`** with
+the same id until production moves, and removing a tag that only the Loopky folder holds writes it
+under pubky.app and deletes it there, so the DEL reaches the edge. Drop the Loopky copy once
+production has deployed.
+
+This couples Loopky's deck discovery to pubky.app while a user is `v0`: tags on Loopky's own decks
+live in another app's namespace, and the CLI and MCP scopes reach into it (§13.2). Nexus declined
+to index `social/v1/tags/` for `v0` users or app folders again (pubky/pubky-nexus#1247), so the way
+out is moving the account to `v1`, which Loopky does itself for the accounts only it wrote to
+(§8.0).
+
+Points 1 and 2 below describe the Nexus before #1129, which production still runs.
+
 **1. Two ingest paths, chosen by the tag record's own namespace.** A record at
 `/pub/pubky.app/tags/{id}` is re-parsed against the pubky.app URI grammar and accepted only
 if its subject is a pubky.app **post or profile**
@@ -529,28 +547,29 @@ generic **resource**, whatever URI it is.
 | Subject | Record must live at | Indexed as | Readable via |
 |---|---|---|---|
 | `pubky://{id}/pub/pubky.app/profile.json` | `/pub/pubky.app/tags/{id}` | user | `/v0/user/{id}/tags`, `/v0/user/{id}/taggers/{label}`, `/v0/search/users/by_tags`, `/v0/tags/hot` |
-| `pubky://{author}/pub/loopky/decks/{id}/manifest.json` | `/pub/loopky/tags/{id}` | resource | `/v0/stream/resources?app=loopky`, `/v0/resource/by-uri` |
+| `pubky://{author}/pub/loopky/decks/{id}/manifest.json` | `/pub/loopky/tags/{id}` before #1129, `/pub/pubky.app/tags/{id}` after | resource | `/v0/stream/resources?tags=…`, `/v0/resource/by-uri` |
 
-`TagRepositoryImpl` routes on the subject for exactly this reason.
+`TagRepositoryImpl` writes both deck copies for exactly this reason.
 
-**2. `app` is the record's path segment, verbatim.** Nothing about it derives from the
-subject URI. Loopky resources are `app=loopky` because records live at `/pub/loopky/tags/`;
-`app=loopky.app` would match nothing. (Live check: `?app=mapky.app` returns mapky's
-resources, `?app=mapky` returns none.)
+**2. The resource stream cannot be scoped to Loopky.** It used to take `app`, the tag record's
+path segment, and Loopky asked for `app=loopky`. pubky/pubky-nexus#1129 answers `app` with a 400
+(staging since 2026-11-20), so the stream now returns every app's resources and tagged web URLs
+for a label. Every read keeps only subjects `PubkyUris.parseDeckManifest` accepts, which it had to
+anyway, since anyone can tag any URI.
 
 **3. Resource tags never trend.** `/v0/tags/hot` and `/v0/tags/taggers/{label}` are
 restricted to `Post|User` targets (`nexus-common/src/db/graph/queries/get.rs:614-640`) — and the
 latter is unusable even for those, see point 9 — so
 **deck labels — including `loopky-deck` — cannot appear in the trending row**. Only
 `loopky-user`, a profile tag, can. Trending over deck tags therefore has to be aggregated
-client-side from `/v0/stream/resources?app=loopky&sorting=taggers_count` — which is what
+client-side from `/v0/stream/resources?tags=loopky-deck&sorting=taggers_count` — which is what
 `TagRepository.trendingDeckTags` does (#26): one request, labels grouped and ranked by how many
 distinct decks carry them. The stream returns each resource's *whole* label list with per-label
 tagger counts, which is what makes this possible from a single call.
 
 **4. A deck is also labelled with each language it declares.** Picking a language in the
 publish flow or the deck editor adds an ordinary tag — `"spanish"` for `es-ES` — to the deck's
-tag list, so `/v0/stream/resources?app=loopky` can answer "Spanish decks" for someone with no
+tag list, so `/v0/stream/resources?tags=spanish` can answer "Spanish decks" for someone with no
 follow relationship to the author. Three details:
 
 - **An ordinary label, not a reserved one.** It lives in `Deck.tags` and goes out through the same
@@ -938,6 +957,52 @@ Cards are batched rather than stored one record per card, and the manifest carri
 - Subscriptions live on the **follower's** homeserver, author-keyed for the same reason SRS is. A record's *existence* means "I follow this deck"; see the schema below.
 - `{sha256}` is the hex digest of the blob; acts as a content address and enables per-deck dedupe.
 - `.ext` is informational; MIME is carried in the card's media ref.
+
+**Social records and the epoch rule (#616).** Profile, follows, blocks, posts and tags are not
+Loopky's; they sit in the shared social layout, and which one depends on the user:
+
+| Record | `v0` (pubky-app-specs 0.x) | `v1` (pubky-social-specs 1.x) |
+|---|---|---|
+| profile | `/pub/pubky.app/profile.json` | `/pub/social/v1/profile.json` |
+| follow | `/pub/pubky.app/follows/{pubky}` | `/pub/social/v1/follows/{pubky}.json` |
+| block (mute) | `/pub/pubky.app/mutes/{pubky}` | `/priv/social/v1/mutes/{pubky}.json`, private |
+| post | `/pub/pubky.app/posts/{id}` | `/pub/social/v1/posts/{id}/{id}.json`, referenced as `posts/{id}` |
+| tag | `/pub/pubky.app/tags/{id}` | `/pub/social/v1/tags/{id}.json` |
+
+A user is `v1` once `/pub/social/v1/profile.json` exists on their homeserver: Nexus flips them when
+it handles that write and ignores their `pubky.app` writes from then on, handling one homeserver's
+events in order. `SocialEpochs` reads that file, not Nexus's `epoch` field, which can lag; `v1` is
+kept for good and `v0` re-read after five minutes. `SocialLayout` holds both path sets. A `v1` post's
+`embed` is the URI string and its short kind is `note` (`SocialPostDto`).
+
+**Loopky moves its own accounts (#616).** pubky.app migrates the accounts that use it, with
+`pubky-social-migrator`. An account only Loopky wrote to (`PubkyAppFootprint.LoopkyOnly`, or Empty)
+is nobody else's to move, so `SocialMigrator` copies it the way that migrator would: same post ids,
+`pubky.app` references rewritten to their v1 spelling, tag ids derived again from the rewritten
+subject, mutes moved under `/priv/`, records the v1 reader refuses skipped, the v0 tree left in
+place. It runs in the background on every session load and sign-in, and a profile edit goes through
+it, which is how a new account starts in `v1`. Six things not to undo:
+
+- It waits for production Nexus: `NexusClient.servesSocialV1` asks `/v1/info`, which #1129 added
+  (200 on staging, 404 on production today). No flag to flip at release.
+- `profile.json` is written **last**, because that write is the flip; Nexus ignores every `social/v1`
+  record written before it. An interrupted run changed nothing indexed, and the next one deletes the
+  copies whose source has gone since and writes only what is missing. Neither migrator overwrites a
+  file the other wrote. A profile v1 refuses (a name outside 3–50 characters, a bio over 160) is
+  never the flip.
+- `/priv/social/v1/_migrated.json` follows the flip, in the reference's shape. pubky.app's sign-in
+  reads it to know the account is done; without it, its migrator would copy back from the v0 tree
+  everything the user removed since. A launch that finds it missing on a flipped Loopky account
+  writes it. Delete account removes it with the profiles.
+- Every social write runs inside `SocialEpochs.writing`, which holds its layout until the write is
+  done; the copy and the flip run inside `SocialEpochs.exclusive`, which waits for those writes and
+  keeps new ones out, and so does the social half of Delete account. Reads never wait. A write
+  whose cached answer is `v0` asks again, since another device may have flipped the account.
+- The tree is read and planned outside the hold, then read again inside it before the copy and
+  before the flip, so a write that landed in between, or another device's, is not left behind.
+- It needs a session holding `/pub/social/v1/` and `/priv/social/v1/` (#621). An older Ring session
+  is left in `v0` until the user signs in again. The FFI's `put_with_session` refuses `/priv/`
+  URLs, so private records go through `session_put_bytes` and `session_delete`.
 
 **`manifest.json`:**
 
@@ -1726,18 +1791,26 @@ What it cost was **not one `actual`**: five trivial ones, an `ApkgReader` on a J
 `jvmPlatformModule` answering for ~15 bindings. Most are cheap for a headless client, but they all
 have to exist — `:shared` is one Koin graph and a missing binding is a start-up failure.
 
-### 13.2 Capabilities: `/pub/loopky/:rw`, and nothing else
+### 13.2 Capabilities: Loopky's folder and the two tag folders, nothing else
 
-The apps request `DEFAULT_CAPABILITIES` (`/pub/loopky/:rw,/pub/pubky.app/:rw`). The CLI requests
-the first half only, and the guarantee that buys is **structural rather than a flag somebody
-remembered to set**: an agent session cannot write a post, a follow or a profile edit under any
-bug or any prompt injection, because it was never handed the capability.
+The apps request `DEFAULT_CAPABILITIES` (`/pub/loopky/:rw,/pub/pubky.app/:rw,/pub/social/v1/:rw,/priv/social/v1/:rw`;
+the `social/v1` pair since #616, ahead of the migration). The CLI and the MCP
+server request `/pub/loopky/:rw,/pub/pubky.app/tags/:rw,/pub/social/v1/tags/:rw`, and the guarantee
+that buys is **structural rather than a flag somebody remembered to set**: an agent session cannot
+write a post, a follow or a profile edit under any bug or any prompt injection, because it was
+never handed the capability.
 
-It costs less than it first looked, because the premise that deck tagging needs the pubky.app
-namespace is wrong. `TagRepositoryImpl` routes on the *subject*: a deck manifest goes to
-`PubkyPaths.loopkyTag` (`/pub/loopky/tags/`), and only a profile or post subject goes to
-`PubkyPaths.tag` (§7.7). So `deck create --tag …` and the language tags a declared pair puts on a
-deck both work unchanged.
+Until #616 the scope was `/pub/loopky/:rw` alone, because deck tags lived in `/pub/loopky/tags/`.
+pubky/pubky-nexus#1129 stopped indexing that folder (§7.7 point 0), so without the tag folders
+`deck create --tag …` would publish decks nobody can find. The cost: an agent session can now tag
+any post or profile, though it still cannot write one, and the headless client depends on
+pubky.app's namespace. Nexus was asked (pubky/pubky-nexus#1247) for a tag folder no app owns, which would let the
+scope shrink back.
+
+A login or connection from before the change still holds `/pub/loopky/:rw` only. It keeps working
+and writes the Loopky copy of each deck tag, which only the Nexus before #1129 reads. The CLI warns
+on every command (`OLD_SCOPE_WARNING`, "run `loopky login` again"), and the MCP server adds a
+reconnect note to `deck_create`, `deck_edit` and `import` results.
 
 What is actually given up is the pubky.app-native writes a headless deck tool has no business
 making: **announcing** (#39 — a post), tagging a *profile*, and editing `profile.json`. Reading
@@ -2760,7 +2833,7 @@ graph's concern.
 The audience the binary can never reach — Claude with no shell, a phone — gets a hosted remote MCP
 server: one deployment per network (`switchNetwork` is process-global), each a Ktor app that is an
 OAuth 2.1 authorization server *and* the MCP resource it protects. Claude registers dynamically,
-the user approves a **grant** in Pubky Ring for `/pub/loopky/:rw` only, under the server's own
+the user approves a **grant** in Pubky Ring for the CLI's scope only (§13.2), under the server's own
 client id, and every tool call runs a `:cli-core` command on that user's `TenantGraph` (§13.18).
 The tool layer's rules are in CLAUDE.md's `mcp/` bullet; this is the part around it.
 
@@ -2821,14 +2894,14 @@ reviewers; on the VPS a forced-command SSH key can run `deploy.sh` and nothing e
   — but an attacker never shows the victim the page: they open `/authorize` in *their own*
   browser, with a client they registered for free, and put the `pubkyauth://` QR it renders on a
   site they control, under any wording they like. The victim scans it, Ring shows a request for
-  `/pub/loopky/:rw` from the relay and nothing the server can put a name to, and the approval
+  the CLI's scope from the relay and nothing the server can put a name to, and the approval
   lands in the attacker's flow. This is inherent to the relay model: the grant is decided between
   Ring and the relay, and the server learns of it afterwards. What the server's pieces do and do
   not buy against it, honestly. **Pinning registration to Claude's callback** means the code can
   only be redeemed through `claude.ai`, so the attacker ends up with the victim's decks linked to
   *their own Claude account* rather than with a raw bearer in a script — bounded by Claude's
   connector behaviour and attributable to that account, but still the victim's decks. **The
-  scope** bounds what is reachable: `/pub/loopky/:rw`, never a post, a follow or the profile.
+  scope** bounds what is reachable: decks, cards and tags, never a post, a follow or the profile.
   **Ring lists the grant** under `mcp.loopky.app`, apart from the phone's, so the victim can
   revoke it there, and `admin revoke-all` ends every grant at once. What would close it is a
   client name Ring shows and the server cannot forge — a signed request the relay carries through

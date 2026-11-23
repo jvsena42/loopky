@@ -16,6 +16,10 @@ import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.PubkyUris
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.pubky.SocialEpochs
+import com.github.jvsena42.loopky.data.pubky.SocialLayout
+import com.github.jvsena42.loopky.data.pubky.SocialPostDto
+import com.github.jvsena42.loopky.data.pubky.SocialPostKinds
 import com.github.jvsena42.loopky.data.pubky.deleteWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.isNotFound
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
@@ -89,6 +93,7 @@ class DiscoveryRepositoryImpl(
     private val blockedAccounts: BlockedAccounts = BlockedAccounts(pubky, session),
     private val friendReports: FriendReports = FriendReports(nexus, session),
     private val moderatorFlags: ModeratorFlags = ModeratorFlags(nexus, environment.moderationBotPubky),
+    private val epochs: SocialEpochs = SocialEpochs(pubky),
 ) : DiscoveryRepository {
 
     /** Followee pubkys for the session, or null until first loaded from the homeserver. */
@@ -110,9 +115,7 @@ class DiscoveryRepositoryImpl(
         // homeserver" must not render as "you follow nobody". Paged, because `follows/` is shared
         // with pubky.app proper — an account active there passes the 100-record default page
         // easily, and a truncated set makes `isFollowing` deny someone you do follow.
-        val entries = pubky.listAllEntries(PubkyPaths.followsRoot(owner))
-            .getOrElse { if (it.isNotFound()) null else throw it }
-        val followees = entries?.let(::parseFollowees) ?: emptyList()
+        val followees = followeesOf(owner)
         cacheLock.withLock {
             cache = followees.toMutableSet()
             cacheAccount.mark()
@@ -124,9 +127,14 @@ class DiscoveryRepositoryImpl(
 
     override suspend fun followUser(pubky: String): Result<Unit> = runSuspendCatching {
         val owner = session.requireSession().identity.pubky
-        val body = loopkyJson.encodeToString(FollowDto(created_at = epochMillis()))
-        this.pubky.putWithSessionRetry(PubkyPaths.follow(owner, pubky), body, session, revalidator)
-            .getOrThrow()
+        epochs.writing(owner) { layout ->
+            // pubky.app has always written microseconds; Loopky wrote milliseconds to v0, which no
+            // reader compares. A v1 record follows the spec.
+            val createdAt = if (layout == SocialLayout.SocialV1) epochMillis() * MICROS_PER_MILLI else epochMillis()
+            val body = loopkyJson.encodeToString(FollowDto(created_at = createdAt))
+            this.pubky.putWithSessionRetry(layout.follow(owner, pubky), body, session, revalidator)
+                .getOrThrow()
+        }
         // Updates the cache only if it has already been loaded, matching `followDeck`'s handling
         // of the subscription map. Seeding it from a single follow — which is what this did —
         // published a one-element set as the complete follow list to the next `following()`, and
@@ -137,8 +145,9 @@ class DiscoveryRepositoryImpl(
 
     override suspend fun unfollowUser(pubky: String): Result<Unit> = runSuspendCatching {
         val owner = session.requireSession().identity.pubky
-        this.pubky.deleteWithSessionRetry(PubkyPaths.follow(owner, pubky), session, revalidator)
-            .getOrThrow()
+        epochs.writing(owner) { layout ->
+            this.pubky.deleteWithSessionRetry(layout.follow(owner, pubky), session, revalidator).getOrThrow()
+        }
         cacheLock.withLock { cache?.remove(pubky) }
         Unit
     }
@@ -154,8 +163,9 @@ class DiscoveryRepositoryImpl(
         val owner = session.requireSession().identity.pubky
         require(pubky != owner) { "You cannot block yourself" }
         val body = loopkyJson.encodeToString(MuteDto(created_at = epochMillis() * MICROS_PER_MILLI))
-        this.pubky.putWithSessionRetry(PubkyPaths.mute(owner, pubky), body, session, revalidator)
-            .getOrThrow()
+        epochs.writing(owner) { layout ->
+            this.pubky.putWithSessionRetry(layout.mute(owner, pubky), body, session, revalidator).getOrThrow()
+        }
         blockedAccounts.add(pubky)
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = true))
         dropFollowsOf(pubky)
@@ -164,8 +174,9 @@ class DiscoveryRepositoryImpl(
 
     override suspend fun unblockUser(pubky: String): Result<Unit> = runSuspendCatching {
         val owner = session.requireSession().identity.pubky
-        this.pubky.deleteWithSessionRetry(PubkyPaths.mute(owner, pubky), session, revalidator)
-            .getOrThrow()
+        epochs.writing(owner) { layout ->
+            this.pubky.deleteWithSessionRetry(layout.mute(owner, pubky), session, revalidator).getOrThrow()
+        }
         blockedAccounts.remove(pubky)
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = false))
         Unit
@@ -209,7 +220,8 @@ class DiscoveryRepositoryImpl(
             ),
         ).getOrThrow()
         // Best-effort, like every reserved-tag write: the report has already reached the moderators.
-        tagRepository.putReservedTag(PubkyUri(PubkyPaths.profile(target)), ReservedTags.REPORTED)
+        val targetProfile = runSuspendCatching { epochs.layoutOf(target) }.getOrDefault(SocialLayout.Legacy).profile(target)
+        tagRepository.putReservedTag(PubkyUri(targetProfile), ReservedTags.REPORTED)
             .onFailure { Log.w(TAG, "report: tag FAILED — ${it.message}") }
         ReportOutcome(blocked = blockUser(target).isSuccess)
     }.onFailure { Log.w(TAG, "report: FAILED — ${it.message}", it) }
@@ -258,53 +270,31 @@ class DiscoveryRepositoryImpl(
             // nothing reaches the homeserver, and three separate ViewModels each remembering to
             // check is three chances to post behind the user's back.
             check(preferences.shareOnPubky.first()) { "Sharing on Pubky is turned off" }
-            val owner = session.requireSession().identity.pubky
-            // Microseconds is what pubky-app-specs encodes, and epochMillis() is the only clock
-            // commonMain has. Two announcements inside one millisecond would land on one id, which
-            // takes two taps a millisecond apart — the id is a timestamp, not a uniqueness claim.
-            val postId = PostIds.create(epochMillis() * MICROS_PER_MILLI)
-            val body = loopkyJson.encodeToString(
-                PostDto(
-                    content = announcement.content,
-                    // A link post either way: the body always carries the deck's URI, and the cover
-                    // travels as a link in the body too. `attachments` is left empty on purpose —
-                    // pubky.app resolves it strictly as pubky.app file records, so a URL there was
-                    // invisible. See DeckAnnouncement.content.
-                    kind = PostKinds.LINK,
-                    // A `short` embed is how Nexus spells "repost", and it then demands the
-                    // embedded URI already be an indexed post — see PostKinds.
-                    embed = PostEmbedDto(kind = PostKinds.LINK, uri = announcement.deckUri.value),
-                ),
-            )
-            val path = PubkyPaths.post(owner, postId)
-            this.pubky.putWithSessionRetry(path, body, session, revalidator).getOrThrow()
-            Log.d(TAG, "announceDeck: ${announcement.kind} -> $path")
-            val uri = PubkyUri(path)
-            tagAnnouncement(uri, announcement.tags)
-            uri
+            // A link post either way: the body always carries the deck's URI, and the cover travels
+            // as a link in the body too. No attachments on purpose — pubky.app resolves them
+            // strictly as its own file records, so a URL there was invisible. See
+            // DeckAnnouncement.content. A `short` embed is how Nexus spells "repost", and it then
+            // demands the embedded URI already be an indexed post — see PostKinds.
+            inOwnLayout {
+                val uri = writePost(announcement.content, link = announcement.deckUri.value).reference
+                Log.d(TAG, "announceDeck: ${announcement.kind} -> $uri")
+                tagAnnouncement(uri, announcement.tags)
+                uri
+            }
         }.onFailure { Log.w(TAG, "announceDeck: FAILED — ${it.message}", it) }
 
     override suspend fun postRecap(content: String, url: String): Result<PubkyUri> =
         runSuspendCatching {
             require(content.length <= PostKinds.MAX_CONTENT_LENGTH) { "Recap post is too long" }
-            val owner = session.requireSession().identity.pubky
-            val postId = PostIds.create(epochMillis() * MICROS_PER_MILLI)
-            val body = loopkyJson.encodeToString(
-                // The same two constraints as announceDeck: a `link` embed, and no attachments.
-                PostDto(
-                    content = content,
-                    kind = PostKinds.LINK,
-                    embed = PostEmbedDto(kind = PostKinds.LINK, uri = url),
-                ),
-            )
-            val path = PubkyPaths.post(owner, postId)
-            this.pubky.putWithSessionRetry(path, body, session, revalidator).getOrThrow()
-            val uri = PubkyUri(path)
-            // Best-effort, after the post so the subject exists: a failed label must not turn a
-            // post that was written into a failure the reader retries into a second post.
-            tagRepository.putReservedTag(uri, ReservedTags.RECAP)
-                .onFailure { Log.w(TAG, "postRecap: tag FAILED — ${it.message}") }
-            uri
+            // The same two constraints as announceDeck: a `link` embed, and no attachments.
+            inOwnLayout {
+                val uri = writePost(content, link = url).reference
+                // Best-effort, after the post so the subject exists: a failed label must not turn a
+                // post that was written into a failure the reader retries into a second post.
+                tagRepository.putReservedTag(uri, ReservedTags.RECAP)
+                    .onFailure { Log.w(TAG, "postRecap: tag FAILED — ${it.message}") }
+                uri
+            }
         }.onFailure { Log.w(TAG, "postRecap: FAILED — ${it.message}", it) }
 
     override suspend fun postDeckRequest(content: String): Result<PubkyUri> =
@@ -312,22 +302,21 @@ class DiscoveryRepositoryImpl(
             require(content.isNotBlank()) { "Deck request is empty" }
             require(content.length <= PostKinds.MAX_CONTENT_LENGTH) { "Deck request is too long" }
             require(!SignInLinks.isIn(content)) { "Deck request carries a sign-in link" }
-            val owner = session.requireSession().identity.pubky
-            val postId = PostIds.create(epochMillis() * MICROS_PER_MILLI)
-            val body = loopkyJson.encodeToString(PostDto(content = content, kind = PostKinds.SHORT))
-            val path = PubkyPaths.post(owner, postId)
-            this.pubky.putWithSessionRetry(path, body, session, revalidator).getOrThrow()
-            val uri = PubkyUri(path)
-            for (tag in DeckRequests.TAGS) {
-                tagRepository.putTag(uri, tag).onFailure { err ->
-                    // Labels already written stay: a tag on a deleted post indexes nothing.
-                    this.pubky.deleteWithSessionRetry(path, session, revalidator)
-                        .onFailure { Log.w(TAG, "postDeckRequest: rollback FAILED — ${it.message}") }
-                    throw err
+            inOwnLayout {
+                val written = writePost(content, link = null)
+                val path = written.file
+                val uri = written.reference
+                for (tag in DeckRequests.TAGS) {
+                    tagRepository.putTag(uri, tag).onFailure { err ->
+                        // Labels already written stay: a tag on a deleted post indexes nothing.
+                        this.pubky.deleteWithSessionRetry(path, session, revalidator)
+                            .onFailure { Log.w(TAG, "postDeckRequest: rollback FAILED — ${it.message}") }
+                        throw err
+                    }
                 }
+                Log.d(TAG, "postDeckRequest -> $path")
+                uri
             }
-            Log.d(TAG, "postDeckRequest -> $path")
-            uri
         }.onFailure { Log.w(TAG, "postDeckRequest: FAILED — ${it.message}", it) }
 
     /**
@@ -358,9 +347,7 @@ class DiscoveryRepositoryImpl(
             // that no indexer has seen yet.
             following()
         } else {
-            val entries = this.pubky.listAllEntries(PubkyPaths.followsRoot(pubky))
-                .getOrElse { if (it.isNotFound()) null else throw it }
-            entries?.let(::parseFollowees) ?: emptyList()
+            followeesOf(pubky)
         }
         return loopkyAccountsAmong(followees, exclude = pubky)
     }
@@ -779,21 +766,65 @@ class DiscoveryRepositoryImpl(
      * like `friend1","pubky:`. `followUser` seeds the cache optimistically, so that only surfaced on
      * a cold cache — after a restart, when the whole follow feed silently emptied.
      */
-    private fun parseFollowees(entries: List<String>): List<String> =
-        entries.mapNotNull { url ->
-            url.substringAfter(FOLLOWS_MARKER, missingDelimiterValue = "")
-                .substringBefore('/')
-                .takeIf { it.isNotEmpty() }
-        }.distinct()
+    /**
+     * Whom [pubky] follows, listed from the homeserver in the layout their records are in (#616).
+     * Paged, because `follows/` is shared with pubky.app proper.
+     */
+    private suspend fun followeesOf(pubky: String): List<String> {
+        val layout = epochs.layoutOf(pubky)
+        val entries = this.pubky.listAllEntries(layout.followsRoot(pubky))
+            .getOrElse { if (it.isNotFound()) null else throw it }
+        return entries.orEmpty().mapNotNull(layout::followeeOf).distinct()
+    }
+
+    /**
+     * Writes a post in the signed-in user's layout: a `link` post embedding [link], or a plain one
+     * without. The id is a microsecond timestamp ([PostIds]); two posts inside one millisecond would
+     * share it, which takes two taps a millisecond apart.
+     */
+    /**
+     * A post and the labels on it in one layout: a migration between the two would leave the labels
+     * in `social/v1` naming the post by its `pubky.app` address (#616).
+     */
+    private suspend fun <T> inOwnLayout(block: suspend () -> T): T =
+        epochs.writing(session.requireSession().identity.pubky) { block() }
+
+    private suspend fun writePost(content: String, link: String?): WrittenPost {
+        val owner = session.requireSession().identity.pubky
+        return epochs.writing(owner) { layout -> writePostIn(layout, owner, content, link) }
+    }
+
+    private suspend fun writePostIn(layout: SocialLayout, owner: String, content: String, link: String?): WrittenPost {
+        val postId = PostIds.create(epochMillis() * MICROS_PER_MILLI)
+        val body = when (layout) {
+            SocialLayout.Legacy -> loopkyJson.encodeToString(
+                PostDto(
+                    content = content,
+                    kind = if (link != null) PostKinds.LINK else PostKinds.SHORT,
+                    embed = link?.let { PostEmbedDto(kind = PostKinds.LINK, uri = it) },
+                ),
+            )
+            SocialLayout.SocialV1 -> loopkyJson.encodeToString(
+                SocialPostDto(
+                    content = content,
+                    kind = if (link != null) SocialPostKinds.LINK else SocialPostKinds.NOTE,
+                    embed = link,
+                ),
+            )
+        }
+        val file = layout.postVersion(owner, postId)
+        this.pubky.putWithSessionRetry(file, body, session, revalidator).getOrThrow()
+        return WrittenPost(file = file, reference = PubkyUri(layout.post(owner, postId)))
+    }
+
+    /** Where a post was written, and the address tags and embeds name it by. */
+    private data class WrittenPost(val file: String, val reference: PubkyUri)
 
     companion object {
         private const val TAG = "Loopky/DiscoveryRepo"
 
         /** A reporter with no display name is named by the start of their key, as pubky.app shows it. */
         private const val REPORTER_NAME_KEY_CHARS = 8
-
-        /** The segment a follow record's url carries just before the followee's pubky. */
-        private const val FOLLOWS_MARKER = "/pub/pubky.app/follows/"
 
         /** pubky-app-specs post ids are microsecond timestamps; commonMain's clock is millis. */
         private const val MICROS_PER_MILLI = 1_000L

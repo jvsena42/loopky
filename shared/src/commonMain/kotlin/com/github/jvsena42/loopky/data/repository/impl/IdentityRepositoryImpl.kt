@@ -4,7 +4,9 @@ import com.github.jvsena42.loopky.data.pubky.MintedKeypair
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.pubky.ProfileDto
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
-import com.github.jvsena42.loopky.data.pubky.PubkyPaths
+import com.github.jvsena42.loopky.data.pubky.SocialEpoch
+import com.github.jvsena42.loopky.data.pubky.SocialEpochs
+import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.pubky.asSignupUrl
 import com.github.jvsena42.loopky.data.pubky.isNoHomeserverRecord
 import com.github.jvsena42.loopky.data.pubky.isNotFound
@@ -19,6 +21,7 @@ import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.AuthFlowHandle
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
+import com.github.jvsena42.loopky.data.repository.ProfileWriteRefusedException
 import com.github.jvsena42.loopky.data.repository.SignOutOutcome
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.storage.KeyOrigin
@@ -42,11 +45,14 @@ import com.github.jvsena42.loopky.util.encodeUriComponent
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 /**
  * [IdentityRepository] backed by [PubkyClient] and [SecureSessionStore].
@@ -74,6 +80,9 @@ internal class IdentityRepositoryImpl(
      * cannot tell "did not delete" from "has not deleted yet".
      */
     private val scope: CoroutineScope,
+    private val epochs: SocialEpochs = SocialEpochs(pubky),
+    /** Moves a Loopky-only account to `social/v1` (#616); null where nothing migrates. */
+    private val migrator: SocialMigrator? = null,
 ) : IdentityRepository {
 
     override val keyCustody: Flow<KeyCustody> = localKeyStore.custody
@@ -92,6 +101,7 @@ internal class IdentityRepositoryImpl(
             sessionStore.save(session)
         }
         sessionProvider.set(session)
+        migrateInBackground(session)
         selfTagAsLoopkyUser(session)
         followPendingDeck()
         return session
@@ -488,6 +498,10 @@ internal class IdentityRepositoryImpl(
     private suspend fun persistSession(session: Session): Session {
         sessionStore.save(session)
         sessionProvider.set(session)
+        // A sign-in again after Delete account: the account is the user's to use once more.
+        epochs.reinstate(session.identity.pubky)
+        migrator?.forget(session.identity.pubky)
+        migrateInBackground(session)
         selfTagAsLoopkyUser(session)
         followPendingDeck()
 
@@ -543,17 +557,16 @@ internal class IdentityRepositoryImpl(
      */
     private fun selfTagAsLoopkyUser(session: Session) {
         if (selfTaggedThisProcess) return
-        // The subject is a *profile*, so the record goes to `/pub/pubky.app/tags/` (§7.7) — which a
-        // session scoped to `/pub/loopky/:rw` was never granted. Asked rather than attempted: the
-        // headless client (#54) holds exactly that session, and firing anyway would buy a doomed
-        // round trip per command plus a warning about the scope working as designed.
+        // The self-tag announces an account made in the apps. The headless client (#54) holds no
+        // `/pub/pubky.app/:rw`, and its tag scope (#616) is for its decks, so it skips this rather
+        // than self-tagging on every command.
         if (!session.canWritePubkyApp) {
             Log.d(TAG, "selfTag: skipped — this session has no pubky.app write capability")
             return
         }
         selfTaggedThisProcess = true
-        val profileUri = PubkyUri(PubkyPaths.profile(session.identity.pubky))
         scope.launch {
+            val owner = session.identity.pubky
             // Re-checked here, not only at the call site: nothing cancels this, and
             // `AccountEraser` removes exactly this record and treats failing to as fatal, because
             // it is the only thing that takes an account out of Discover and search. A write that
@@ -563,13 +576,55 @@ internal class IdentityRepositoryImpl(
                 selfTaggedThisProcess = false
                 return@launch
             }
-            tagRepository.putReservedTag(profileUri, ReservedTags.USER)
+            // The subject and the tag's folder from one layout: a migration between the two would
+            // put a v1 tag on the pubky.app profile address.
+            runSuspendCatching {
+                epochs.writing(owner) { layout ->
+                    // Asked again inside the hold: an erase retires the account before it takes
+                    // the hold, so this either lands before the erase removes it or sees that.
+                    if (epochs.isRetired(owner)) return@writing
+                    tagRepository.putReservedTag(PubkyUri(layout.profile(owner)), ReservedTags.USER).getOrThrow()
+                }
+            }
                 .onSuccess { Log.d(TAG, "selfTag: ${ReservedTags.USER.value} written") }
                 .onFailure {
                     selfTaggedThisProcess = false
                     Log.w(TAG, "selfTag: FAILED — ${it.message}")
                 }
         }
+    }
+
+    /**
+     * Started before the self-tag and the pending follow, so their writes wait on the migration's
+     * hold in [SocialEpochs] and land in whichever layout it leaves. Nobody waits on the result: a
+     * failed run changed nothing Nexus reads, and the next session load tries again.
+     */
+    private fun migrateInBackground(session: Session) {
+        val migrator = migrator ?: return
+        scope.launch {
+            runSuspendCatching { migrator.migrate(session) }
+                .onSuccess { Log.d(TAG, "migration: $it") }
+                .onFailure { Log.w(TAG, "migration: will retry on the next session load — ${it::class.simpleName}") }
+        }
+    }
+
+    /**
+     * [dto] over [owner]'s current v1 profile. The v1 reader refuses a name outside 3–50 characters
+     * or a bio over 160, and Nexus would drop the edit with it, so that refuses here; `links`,
+     * `status` and any member Loopky does not know are kept, as the spec asks of a rewrite.
+     */
+    private suspend fun socialProfileEdit(owner: String, dto: ProfileDto): String {
+        val edit = socialProfile(dto) ?: error("A name needs 3 to 50 characters, and a bio at most 160.")
+        // A failed read throws rather than reads as empty, which would drop those members.
+        val current = pubky.get(SocialLayout.SocialV1.profile(owner))
+            .fold(onSuccess = { it }, onFailure = { if (it.isNotFound()) null else throw it })
+            ?.let { runCatching { loopkyJson.parseToJsonElement(it) as? JsonObject }.getOrNull() }
+            .orEmpty()
+        val fields = loopkyJson.encodeToJsonElement(SocialProfileDto.serializer(), edit).jsonObject
+        // Loopky never sets a picture, it only carries one forward: a read that missed it must not delete it.
+        val dropped = if (edit.image == null) setOf("bio") else setOf("bio", "image")
+        val merged = current - dropped + fields
+        return loopkyJson.encodeToString(JsonObject.serializer(), JsonObject(merged))
     }
 
     /** Reset on sign-out so the next account announces itself too. */
@@ -588,7 +643,7 @@ internal class IdentityRepositoryImpl(
         }
         return runSuspendCatching {
             Log.d(TAG, "fetchProfile: pubky=${pubky.take(PUBKY_LOG_PREFIX_LEN)}…")
-            val json = this.pubky.get(PubkyPaths.profile(pubky)).getOrThrow()
+            val json = readProfile(pubky)
             val dto = loopkyJson.decodeFromString<ProfileDto>(json)
             dto.toDomain(pubky).also { cacheProfile(it) }
         }.onFailure {
@@ -602,6 +657,19 @@ internal class IdentityRepositoryImpl(
             }
         }
     }
+
+    /**
+     * The profile in whichever layout holds it: `social/v1` first, because once it exists the
+     * pubky.app copy is frozen at the moment the user was migrated (#616). Both fields read the same.
+     */
+    private suspend fun readProfile(pubky: String): String =
+        this.pubky.get(SocialLayout.SocialV1.profile(pubky)).fold(
+            onSuccess = { json -> json.also { epochs.markV1(pubky) } },
+            onFailure = { err ->
+                if (!err.isNotFound()) throw err
+                this.pubky.get(SocialLayout.Legacy.profile(pubky)).getOrThrow()
+            },
+        )
 
     private suspend fun cacheProfile(identity: PubkyIdentity) {
         profileCacheLock.withLock { profileCache[identity.pubky] = identity }
@@ -623,17 +691,29 @@ internal class IdentityRepositoryImpl(
             image = publishedAvatar ?: session.identity.avatarUrl,
         )
         val json = loopkyJson.encodeToString(ProfileDto.serializer(), dto)
-        val putResult = pubky.putWithSession(PubkyPaths.profile(currentPubky), json, session.sessionSecret)
+        // An account still in pubky.app's layout that Loopky may move takes this profile as its flip.
+        val migrated = migrator != null && epochs.of(currentPubky) == SocialEpoch.V0 &&
+            runSuspendCatching { migrator.migrate(session, dto) }.getOrNull() is MigrationOutcome.Migrated
+        val putResult = if (migrated) {
+            Result.success("migrated")
+        } else {
+            epochs.writing(currentPubky) { layout ->
+                val body = if (layout == SocialLayout.SocialV1) socialProfileEdit(currentPubky, dto) else json
+                pubky.putWithSession(layout.profile(currentPubky), body, session.sessionSecret)
+            }
+        }
+        migrator?.forget(currentPubky)
 
         if (putResult.isFailure) {
             val err = putResult.exceptionOrNull()
             if (err?.message?.contains("403") == true || err?.message?.contains("write access") == true) {
-                error("Please sign out and sign back in to enable profile editing.")
+                throw ProfileWriteRefusedException()
             }
             putResult.getOrThrow()
         }
 
-        val updatedIdentity = dto.toDomain(currentPubky)
+        // As stored: v1 keeps the trimmed name and bio.
+        val updatedIdentity = (socialProfile(dto)?.let { dto.copy(name = it.name, bio = it.bio) } ?: dto).toDomain(currentPubky)
         val updatedSession = session.copy(identity = updatedIdentity)
         sessionStore.save(updatedSession)
         sessionProvider.set(updatedSession)
@@ -664,7 +744,21 @@ internal class IdentityRepositoryImpl(
 
         // Throws unless every record Loopky owns is gone, which keeps the sign-out below from
         // stranding a half-deleted account: signing back in is what a retry needs.
-        eraser.erase(pubky, deletePubkyApp, onProgress)
+        // Retired until the next sign-in, not just for the erase: the session lives until signOut.
+        epochs.retire(pubky)
+        var erased = false
+        try {
+            eraser.erase(pubky, deletePubkyApp, onProgress)
+            erased = true
+        } finally {
+            // Cancelled too (leaving Settings mid-sweep): the account is still signed in and in use,
+            // and its directory entry may be gone, so the next profile edit may tag it again.
+            if (!erased) {
+                withContext(NonCancellable) { epochs.reinstate(pubky) }
+                selfTaggedThisProcess = false
+            }
+        }
+        migrator?.forget(pubky)
 
         // So a later sign-in on this process announces the account again rather than believing it did.
         selfTaggedThisProcess = false
