@@ -100,7 +100,7 @@ class DiscoveryRepositorySocialV1Test {
     }
 
     @Test
-    fun `a block is a private mute under priv social v1, read back with the session`() = runTest {
+    fun `a block is a private mute under priv social v1 and is read back with the session`() = runTest {
         repo.blockUser("spammerpk").getOrThrow()
 
         val path = "pubky://$TEST_PUBKY/priv/social/v1/mutes/spammerpk.json"
