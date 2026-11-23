@@ -404,12 +404,26 @@ class IdentityRepositoryDeleteAccountTest {
     }
 
     @Test
+    fun anAccountLoopkyMigratedLosesItsMigrationFlagWithTheProfiles() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        val v1 = SocialLayout.SocialV1
+        val flag = "pubky://$TEST_PUBKY/priv/social/v1/_migrated.json"
+        pubky.store[v1.profile(TEST_PUBKY)] = """{"name":"Ana"}"""
+        pubky.store[flag] = """{"migrated_at":1,"transform_rev":4,"skipped":{},"migrated":[]}"""
+
+        repo.deleteAccount(deletePubkyApp = true).getOrThrow()
+
+        assertFalse(flag in pubky.store)
+        assertTrue(pubky.deletes.indexOf(flag) > pubky.deletes.indexOf(PubkyPaths.mute(TEST_PUBKY, "trollpk")), "with the profiles")
+    }
+
+    @Test
     fun pubkyAppsPrivateStateStopsTheDeleteBeforeAnythingGoes() = runTest {
-        // pubky.app keeps bookmarks, feeds and its migration flag under /priv/social/v1/; only a
-        // session sees them, and any of them means the account used pubky.app.
+        // pubky.app keeps bookmarks and feeds under /priv/social/v1/; only a session sees them,
+        // and any of them means the account used pubky.app.
         seedLoopkyOnlyPubkyApp()
         decks.decks["deck1"] = testDeck(id = "deck1")
-        pubky.store["pubky://$TEST_PUBKY/priv/social/v1/_migrated.json"] = "{}"
+        pubky.store["pubky://$TEST_PUBKY/priv/social/v1/bookmarks/abc.json"] = "{}"
 
         val error = repo.deleteAccount(deletePubkyApp = true).exceptionOrNull()
 

@@ -74,6 +74,15 @@ class IdentityRepositoryMigrationTest {
     }
 
     @Test
+    fun aV1ProfileEditKeepsWhatLoopkyDoesNotWrite() = runTest {
+        pubky.store[v1] = """{"name":"Ana","bio":"old","links":[{"title":"x","url":"https://x.y"}],"status":"busy"}"""
+
+        repo.updateProfile(name = " Ana B ", bio = null).getOrThrow()
+
+        assertEquals("""{"name":"Ana B","links":[{"title":"x","url":"https://x.y"}],"status":"busy"}""", pubky.store[v1])
+    }
+
+    @Test
     fun aShortNameKeepsANewAccountInPubkyAppUntilAValidOne() = runTest {
         repo.updateProfile(name = "Al", bio = null).getOrThrow()
 
@@ -99,7 +108,7 @@ class IdentityRepositoryMigrationTest {
 }
 
 /** A pubky v1 takes as a followee: 52 characters of z-base32. */
-private const val FRIEND = "ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1u"
+private const val FRIEND = "ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1y"
 
 private class SingleSessionStore : SecureSessionStore {
     override val location: String = "in memory"

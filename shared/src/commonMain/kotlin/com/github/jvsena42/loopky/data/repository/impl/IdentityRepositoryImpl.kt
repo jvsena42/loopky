@@ -49,6 +49,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 /**
  * [IdentityRepository] backed by [PubkyClient] and [SecureSessionStore].
@@ -598,6 +600,23 @@ internal class IdentityRepositoryImpl(
         }
     }
 
+    /**
+     * [dto] over [owner]'s current v1 profile. The v1 reader refuses a name outside 3–50 characters
+     * or a bio over 160, and Nexus would drop the edit with it, so that refuses here; `links`,
+     * `status` and any member Loopky does not know are kept, as the spec asks of a rewrite.
+     */
+    private suspend fun socialProfileEdit(owner: String, dto: ProfileDto): String {
+        val edit = socialProfile(dto) ?: error("A name needs 3 to 50 characters, and a bio at most 160.")
+        // A failed read throws rather than reads as empty, which would drop those members.
+        val current = pubky.get(SocialLayout.SocialV1.profile(owner))
+            .fold(onSuccess = { it }, onFailure = { if (it.isNotFound()) null else throw it })
+            ?.let { runCatching { loopkyJson.parseToJsonElement(it) as? JsonObject }.getOrNull() }
+            .orEmpty()
+        val fields = loopkyJson.encodeToJsonElement(SocialProfileDto.serializer(), edit).jsonObject
+        val merged = current - setOf("bio", "image") + fields
+        return loopkyJson.encodeToString(JsonObject.serializer(), JsonObject(merged))
+    }
+
     /** Reset on sign-out so the next account announces itself too. */
     private var selfTaggedThisProcess = false
 
@@ -669,13 +688,11 @@ internal class IdentityRepositoryImpl(
             Result.success("migrated")
         } else {
             epochs.writing(currentPubky) { layout ->
-                // v1 refuses what v0 took; Nexus would drop the record and the edit with it.
-                if (layout == SocialLayout.SocialV1 && socialProfile(dto) == null) {
-                    error("A name needs 3 to 50 characters, and a bio at most 160.")
-                }
-                pubky.putWithSession(layout.profile(currentPubky), json, session.sessionSecret)
+                val body = if (layout == SocialLayout.SocialV1) socialProfileEdit(currentPubky, dto) else json
+                pubky.putWithSession(layout.profile(currentPubky), body, session.sessionSecret)
             }
         }
+        migrator?.forget(currentPubky)
 
         if (putResult.isFailure) {
             val err = putResult.exceptionOrNull()
@@ -717,6 +734,7 @@ internal class IdentityRepositoryImpl(
         // Throws unless every record Loopky owns is gone, which keeps the sign-out below from
         // stranding a half-deleted account: signing back in is what a retry needs.
         eraser.erase(pubky, deletePubkyApp, onProgress)
+        migrator?.forget(pubky)
 
         // So a later sign-in on this process announces the account again rather than believing it did.
         selfTaggedThisProcess = false

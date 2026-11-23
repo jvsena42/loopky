@@ -143,7 +143,7 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
     /// `putWithSession` and `deleteWithSession` refuse any URL without `/pub/`, so a `/priv/` record
     /// (a v1 mute, #616) goes through the typed storage calls, which take any path the session can write.
     func putWithSession(url: String, content: String, sessionSecret: String) -> [String] {
-        guard url.contains("/priv/") else {
+        guard isPrivate(url) else {
             return Loopky.putWithSession(url: url, content: content, sessionSecret: sessionSecret)
         }
         return typed {
@@ -164,7 +164,7 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
     }
 
     func deleteWithSession(url: String, sessionSecret: String) -> [String] {
-        guard url.contains("/priv/") else {
+        guard isPrivate(url) else {
             return Loopky.deleteWithSession(url: url, sessionSecret: sessionSecret)
         }
         return typed {
@@ -188,6 +188,13 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
             let page = try Loopky.sessionList(pathOrAddress: url, sessionSecret: sessionSecret, options: options)
             return try utf8(JSONSerialization.data(withJSONObject: page.entries))
         }
+    }
+
+    /// `pubky://{key}/priv/…`: a `/priv/` deeper in a public path is a public record.
+    private func isPrivate(_ url: String) -> Bool {
+        let rest = url.hasPrefix("pubky://") ? url.dropFirst("pubky://".count) : Substring(url)
+        guard let slash = rest.firstIndex(of: "/") else { return false }
+        return rest[rest.index(after: slash)...].hasPrefix("priv/")
     }
 
     private func utf8(_ data: Data) throws -> String {

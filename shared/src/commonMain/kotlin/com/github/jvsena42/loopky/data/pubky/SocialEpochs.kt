@@ -27,8 +27,8 @@ import kotlin.coroutines.coroutineContext
  * `pubky.app` tree and then flips; a write that picked its layout before the copy and landed after
  * it would be lost to the flip, or an unfollow undone by it. [writing] holds the layout until the
  * write is done, and [exclusive] waits for every such write and keeps new ones out. Both are
- * reentrant within one coroutine, so a write inside a write, or [of] inside [exclusive], goes
- * through; [exclusive] inside [writing] would wait for itself, so it throws.
+ * reentrant within one coroutine, so a write inside a write, or inside [exclusive], goes through;
+ * [exclusive] inside [writing] would wait for itself, so it throws. Reads ([of]) never wait.
  */
 class SocialEpochs(
     private val pubky: PubkyClient,
@@ -52,10 +52,15 @@ class SocialEpochs(
 
     private suspend fun held(user: String): Held? = coroutineContext[Held]?.takeIf { it.user == user }
 
-    suspend fun of(user: String): SocialEpoch {
-        if (held(user) == null) awaitNoExclusive(user)
+    /**
+     * Never waits on [exclusive]: before a migration flips the user their records are still in
+     * `pubky.app`, so a read routed there is right, and the flip itself is [markV1].
+     */
+    suspend fun of(user: String): SocialEpoch = of(user, fresh = false)
+
+    private suspend fun of(user: String, fresh: Boolean): SocialEpoch {
         lock.withLock { known[user] }?.let { (epoch, at) ->
-            if (epoch == SocialEpoch.V1 || now() - at < V0_TTL_MILLIS) return epoch
+            if (epoch == SocialEpoch.V1 || (!fresh && now() - at < V0_TTL_MILLIS)) return epoch
         }
         val epoch = pubky.get(SocialLayout.SocialV1.profile(user)).fold(
             onSuccess = { SocialEpoch.V1 },
@@ -68,9 +73,13 @@ class SocialEpochs(
     /** For a read. A write goes through [writing], which keeps the answer true until it is done. */
     suspend fun layoutOf(user: String): SocialLayout = SocialLayout.of(of(user))
 
-    /** Runs [block] with [user]'s layout, which no migration changes until [block] returns. */
+    /**
+     * Runs [block] with [user]'s layout, which no migration of this process changes until [block]
+     * returns. A `v0` answer is asked again rather than read from the cache: another device may
+     * have flipped the user since, and a write routed to `pubky.app` after that is lost.
+     */
     suspend fun <T> writing(user: String, block: suspend (SocialLayout) -> T): T {
-        if (held(user) != null) return block(layoutOf(user))
+        if (held(user) != null) return block(SocialLayout.of(of(user, fresh = true)))
         while (true) {
             val wait = lock.withLock {
                 val gate = gates.getOrPut(user) { Gate() }
@@ -79,7 +88,7 @@ class SocialEpochs(
             wait.await()
         }
         try {
-            return withContext(Held(user, exclusive = false)) { block(layoutOf(user)) }
+            return withContext(Held(user, exclusive = false)) { block(SocialLayout.of(of(user, fresh = true))) }
         } finally {
             // NonCancellable: a release skipped by a cancelled lock() would hold the user for good.
             withContext(NonCancellable) {
@@ -133,13 +142,6 @@ class SocialEpochs(
                 }
             }
             mine.complete(Unit)
-        }
-    }
-
-    private suspend fun awaitNoExclusive(user: String) {
-        while (true) {
-            val wait = lock.withLock { gates[user]?.exclusiveDone } ?: return
-            wait.await()
         }
     }
 

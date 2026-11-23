@@ -16,8 +16,8 @@ import kotlinx.serialization.KSerializer
 
 /** [profile] as v1 stores it, or null when the v1 reader would refuse it. */
 internal fun socialProfile(profile: ProfileDto): SocialProfileDto? {
-    val name = profile.name?.trim().orEmpty()
-    val bio = profile.bio?.trim()?.ifEmpty { null }
+    val name = profile.name?.let(::frozenTrim).orEmpty()
+    val bio = profile.bio?.let(::frozenTrim)?.ifEmpty { null }
     if (codePoints(name) !in NAME_LENGTH || (bio != null && codePoints(bio) > BIO_MAX)) return null
     // The reference drops a picture its gate refuses rather than the profile.
     val image = profile.image?.let(::rewrite)?.takeIf { uri ->
@@ -34,7 +34,7 @@ internal fun <T> encoded(serializer: KSerializer<T>, value: T): String = loopkyJ
 
 internal fun movedPost(owner: String, id: String, json: String): Pair<String, String>? {
     val post = decodeOrSkip(PostDto.serializer(), json)?.let(::socialPost) ?: return null
-    val valid = isKey(id) && post.content.isNotBlank() && codePoints(post.content) <= NOTE_MAX
+    val valid = id.isNotEmpty() && '/' !in id && post.content.isNotEmpty() && codePoints(post.content) <= NOTE_MAX
     return if (valid) SocialLayout.SocialV1.postVersion(owner, id) to encoded(SocialPostDto.serializer(), post) else null
 }
 
@@ -50,15 +50,22 @@ internal fun movedMute(owner: String, mutee: String, json: String): Pair<String,
     return SocialLayout.SocialV1.mute(owner, mutee) to encoded(MuteDto.serializer(), mute)
 }
 
-internal fun movedTag(owner: String, json: String, tagId: (String, String) -> String): Pair<String, String>? {
+/**
+ * [key] is the v0 tag id: the 0.x reader refuses a tag whose id is not that of its label lowercased,
+ * so Nexus never indexed one (a label Loopky wrote before #479), and the reference skips it.
+ */
+internal fun movedTag(owner: String, key: String, json: String, tagId: (String, String) -> String): Pair<String, String>? {
     val tag = decodeOrSkip(TagDto.serializer(), json) ?: return null
-    val moved = TagDto(uri = rewrite(tag.uri), label = foldLabel(tag.label), created_at = tag.created_at)
+    // The label as the 0.x reader stores it, which is what the reference migrates from.
+    val stored = tag.label.trim().lowercase()
+    if (tagId(tag.uri, stored) != key) return null
+    val moved = TagDto(uri = rewrite(tag.uri), label = foldLabel(stored), created_at = tag.created_at)
     if (!isLabel(moved.label)) return null
     return SocialLayout.SocialV1.tag(owner, tagId(moved.uri, moved.label)) to encoded(TagDto.serializer(), moved)
 }
 
 private fun socialPost(post: PostDto) = SocialPostDto(
-    content = post.content,
+    content = frozenTrim(post.content),
     kind = if (post.kind == PostKinds.SHORT) SocialPostKinds.NOTE else post.kind,
     parent = post.parent?.let(::rewrite),
     embed = post.embed?.uri?.let(::rewrite),
@@ -79,14 +86,27 @@ private const val Z_BASE32 = "ybndrfg8ejkmcpqxot1uwisza345h769"
 
 private fun codePoints(text: String): Int = text.count { !it.isLowSurrogate() }
 
-/** One path segment, as a post id is. */
-private fun isKey(segment: String) = segment.isNotEmpty() && '/' !in segment
-
-private fun isPubky(key: String) = key.length == PUBKY_LENGTH && key.all { it in Z_BASE32 }
+/** `PubkyId`: 52 z-base32 characters, the last carrying only `y` or `o` for its filler bits. */
+private fun isPubky(key: String) =
+    key.length == PUBKY_LENGTH && key.all { it in Z_BASE32 } && key.last() in PUBKY_LAST
 
 /** `validate_tag_label`: 1–20 code points, no whitespace, comma or colon. */
 private fun isLabel(label: String) =
-    codePoints(label) in 1..LABEL_MAX && label.none { it.isWhitespace() || it == ',' || it == ':' }
+    codePoints(label) in 1..LABEL_MAX && label.none { it in FROZEN_WHITESPACE || it == ',' || it == ':' }
+
+/**
+ * The spec's 25 `White_Space` code points at Unicode 15.1, frozen because ids depend on the trim;
+ * Kotlin's own `trim` and `isWhitespace` disagree with it on U+0085 and U+001C–U+001F.
+ */
+private val FROZEN_WHITESPACE = setOf(
+    '\u0009', '\u000A', '\u000B', '\u000C', '\u000D', '\u0020', '\u0085', '\u00A0',
+    '\u1680', '\u2000', '\u2001', '\u2002', '\u2003', '\u2004', '\u2005', '\u2006',
+    '\u2007', '\u2008', '\u2009', '\u200A', '\u2028', '\u2029', '\u202F', '\u205F',
+    '\u3000',
+)
+private val PUBKY_LAST = setOf('y', 'o')
+
+internal fun frozenTrim(text: String): String = text.trim { it in FROZEN_WHITESPACE }
 
 /**
  * A `pubky://` reference in its v1 spelling, as the reference migrator rewrites it: a profile, post
@@ -112,4 +132,4 @@ internal fun rewrite(uri: String): String {
 
 /** The v1 label fold: trimmed, ASCII letters lowercased. Loopky's labels are already folded (#479). */
 internal fun foldLabel(label: String): String =
-    label.trim().map { if (it in 'A'..'Z') it + ('a' - 'A') else it }.joinToString("")
+    frozenTrim(label).map { if (it in 'A'..'Z') it + ('a' - 'A') else it }.joinToString("")

@@ -217,7 +217,8 @@ class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : Pubky
             runFfiSuspend { ffiDeleteWithSession(url, sessionSecret) }
         }
 
-    private fun isPrivate(url: String) = "/priv/" in url
+    /** `pubky://{key}/priv/…`: a `/priv/` deeper in a public path is a public record. */
+    private fun isPrivate(url: String) = url.removePrefix("pubky://").substringAfter('/', "").startsWith("priv/")
 
     // --- pubky-app-specs helpers ------------------------------------------------
     override fun createTagId(uri: String, label: String) =

@@ -147,10 +147,56 @@ class SocialMigratorTest {
         loopkyAccount()
         migrator.migrate(session)
         pubky.store.remove(flag)
+        // The user unfollowed since: the flag must still list the follow, or pubky.app copies it back.
+        pubky.store.remove(v1.follow(owner, FRIEND))
 
         val later = SocialMigrator(pubky, PubkyAppFootprintReader(pubky), SocialEpochs(pubky), { true })
         assertEquals(MigrationOutcome.AlreadyV1, later.migrate(session))
-        assertTrue(flag in pubky.store)
+        val written = loopkyJson.decodeFromString(MigrationFlagDto.serializer(), pubky.store.getValue(flag))
+        assertTrue(v0.follow(owner, FRIEND).removePrefix("pubky://$owner/") in written.migrated)
+    }
+
+    @Test
+    fun aProfileEditedOnAnotherDeviceDuringTheCopyIsTheOneFlipped() = runTest {
+        loopkyAccount()
+        val gate = CompletableDeferred<Unit>()
+        pubky.putGate = gate
+        val run = async { migrator.migrate(session) }
+        runCurrent()
+
+        pubky.store[v0.profile(owner)] = """{"name":"Ana Maria"}"""
+        pubky.putGate = null
+        gate.complete(Unit)
+
+        run.await()
+        assertEquals("""{"name":"Ana Maria"}""", pubky.store[v1.profile(owner)])
+    }
+
+    @Test
+    fun aSettledAnswerIsForgottenAfterAProfileWrite() = runTest {
+        loopkyAccount()
+        pubky.store[v0.profile(owner)] = """{"name":"Al"}"""
+        assertEquals(MigrationOutcome.InvalidProfile, migrator.migrate(session))
+
+        pubky.store[v0.profile(owner)] = """{"name":"Alex"}"""
+        assertEquals(MigrationOutcome.InvalidProfile, migrator.migrate(session), "kept for the process")
+        migrator.forget(owner)
+
+        assertEquals(MigrationOutcome.Migrated(records = 8), migrator.migrate(session))
+    }
+
+    @Test
+    fun aTagThe0xReaderRefusesIsSkipped() = runTest {
+        loopkyAccount()
+        // Written before #479: the id is of the label as typed, which the 0.x reader refuses.
+        val path = v0.tag(owner, pubky.createTagId(deck, "Spanish").getOrThrow())
+        pubky.store[path] = """{"uri":"$deck","label":"Spanish","created_at":7}"""
+
+        migrator.migrate(session)
+
+        assertFalse(v1.tag(owner, pubky.createTagId(deck, "spanish").getOrThrow()) in pubky.store)
+        val written = loopkyJson.decodeFromString(MigrationFlagDto.serializer(), pubky.store.getValue(flag))
+        assertEquals(listOf(path.removePrefix("pubky://$owner/")), written.skipped["invalid"])
     }
 
     @Test
@@ -265,7 +311,7 @@ class SocialMigratorTest {
 
     private companion object {
         /** Pubkys v1 takes as followees: 52 characters of z-base32. */
-        const val FRIEND = "ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1u"
-        const val TROLL = "967h543azsiwu1toxqpcmkje8gfrdnby967h543azsiwu1toxqpc"
+        const val FRIEND = "ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1y"
+        const val TROLL = "967h543azsiwu1toxqpcmkje8gfrdnby967h543azsiwu1toxqpo"
     }
 }

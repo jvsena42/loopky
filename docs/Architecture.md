@@ -979,20 +979,30 @@ kept for good and `v0` re-read after five minutes. `SocialLayout` holds both pat
 `pubky-social-migrator`. An account only Loopky wrote to (`PubkyAppFootprint.LoopkyOnly`, or Empty)
 is nobody else's to move, so `SocialMigrator` copies it the way that migrator would: same post ids,
 `pubky.app` references rewritten to their v1 spelling, tag ids derived again from the rewritten
-subject, mutes moved under `/priv/`, `created_at` kept, the v0 tree left in place. It runs in the
-background on every session load and sign-in, and a profile edit goes through it, which is how a
-new account starts in `v1`. Four things not to undo:
+subject, mutes moved under `/priv/`, records the v1 reader refuses skipped, the v0 tree left in
+place. It runs in the background on every session load and sign-in, and a profile edit goes through
+it, which is how a new account starts in `v1`. Six things not to undo:
 
 - It waits for production Nexus: `NexusClient.servesSocialV1` asks `/v1/info`, which #1129 added
   (200 on staging, 404 on production today). No flag to flip at release.
 - `profile.json` is written **last**, because that write is the flip; Nexus ignores every `social/v1`
   record written before it. An interrupted run changed nothing indexed, and the next one deletes the
   copies whose source has gone since and writes only what is missing. Neither migrator overwrites a
-  file the other wrote.
-- While it runs, `SocialEpochs.migrating` holds `of()` back for that user, so a tag or follow made
-  meanwhile is routed after the flip instead of into a tree that was just copied.
+  file the other wrote. A profile v1 refuses (a name outside 3–50 characters, a bio over 160) is
+  never the flip.
+- `/priv/social/v1/_migrated.json` follows the flip, in the reference's shape. pubky.app's sign-in
+  reads it to know the account is done; without it, its migrator would copy back from the v0 tree
+  everything the user removed since. A launch that finds it missing on a flipped Loopky account
+  writes it. Delete account removes it with the profiles.
+- Every social write runs inside `SocialEpochs.writing`, which holds its layout until the write is
+  done; the copy and the flip run inside `SocialEpochs.exclusive`, which waits for those writes and
+  keeps new ones out, and so does the social half of Delete account. Reads never wait. A write
+  whose cached answer is `v0` asks again, since another device may have flipped the account.
+- The tree is read and planned outside the hold, then read again inside it before the copy and
+  before the flip, so a write that landed in between, or another device's, is not left behind.
 - It needs a session holding `/pub/social/v1/` and `/priv/social/v1/` (#621). An older Ring session
-  is left in `v0` until the user signs in again.
+  is left in `v0` until the user signs in again. The FFI's `put_with_session` refuses `/priv/`
+  URLs, so private records go through `session_put_bytes` and `session_delete`.
 
 **`manifest.json`:**
 

@@ -70,12 +70,7 @@ class AccountEraser(
      * is still [PubkyAppFootprint.LoopkyOnly] or [PubkyAppFootprint.Empty] when the sweep starts:
      * otherwise it throws [PubkyAppFootprintChangedException] before deleting anything.
      */
-    suspend fun erase(owner: String, deletePubkyApp: Boolean, onProgress: (Int, Int) -> Unit) =
-        // Beside Loopky's own migration (#616), its copies and flip could land after the sweep and
-        // put the deleted account back in Discover; exclusive waits for it and keeps it out.
-        epochs.exclusive(owner) { eraseHeld(owner, deletePubkyApp, onProgress) }
-
-    private suspend fun eraseHeld(owner: String, deletePubkyApp: Boolean, onProgress: (Int, Int) -> Unit) {
+    suspend fun erase(owner: String, deletePubkyApp: Boolean, onProgress: (Int, Int) -> Unit) {
         if (deletePubkyApp) {
             // Asked again rather than trusting the dialog: another app may have written since it opened.
             val now = footprints.classify(owner)
@@ -84,7 +79,7 @@ class AccountEraser(
             }
         }
         // Before anything is deleted, like the check above: a refusal must leave the account whole.
-        val privateMutes = if (deletePubkyApp) privateMutes(owner) else emptyList()
+        if (deletePubkyApp) privateRecords(owner)
         val owned = decks.listOwned()
         // A first estimate, so the dialog has a total before the decks go. A deck's own records go
         // with the deck in step 1, so they are left out here; every later listing re-sizes the job.
@@ -118,6 +113,16 @@ class AccountEraser(
             .mapConcurrently { path -> deleteRecord(path).also { progress.step() } }
             .count { deleted -> !deleted }
 
+        // Steps 3 to 5 and the check run beside no migration of this account (#616): its copies and
+        // flip could land after them and put the deleted account back in Discover. Not steps 1–2,
+        // which take deck locks that a deck write holds while it waits for the same hold.
+        epochs.exclusive(owner) { sweepSocial(owner, deletePubkyApp, progress, failures) }
+        wipeLocalState(owner)
+    }
+
+    /** Steps 3–5, then the check over the whole sweep, [earlier] counting steps 1–2's failures. */
+    private suspend fun sweepSocial(owner: String, deletePubkyApp: Boolean, progress: SweepProgress, earlier: Int) {
+        var failures = earlier
         // 3. The directory entry. Nothing else takes the account out of Discover and search, so a
         // failure here counts: leaving it behind means a deleted account still shows up.
         // On both profile addresses: the self-tag names the profile in whichever layout it was made.
@@ -134,7 +139,7 @@ class AccountEraser(
         deleteLoopkyPosts(owner)
 
         // 5. On request, the rest of pubky.app: profile, follows, blocks, labels.
-        if (deletePubkyApp) failures += deletePubkyAppRecords(owner, privateMutes, progress)
+        if (deletePubkyApp) failures += deletePubkyAppRecords(owner, privateRecords(owner), progress)
 
         // Re-list rather than trust the counters. `deleteRecord` scores a 404 as success, which is
         // right for a record a previous sweep already removed and wrong as a completeness proof —
@@ -145,8 +150,6 @@ class AccountEraser(
         check(failures == 0 && leftovers.isEmpty()) {
             "$failures record(s) could not be deleted, ${leftovers.size} still present"
         }
-
-        wipeLocalState(owner)
     }
 
     /**
@@ -217,15 +220,20 @@ class AccountEraser(
      * single pubky.app record goes, and a record written after this listing is never deleted.
      * Returns how many records would not go.
      */
-    private suspend fun deletePubkyAppRecords(owner: String, privateMutes: List<String>, progress: SweepProgress): Int {
+    private suspend fun deletePubkyAppRecords(owner: String, privateRecords: List<String>, progress: SweepProgress): Int {
         val records = footprints.judgedPubkyAppRecords(owner)
         when {
             records.foreign.isNotEmpty() -> throw PubkyAppFootprintChangedException(PubkyAppFootprint.Direct)
             records.unreadable.isNotEmpty() -> throw PubkyAppFootprintChangedException(PubkyAppFootprint.Unknown)
         }
-        val loopkys = records.loopkys + privateMutes
+        val loopkys = records.loopkys + privateRecords
         progress.expect(loopkys.size)
-        val profiles = setOf(SocialLayout.Legacy.profile(owner), SocialLayout.SocialV1.profile(owner))
+        // The flag goes with the profiles: until then a retry still finds the account migrated.
+        val profiles = setOf(
+            SocialLayout.Legacy.profile(owner),
+            SocialLayout.SocialV1.profile(owner),
+            "pubky://$owner/priv/social/v1/_migrated.json",
+        )
         val tagRoots = listOf(SocialLayout.Legacy.tagsRoot(owner), SocialLayout.SocialV1.tagsRoot(owner))
         val (labels, rest) = loopkys.filterNot { it in profiles }
             .partition { path -> tagRoots.any { path.startsWith(it) } }
@@ -244,18 +252,20 @@ class AccountEraser(
      * last one's numbers. The signup token is deliberately not here.
      */
     /**
-     * A migrated user's blocks, under `/priv/social/v1/mutes/`, which only the session can list.
-     * Anything else under `/priv/social/v1/` is pubky.app's own state (bookmarks, feeds, its
-     * migration flag), so the account used pubky.app and the delete stops.
+     * A migrated user's blocks, under `/priv/social/v1/mutes/`, which only the session can list, and
+     * the migration flag. Anything else under `/priv/social/v1/` is pubky.app's own state
+     * (bookmarks, feeds), so the account used pubky.app and the delete stops. The flag is the
+     * account's whichever app wrote it: the public tree already proved it Loopky's.
      */
-    private suspend fun privateMutes(owner: String): List<String> {
+    private suspend fun privateRecords(owner: String): List<String> {
         val secret = session.current()?.sessionSecret ?: return emptyList()
         val root = "pubky://$owner/priv/social/v1/"
         val entries = pubky.listAllEntriesWithSession(root, secret)
             .getOrElse { if (it.isNotFound()) emptyList() else throw PubkyAppFootprintChangedException(PubkyAppFootprint.Unknown) }
             .filterNot { it.endsWith("/") }
         val mutes = SocialLayout.SocialV1.mutesRoot(owner)
-        if (entries.any { !it.startsWith(mutes) }) throw PubkyAppFootprintChangedException(PubkyAppFootprint.Direct)
+        val flag = "${root}_migrated.json"
+        if (entries.any { !it.startsWith(mutes) && it != flag }) throw PubkyAppFootprintChangedException(PubkyAppFootprint.Direct)
         return entries
     }
 

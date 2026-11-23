@@ -70,12 +70,23 @@ class SocialEpochsTest {
         val write = async { epochs.writing(USER) { it } }
         val read = async { epochs.of(USER) }
         runCurrent()
-        assertFalse(write.isCompleted || read.isCompleted)
+        assertFalse(write.isCompleted)
+        assertEquals(SocialEpoch.V0, read.await(), "a read does not wait: the records are still in pubky.app")
 
+        pubky.store[SocialLayout.SocialV1.profile(USER)] = """{"name":"Ana"}"""
         epochs.markV1(USER)
         release.complete(Unit)
         assertEquals(SocialLayout.SocialV1, write.await())
-        assertEquals(SocialEpoch.V1, read.await())
+    }
+
+    @Test
+    fun aWriteAsksAgainWhenTheCacheSaysV0() = runTest {
+        assertEquals(SocialEpoch.V0, epochs.of(USER))
+        // Another device flips the user inside the cache's lifetime.
+        pubky.store[SocialLayout.SocialV1.profile(USER)] = """{"name":"Ana"}"""
+
+        assertEquals(SocialEpoch.V0, epochs.of(USER), "a read may use the cache")
+        assertEquals(SocialLayout.SocialV1, epochs.writing(USER) { it })
     }
 
     @Test
