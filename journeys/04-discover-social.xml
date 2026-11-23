@@ -8,7 +8,7 @@
     If the indexer has not ingested anything yet, the browse strip shows "Nothing published here
     yet" with a "Search people & decks" CTA. That is a pass for the empty case, not a failure: verify the
     honest empty state rather than skipping the journey. Confirm which case you are in with
-    `curl 'https://nexus.staging.pubky.app/v0/stream/resources?app=loopky&amp;tags=loopky-deck&amp;limit=5'`
+    `curl 'https://nexus.staging.pubky.app/v0/stream/resources?tags=loopky-deck&amp;limit=5'`
     before starting.
 
     **The empty block and the error block are different screens and this journey checks both** (#321).
@@ -23,7 +23,7 @@
     <action>Verify a "Browse decks" section is present — this is the global browse, and it must NOT require following anyone</action>
     <action>Wait for the browse strip to settle, then verify EITHER at least one deck tile (resource-id: discover_deck_tile) OR the empty block (resource-id: discover_browse_empty) reading "Nothing published here yet" with a "Search people &amp; decks" button (resource-id: discover_browse_empty_search). There must never be a bare "Follow a friend to see their decks here" dead end.</action>
     <action>Verify every deck tile's cover follows ONE rule: the picture runs the full width of its tile, corner to corner, with no strip of the tile's own surface down either side. Square and portrait covers are the ones that break this (#255), so check a grid holding both those and a landscape cover — the defect is the inconsistency between neighbours, not the inset alone.</action>
-    <action>Count the indexed decks first: `curl -s 'https://nexus.staging.pubky.app/v0/stream/resources?app=loopky&amp;tags=loopky-deck&amp;sorting=timeline&amp;limit=100&amp;skip=0' | jq length`. Scroll the browse grid to its end, counting distinct deck titles, and verify the screen reaches that number rather than stopping at the first page (#321). Before paging, Discover showed 11 of 71 on staging and nothing reached the rest.</action>
+    <action>Count the indexed decks first: `curl -s 'https://nexus.staging.pubky.app/v0/stream/resources?tags=loopky-deck&amp;sorting=timeline&amp;limit=100&amp;skip=0' | jq '[.[] | select(.details.uri | test("/pub/loopky/decks/[^/]+/manifest.json$"))] | length'` (the stream is not scoped to Loopky since pubky/pubky-nexus#1129). Scroll the browse grid to its end, counting distinct deck titles, and verify the screen reaches that number rather than stopping at the first page (#321). Before paging, Discover showed 11 of 71 on staging and nothing reached the rest.</action>
     <action>While scrolling, verify each new page appends UNDER the decks already on screen — the grid must never blank and re-populate, and your scroll position must not jump</action>
     <action>Scroll to the end of the browse grid and verify the last row's title and "N cards · author" line clear the floating tab bar and can be read</action>
     <action>If a topic chip row is visible (resource-id: discover_topic_row), tap the first chip (resource-id: discover_topic_chip)</action>

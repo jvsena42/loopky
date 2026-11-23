@@ -419,7 +419,7 @@ Reads in use today:
 | Call | Endpoint | Used for |
 |---|---|---|
 | `searchTagsByPrefix` | `/v0/search/tags/by_prefix/{prefix}` | tag autocomplete (no caller yet — but it *does* reach deck labels, unlike the hot list) |
-| `resourcesByTag` | `/v0/stream/resources?app=loopky&tags=…&sorting=…&skip=…` | global deck browse (paged, `timeline`) **and** client-side deck-tag topics (`taggers_count`) |
+| `resourcesByTag` | `/v0/stream/resources?tags=…&sorting=…&skip=…` | global deck browse (paged, `timeline`) **and** client-side deck-tag topics (`taggers_count`). Not scoped to Loopky: every caller keeps only deck manifests (`PubkyUris.parseDeckManifest`) |
 | `resourceByUri` | `/v0/resource/by-uri` | per-deck tagger counts ("N followers") |
 | `usersByProfileTag` | `/v0/search/users/by_tags?tags=…` | the `loopky-user` directory — **404 on prod until it redeploys, see §7.7 point 9** |
 | `postAuthorsByTag` | `/v0/search/posts/by_tag/{label}` | deck-announcement authors, the directory's second source |
@@ -529,28 +529,29 @@ generic **resource**, whatever URI it is.
 | Subject | Record must live at | Indexed as | Readable via |
 |---|---|---|---|
 | `pubky://{id}/pub/pubky.app/profile.json` | `/pub/pubky.app/tags/{id}` | user | `/v0/user/{id}/tags`, `/v0/user/{id}/taggers/{label}`, `/v0/search/users/by_tags`, `/v0/tags/hot` |
-| `pubky://{author}/pub/loopky/decks/{id}/manifest.json` | `/pub/loopky/tags/{id}` | resource | `/v0/stream/resources?app=loopky`, `/v0/resource/by-uri` |
+| `pubky://{author}/pub/loopky/decks/{id}/manifest.json` | `/pub/loopky/tags/{id}` | resource | `/v0/stream/resources?tags=…`, `/v0/resource/by-uri` |
 
 `TagRepositoryImpl` routes on the subject for exactly this reason.
 
-**2. `app` is the record's path segment, verbatim.** Nothing about it derives from the
-subject URI. Loopky resources are `app=loopky` because records live at `/pub/loopky/tags/`;
-`app=loopky.app` would match nothing. (Live check: `?app=mapky.app` returns mapky's
-resources, `?app=mapky` returns none.)
+**2. The resource stream cannot be scoped to Loopky.** It used to take `app`, the tag record's
+path segment, and Loopky asked for `app=loopky`. pubky/pubky-nexus#1129 answers `app` with a 400
+(staging since 2026-11-20), so the stream now returns every app's resources and tagged web URLs
+for a label. Every read keeps only subjects `PubkyUris.parseDeckManifest` accepts, which it had to
+anyway, since anyone can tag any URI.
 
 **3. Resource tags never trend.** `/v0/tags/hot` and `/v0/tags/taggers/{label}` are
 restricted to `Post|User` targets (`nexus-common/src/db/graph/queries/get.rs:614-640`) — and the
 latter is unusable even for those, see point 9 — so
 **deck labels — including `loopky-deck` — cannot appear in the trending row**. Only
 `loopky-user`, a profile tag, can. Trending over deck tags therefore has to be aggregated
-client-side from `/v0/stream/resources?app=loopky&sorting=taggers_count` — which is what
+client-side from `/v0/stream/resources?tags=loopky-deck&sorting=taggers_count` — which is what
 `TagRepository.trendingDeckTags` does (#26): one request, labels grouped and ranked by how many
 distinct decks carry them. The stream returns each resource's *whole* label list with per-label
 tagger counts, which is what makes this possible from a single call.
 
 **4. A deck is also labelled with each language it declares.** Picking a language in the
 publish flow or the deck editor adds an ordinary tag — `"spanish"` for `es-ES` — to the deck's
-tag list, so `/v0/stream/resources?app=loopky` can answer "Spanish decks" for someone with no
+tag list, so `/v0/stream/resources?tags=spanish` can answer "Spanish decks" for someone with no
 follow relationship to the author. Three details:
 
 - **An ordinary label, not a reserved one.** It lives in `Deck.tags` and goes out through the same
