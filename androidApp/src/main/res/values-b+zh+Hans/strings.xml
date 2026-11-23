@@ -1062,4 +1062,7 @@
     <string name="sign_in_prompt_report_body">举报会从你自己的账号发出，并为你屏蔽该账号。需要账号，但不需要邮箱。</string>
     <string name="onboarding_policy_terms">《使用条款》</string>
     <string name="settings_terms">使用条款</string>
+    <string name="force_update_title">更新 Loopky</string>
+    <string name="force_update_message">此版本的 Loopky 已无法与其连接的网络配合使用。请更新以继续使用。</string>
+    <string name="force_update_action">更新</string>
 </resources>

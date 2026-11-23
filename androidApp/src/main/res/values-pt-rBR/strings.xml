@@ -1057,4 +1057,7 @@
     <string name="sign_in_prompt_report_body">A denúncia é enviada pela sua própria conta e bloqueia a conta denunciada para você. Precisa de uma conta, mas não de e-mail.</string>
     <string name="onboarding_policy_terms">Termos de Uso</string>
     <string name="settings_terms">Termos de uso</string>
+    <string name="force_update_title">Atualize o Loopky</string>
+    <string name="force_update_message">Esta versão do Loopky não funciona mais com a rede à qual se conecta. Atualize para continuar usando.</string>
+    <string name="force_update_action">Atualizar</string>
 </resources>

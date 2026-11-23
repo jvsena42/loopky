@@ -1057,4 +1057,7 @@
     <string name="sign_in_prompt_report_body">Un signalement est envoyé depuis ton propre compte et bloque le compte pour toi. Il faut un compte, mais pas d’e-mail.</string>
     <string name="onboarding_policy_terms">Conditions d’utilisation</string>
     <string name="settings_terms">Conditions d’utilisation</string>
+    <string name="force_update_title">Mets à jour Loopky</string>
+    <string name="force_update_message">Cette version de Loopky ne fonctionne plus avec le réseau auquel elle se connecte. Mets-la à jour pour continuer à l’utiliser.</string>
+    <string name="force_update_action">Mettre à jour</string>
 </resources>

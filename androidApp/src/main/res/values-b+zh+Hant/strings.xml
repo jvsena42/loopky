@@ -1132,4 +1132,7 @@
     <string name="sign_in_prompt_report_body">檢舉會從你自己的帳號送出，並為你封鎖該帳號。需要帳號，但不需要電子郵件。</string>
     <string name="onboarding_policy_terms">使用條款</string>
     <string name="settings_terms">使用條款</string>
+    <string name="force_update_title">更新 Loopky</string>
+    <string name="force_update_message">此版本的 Loopky 已無法與其連線的網路搭配使用。請更新以繼續使用。</string>
+    <string name="force_update_action">更新</string>
 </resources>

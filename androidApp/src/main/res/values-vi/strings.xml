@@ -1132,4 +1132,7 @@
     <string name="sign_in_prompt_report_body">Báo cáo được gửi từ tài khoản của chính bạn và sẽ chặn tài khoản đó giúp bạn. Cần có tài khoản nhưng không cần email.</string>
     <string name="onboarding_policy_terms">Điều khoản sử dụng</string>
     <string name="settings_terms">Điều khoản sử dụng</string>
+    <string name="force_update_title">Cập nhật Loopky</string>
+    <string name="force_update_message">Phiên bản Loopky này không còn hoạt động với mạng mà nó kết nối. Hãy cập nhật để tiếp tục sử dụng.</string>
+    <string name="force_update_action">Cập nhật</string>
 </resources>

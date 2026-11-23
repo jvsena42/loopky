@@ -1112,4 +1112,7 @@
     <string name="sign_in_prompt_report_body">報告はあなた自身のアカウントから送信され、そのアカウントをブロックします。アカウントが必要ですが、メールアドレスは不要です。</string>
     <string name="onboarding_policy_terms">利用規約</string>
     <string name="settings_terms">利用規約</string>
+    <string name="force_update_title">Loopkyをアップデート</string>
+    <string name="force_update_message">このバージョンのLoopkyは、接続先のネットワークで使えなくなりました。引き続き使うにはアップデートしてください。</string>
+    <string name="force_update_action">アップデート</string>
 </resources>

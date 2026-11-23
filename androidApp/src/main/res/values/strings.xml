@@ -1138,4 +1138,7 @@
     <string name="sign_in_prompt_report_body">A report is sent from your own account, and it blocks the account for you. It needs an account, but no email.</string>
     <string name="onboarding_policy_terms">Terms of Use</string>
     <string name="settings_terms">Terms of use</string>
+    <string name="force_update_title">Update Loopky</string>
+    <string name="force_update_message">This version of Loopky no longer works with the network it connects to. Update to keep using it.</string>
+    <string name="force_update_action">Update</string>
 </resources>

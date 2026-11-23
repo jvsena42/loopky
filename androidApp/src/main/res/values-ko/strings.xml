@@ -1069,4 +1069,7 @@
     <string name="sign_in_prompt_report_body">신고는 내 계정으로 보내지고, 해당 계정을 차단해요. 계정이 필요하지만 이메일은 필요 없어요.</string>
     <string name="onboarding_policy_terms">이용약관</string>
     <string name="settings_terms">이용약관</string>
+    <string name="force_update_title">Loopky 업데이트</string>
+    <string name="force_update_message">이 버전의 Loopky는 연결하는 네트워크에서 더 이상 작동하지 않습니다. 계속 사용하려면 업데이트하세요.</string>
+    <string name="force_update_action">업데이트</string>
 </resources>
