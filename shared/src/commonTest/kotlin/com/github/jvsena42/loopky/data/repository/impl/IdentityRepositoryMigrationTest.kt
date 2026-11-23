@@ -77,7 +77,9 @@ class IdentityRepositoryMigrationTest {
     fun aV1ProfileEditKeepsWhatLoopkyDoesNotWrite() = runTest {
         pubky.store[v1] = """{"name":"Ana","bio":"old","links":[{"title":"x","url":"https://x.y"}],"status":"busy"}"""
 
-        repo.updateProfile(name = " Ana B ", bio = null).getOrThrow()
+        val shown = repo.updateProfile(name = " Ana B ", bio = null).getOrThrow()
+
+        assertEquals("Ana B", shown.displayName, "the session shows what was stored")
 
         assertEquals("""{"name":"Ana B","links":[{"title":"x","url":"https://x.y"}],"status":"busy"}""", pubky.store[v1])
     }

@@ -220,6 +220,22 @@ class SocialMigratorTest {
     }
 
     @Test
+    fun aRunCutAfterThePostsStillReadsAsLoopkysNextTime() = runTest {
+        loopkyAccount()
+        // Every cut point: the copy goes labels first, so no cut leaves a post without its labels.
+        for (cut in 0..8) {
+            val fresh = FakePubkyClient().also { it.store.putAll(pubky.store) }
+            val run = SocialMigrator(fresh, PubkyAppFootprintReader(fresh), SocialEpochs(fresh), { true })
+            fresh.sessionCallsBeforeFailure = cut
+            runCatching { run.migrate(session) }
+            fresh.sessionCallsBeforeFailure = null
+
+            val retry = SocialMigrator(fresh, PubkyAppFootprintReader(fresh), SocialEpochs(fresh), { true })
+            assertTrue(retry.migrate(session) is MigrationOutcome.Migrated, "cut after $cut writes")
+        }
+    }
+
+    @Test
     fun aRecordAnotherDeviceWritesDuringTheCopyIsCopiedBeforeTheFlip() = runTest {
         loopkyAccount()
         val gate = CompletableDeferred<Unit>()

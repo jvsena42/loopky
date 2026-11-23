@@ -1,5 +1,6 @@
 package com.github.jvsena42.loopky.data.repository.impl
 
+import com.github.jvsena42.loopky.data.pubky.LoopkyPubkyAppRecords
 import com.github.jvsena42.loopky.data.pubky.ProfileDto
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.SocialEpochs
@@ -92,11 +93,17 @@ internal class SocialMigrator(
                 }
             }
             val present = existingV1(owner, session.sessionSecret)
-            (present - plan.writes.keys - V1.profile(owner)).toList().mapConcurrently { stale ->
-                pubky.deleteWithSession(stale, session.sessionSecret).getOrThrow()
+            // Again, closer to the deletes: past a flip by another device they would undo its writes.
+            if (flipped(owner)) return MigrationOutcome.AlreadyV1
+            // A post goes after its labels and is deleted before them: the next run classifies
+            // `social/v1` too, and a Loopky post without its labels there reads as another app's.
+            val (staleTags, staleRest) = (present - plan.writes.keys - V1.profile(owner)).partition(::isTag)
+            for (pass in listOf(staleRest, staleTags)) {
+                pass.mapConcurrently { pubky.deleteWithSession(it, session.sessionSecret).getOrThrow() }
             }
-            plan.writes.filterKeys { it !in present }.toList().mapConcurrently { (path, body) ->
-                pubky.putWithSession(path, body, session.sessionSecret).getOrThrow()
+            val (tags, rest) = plan.writes.filterKeys { it !in present }.toList().partition { isTag(it.first) }
+            for (pass in listOf(tags, rest)) {
+                pass.mapConcurrently { (path, body) -> pubky.putWithSession(path, body, session.sessionSecret).getOrThrow() }
             }
             if (snapshot(owner, newProfile) != plan.snapshot) return@repeat
             if (flipped(owner)) return MigrationOutcome.AlreadyV1
@@ -184,6 +191,10 @@ internal class SocialMigrator(
 
     private suspend fun plan(owner: String, newProfile: ProfileDto?): Planned {
         val snapshot = snapshot(owner, newProfile)
+        // Asked again of a re-plan inside the hold: another client may have added links or a status.
+        if (snapshot.profile != null && !LoopkyPubkyAppRecords.isLoopkyProfile(snapshot.profile)) {
+            return Planned.Refused(MigrationOutcome.NotLoopkys(PubkyAppFootprint.Direct))
+        }
         val profile = newProfile
             ?: snapshot.profile?.let { runCatching { loopkyJson.decodeFromString(ProfileDto.serializer(), it) }.getOrNull() }
             ?: return Planned.Refused(MigrationOutcome.NoProfile)
@@ -235,7 +246,7 @@ internal class SocialMigrator(
         return (public + mutes).filterNot { it.endsWith("/") }.toSet()
     }
 
-    private suspend fun writeFlag(session: Session, owner: String, records: Records) {
+    private suspend fun writeFlag(session: Session, owner: String, records: Records): Boolean {
         val flag = MigrationFlagDto(
             migrated_at = now() * MICROS_PER_MILLI,
             transform_rev = TRANSFORM_REV,
@@ -243,8 +254,9 @@ internal class SocialMigrator(
             migrated = records.migrated.sorted(),
         )
         // After the flip, so a failure here leaves a migrated account: completeFlag writes it next time.
-        pubky.putWithSession(flagPath(owner), encoded(MigrationFlagDto.serializer(), flag), session.sessionSecret)
+        return pubky.putWithSession(flagPath(owner), encoded(MigrationFlagDto.serializer(), flag), session.sessionSecret)
             .onFailure { Log.w(TAG, "flag write FAILED — ${it.message}") }
+            .isSuccess
     }
 
     /**
@@ -256,10 +268,12 @@ internal class SocialMigrator(
         val missing = pubky.getWithSession(flagPath(owner), session.sessionSecret)
             .fold(onSuccess = { false }, onFailure = { if (it.isNotFound()) true else throw it })
         val found = if (missing) footprint.classify(owner) else null
-        if (found == PubkyAppFootprint.LoopkyOnly || found == PubkyAppFootprint.Empty) {
-            writeFlag(session, owner, records(owner, v0Records(owner)))
+        val done = when (found) {
+            null, PubkyAppFootprint.Direct -> true
+            PubkyAppFootprint.LoopkyOnly, PubkyAppFootprint.Empty -> writeFlag(session, owner, records(owner, v0Records(owner)))
+            PubkyAppFootprint.Unknown -> false
         }
-        if (found != PubkyAppFootprint.Unknown) settledLock.withLock { flagChecked += owner }
+        if (done) settledLock.withLock { flagChecked += owner }
     }
 
     private companion object {
@@ -277,6 +291,7 @@ internal class SocialMigrator(
 
         fun flagPath(owner: String) = "pubky://$owner/priv/social/v1/_migrated.json"
         fun relative(owner: String, path: String) = path.removePrefix("pubky://$owner/")
+        fun isTag(path: String) = "/pub/social/v1/tags/" in path
     }
 }
 

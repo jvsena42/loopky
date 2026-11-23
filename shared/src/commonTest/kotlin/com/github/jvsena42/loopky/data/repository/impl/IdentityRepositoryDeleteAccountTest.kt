@@ -414,7 +414,8 @@ class IdentityRepositoryDeleteAccountTest {
         repo.deleteAccount(deletePubkyApp = true).getOrThrow()
 
         assertFalse(flag in pubky.store)
-        assertTrue(pubky.deletes.indexOf(flag) > pubky.deletes.indexOf(PubkyPaths.mute(TEST_PUBKY, "trollpk")), "with the profiles")
+        val lastLabel = pubky.deletes.indexOfLast { "/tags/" in it }
+        assertTrue(pubky.deletes.indexOf(flag) > lastLabel, "with the profiles, after every label: ${pubky.deletes}")
     }
 
     @Test

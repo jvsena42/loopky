@@ -51,6 +51,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import kotlin.concurrent.Volatile
 
 /**
  * [IdentityRepository] backed by [PubkyClient] and [SecureSessionStore].
@@ -575,6 +576,9 @@ internal class IdentityRepositoryImpl(
             // put a v1 tag on the pubky.app profile address.
             runSuspendCatching {
                 epochs.writing(owner) { layout ->
+                    // Asked again inside the hold: an erase takes it after setting [erasing], so
+                    // this either lands before the erase removes it or sees the flag.
+                    if (erasing) return@writing
                     tagRepository.putReservedTag(PubkyUri(layout.profile(owner)), ReservedTags.USER).getOrThrow()
                 }
             }
@@ -613,9 +617,15 @@ internal class IdentityRepositoryImpl(
             ?.let { runCatching { loopkyJson.parseToJsonElement(it) as? JsonObject }.getOrNull() }
             .orEmpty()
         val fields = loopkyJson.encodeToJsonElement(SocialProfileDto.serializer(), edit).jsonObject
-        val merged = current - setOf("bio", "image") + fields
+        // Loopky never sets a picture, it only carries one forward: a read that missed it must not delete it.
+        val dropped = if (edit.image == null) setOf("bio") else setOf("bio", "image")
+        val merged = current - dropped + fields
         return loopkyJson.encodeToString(JsonObject.serializer(), JsonObject(merged))
     }
+
+    /** Set while Delete account runs, so a self-tag waiting behind a migration does not undo it. */
+    @Volatile
+    private var erasing = false
 
     /** Reset on sign-out so the next account announces itself too. */
     private var selfTaggedThisProcess = false
@@ -702,7 +712,8 @@ internal class IdentityRepositoryImpl(
             putResult.getOrThrow()
         }
 
-        val updatedIdentity = dto.toDomain(currentPubky)
+        // As stored: v1 keeps the trimmed name and bio.
+        val updatedIdentity = (socialProfile(dto)?.let { dto.copy(name = it.name, bio = it.bio) } ?: dto).toDomain(currentPubky)
         val updatedSession = session.copy(identity = updatedIdentity)
         sessionStore.save(updatedSession)
         sessionProvider.set(updatedSession)
@@ -733,7 +744,12 @@ internal class IdentityRepositoryImpl(
 
         // Throws unless every record Loopky owns is gone, which keeps the sign-out below from
         // stranding a half-deleted account: signing back in is what a retry needs.
-        eraser.erase(pubky, deletePubkyApp, onProgress)
+        erasing = true
+        try {
+            eraser.erase(pubky, deletePubkyApp, onProgress)
+        } finally {
+            erasing = false
+        }
         migrator?.forget(pubky)
 
         // So a later sign-in on this process announces the account again rather than believing it did.

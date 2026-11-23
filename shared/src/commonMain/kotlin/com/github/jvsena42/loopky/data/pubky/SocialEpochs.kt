@@ -107,7 +107,7 @@ class SocialEpochs(
     }
 
     /**
-     * Runs [block] once every [writing] for [user] has finished, while new ones and [of] wait: for
+     * Runs [block] once every [writing] for [user] has finished, while new ones wait: for
      * the migration, and for anything that must not run beside it, like erasing the account.
      */
     suspend fun <T> exclusive(user: String, block: suspend () -> T): T {
