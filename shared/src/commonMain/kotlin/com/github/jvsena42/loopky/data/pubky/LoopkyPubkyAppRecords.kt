@@ -30,7 +30,7 @@ internal object LoopkyPubkyAppRecords {
 
     private const val PUBKY_SCHEME = "pubky://"
     private const val PROFILE = "profile.json"
-    private const val PROFILE_PATH = "pub/pubky.app/$PROFILE"
+    private val PROFILE_PATHS = setOf("pub/pubky.app/$PROFILE", "pub/social/v1/$PROFILE")
     private const val LOOPKY_PREFIX = "pub/loopky/"
     private const val LOOPKY_DECKS_PREFIX = "pub/loopky/decks/"
 
@@ -84,7 +84,7 @@ internal object LoopkyPubkyAppRecords {
             isLoopkyNamespaceUri(subject)
 
     /** Whether [uri] names anyone's `profile.json`. */
-    fun isProfileUri(uri: String): Boolean = pathOf(uri) == PROFILE_PATH
+    fun isProfileUri(uri: String): Boolean = pathOf(uri) in PROFILE_PATHS
 
     /** Whether [uri] is anywhere in anyone's `/pub/loopky/`. Decks were tagged here before Nexus indexed resources. */
     fun isLoopkyNamespaceUri(uri: String): Boolean = pathOf(uri)?.startsWith(LOOPKY_PREFIX) == true

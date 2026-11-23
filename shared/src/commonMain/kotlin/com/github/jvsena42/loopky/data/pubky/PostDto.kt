@@ -66,3 +66,15 @@ internal object SocialPostKinds {
     const val NOTE = "note"
     const val LINK = "link"
 }
+
+/**
+ * The same post in the v0 shape, so rules written for pubky.app posts judge a v1 one too: `note` is
+ * `short`, and a URI embed is a `link` embed (the only kind Loopky writes).
+ */
+internal fun SocialPostDto.asLegacy(): PostDto = PostDto(
+    content = content,
+    kind = if (kind == SocialPostKinds.NOTE) PostKinds.SHORT else kind,
+    parent = parent,
+    embed = embed?.let { PostEmbedDto(kind = PostKinds.LINK, uri = it) },
+    attachments = attachments.map { it.uri }.ifEmpty { null },
+)

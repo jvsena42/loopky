@@ -5,6 +5,7 @@ import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.pubky.deleteWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.isNotFound
 import com.github.jvsena42.loopky.data.pubky.mapConcurrently
@@ -75,6 +76,8 @@ class AccountEraser(
                 throw PubkyAppFootprintChangedException(now)
             }
         }
+        // Before anything is deleted, like the check above: a refusal must leave the account whole.
+        val privateMutes = if (deletePubkyApp) privateMutes(owner) else emptyList()
         val owned = decks.listOwned()
         // A first estimate, so the dialog has a total before the decks go. A deck's own records go
         // with the deck in step 1, so they are left out here; every later listing re-sizes the job.
@@ -110,18 +113,21 @@ class AccountEraser(
 
         // 3. The directory entry. Nothing else takes the account out of Discover and search, so a
         // failure here counts: leaving it behind means a deleted account still shows up.
-        tags.removeReservedTag(PubkyUri(PubkyPaths.profile(owner)), ReservedTags.USER)
-            .onFailure {
-                Log.e(TAG, "${ReservedTags.USER.value} removal FAILED — ${it.message}", it)
-                failures++
-            }
+        // On both profile addresses: the self-tag names the profile in whichever layout it was made.
+        for (profile in listOf(SocialLayout.Legacy.profile(owner), SocialLayout.SocialV1.profile(owner))) {
+            tags.removeReservedTag(PubkyUri(profile), ReservedTags.USER)
+                .onFailure {
+                    Log.e(TAG, "${ReservedTags.USER.value} removal FAILED — ${it.message}", it)
+                    failures++
+                }
+        }
 
         // 4. Loopky's posts. Uncounted on purpose: a stale post in a feed is untidy rather than a
         // failed deletion, and a user with a busy feed should not be blocked by one unreadable record.
         deleteLoopkyPosts(owner)
 
         // 5. On request, the rest of pubky.app: profile, follows, blocks, labels.
-        if (deletePubkyApp) failures += deletePubkyAppRecords(owner, progress)
+        if (deletePubkyApp) failures += deletePubkyAppRecords(owner, privateMutes, progress)
 
         // Re-list rather than trust the counters. `deleteRecord` scores a 404 as success, which is
         // right for a record a previous sweep already removed and wrong as a completeness proof —
@@ -204,19 +210,21 @@ class AccountEraser(
      * single pubky.app record goes, and a record written after this listing is never deleted.
      * Returns how many records would not go.
      */
-    private suspend fun deletePubkyAppRecords(owner: String, progress: SweepProgress): Int {
+    private suspend fun deletePubkyAppRecords(owner: String, privateMutes: List<String>, progress: SweepProgress): Int {
         val records = footprints.judgedPubkyAppRecords(owner)
         when {
             records.foreign.isNotEmpty() -> throw PubkyAppFootprintChangedException(PubkyAppFootprint.Direct)
             records.unreadable.isNotEmpty() -> throw PubkyAppFootprintChangedException(PubkyAppFootprint.Unknown)
         }
-        progress.expect(records.loopkys.size)
-        val profile = PubkyPaths.profile(owner)
-        val (labels, rest) = records.loopkys.filterNot { it == profile }
-            .partition { it.startsWith(PubkyPaths.tag(owner, "")) }
-        // Labels only once everything they describe is gone, and the profile last: a sweep that
+        val loopkys = records.loopkys + privateMutes
+        progress.expect(loopkys.size)
+        val profiles = setOf(SocialLayout.Legacy.profile(owner), SocialLayout.SocialV1.profile(owner))
+        val tagRoots = listOf(SocialLayout.Legacy.tagsRoot(owner), SocialLayout.SocialV1.tagsRoot(owner))
+        val (labels, rest) = loopkys.filterNot { it in profiles }
+            .partition { path -> tagRoots.any { path.startsWith(it) } }
+        // Labels only once everything they describe is gone, and the profiles last: a sweep that
         // dies part way still reads as Loopky's, so a retry is offered the same choice.
-        for (pass in listOf(rest, labels, listOfNotNull(profile.takeIf { it in records.loopkys }))) {
+        for (pass in listOf(rest, labels, loopkys.filter { it in profiles })) {
             val failures = pass.mapConcurrently { path -> deleteRecord(path).also { progress.step() } }
                 .count { deleted -> !deleted }
             if (failures > 0) return failures
@@ -228,6 +236,22 @@ class AccountEraser(
      * Device-local state that outlives sign-out and would otherwise greet a fresh account with the
      * last one's numbers. The signup token is deliberately not here.
      */
+    /**
+     * A migrated user's blocks, under `/priv/social/v1/mutes/`, which only the session can list.
+     * Anything else under `/priv/social/v1/` is pubky.app's own state (bookmarks, feeds, its
+     * migration flag), so the account used pubky.app and the delete stops.
+     */
+    private suspend fun privateMutes(owner: String): List<String> {
+        val secret = session.current()?.sessionSecret ?: return emptyList()
+        val root = "pubky://$owner/priv/social/v1/"
+        val entries = pubky.listAllEntriesWithSession(root, secret)
+            .getOrElse { if (it.isNotFound()) emptyList() else throw PubkyAppFootprintChangedException(PubkyAppFootprint.Unknown) }
+            .filterNot { it.endsWith("/") }
+        val mutes = SocialLayout.SocialV1.mutesRoot(owner)
+        if (entries.any { !it.startsWith(mutes) }) throw PubkyAppFootprintChangedException(PubkyAppFootprint.Direct)
+        return entries
+    }
+
     private suspend fun wipeLocalState(owner: String) {
         runSuspendCatching {
             pendingReviews.save(emptyList())

@@ -4,6 +4,7 @@ import com.github.jvsena42.loopky.data.pubky.PubkyClient
 import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.data.pubky.PubkyLinks
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
+import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.repository.PubkyAppFootprintChangedException
 import com.github.jvsena42.loopky.domain.model.DailyStudyProgress
 import com.github.jvsena42.loopky.domain.model.PubkyAppFootprint
@@ -386,6 +387,36 @@ class IdentityRepositoryDeleteAccountTest {
         assertTrue(friendsProfile in pubky.store)
         assertTrue(friendsFollow in pubky.store)
         assertTrue(pubky.deletes.none { it.startsWith("pubky://friendpk/") }, "${pubky.deletes}")
+    }
+
+    @Test
+    fun aMigratedLoopkyOnlyAccountLosesItsSocialV1RecordsAndPrivateMutesToo() = runTest {
+        seedLoopkyOnlyPubkyApp()
+        val v1 = SocialLayout.SocialV1
+        pubky.store[v1.profile(TEST_PUBKY)] = """{"name":"Ana"}"""
+        pubky.store[v1.follow(TEST_PUBKY, "friendpk")] = """{"created_at":1}"""
+        pubky.store[v1.mute(TEST_PUBKY, "trollpk")] = """{"created_at":1}"""
+
+        repo.deleteAccount(deletePubkyApp = true).getOrThrow()
+
+        assertTrue(pubky.store.keys.none { "/social/v1/" in it }, "${pubky.store.keys}")
+        assertEquals(v1.profile(TEST_PUBKY), pubky.deletes.last { "/social/v1/" in it })
+    }
+
+    @Test
+    fun pubkyAppsPrivateStateStopsTheDeleteBeforeAnythingGoes() = runTest {
+        // pubky.app keeps bookmarks, feeds and its migration flag under /priv/social/v1/; only a
+        // session sees them, and any of them means the account used pubky.app.
+        seedLoopkyOnlyPubkyApp()
+        decks.decks["deck1"] = testDeck(id = "deck1")
+        pubky.store["pubky://$TEST_PUBKY/priv/social/v1/_migrated.json"] = "{}"
+
+        val error = repo.deleteAccount(deletePubkyApp = true).exceptionOrNull()
+
+        assertTrue(error is PubkyAppFootprintChangedException, "$error")
+        assertEquals(PubkyAppFootprint.Direct, error.now)
+        assertEquals(emptyList(), pubky.deletes)
+        assertEquals(emptyList(), decks.deleted)
     }
 
     @Test
