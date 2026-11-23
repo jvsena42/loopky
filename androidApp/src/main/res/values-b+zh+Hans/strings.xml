@@ -385,6 +385,10 @@
     <string name="profile_edit_name_placeholder">你的名字</string>
     <string name="profile_edit_bio_label">简介</string>
     <string name="profile_edit_bio_placeholder">介绍一下你自己…</string>
+    <string name="profile_edit_name_error">请输入 3 到 50 个字符。</string>
+    <string name="profile_edit_bio_error">最多 160 个字符。</string>
+    <string name="profile_save_failed">无法保存你的个人资料。请检查网络连接后重试。</string>
+    <string name="profile_save_sign_in_again">请退出登录后重新登录，再编辑你的个人资料。</string>
     <string name="profile_save">保存</string>
     <string name="profile_name_nudge_title">我们该怎么称呼你？</string>
     <string name="profile_name_nudge_body">加个名字，大家就知道这些卡组是谁的了。</string>

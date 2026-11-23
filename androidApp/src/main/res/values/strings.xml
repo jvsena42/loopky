@@ -393,6 +393,10 @@
     <string name="profile_edit_name_placeholder">Your name</string>
     <string name="profile_edit_bio_label">BIO</string>
     <string name="profile_edit_bio_placeholder">Tell us about yourself...</string>
+    <string name="profile_edit_name_error">Use 3 to 50 characters.</string>
+    <string name="profile_edit_bio_error">Use at most 160 characters.</string>
+    <string name="profile_save_failed">Couldn\'t save your profile. Check your connection and try again.</string>
+    <string name="profile_save_sign_in_again">Sign out and sign back in to edit your profile.</string>
     <string name="profile_save">Save</string>
     <!-- The one-time invitation to name a nameless profile. Warm and short by design: it asks
          for something optional, and "Not now" is remembered so it is never asked twice. -->

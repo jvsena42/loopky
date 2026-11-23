@@ -379,6 +379,10 @@
     <string name="profile_edit_name_placeholder">Il tuo nome</string>
     <string name="profile_edit_bio_label">BIO</string>
     <string name="profile_edit_bio_placeholder">Parlaci di te...</string>
+    <string name="profile_edit_name_error">Usa da 3 a 50 caratteri.</string>
+    <string name="profile_edit_bio_error">Usa al massimo 160 caratteri.</string>
+    <string name="profile_save_failed">Impossibile salvare il profilo. Controlla la connessione e riprova.</string>
+    <string name="profile_save_sign_in_again">Esci e accedi di nuovo per modificare il profilo.</string>
     <string name="profile_save">Salva</string>
     <string name="profile_name_nudge_title">Come ti chiamiamo?</string>
     <string name="profile_name_nudge_body">Aggiungi un nome, così le persone sanno di chi sono questi mazzi.</string>

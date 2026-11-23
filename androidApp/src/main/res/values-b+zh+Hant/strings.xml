@@ -392,6 +392,10 @@
     <string name="profile_edit_name_placeholder">你的名稱</string>
     <string name="profile_edit_bio_label">自我介紹</string>
     <string name="profile_edit_bio_placeholder">介紹一下你自己…</string>
+    <string name="profile_edit_name_error">請輸入 3 到 50 個字元。</string>
+    <string name="profile_edit_bio_error">最多 160 個字元。</string>
+    <string name="profile_save_failed">無法儲存你的個人檔案。請檢查網路連線後再試一次。</string>
+    <string name="profile_save_sign_in_again">請登出後重新登入，再編輯你的個人檔案。</string>
     <string name="profile_save">儲存</string>
     <!-- The one-time invitation to name a nameless profile. Warm and short by design: it asks
          for something optional, and "Not now" is remembered so it is never asked twice. -->

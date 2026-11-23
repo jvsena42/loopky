@@ -379,6 +379,10 @@
     <string name="profile_edit_name_placeholder">Tu nombre</string>
     <string name="profile_edit_bio_label">BIO</string>
     <string name="profile_edit_bio_placeholder">Cuéntanos sobre ti...</string>
+    <string name="profile_edit_name_error">Usa entre 3 y 50 caracteres.</string>
+    <string name="profile_edit_bio_error">Usa como máximo 160 caracteres.</string>
+    <string name="profile_save_failed">No se pudo guardar tu perfil. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="profile_save_sign_in_again">Cierra sesión y vuelve a iniciarla para editar tu perfil.</string>
     <string name="profile_save">Guardar</string>
     <string name="profile_name_nudge_title">¿Cómo te llamamos?</string>
     <string name="profile_name_nudge_body">Añade un nombre para que la gente sepa de quién son estos mazos.</string>

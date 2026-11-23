@@ -387,6 +387,10 @@
     <string name="profile_edit_name_placeholder">名前</string>
     <string name="profile_edit_bio_label">自己紹介</string>
     <string name="profile_edit_bio_placeholder">自己紹介を書きましょう…</string>
+    <string name="profile_edit_name_error">3〜50文字で入力してください。</string>
+    <string name="profile_edit_bio_error">160文字以内で入力してください。</string>
+    <string name="profile_save_failed">プロフィールを保存できませんでした。接続を確認して、もう一度お試しください。</string>
+    <string name="profile_save_sign_in_again">プロフィールを編集するには、サインアウトしてからもう一度サインインしてください。</string>
     <string name="profile_save">保存</string>
     <!-- The one-time invitation to name a nameless profile. Warm and short by design: it asks
          for something optional, and "Not now" is remembered so it is never asked twice. -->

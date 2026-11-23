@@ -379,6 +379,10 @@
     <string name="profile_edit_name_placeholder">Dein Name</string>
     <string name="profile_edit_bio_label">BIO</string>
     <string name="profile_edit_bio_placeholder">Erzähl etwas über dich...</string>
+    <string name="profile_edit_name_error">Verwende 3 bis 50 Zeichen.</string>
+    <string name="profile_edit_bio_error">Verwende höchstens 160 Zeichen.</string>
+    <string name="profile_save_failed">Dein Profil konnte nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="profile_save_sign_in_again">Melde dich ab und wieder an, um dein Profil zu bearbeiten.</string>
     <string name="profile_save">Speichern</string>
     <string name="profile_name_nudge_title">Wie sollen wir dich nennen?</string>
     <string name="profile_name_nudge_body">Füge einen Namen hinzu, damit andere wissen, wem diese Stapel gehören.</string>
