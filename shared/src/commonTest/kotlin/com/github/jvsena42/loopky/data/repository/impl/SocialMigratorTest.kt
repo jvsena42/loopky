@@ -157,6 +157,26 @@ class SocialMigratorTest {
     }
 
     @Test
+    fun anUnfinishedPubkyAppRunIsNotFlaggedAsDone() = runTest {
+        loopkyAccount()
+        // pubky.app's migrator flipped (its profile spells every member) and stopped before the mutes.
+        pubky.store[v1.profile(owner)] = """{"name":"Ana","bio":"hi","image":null,"links":null,"status":null}"""
+
+        assertEquals(MigrationOutcome.AlreadyV1, migrator.migrate(session))
+        assertFalse(flag in pubky.store)
+    }
+
+    @Test
+    fun recordsTheV1ReaderRefusesAreSkipped() {
+        val query = """{"content":"x","kind":"link","embed":{"kind":"link","uri":"pubky://$owner/pub/loopky/decks/a?b"}}"""
+        assertEquals(null, movedPost(owner, "0034A0X7NJ52K", query))
+        assertEquals(null, movedPost(owner, "0034A0X7NJ52M", """{"content":"[DELETED]","kind":"short"}"""))
+        assertEquals(null, movedFollow(owner, FRIEND, """{"created_at":9007199254740992}"""))
+        assertEquals(null, movedMute(owner, "${FRIEND.dropLast(1)}u", """{"created_at":1}"""), "a PubkyId ends in y or o")
+        assertEquals("anonymous", socialProfile(ProfileDto(name = " [DELETED] "))?.name)
+    }
+
+    @Test
     fun aProfileEditedOnAnotherDeviceDuringTheCopyIsTheOneFlipped() = runTest {
         loopkyAccount()
         val gate = CompletableDeferred<Unit>()

@@ -14,6 +14,7 @@ import com.github.jvsena42.loopky.util.epochMillis
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.jsonObject
 import kotlin.concurrent.Volatile
 
 /**
@@ -253,21 +254,29 @@ internal class SocialMigrator(
             skipped = if (records.skipped.isEmpty()) emptyMap() else mapOf(SKIP_INVALID to records.skipped.sorted()),
             migrated = records.migrated.sorted(),
         )
-        // After the flip, so a failure here leaves a migrated account: completeFlag writes it next time.
-        return pubky.putWithSession(flagPath(owner), encoded(MigrationFlagDto.serializer(), flag), session.sessionSecret)
-            .onFailure { Log.w(TAG, "flag write FAILED — ${it.message}") }
-            .isSuccess
+        // After the flip, so a failure leaves a migrated account; retried here, and by completeFlag
+        // on the next run, since pubky.app may be opened first.
+        val body = encoded(MigrationFlagDto.serializer(), flag)
+        repeat(FLAG_ATTEMPTS) {
+            pubky.putWithSession(flagPath(owner), body, session.sessionSecret)
+                .onSuccess { return true }
+                .onFailure { Log.w(TAG, "flag write FAILED — ${it.message}") }
+        }
+        return false
     }
 
     /**
-     * Writes the flag a run that flipped [owner] could not. Every copy went in before the flip, so a
-     * flipped account that is still Loopky's has moved whole, whatever it deleted since.
+     * Writes the flag a run of Loopky's that flipped [owner] could not. Loopky copies everything
+     * before the flip, so such an account moved whole, whatever it deleted since. pubky.app's
+     * migrator flips before it copies the mutes, and a run of its that stopped there must stay
+     * unflagged, or it never finishes: its profile is told apart by `links` and `status`, which it
+     * always writes and Loopky never does.
      */
     private suspend fun completeFlag(session: Session, owner: String) {
         if (settledLock.withLock { owner in flagChecked }) return
         val missing = pubky.getWithSession(flagPath(owner), session.sessionSecret)
             .fold(onSuccess = { false }, onFailure = { if (it.isNotFound()) true else throw it })
-        val found = if (missing) footprint.classify(owner) else null
+        val found = if (missing && pubky.flippedByLoopky(owner)) footprint.classify(owner) else null
         val done = when (found) {
             null, PubkyAppFootprint.Direct -> true
             PubkyAppFootprint.LoopkyOnly, PubkyAppFootprint.Empty -> writeFlag(session, owner, records(owner, v0Records(owner)))
@@ -288,6 +297,7 @@ internal class SocialMigrator(
         /** `transformRev` of pubky-social-migrator 1.0.0-rc.2: a flag at or above it is a finished run. */
         const val TRANSFORM_REV = 4
         const val SKIP_INVALID = "invalid"
+        const val FLAG_ATTEMPTS = 3
 
         fun flagPath(owner: String) = "pubky://$owner/priv/social/v1/_migrated.json"
         fun relative(owner: String, path: String) = path.removePrefix("pubky://$owner/")
@@ -338,5 +348,12 @@ internal data class MigrationFlagDto(
  */
 private suspend fun PubkyClient.listWhole(prefix: String, sessionSecret: String? = null): List<String> =
     listEveryEntry(prefix, sessionSecret).getOrElse { if (it.isNotFound()) emptyList() else throw it }
+
+/** Whether [owner]'s v1 profile is one Loopky wrote: pubky.app always spells `links` and `status`. */
+private suspend fun PubkyClient.flippedByLoopky(owner: String): Boolean {
+    val profile = get(SocialLayout.SocialV1.profile(owner)).getOrThrow()
+    val members = runCatching { loopkyJson.parseToJsonElement(profile).jsonObject.keys }.getOrNull() ?: return false
+    return "links" !in members && "status" !in members
+}
 
 private fun layoutRoot(layout: SocialLayout, owner: String) = layout.profile(owner).removeSuffix("profile.json")
