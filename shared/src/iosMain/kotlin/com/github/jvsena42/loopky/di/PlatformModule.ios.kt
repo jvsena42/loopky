@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.jvsena42.loopky.data.homegate.HomegateClient
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.nexus.ClientCompatibility
 import com.github.jvsena42.loopky.data.nexus.HttpFetcher
 import com.github.jvsena42.loopky.data.nexus.IosHttpFetcher
 import com.github.jvsena42.loopky.data.nexus.NexusClient
@@ -135,7 +136,7 @@ private fun iosPlatformModule(
 ): Module = module {
     single<PubkyClient> { IosPubkyClientAdapter(rawPubkyClient) }
     single<HttpFetcher> { IosHttpFetcher() }
-    single { NexusClient(http = get(), baseUrl = pubkyEnvironment.nexusBaseUrl) }
+    single { NexusClient(http = get(), baseUrl = pubkyEnvironment.nexusBaseUrl, compatibility = get()) }
     single { pubkyEnvironment }
     single { HomegateClient(http = get(), baseUrl = pubkyEnvironment.homegateBaseUrl) }
     single<SecureSessionStore> { IosSecureSessionStore() }
@@ -169,6 +170,8 @@ object IosDependencies {
     fun appPreferences(): AppPreferences = koin.get()
 
     fun updatePromptGate(): UpdatePromptGate = koin.get()
+
+    fun clientCompatibility(): ClientCompatibility = koin.get()
 
     fun onboardingViewModel(): OnboardingViewModel = koin.get()
 

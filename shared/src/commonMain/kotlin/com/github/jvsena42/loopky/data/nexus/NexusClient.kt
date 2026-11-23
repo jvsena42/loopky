@@ -29,7 +29,16 @@ class NexusClient(
      * Public because the indexer also serves profile pictures, which callers build URLs for.
      */
     val baseUrl: String,
+    /** Told when the indexer answers 410 or 426; null where nothing shows a force-update screen. */
+    private val compatibility: ClientCompatibility? = null,
 ) {
+
+    private suspend fun fetch(url: String): Result<String> =
+        http.get(url).onFailure { error ->
+            if ((error as? HttpError)?.statusCode in ClientCompatibility.OUTDATED_STATUSES) {
+                compatibility?.markOutdated()
+            }
+        }
 
     /** Tag labels starting with [prefix] — powers tag-input autocomplete. */
     suspend fun searchTagsByPrefix(
@@ -38,7 +47,7 @@ class NexusClient(
     ): Result<List<String>> = runSuspendCatching {
         val encoded = encodeUriComponent(prefix)
         withIndexerRetry("searchTagsByPrefix") {
-            val body = http.get("$baseUrl/v0/search/tags/by_prefix/$encoded?limit=$limit").getOrThrow()
+            val body = fetch("$baseUrl/v0/search/tags/by_prefix/$encoded?limit=$limit").getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
         }
     }
@@ -56,7 +65,7 @@ class NexusClient(
         val url = "$baseUrl/v0/search/users/by_name/${encodeUriComponent(prefix)}" +
             "?limit=${limit.coerceIn(1, MAX_USER_SEARCH_LIMIT)}"
         withIndexerRetry("searchUsersByName") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
         }
     }
@@ -73,7 +82,7 @@ class NexusClient(
         val url = "$baseUrl/v0/search/users/by_id/${encodeUriComponent(prefix)}" +
             "?limit=${limit.coerceIn(1, MAX_USER_SEARCH_LIMIT)}"
         withIndexerRetry("searchUsersById") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
         }
     }
@@ -131,7 +140,7 @@ class NexusClient(
             append("&skip=$skip")
         }
         return withIndexerRetry("resourcesByTag") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(NexusResourceDto.serializer()), body)
         }
     }
@@ -146,7 +155,7 @@ class NexusClient(
             "&limit_tags=$MAX_TAGS_PER_RESOURCE" +
             "&limit_taggers=1"
         withIndexerRetry("resourceByUri") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(NexusResourceTagsDto.serializer(), body)
         }
     }
@@ -177,7 +186,7 @@ class NexusClient(
             "?tags=${encodeUriComponent(label)}" +
             "&limit=${limit.coerceIn(1, MAX_PROFILE_TAG_LIMIT)}"
         withIndexerRetry("usersByProfileTag") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(NexusScoredUserDto.serializer()), body)
                 .map { it.user_id }
         }
@@ -195,7 +204,7 @@ class NexusClient(
         val url = "$baseUrl/v0/search/posts/by_tag/${encodeUriComponent(label)}" +
             "?limit=${limit.coerceIn(1, MAX_POST_SEARCH_LIMIT)}"
         withIndexerRetry("postAuthorsByTag") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(NexusPostKeyDto.serializer()), body)
                 .mapNotNull { it.post_key.substringBefore(':').takeIf { author -> author.isNotEmpty() } }
                 .distinct()
@@ -214,7 +223,7 @@ class NexusClient(
         val url = "$baseUrl/v0/user/${encodeUriComponent(userId)}/taggers/${encodeUriComponent(label)}" +
             "?limit=${limit.coerceIn(1, MAX_USER_TAGGERS_LIMIT)}"
         withIndexerRetry("userTaggers") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(NexusTaggersDto.serializer(), body).users
         }
     }
@@ -224,7 +233,7 @@ class NexusClient(
         val url = "$baseUrl/v0/user/${encodeUriComponent(userId)}/taggers/${encodeUriComponent(label)}" +
             "?limit=1&viewer_id=${encodeUriComponent(tagger)}"
         withIndexerRetry("isTaggedBy") {
-            loopkyJson.decodeFromString(NexusTaggersDto.serializer(), http.get(url).getOrThrow()).relationship
+            loopkyJson.decodeFromString(NexusTaggersDto.serializer(), fetch(url).getOrThrow()).relationship
         }
     }
 
@@ -241,7 +250,7 @@ class NexusClient(
         val url = "$baseUrl/v0/user/${encodeUriComponent(userId)}/followers" +
             "?limit=${limit.coerceIn(1, MAX_FOLLOWS_LIMIT)}"
         withIndexerRetry("followers") {
-            val body = http.get(url).getOrThrow()
+            val body = fetch(url).getOrThrow()
             loopkyJson.decodeFromString(ListSerializer(String.serializer()), body)
         }
     }

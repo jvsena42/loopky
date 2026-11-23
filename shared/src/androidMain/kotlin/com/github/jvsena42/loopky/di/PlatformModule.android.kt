@@ -72,7 +72,11 @@ fun androidPlatformModule(
         AndroidPubkyRingPresence(androidContext(), installUrl = PUBKY_RING_PLAY_STORE_URL)
     }
     single {
-        NexusClient(http = get(), baseUrl = localNexusBaseUrl.ifBlank { pubkyEnvironment.nexusBaseUrl })
+        NexusClient(
+            http = get(),
+            baseUrl = localNexusBaseUrl.ifBlank { pubkyEnvironment.nexusBaseUrl },
+            compatibility = get(),
+        )
     }
     single { pubkyEnvironment }
     single { HomegateClient(http = get(), baseUrl = pubkyEnvironment.homegateBaseUrl) }

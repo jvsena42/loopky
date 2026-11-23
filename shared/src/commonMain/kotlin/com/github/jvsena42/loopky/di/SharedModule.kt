@@ -1,6 +1,7 @@
 package com.github.jvsena42.loopky.di
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
+import com.github.jvsena42.loopky.data.nexus.ClientCompatibility
 import com.github.jvsena42.loopky.data.price.PriceClient
 import com.github.jvsena42.loopky.data.price.PriceSource
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
@@ -117,6 +118,7 @@ fun sharedModule(): Module = module {
     single(REPOSITORY_SCOPE) { CoroutineScope(SupervisorJob()) } onClose { it?.cancel() }
     single { MutableSessionProvider() }
     single { UpdatePromptGate(appPreferences = get()) }
+    single { ClientCompatibility() }
     single { RecapClock(systemNow = ::epochMillis) }
     single<SessionProvider> { get<MutableSessionProvider>() }
 
