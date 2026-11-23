@@ -379,6 +379,10 @@ struct ProfileView: View {
                     ))
                 } header: {
                     Text("profile_edit_name_label")
+                } footer: {
+                    if state.showNameError {
+                        Text("profile_edit_name_error").foregroundStyle(LoopkyColor.danger)
+                    }
                 }
                 Section {
                     TextField("profile_edit_bio_placeholder", text: Binding(
@@ -388,6 +392,18 @@ struct ProfileView: View {
                     .lineLimit(3...6)
                 } header: {
                     Text("profile_edit_bio_label")
+                } footer: {
+                    if state.showBioError {
+                        Text("profile_edit_bio_error").foregroundStyle(LoopkyColor.danger)
+                    }
+                }
+                if let saveErrorKey = state.saveErrorKey {
+                    Section {
+                        Text(saveErrorKey)
+                            .font(.system(size: 13))
+                            .foregroundStyle(LoopkyColor.danger)
+                            .accessibilityIdentifier("profile_edit_save_error")
+                    }
                 }
             }
             .navigationTitle(Text("profile_edit_profile_sheet_title"))
