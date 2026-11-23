@@ -160,7 +160,7 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
     }
 
     func getWithSession(url: String, sessionSecret: String) -> [String] {
-        typed { String(decoding: try Loopky.sessionGetBytes(pathOrAddress: url, sessionSecret: sessionSecret), as: UTF8.self) }
+        typed { try utf8(Loopky.sessionGetBytes(pathOrAddress: url, sessionSecret: sessionSecret)) }
     }
 
     func listWithSession(url: String, sessionSecret: String, cursor: String?, limit: KotlinInt?) -> [String] {
@@ -172,9 +172,15 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
                 cursor: cursor
             )
             let page = try Loopky.sessionList(pathOrAddress: url, sessionSecret: sessionSecret, options: options)
-            let json = try JSONSerialization.data(withJSONObject: page.entries)
-            return String(decoding: json, as: UTF8.self)
+            return try utf8(JSONSerialization.data(withJSONObject: page.entries))
         }
+    }
+
+    private func utf8(_ data: Data) throws -> String {
+        guard let text = String(bytes: data, encoding: .utf8) else {
+            throw NSError(domain: "Loopky", code: 0, userInfo: [NSLocalizedDescriptionKey: "Response is not UTF-8"])
+        }
+        return text
     }
 
     /// The typed UniFFI functions throw instead of returning `[error, payload]`. A server answer is
