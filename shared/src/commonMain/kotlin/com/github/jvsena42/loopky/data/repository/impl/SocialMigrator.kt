@@ -65,7 +65,10 @@ internal class SocialMigrator(
         val owner = session.identity.pubky
         when (val first = refusal(session, owner, newProfile)) {
             null -> Unit
-            MigrationOutcome.AlreadyV1 -> return first.also { completeFlag(session, owner) }
+            // In the hold, like the flip: Delete account removes the flag inside it.
+            MigrationOutcome.AlreadyV1 -> return epochs.exclusive(owner) {
+                if (epochs.isRetired(owner)) MigrationOutcome.Erased else first.also { completeFlag(session, owner) }
+            }
             else -> return first
         }
         // Read and planned outside the hold, so writes wait only for the copy and the flip.

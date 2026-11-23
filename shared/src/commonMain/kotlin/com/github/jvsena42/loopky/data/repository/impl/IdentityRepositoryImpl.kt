@@ -44,6 +44,7 @@ import com.github.jvsena42.loopky.util.encodeUriComponent
 import com.github.jvsena42.loopky.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -744,9 +745,18 @@ internal class IdentityRepositoryImpl(
         // stranding a half-deleted account: signing back in is what a retry needs.
         // Retired until the next sign-in, not just for the erase: the session lives until signOut.
         epochs.retire(pubky)
-        runSuspendCatching { eraser.erase(pubky, deletePubkyApp, onProgress) }
-            .onFailure { epochs.reinstate(pubky) }
-            .getOrThrow()
+        var erased = false
+        try {
+            eraser.erase(pubky, deletePubkyApp, onProgress)
+            erased = true
+        } finally {
+            // Cancelled too (leaving Settings mid-sweep): the account is still signed in and in use,
+            // and its directory entry may be gone, so the next profile edit may tag it again.
+            if (!erased) {
+                withContext(NonCancellable) { epochs.reinstate(pubky) }
+                selfTaggedThisProcess = false
+            }
+        }
         migrator?.forget(pubky)
 
         // So a later sign-in on this process announces the account again rather than believing it did.
