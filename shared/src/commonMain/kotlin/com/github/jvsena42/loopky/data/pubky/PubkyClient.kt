@@ -138,6 +138,21 @@ interface PubkyClient {
 
     suspend fun deleteWithSession(url: String, sessionSecret: String): Result<String>
 
+    /**
+     * GET with the session's auth, the only way to read under `/priv/` (pubky-social-specs 1.x keeps
+     * mutes there, #616). A failure carries the homeserver's status the way [PubkyError.status]
+     * reads it.
+     */
+    suspend fun getWithSession(url: String, sessionSecret: String): Result<String>
+
+    /** [list] with the session's auth, for `/priv/`. Same payload: a JSON array of `pubky://` URLs. */
+    suspend fun listWithSession(
+        url: String,
+        sessionSecret: String,
+        cursor: String? = null,
+        limit: UShort? = null,
+    ): Result<String>
+
     // --- pubky-app-specs helpers ------------------------------------------------
 
     /**

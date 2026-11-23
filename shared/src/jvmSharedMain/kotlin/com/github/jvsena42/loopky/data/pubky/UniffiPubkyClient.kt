@@ -2,6 +2,11 @@ package com.github.jvsena42.loopky.data.pubky
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
+import uniffi.pubkycore.PubkyCoreException
+import uniffi.pubkycore.StorageListOptions
 import uniffi.pubkycore.auth as ffiAuth
 import uniffi.pubkycore.awaitAuthApproval as ffiAwaitAuthApproval
 import uniffi.pubkycore.cancelGrantAuthFlowHandle as ffiCancelGrantAuthFlowHandle
@@ -38,6 +43,8 @@ import uniffi.pubkycore.resolveHttps as ffiResolveHttps
 import uniffi.pubkycore.revalidateSession as ffiRevalidateSession
 import uniffi.pubkycore.revokeGrant as ffiRevokeGrant
 import uniffi.pubkycore.revokeOwnGrant as ffiRevokeOwnGrant
+import uniffi.pubkycore.sessionGetBytes as ffiSessionGetBytes
+import uniffi.pubkycore.sessionList as ffiSessionList
 import uniffi.pubkycore.signIn as ffiSignIn
 import uniffi.pubkycore.signOut as ffiSignOut
 import uniffi.pubkycore.signUpCookie as ffiSignUpCookie
@@ -243,7 +250,37 @@ class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : Pubky
         return ffiConfigureMaxBodyBytes(maxBytes.toULong()).toLong()
     }
 
+    override suspend fun getWithSession(url: String, sessionSecret: String): Result<String> =
+        runTypedFfi { ffiSessionGetBytes(url, sessionSecret).decodeToString() }
+
+    override suspend fun listWithSession(
+        url: String,
+        sessionSecret: String,
+        cursor: String?,
+        limit: UShort?,
+    ): Result<String> = runTypedFfi {
+        val options = StorageListOptions(reverse = false, shallow = false, limit = limit, cursor = cursor)
+        val page = ffiSessionList(url, sessionSecret, options)
+        Json.encodeToString(ListSerializer(String.serializer()), page.entries.map { toPubkyUrl(url, it) })
+    }
+
     // --- Helpers --------------------------------------------------------------
+
+    /**
+     * For the FFI's typed functions, which throw [PubkyCoreException] instead of returning
+     * `[error, payload]`. A server answer is restated in the prose [PubkyError.status] parses, so
+     * a 404 reads as one wherever the error goes.
+     */
+    private suspend inline fun runTypedFfi(crossinline block: () -> String): Result<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                Result.success(block())
+            } catch (e: PubkyCoreException.Server) {
+                Result.failure(PubkyError("Server responded with an error: ${e.status} - ${e.details}"))
+            } catch (t: Throwable) {
+                Result.failure(PubkyError(t.message ?: t::class.simpleName.orEmpty()))
+            }
+        }
 
     private inline fun runFfi(block: () -> List<String>): Result<String> =
         try {

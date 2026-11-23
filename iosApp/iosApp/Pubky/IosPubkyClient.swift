@@ -159,6 +159,36 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
         Loopky.deleteWithSession(url: url, sessionSecret: sessionSecret)
     }
 
+    func getWithSession(url: String, sessionSecret: String) -> [String] {
+        typed { String(decoding: try Loopky.sessionGetBytes(pathOrAddress: url, sessionSecret: sessionSecret), as: UTF8.self) }
+    }
+
+    func listWithSession(url: String, sessionSecret: String, cursor: String?, limit: KotlinInt?) -> [String] {
+        typed {
+            let options = StorageListOptions(
+                reverse: false,
+                shallow: false,
+                limit: limit.map { UInt16(truncating: $0) },
+                cursor: cursor
+            )
+            let page = try Loopky.sessionList(pathOrAddress: url, sessionSecret: sessionSecret, options: options)
+            let json = try JSONSerialization.data(withJSONObject: page.entries)
+            return String(decoding: json, as: UTF8.self)
+        }
+    }
+
+    /// The typed UniFFI functions throw instead of returning `[error, payload]`. A server answer is
+    /// restated in the prose `PubkyError.status` parses, so a 404 reads as one on the Kotlin side.
+    private func typed(_ call: () throws -> String) -> [String] {
+        do {
+            return ["false", try call()]
+        } catch PubkyCoreError.Server(let status, let details) {
+            return ["true", "Server responded with an error: \(status) - \(details)"]
+        } catch {
+            return ["true", "\(error)"]
+        }
+    }
+
     // MARK: - pubky-app-specs helpers
 
     func createTagId(uri: String, label: String) -> [String] {

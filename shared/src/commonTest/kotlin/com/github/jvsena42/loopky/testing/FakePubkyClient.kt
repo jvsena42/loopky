@@ -158,6 +158,24 @@ class FakePubkyClient : PubkyClient {
         return Result.success("ok")
     }
 
+    /** Records which reads were made with the session, so a test can tell `/priv/` reads apart. */
+    val sessionReads = mutableListOf<String>()
+
+    override suspend fun getWithSession(url: String, sessionSecret: String): Result<String> {
+        sessionReads.add(url)
+        return get(url)
+    }
+
+    override suspend fun listWithSession(
+        url: String,
+        sessionSecret: String,
+        cursor: String?,
+        limit: UShort?,
+    ): Result<String> {
+        sessionReads.add(url)
+        return list(url, cursor, reverse = null, limit = limit, shallow = null)
+    }
+
     override suspend fun get(url: String): Result<String> {
         gets.add(url)
         failGetWith?.let { return Result.failure(it) }

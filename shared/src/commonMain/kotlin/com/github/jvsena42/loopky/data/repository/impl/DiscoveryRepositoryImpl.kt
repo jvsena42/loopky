@@ -161,7 +161,7 @@ class DiscoveryRepositoryImpl(
         val owner = session.requireSession().identity.pubky
         require(pubky != owner) { "You cannot block yourself" }
         val body = loopkyJson.encodeToString(MuteDto(created_at = epochMillis() * MICROS_PER_MILLI))
-        this.pubky.putWithSessionRetry(PubkyPaths.mute(owner, pubky), body, session, revalidator)
+        this.pubky.putWithSessionRetry(epochs.layoutOf(owner).mute(owner, pubky), body, session, revalidator)
             .getOrThrow()
         blockedAccounts.add(pubky)
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = true))
@@ -171,7 +171,7 @@ class DiscoveryRepositoryImpl(
 
     override suspend fun unblockUser(pubky: String): Result<Unit> = runSuspendCatching {
         val owner = session.requireSession().identity.pubky
-        this.pubky.deleteWithSessionRetry(PubkyPaths.mute(owner, pubky), session, revalidator)
+        this.pubky.deleteWithSessionRetry(epochs.layoutOf(owner).mute(owner, pubky), session, revalidator)
             .getOrThrow()
         blockedAccounts.remove(pubky)
         _blockChanges.tryEmit(BlockChange(pubky, isBlocked = false))

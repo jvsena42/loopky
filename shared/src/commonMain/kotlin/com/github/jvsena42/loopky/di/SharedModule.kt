@@ -159,9 +159,9 @@ fun sharedModule(): Module = module {
 
     single<CardRepository> { CardRepositoryImpl(get(), get(), get()) }
     // One instance for both repositories, or a block made in one is invisible to the other.
-    single { BlockedAccounts(pubky = get(), session = get()) }
     // One per process, so a user's epoch is read once for every repository that routes by it (#616).
     single { SocialEpochs(pubky = get()) }
+    single { BlockedAccounts(pubky = get(), session = get(), epochs = get()) }
     single<DeckRepository> {
         DeckRepositoryImpl(
             get(), get(), get(), get(), get(), get(), get(), get(), get(),

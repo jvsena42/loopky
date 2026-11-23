@@ -100,6 +100,23 @@ class DiscoveryRepositorySocialV1Test {
     }
 
     @Test
+    fun `a block is a private mute under priv social v1, read back with the session`() = runTest {
+        repo.blockUser("spammerpk").getOrThrow()
+
+        val path = "pubky://$TEST_PUBKY/priv/social/v1/mutes/spammerpk.json"
+        assertTrue(path in pubky.store)
+        assertTrue(pubky.store.keys.none { "/pub/pubky.app/mutes/" in it })
+
+        // A cold instance reads the list off the homeserver, through the session.
+        val cold = BlockedAccounts(pubky, session)
+        assertEquals(setOf("spammerpk"), cold.load())
+        assertTrue(pubky.sessionReads.any { it.startsWith("pubky://$TEST_PUBKY/priv/social/v1/mutes/") })
+
+        repo.unblockUser("spammerpk").getOrThrow()
+        assertTrue(path !in pubky.store)
+    }
+
+    @Test
     fun `a deck request is a note`() = runTest {
         val uri = repo.postDeckRequest("Anyone have a Kanji deck?").getOrThrow()
 

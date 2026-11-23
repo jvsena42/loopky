@@ -36,7 +36,21 @@ internal suspend fun PubkyClient.listAllEntries(
     shallow: Boolean = false,
     pageSize: UShort = LIST_PAGE_SIZE,
 ): Result<List<String>> = runSuspendCatching {
-    val listing = pageThrough(prefix, shallow, pageSize)
+    val listing = pageThrough(pageSize) { cursor ->
+        list(prefix, cursor = cursor, limit = pageSize, shallow = shallow.takeIf { it })
+    }
+    listing.failure?.let { throw it }
+    listing.entries
+}
+
+/** [listAllEntries] with the session's auth, the only way to list under `/priv/` (#616). */
+internal suspend fun PubkyClient.listAllEntriesWithSession(
+    prefix: String,
+    sessionSecret: String,
+): Result<List<String>> = runSuspendCatching {
+    val listing = pageThrough(LIST_PAGE_SIZE) { cursor ->
+        listWithSession(prefix, sessionSecret, cursor, LIST_PAGE_SIZE)
+    }
     listing.failure?.let { throw it }
     listing.entries
 }
@@ -48,7 +62,9 @@ internal suspend fun PubkyClient.listAllEntries(
 internal suspend fun PubkyClient.listAllEntriesOrEmpty(
     prefix: String,
     shallow: Boolean = false,
-): List<String> = pageThrough(prefix, shallow, LIST_PAGE_SIZE).entries
+): List<String> = pageThrough(LIST_PAGE_SIZE) { cursor ->
+    list(prefix, cursor = cursor, limit = LIST_PAGE_SIZE, shallow = shallow.takeIf { it })
+}.entries
 
 /**
  * [listAllEntries], reporting a partial read rather than throwing on it or swallowing it.
@@ -61,7 +77,9 @@ internal suspend fun PubkyClient.listAllEntriesOrEmpty(
 internal suspend fun PubkyClient.listAllEntriesPartial(
     prefix: String,
     shallow: Boolean = false,
-): PubkyListing = pageThrough(prefix, shallow, LIST_PAGE_SIZE)
+): PubkyListing = pageThrough(LIST_PAGE_SIZE) { cursor ->
+    list(prefix, cursor = cursor, limit = LIST_PAGE_SIZE, shallow = shallow.takeIf { it })
+}
 
 /** What one paging run gathered, and what stopped it — so all three entry points share one loop. */
 internal class PubkyListing(
@@ -83,10 +101,9 @@ internal class PubkyListing(
     val isComplete: Boolean get() = failure == null && !truncated
 }
 
-private suspend fun PubkyClient.pageThrough(
-    prefix: String,
-    shallow: Boolean,
+private suspend fun pageThrough(
     pageSize: UShort,
+    fetchPage: suspend (cursor: String?) -> Result<String>,
 ): PubkyListing {
     val seen = linkedSetOf<String>()
     var cursor: String? = null
@@ -97,8 +114,7 @@ private suspend fun PubkyClient.pageThrough(
         // could not tell that from a run that happened to end on its last allowed page.
         if (pages == MAX_LIST_PAGES) return PubkyListing(seen.toList(), null, truncated = true)
         pages++
-        val payload = list(prefix, cursor = cursor, limit = pageSize, shallow = shallow.takeIf { it })
-            .getOrElse { return PubkyListing(seen.toList(), it) }
+        val payload = fetchPage(cursor).getOrElse { return PubkyListing(seen.toList(), it) }
         val page = parsePubkyUrlsFromList(payload)
         // A short or empty page is the end of the listing — the ordinary exit.
         if (page.size < pageSize.toInt()) {
