@@ -80,6 +80,20 @@ class SocialEpochsTest {
     }
 
     @Test
+    fun aReadThatMissedTheFlipDoesNotUndoIt() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        pubky.getGate = gate
+        val read = async { epochs.of(USER) }
+        runCurrent()
+        epochs.markV1(USER)
+        pubky.getGate = null
+        gate.complete(Unit)
+
+        read.await()
+        assertEquals(SocialEpoch.V1, epochs.of(USER))
+    }
+
+    @Test
     fun aWriteAsksAgainWhenTheCacheSaysV0() = runTest {
         assertEquals(SocialEpoch.V0, epochs.of(USER))
         // Another device flips the user inside the cache's lifetime.

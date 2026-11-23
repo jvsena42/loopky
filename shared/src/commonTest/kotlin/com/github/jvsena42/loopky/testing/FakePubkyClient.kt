@@ -116,6 +116,9 @@ class FakePubkyClient : PubkyClient {
      */
     var putGate: CompletableDeferred<Unit>? = null
 
+    /** Holds every [get] until completed, so a read can be caught mid-flight. */
+    var getGate: CompletableDeferred<Unit>? = null
+
     override suspend fun putWithSession(
         url: String,
         content: String,
@@ -177,6 +180,7 @@ class FakePubkyClient : PubkyClient {
     }
 
     override suspend fun get(url: String): Result<String> {
+        getGate?.await()
         gets.add(url)
         failGetWith?.let { return Result.failure(it) }
         if (failGetWhenUrlContains?.let { it in url } == true) {

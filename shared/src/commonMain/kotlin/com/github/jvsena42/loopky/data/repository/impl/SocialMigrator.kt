@@ -85,7 +85,7 @@ internal class SocialMigrator(
     private suspend fun copyAndFlip(session: Session, owner: String, newProfile: ProfileDto?, first: Plan): MigrationOutcome {
         var plan = first
         repeat(MAX_PASSES) {
-            if (flipped(owner)) return MigrationOutcome.AlreadyV1
+            ended(owner)?.let { return it }
             // A write that landed before the hold, or another device's, makes the plan stale.
             if (snapshot(owner, newProfile) != plan.snapshot) {
                 plan = when (val planned = plan(owner, newProfile)) {
@@ -95,7 +95,7 @@ internal class SocialMigrator(
             }
             val present = existingV1(owner, session.sessionSecret)
             // Again, closer to the deletes: past a flip by another device they would undo its writes.
-            if (flipped(owner)) return MigrationOutcome.AlreadyV1
+            ended(owner)?.let { return it }
             // A post goes after its labels and is deleted before them: the next run classifies
             // `social/v1` too, and a Loopky post without its labels there reads as another app's.
             val (staleTags, staleRest) = (present - plan.writes.keys - V1.profile(owner)).partition(::isTag)
@@ -107,7 +107,7 @@ internal class SocialMigrator(
                 pass.mapConcurrently { (path, body) -> pubky.putWithSession(path, body, session.sessionSecret).getOrThrow() }
             }
             if (snapshot(owner, newProfile) != plan.snapshot) return@repeat
-            if (flipped(owner)) return MigrationOutcome.AlreadyV1
+            ended(owner)?.let { return it }
             pubky.putWithSession(V1.profile(owner), plan.profile, session.sessionSecret).getOrThrow()
             epochs.markV1(owner)
             writeFlag(session, owner, plan.records)
@@ -115,6 +115,13 @@ internal class SocialMigrator(
             return MigrationOutcome.Migrated(plan.writes.size)
         }
         error("pubky.app kept changing during the migration")
+    }
+
+    /** The account was deleted, or another device flipped it, since the run began. */
+    private suspend fun ended(owner: String): MigrationOutcome? = when {
+        epochs.isRetired(owner) -> MigrationOutcome.Erased
+        flipped(owner) -> MigrationOutcome.AlreadyV1
+        else -> null
     }
 
     /** Why [owner] is not migrated now, or null when it should be. */
@@ -187,7 +194,7 @@ internal class SocialMigrator(
                 onFailure = { if (it.isNotFound()) null else throw it },
             )
         }
-        return Snapshot(v0Records(owner), profile)
+        return Snapshot(pubky.v0Records(owner), profile)
     }
 
     private suspend fun plan(owner: String, newProfile: ProfileDto?): Planned {
@@ -237,9 +244,6 @@ internal class SocialMigrator(
         }
     }
 
-    private suspend fun v0Records(owner: String): Set<String> =
-        pubky.listWhole(layoutRoot(V0, owner)).filterNot { it.endsWith("/") }.toSet()
-
     /** Every record already under [owner]'s `social/v1` roots, the private mutes included. */
     private suspend fun existingV1(owner: String, sessionSecret: String): Set<String> {
         val public = pubky.listWhole(layoutRoot(V1, owner))
@@ -279,7 +283,7 @@ internal class SocialMigrator(
         val found = if (missing && pubky.flippedByLoopky(owner)) footprint.classify(owner) else null
         val done = when (found) {
             null, PubkyAppFootprint.Direct -> true
-            PubkyAppFootprint.LoopkyOnly, PubkyAppFootprint.Empty -> writeFlag(session, owner, records(owner, v0Records(owner)))
+            PubkyAppFootprint.LoopkyOnly, PubkyAppFootprint.Empty -> writeFlag(session, owner, records(owner, pubky.v0Records(owner)))
             PubkyAppFootprint.Unknown -> false
         }
         if (done) settledLock.withLock { flagChecked += owner }
@@ -308,6 +312,9 @@ internal class SocialMigrator(
 /** What [SocialMigrator.migrate] did. Only [Migrated] and [AlreadyV1] leave the account in `social/v1`. */
 internal sealed interface MigrationOutcome {
     data object AlreadyV1 : MigrationOutcome
+
+    /** The account was deleted while the run waited; nothing was flipped. */
+    data object Erased : MigrationOutcome
     data object NexusNotReady : MigrationOutcome
 
     /** A session from before #621, without `/pub/social/v1/` and `/priv/social/v1/`. */
@@ -355,5 +362,8 @@ private suspend fun PubkyClient.flippedByLoopky(owner: String): Boolean {
     val members = runCatching { loopkyJson.parseToJsonElement(profile).jsonObject.keys }.getOrNull() ?: return false
     return "links" !in members && "status" !in members
 }
+
+private suspend fun PubkyClient.v0Records(owner: String): Set<String> =
+    listWhole(layoutRoot(SocialLayout.Legacy, owner)).filterNot { it.endsWith("/") }.toSet()
 
 private fun layoutRoot(layout: SocialLayout, owner: String) = layout.profile(owner).removeSuffix("profile.json")

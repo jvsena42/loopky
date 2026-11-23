@@ -36,6 +36,7 @@ class SocialEpochs(
 ) {
     private val known = mutableMapOf<String, Pair<SocialEpoch, Long>>()
     private val gates = mutableMapOf<String, Gate>()
+    private val retired = mutableSetOf<String>()
     private val lock = Mutex()
 
     /** Per user: writes in flight, and the exclusive holder's release when there is one. */
@@ -66,8 +67,12 @@ class SocialEpochs(
             onSuccess = { SocialEpoch.V1 },
             onFailure = { if (it.isNotFound()) SocialEpoch.V0 else throw it },
         )
-        lock.withLock { known[user] = epoch to now() }
-        return epoch
+        // A flip that landed during the read is not undone: V1 is kept for good.
+        return lock.withLock {
+            val kept = known[user]?.first.takeIf { it == SocialEpoch.V1 } ?: epoch
+            known[user] = kept to now()
+            kept
+        }
     }
 
     /** For a read. A write goes through [writing], which keeps the answer true until it is done. */
@@ -100,6 +105,21 @@ class SocialEpochs(
             }
         }
     }
+
+    /**
+     * Marks [user]'s account as being deleted, until [reinstate] at the next sign-in. A write that
+     * was waiting on a hold checks it inside the hold: the session stays live until sign-out, so
+     * that alone does not stop a migration or a self-tag from putting the account back.
+     */
+    suspend fun retire(user: String) {
+        lock.withLock { retired += user }
+    }
+
+    suspend fun reinstate(user: String) {
+        lock.withLock { retired -= user }
+    }
+
+    suspend fun isRetired(user: String): Boolean = lock.withLock { user in retired }
 
     /** For Loopky's own write of [user]'s `social/v1/profile.json`, which flips them. */
     suspend fun markV1(user: String) {

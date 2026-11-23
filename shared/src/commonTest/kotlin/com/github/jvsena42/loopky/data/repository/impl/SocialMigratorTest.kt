@@ -157,6 +157,23 @@ class SocialMigratorTest {
     }
 
     @Test
+    fun aRunWaitingWhileTheAccountIsDeletedFlipsNothing() = runTest {
+        loopkyAccount()
+        val release = CompletableDeferred<Unit>()
+        val erase = async { epochs.exclusive(owner) { release.await() } }
+        runCurrent()
+        val run = async { migrator.migrate(session) }
+        runCurrent()
+
+        epochs.retire(owner)
+        release.complete(Unit)
+        erase.await()
+
+        assertEquals(MigrationOutcome.Erased, run.await())
+        assertTrue(pubky.puts.isEmpty())
+    }
+
+    @Test
     fun anUnfinishedPubkyAppRunIsNotFlaggedAsDone() = runTest {
         loopkyAccount()
         // pubky.app's migrator flipped (its profile spells every member) and stopped before the mutes.

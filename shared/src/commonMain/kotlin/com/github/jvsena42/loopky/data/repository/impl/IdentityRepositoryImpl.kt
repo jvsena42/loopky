@@ -51,7 +51,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import kotlin.concurrent.Volatile
 
 /**
  * [IdentityRepository] backed by [PubkyClient] and [SecureSessionStore].
@@ -497,6 +496,9 @@ internal class IdentityRepositoryImpl(
     private suspend fun persistSession(session: Session): Session {
         sessionStore.save(session)
         sessionProvider.set(session)
+        // A sign-in again after Delete account: the account is the user's to use once more.
+        epochs.reinstate(session.identity.pubky)
+        migrator?.forget(session.identity.pubky)
         migrateInBackground(session)
         selfTagAsLoopkyUser(session)
         followPendingDeck()
@@ -576,9 +578,9 @@ internal class IdentityRepositoryImpl(
             // put a v1 tag on the pubky.app profile address.
             runSuspendCatching {
                 epochs.writing(owner) { layout ->
-                    // Asked again inside the hold: an erase takes it after setting [erasing], so
-                    // this either lands before the erase removes it or sees the flag.
-                    if (erasing) return@writing
+                    // Asked again inside the hold: an erase retires the account before it takes
+                    // the hold, so this either lands before the erase removes it or sees that.
+                    if (epochs.isRetired(owner)) return@writing
                     tagRepository.putReservedTag(PubkyUri(layout.profile(owner)), ReservedTags.USER).getOrThrow()
                 }
             }
@@ -622,10 +624,6 @@ internal class IdentityRepositoryImpl(
         val merged = current - dropped + fields
         return loopkyJson.encodeToString(JsonObject.serializer(), JsonObject(merged))
     }
-
-    /** Set while Delete account runs, so a self-tag waiting behind a migration does not undo it. */
-    @Volatile
-    private var erasing = false
 
     /** Reset on sign-out so the next account announces itself too. */
     private var selfTaggedThisProcess = false
@@ -744,12 +742,11 @@ internal class IdentityRepositoryImpl(
 
         // Throws unless every record Loopky owns is gone, which keeps the sign-out below from
         // stranding a half-deleted account: signing back in is what a retry needs.
-        erasing = true
-        try {
-            eraser.erase(pubky, deletePubkyApp, onProgress)
-        } finally {
-            erasing = false
-        }
+        // Retired until the next sign-in, not just for the erase: the session lives until signOut.
+        epochs.retire(pubky)
+        runSuspendCatching { eraser.erase(pubky, deletePubkyApp, onProgress) }
+            .onFailure { epochs.reinstate(pubky) }
+            .getOrThrow()
         migrator?.forget(pubky)
 
         // So a later sign-in on this process announces the account again rather than believing it did.
