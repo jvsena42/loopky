@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.presentation.profile
 
 import com.github.jvsena42.loopky.data.homegate.PubkyEnvironment
 import com.github.jvsena42.loopky.data.repository.CachedDecks
+import com.github.jvsena42.loopky.data.repository.ProfileWriteRefusedException
 import com.github.jvsena42.loopky.domain.model.BackupMethod
 import com.github.jvsena42.loopky.domain.model.KeyCustody
 import com.github.jvsena42.loopky.domain.model.PubkyIdentity
@@ -476,5 +477,104 @@ class ProfileViewModelTest {
         // and the name card is the only reason the photo one was ever withheld.
         assertFalse(vm.state.value.showNameNudge)
         assertTrue(vm.state.value.showAvatarNudge)
+    }
+
+    private fun editing(name: String, bio: String = "") = viewModel().also { vm ->
+        vm.onEditProfileClick()
+        vm.onEditNameChanged(name)
+        vm.onEditBioChanged(bio)
+    }
+
+    @Test
+    fun aShortNameIsFlaggedOnlyOnceSaveIsTappedAndNothingIsWritten() = runTest {
+        val vm = editing("Al")
+        advanceUntilIdle()
+        assertFalse(vm.state.value.showNameError)
+
+        vm.onSaveClick()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.showNameError)
+        assertTrue(vm.state.value.showEditSheet)
+        assertTrue(identity.profileUpdates.isEmpty())
+    }
+
+    @Test
+    fun aBlankNameIsRefusedBecauseBothSpecsRequireOne() = runTest {
+        val vm = editing("   ", bio = "hi")
+        vm.onSaveClick()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.showNameError)
+        assertTrue(identity.profileUpdates.isEmpty())
+    }
+
+    @Test
+    fun anOverLongFieldIsFlaggedWhileTyping() = runTest {
+        val vm = editing("a".repeat(51), bio = "b".repeat(161))
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.showNameError)
+        assertTrue(vm.state.value.showBioError)
+    }
+
+    @Test
+    fun limitsCountCharactersNotUtf16UnitsAndIgnoreSurroundingSpace() = runTest {
+        // 50 emoji are 100 UTF-16 units; the spec counts code points.
+        val vm = editing("  " + "😀".repeat(50) + "  ", bio = "é".repeat(160))
+        vm.onSaveClick()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.showNameError)
+        assertFalse(vm.state.value.showBioError)
+        assertEquals(listOf<Pair<String?, String?>>("😀".repeat(50) to "é".repeat(160)), identity.profileUpdates)
+    }
+
+    @Test
+    fun aValidEditIsSavedTrimmedAndClosesTheSheet() = runTest {
+        identity.updateProfileResult = Result.success(PubkyIdentity(TEST_PUBKY, "Ada", null, null))
+        val vm = editing(" Ada ", bio = "  ")
+        vm.onSaveClick()
+        advanceUntilIdle()
+
+        assertEquals(listOf<Pair<String?, String?>>("Ada" to null), identity.profileUpdates)
+        assertFalse(vm.state.value.showEditSheet)
+    }
+
+    @Test
+    fun aFailedSaveIsReportedInTheSheetAndClearedByTyping() = runTest {
+        identity.updateProfileResult = Result.failure(IllegalStateException("offline"))
+        val vm = editing("Ada")
+        vm.onSaveClick()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.showEditSheet)
+        assertEquals(ProfileSaveError.Failed, vm.state.value.editSaveError)
+
+        vm.onEditNameChanged("Ada L")
+        assertNull(vm.state.value.editSaveError)
+    }
+
+    @Test
+    fun aRefusedWriteAsksForANewSignIn() = runTest {
+        identity.updateProfileResult = Result.failure(ProfileWriteRefusedException())
+        val vm = editing("Ada")
+        vm.onSaveClick()
+        advanceUntilIdle()
+
+        assertEquals(ProfileSaveError.NeedsSignIn, vm.state.value.editSaveError)
+    }
+
+    @Test
+    fun reopeningTheSheetStartsClean() = runTest {
+        val vm = editing("Al")
+        vm.onSaveClick()
+        advanceUntilIdle()
+        vm.onDismissEditSheet()
+
+        vm.onEditProfileClick()
+
+        assertFalse(vm.state.value.editSubmitted)
+        assertNull(vm.state.value.editSaveError)
     }
 }

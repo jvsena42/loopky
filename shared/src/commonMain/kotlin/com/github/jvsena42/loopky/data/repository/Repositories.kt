@@ -1587,3 +1587,6 @@ data class StudySettingsSnapshot(
 /** Delete account was asked to remove pubky.app, but the account no longer holds only Loopky's records. */
 class PubkyAppFootprintChangedException(val now: PubkyAppFootprint) :
     IllegalStateException("pubky.app is now $now; nothing was deleted")
+
+/** The homeserver refused a profile write: the session lacks the scope, and only a new sign-in grants it. */
+class ProfileWriteRefusedException : IllegalStateException("Please sign out and sign back in to enable profile editing.")

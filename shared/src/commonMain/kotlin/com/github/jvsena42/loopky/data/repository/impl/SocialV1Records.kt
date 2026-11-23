@@ -19,7 +19,7 @@ internal fun socialProfile(profile: ProfileDto): SocialProfileDto? {
     // The 0.x reader reads a deleted account's name as `anonymous`, and the reference migrates that.
     val name = profile.name?.let(::frozenTrim)?.let { if (it == DELETED) ANONYMOUS else it }.orEmpty()
     val bio = profile.bio?.let(::frozenTrim)?.ifEmpty { null }
-    if (codePoints(name) !in NAME_LENGTH || (bio != null && codePoints(bio) > BIO_MAX)) return null
+    if (!isProfileName(name) || (bio != null && !isProfileBio(bio))) return null
     // The reference drops a picture its gate refuses rather than the profile.
     val image = profile.image?.let(::rewrite)?.takeIf { uri ->
         IMAGE_SCHEMES.any { uri.startsWith(it) } && codePoints(uri) <= IMAGE_MAX && isPlainReference(uri)
@@ -82,8 +82,6 @@ private const val ANONYMOUS = "anonymous"
 
 /** A `created_at` under this is milliseconds: 1e14 µs is 1973, 1e14 ms is the year 5138. */
 private const val MICROS_FLOOR = 100_000_000_000_000L
-private val NAME_LENGTH = 3..50
-private const val BIO_MAX = 160
 private const val IMAGE_MAX = 300
 private val IMAGE_SCHEMES = listOf("pubky://", "http://", "https://")
 

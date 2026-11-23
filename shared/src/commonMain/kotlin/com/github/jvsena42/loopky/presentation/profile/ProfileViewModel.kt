@@ -8,7 +8,12 @@ import com.github.jvsena42.loopky.data.pubky.requiresReauth
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.DiscoveryRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
+import com.github.jvsena42.loopky.data.repository.ProfileWriteRefusedException
 import com.github.jvsena42.loopky.data.repository.SrsRepository
+import com.github.jvsena42.loopky.data.repository.impl.frozenTrim
+import com.github.jvsena42.loopky.data.repository.impl.isProfileBio
+import com.github.jvsena42.loopky.data.repository.impl.isProfileName
+import com.github.jvsena42.loopky.data.repository.impl.isProfileNameTooLong
 import com.github.jvsena42.loopky.data.storage.AppPreferences
 import com.github.jvsena42.loopky.domain.model.Deck
 import com.github.jvsena42.loopky.domain.model.KeyCustody
@@ -265,6 +270,8 @@ class ProfileViewModel(
                 showEditSheet = true,
                 editName = identity?.displayName.orEmpty(),
                 editBio = identity?.bio.orEmpty(),
+                editSubmitted = false,
+                editSaveError = null,
             )
         }
     }
@@ -292,23 +299,29 @@ class ProfileViewModel(
     }
 
     fun onEditNameChanged(text: String) {
-        _state.update { it.copy(editName = text) }
+        _state.update { it.copy(editName = text, editSaveError = null) }
     }
 
     fun onEditBioChanged(text: String) {
-        _state.update { it.copy(editBio = text) }
+        _state.update { it.copy(editBio = text, editSaveError = null) }
     }
 
+    /**
+     * Saves the sheet, or flags its fields and stays open. A failure is reported in the sheet too:
+     * anything drawn by the screen underneath is covered by it.
+     */
     fun onSaveClick() {
         if (saveJob?.isActive == true) return
+        _state.update { it.copy(editSubmitted = true, editSaveError = null) }
+        val current = _state.value
+        if (current.showNameError || current.showBioError) return
         saveJob = viewModelScope.launch {
-            val current = _state.value
             _state.update { it.copy(isSaving = true) }
             Log.d(TAG, "onSaveClick: saving profile")
 
             identityRepository.updateProfile(
-                name = current.editName.ifBlank { null },
-                bio = current.editBio.ifBlank { null },
+                name = frozenTrim(current.editName),
+                bio = frozenTrim(current.editBio).ifEmpty { null },
             ).onSuccess { identity ->
                 Log.d(TAG, "onSaveClick: saved")
                 _state.update {
@@ -320,11 +333,12 @@ class ProfileViewModel(
                 }
             }.onFailure { err ->
                 Log.e(TAG, "onSaveClick: FAILED — ${err.message}", err)
-                _state.update { it.copy(isSaving = false) }
                 if (err.requiresReauth()) {
+                    _state.update { it.copy(isSaving = false) }
                     handleSessionExpired()
                 } else {
-                    _effects.emit(ProfileEffect.ShowError(err.message ?: "Could not save profile."))
+                    val reason = if (err is ProfileWriteRefusedException) ProfileSaveError.NeedsSignIn else ProfileSaveError.Failed
+                    _state.update { it.copy(isSaving = false, editSaveError = reason) }
                 }
             }
         }
@@ -431,8 +445,19 @@ data class ProfileUiState(
     val showEditSheet: Boolean = false,
     val editName: String = "",
     val editBio: String = "",
+    /** Save was tapped on this sheet; until then a field is flagged only once it is too long. */
+    val editSubmitted: Boolean = false,
+    val editSaveError: ProfileSaveError? = null,
     val isSaving: Boolean = false,
 ) {
+    /** The name both specs accept: 3 to 50 characters. A blank name is refused too. */
+    val showNameError: Boolean
+        get() = !isProfileName(editName) && (editSubmitted || isProfileNameTooLong(editName))
+
+    /** The bio is at most 160 characters, flagged as soon as it passes that. */
+    val showBioError: Boolean
+        get() = !isProfileBio(editBio)
+
     /**
      * Whether there is nothing on this device to draw yet, so the screen has to be a spinner.
      *
@@ -503,5 +528,11 @@ sealed interface ProfileEffect {
 
     /** Hand [url] to the browser — the pubky.app profile, never an in-app destination. */
     data class OpenUrl(val url: String) : ProfileEffect
-    data class ShowError(val message: String) : ProfileEffect
+}
+
+enum class ProfileSaveError {
+    Failed,
+
+    /** The session predates the profile scope; see [ProfileWriteRefusedException]. */
+    NeedsSignIn,
 }

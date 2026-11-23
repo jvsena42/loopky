@@ -320,8 +320,14 @@ class FakeIdentityRepository(var session: Session? = fakeSession()) : IdentityRe
             ?: Result.failure(IllegalStateException("no profile for $pubky"))
     }
 
-    override suspend fun updateProfile(name: String?, bio: String?): Result<PubkyIdentity> =
-        Result.failure(UnsupportedOperationException("Not used in tests"))
+    /** The `(name, bio)` of each [updateProfile] call, and what it answers. */
+    val profileUpdates = mutableListOf<Pair<String?, String?>>()
+    var updateProfileResult: Result<PubkyIdentity> = Result.failure(UnsupportedOperationException("Not used in tests"))
+
+    override suspend fun updateProfile(name: String?, bio: String?): Result<PubkyIdentity> {
+        profileUpdates += name to bio
+        return updateProfileResult
+    }
 }
 
 class FakeDeckRepository : DeckRepository {

@@ -8,6 +8,14 @@ private const val PUBKY_LENGTH = 52
 private const val Z_BASE32 = "ybndrfg8ejkmcpqxot1uwisza345h769"
 private const val MAX_SAFE_INTEGER = 9_007_199_254_740_991L
 
+/** A profile name and bio as both the 0.x and v1 specs bound them, counted after the frozen trim. */
+internal fun isProfileName(name: String) = codePoints(frozenTrim(name)) in PROFILE_NAME_LENGTH
+internal fun isProfileBio(bio: String) = codePoints(frozenTrim(bio)) <= PROFILE_BIO_MAX
+internal fun isProfileNameTooLong(name: String) = codePoints(frozenTrim(name)) > PROFILE_NAME_LENGTH.last
+
+private val PROFILE_NAME_LENGTH = 3..50
+private const val PROFILE_BIO_MAX = 160
+
 internal fun isSafeInteger(value: Long) = value in 0..MAX_SAFE_INTEGER
 
 /**

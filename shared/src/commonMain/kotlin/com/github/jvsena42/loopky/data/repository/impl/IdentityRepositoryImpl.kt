@@ -21,6 +21,7 @@ import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.repository.AuthFlowHandle
 import com.github.jvsena42.loopky.data.repository.DeckRepository
 import com.github.jvsena42.loopky.data.repository.IdentityRepository
+import com.github.jvsena42.loopky.data.repository.ProfileWriteRefusedException
 import com.github.jvsena42.loopky.data.repository.SignOutOutcome
 import com.github.jvsena42.loopky.data.repository.TagRepository
 import com.github.jvsena42.loopky.data.storage.KeyOrigin
@@ -706,7 +707,7 @@ internal class IdentityRepositoryImpl(
         if (putResult.isFailure) {
             val err = putResult.exceptionOrNull()
             if (err?.message?.contains("403") == true || err?.message?.contains("write access") == true) {
-                error("Please sign out and sign back in to enable profile editing.")
+                throw ProfileWriteRefusedException()
             }
             putResult.getOrThrow()
         }
