@@ -957,6 +957,23 @@ Cards are batched rather than stored one record per card, and the manifest carri
 - `{sha256}` is the hex digest of the blob; acts as a content address and enables per-deck dedupe.
 - `.ext` is informational; MIME is carried in the card's media ref.
 
+**Social records and the epoch rule (#616).** Profile, follows, blocks, posts and tags are not
+Loopky's; they sit in the shared social layout, and which one depends on the user:
+
+| Record | `v0` (pubky-app-specs 0.x) | `v1` (pubky-social-specs 1.x) |
+|---|---|---|
+| profile | `/pub/pubky.app/profile.json` | `/pub/social/v1/profile.json` |
+| follow | `/pub/pubky.app/follows/{pubky}` | `/pub/social/v1/follows/{pubky}.json` |
+| block (mute) | `/pub/pubky.app/mutes/{pubky}` | `/priv/social/v1/mutes/{pubky}.json`, private |
+| post | `/pub/pubky.app/posts/{id}` | `/pub/social/v1/posts/{id}/{id}.json`, referenced as `posts/{id}` |
+| tag | `/pub/pubky.app/tags/{id}` | `/pub/social/v1/tags/{id}.json` |
+
+A user is `v1` once `/pub/social/v1/profile.json` exists on their homeserver: Nexus flips them when
+it handles that write and ignores their `pubky.app` writes from then on, handling one homeserver's
+events in order. `SocialEpochs` reads that file, not Nexus's `epoch` field, which can lag; `v1` is
+kept for good and `v0` re-read after five minutes. `SocialLayout` holds both path sets. A `v1` post's
+`embed` is the URI string and its short kind is `note` (`SocialPostDto`).
+
 **`manifest.json`:**
 
 ```json
