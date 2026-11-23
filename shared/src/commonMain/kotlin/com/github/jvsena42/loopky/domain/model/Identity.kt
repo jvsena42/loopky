@@ -40,14 +40,24 @@ fun PubkyIdentity.avatarDisplayUrl(indexerBaseUrl: String): String? {
 
     val path = raw.removePrefix(PUBKY_SCHEME)
     val user = path.substringBefore('/', missingDelimiterValue = "")
-    val fileId = path.substringAfter(PUBKY_APP_FILES, missingDelimiterValue = "").trim('/')
-    if (user.isEmpty() || fileId.isEmpty() || '/' in fileId) return null
-
-    return "${indexerBaseUrl.trimEnd('/')}/static/files/$user/$fileId/main"
+    val base = indexerBaseUrl.trimEnd('/')
+    // A `social/v1` file is `{hash}.{ext}` with no File node, which Nexus serves under `/v1/static`.
+    val v1Name = fileNameAfter(path, SOCIAL_V1_FILES)
+    val v0Id = fileNameAfter(path, PUBKY_APP_FILES)
+    return when {
+        user.isEmpty() -> null
+        v1Name != null -> "$base/v1/static/files/$user/$v1Name/main"
+        v0Id != null -> "$base/static/files/$user/$v0Id/main"
+        else -> null
+    }
 }
+
+private fun fileNameAfter(path: String, folder: String): String? =
+    path.substringAfter(folder, missingDelimiterValue = "").trim('/').takeIf { it.isNotEmpty() && '/' !in it }
 
 private const val PUBKY_SCHEME = "pubky://"
 private const val PUBKY_APP_FILES = "/pub/pubky.app/files/"
+private const val SOCIAL_V1_FILES = "/pub/social/v1/files/"
 
 data class Session(
     val identity: PubkyIdentity,

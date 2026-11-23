@@ -3,11 +3,9 @@ package com.github.jvsena42.loopky.data.pubky
 @Suppress("TooManyFunctions")
 internal object PubkyPaths {
     const val APP_NAMESPACE = "pub/loopky"
-    private const val PUBKY_APP_NAMESPACE = "pub/pubky.app"
     const val SCHEME = "pubky://"
 
-    fun profile(pubky: String): String =
-        "pubky://$pubky/$PUBKY_APP_NAMESPACE/profile.json"
+    fun profile(pubky: String): String = SocialLayout.Legacy.profile(pubky)
 
     fun deckRoot(authorPubky: String, deckId: String): String =
         "pubky://$authorPubky/$APP_NAMESPACE/decks/$deckId"
@@ -66,22 +64,19 @@ internal object PubkyPaths {
      * `follows/` directory means "owner follows followee". Stored on the follower's homeserver so
      * listing your own follows is a single [PubkyClient.list] on [followsRoot].
      */
-    fun followsRoot(ownerPubky: String): String =
-        "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/follows/"
+    fun followsRoot(ownerPubky: String): String = SocialLayout.Legacy.followsRoot(ownerPubky)
 
     fun follow(ownerPubky: String, followeePubky: String): String =
-        "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/follows/$followeePubky"
+        SocialLayout.Legacy.follow(ownerPubky, followeePubky)
 
     /**
      * Blocks are pubky.app's **mute** record, `/pub/pubky.app/mutes/{mutee}`, so a block made in
      * Loopky mutes on pubky.app as well, and one made there hides that person here (#577). Public,
      * like every record under `/pub/`.
      */
-    fun mutesRoot(ownerPubky: String): String =
-        "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/mutes/"
+    fun mutesRoot(ownerPubky: String): String = SocialLayout.Legacy.mutesRoot(ownerPubky)
 
-    fun mute(ownerPubky: String, muteePubky: String): String =
-        "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/mutes/$muteePubky"
+    fun mute(ownerPubky: String, muteePubky: String): String = SocialLayout.Legacy.mute(ownerPubky, muteePubky)
 
     /**
      * Decks the owner follows, on the **follower's** homeserver — existence-as-truth, like
@@ -103,12 +98,10 @@ internal object PubkyPaths {
      * content-derived — two announcements of the same deck are two posts, which is what a feed
      * expects.
      */
-    fun post(ownerPubky: String, postId: String): String =
-        "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/posts/$postId"
+    fun post(ownerPubky: String, postId: String): String = SocialLayout.Legacy.post(ownerPubky, postId)
 
     /** The `posts/` directory under one account, for recognising a post URI. */
-    fun postsRoot(ownerPubky: String): String =
-        "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/posts/"
+    fun postsRoot(ownerPubky: String): String = SocialLayout.Legacy.postsRoot(ownerPubky)
 
     /**
      * pubky.app tag record — the namespace Nexus indexes into its **user/post** graph. Use it only
@@ -116,8 +109,7 @@ internal object PubkyPaths {
      * any other subject (see [loopkyTag] and Architecture.md §7.7). The id is content-derived per
      * pubky-app-specs (`PubkyClient.createTagId`).
      */
-    fun tag(ownerPubky: String, tagId: String): String =
-        "pubky://$ownerPubky/$PUBKY_APP_NAMESPACE/tags/$tagId"
+    fun tag(ownerPubky: String, tagId: String): String = SocialLayout.Legacy.tag(ownerPubky, tagId)
 
     /**
      * Tag record in Loopky's own namespace — the namespace Nexus indexes into its generic
