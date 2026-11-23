@@ -34,11 +34,12 @@ class FfiRingLogin(private val pubky: UniffiPubkyClient) : RingLogin {
             else -> return LoginPoll.Pending
         }
         val session = answer["session"]!!.jsonObject
-        // Ring can only narrow what was asked for; anything but exactly the one scope is refused
-        // rather than stored, so the server can never end up holding more than `/pub/loopky/`.
+        // Ring can only narrow what was asked for; anything but exactly the asked scope is refused
+        // rather than stored, so the server never holds more than it asked for, or a grant too
+        // narrow to tag decks.
         val granted = (session["capabilities"] as? JsonArray)?.map { it.jsonPrimitive.content }
             ?: listOfNotNull((session["capabilities"] as? JsonPrimitive)?.content)
-        if (granted != listOf(LOOPKY_CAPABILITIES)) {
+        if (granted.toSet() != LOOPKY_CAPABILITY_LIST.toSet()) {
             pubky.revokeOwnGrant(session.text("grant_secret"))
                 .onFailure { log.warn("Revoking a grant with the wrong scope failed; only Ring can revoke it now", it) }
             return LoginPoll.Failed("Pubky Ring granted $granted; Loopky for Claude needs exactly $LOOPKY_CAPABILITIES")

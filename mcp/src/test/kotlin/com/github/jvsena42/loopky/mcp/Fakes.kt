@@ -51,7 +51,7 @@ class FakeSecrets(secrets: Map<String, String> = emptyMap()) : SessionSecrets {
 fun sessionFor(pubky: String, secret: String = "secret-$pubky"): Session = Session(
     identity = PubkyIdentity(pubky = pubky, displayName = null, avatarUrl = null, bio = null),
     sessionSecret = secret,
-    capabilities = listOf(Capability(LOOPKY_CAPABILITIES)),
+    capabilities = LOOPKY_CAPABILITY_LIST.map(::Capability),
     homeserver = "homeserverpk",
 )
 

@@ -59,10 +59,10 @@ data class Session(
      * Whether this session was granted write access to the pubky.app namespace.
      *
      * True for the two apps, which ask for `DEFAULT_CAPABILITIES`; false for the headless client,
-     * which asks for `/pub/loopky/:rw` and nothing else (#54). The point of asking is that a
-     * pubky.app write from a session without the capability is not a *failure worth reporting* —
-     * it is a request that should never have been made, and making it costs a round trip and
-     * writes a warning about something working exactly as designed.
+     * which asks for `/pub/loopky/` and the tag folders only (#54, #616). The point of asking is
+     * that a pubky.app write from a session without the capability is not a *failure worth
+     * reporting* — it is a request that should never have been made, and making it costs a round
+     * trip and writes a warning about something working exactly as designed.
      *
      * Only ever a reason to **skip** an optional write, never to substitute one. A caller that
      * genuinely needs the namespace should fail rather than silently do something else.

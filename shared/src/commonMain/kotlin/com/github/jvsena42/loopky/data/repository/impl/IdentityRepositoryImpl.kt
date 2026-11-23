@@ -543,10 +543,9 @@ internal class IdentityRepositoryImpl(
      */
     private fun selfTagAsLoopkyUser(session: Session) {
         if (selfTaggedThisProcess) return
-        // The subject is a *profile*, so the record goes to `/pub/pubky.app/tags/` (§7.7) — which a
-        // session scoped to `/pub/loopky/:rw` was never granted. Asked rather than attempted: the
-        // headless client (#54) holds exactly that session, and firing anyway would buy a doomed
-        // round trip per command plus a warning about the scope working as designed.
+        // The self-tag announces an account made in the apps. The headless client (#54) holds no
+        // `/pub/pubky.app/:rw`, and its tag scope (#616) is for its decks, so it skips this rather
+        // than self-tagging on every command.
         if (!session.canWritePubkyApp) {
             Log.d(TAG, "selfTag: skipped — this session has no pubky.app write capability")
             return

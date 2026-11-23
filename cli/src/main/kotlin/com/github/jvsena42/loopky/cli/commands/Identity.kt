@@ -42,15 +42,16 @@ import kotlin.time.Duration.Companion.seconds
  * cannot write a post, a follow or a profile edit under any bug or any prompt injection, because it
  * was never handed the capability — the guarantee is structural rather than a flag someone set.
  *
- * It costs less than it looks: deck tagging routes on the *subject*, so a deck manifest's tag record
- * goes to `/pub/loopky/tags/` and `deck create --tag …` works unchanged (§7.7). What is given up is
- * the pubky.app-native writes a headless deck tool has no business making — announcing a deck (#39),
- * tagging a profile, editing `profile.json`.
+ * The two tag folders are there because Nexus reads tags nowhere else since pubky/pubky-nexus#1129:
+ * without them `deck create --tag …` would publish decks nobody can find (#616). That couples the
+ * headless client to pubky.app's namespace, and it lets an agent tag any post or profile, though
+ * still not write one. Nexus was asked to index tags in an app's own folder again, which would let
+ * this shrink back to `/pub/loopky/:rw`.
  *
  * One visible consequence, and it is why `whoami` reports no display name: that lives in
  * `/pub/pubky.app/profile.json`.
  */
-const val CLI_CAPABILITIES = "/pub/loopky/:rw"
+const val CLI_CAPABILITIES = "/pub/loopky/:rw,/pub/pubky.app/tags/:rw,/pub/social/v1/tags/:rw"
 
 /**
  * The two places `login` writes things that are not its result.
@@ -222,7 +223,7 @@ suspend fun login(
             "$PUBKY_RING_INSTALL_URL (`loopky ring` shows a QR code).",
     )
     stderr("")
-    stderr("Requesting $CLI_CAPABILITIES only — this session cannot post, follow or edit a profile.")
+    stderr("Requesting $CLI_CAPABILITIES only — this session can tag, but cannot post, follow or edit a profile.")
     stderr(timeout?.let { "Waiting for approval (up to ${it}s)…" } ?: "Waiting for approval…")
 
     val session = try {
