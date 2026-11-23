@@ -17,7 +17,7 @@ class ProxyRefusalTest {
     @Test
     fun `a 407 from Nexus is a proxy refusal`() {
         val error = RuntimeException(
-            "GET https://nexus.pubky.app/v0/stream/resources?app=loopky&limit=50 failed with HTTP 407",
+            "GET https://nexus.pubky.app/v0/stream/resources?tags=loopky-deck&limit=50 failed with HTTP 407",
         )
         assertEquals(ExitCode.ProxyRefused, ExitCode.of(error))
     }

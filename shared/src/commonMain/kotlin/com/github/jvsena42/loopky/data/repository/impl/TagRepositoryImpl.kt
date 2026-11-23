@@ -36,7 +36,7 @@ import kotlinx.serialization.encodeToString
  *   namespace, indexed into the user/post graph — the only one `/v0/tags/hot`,
  *   `/v0/search/users/by_tags` and `/v0/search/posts/by_tag/{label}` can see;
  * - anything else, i.e. a deck manifest → [PubkyPaths.loopkyTag], indexed as a generic resource
- *   (reachable from `/v0/stream/resources?app=loopky`).
+ *   (reachable from `/v0/stream/resources?tags=…`).
  *
  * Putting a deck manifest subject in the pubky.app namespace is not merely suboptimal: the
  * watcher rejects the record and the tag is never indexed at all, silently. That is what Loopky
@@ -117,9 +117,11 @@ class TagRepositoryImpl(
     }
 
     override suspend fun trendingDeckTags(sampleSize: Int, limit: Int): Result<List<Tag>> {
+        // Another app or a web URL can carry `loopky-deck` too, and its labels must not become topics.
         val resources = nexus.resourcesByTag(ReservedTags.DECK.value, sampleSize)
             .onFailure { Log.w(TAG, "trendingDeckTags: FAILED — ${it.message}") }
             .getOrElse { return Result.failure(it) }
+            .filter { PubkyUris.parseDeckManifest(it.details.uri) != null }
 
         val decksPerLabel = mutableMapOf<String, Int>()
         val taggersPerLabel = mutableMapOf<String, Int>()

@@ -79,10 +79,10 @@ class NexusClient(
     }
 
     /**
-     * Loopky resources carrying [label] — the label → URIs read behind global browse. Only tag
-     * records written outside the pubky.app namespace reach this index, which is why deck tags live
-     * under `/pub/loopky/tags/`. `app` is that namespace, so this cannot return another app's
-     * resources.
+     * Resources carrying [label] — the label → URIs read behind global browse. The stream is not
+     * scoped to Loopky: a label is shared by every app and by tagged web URLs, so callers must keep
+     * only the subjects they recognise (`PubkyUris.parseDeckManifest`). Nexus answers the old `app`
+     * filter with a 400 from pubky/pubky-nexus#1129 on.
      *
      * [skip] indexes the indexer's *raw* sorted set, not the entries that come back: Nexus drops a
      * resource whose details no longer resolve, so a page is routinely shorter than [limit] with
@@ -125,8 +125,7 @@ class NexusClient(
     ): List<NexusResourceDto> {
         val url = buildString {
             append("$baseUrl/v0/stream/resources")
-            append("?app=$LOOPKY_APP")
-            append("&tags=${encodeUriComponent(label)}")
+            append("?tags=${encodeUriComponent(label)}")
             append("&sorting=${sorting.wire}")
             append("&limit=${limit.coerceIn(1, MAX_RESOURCE_LIMIT)}")
             append("&skip=$skip")
@@ -250,9 +249,6 @@ class NexusClient(
     companion object {
         private const val TAG = "Loopky/Nexus"
         private const val HTTP_BAD_REQUEST = 400
-
-        /** The `/pub/{app}/tags/` segment Loopky writes deck tag records under. */
-        const val LOOPKY_APP = "loopky"
 
         /** Nexus rejects a shorter pubky prefix than this on `/search/users/by_id`. */
         const val MIN_USER_ID_PREFIX = 3

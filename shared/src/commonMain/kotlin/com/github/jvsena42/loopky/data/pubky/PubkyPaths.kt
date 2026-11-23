@@ -122,10 +122,6 @@ internal object PubkyPaths {
     /**
      * Tag record in Loopky's own namespace — the namespace Nexus indexes into its generic
      * **resource** graph, which is the only one that accepts a deck manifest as a subject.
-     *
-     * The `app` a resource is filed under is this path segment (`loopky`) verbatim, not anything
-     * derived from the subject URI, so these are the records behind
-     * `GET /v0/stream/resources?app=loopky`.
      */
     fun loopkyTag(ownerPubky: String, tagId: String): String =
         "pubky://$ownerPubky/$APP_NAMESPACE/tags/$tagId"

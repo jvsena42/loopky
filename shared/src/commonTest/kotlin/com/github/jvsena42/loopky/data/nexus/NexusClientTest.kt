@@ -43,8 +43,8 @@ class NexusClientTest {
     @Test
     fun anIndexerThatRefusesTaggerCountIsAskedByTimelineFromThenOn() = runTest {
         // Staging's Nexus since October 2026: 400 "unknown variant `taggers_count`" (#532).
-        val byCount = "$BASE/v0/stream/resources?app=loopky&tags=loopky-deck&sorting=taggers_count&limit=30&skip=0"
-        val byTime = "$BASE/v0/stream/resources?app=loopky&tags=loopky-deck&sorting=timeline&limit=30&skip=0"
+        val byCount = "$BASE/v0/stream/resources?tags=loopky-deck&sorting=taggers_count&limit=30&skip=0"
+        val byTime = "$BASE/v0/stream/resources?tags=loopky-deck&sorting=timeline&limit=30&skip=0"
         http.enqueue(HttpMethod.GET, byCount, HttpResponse(statusCode = 400, body = ""))
         http.respond(byTime, "[]")
 
@@ -56,7 +56,7 @@ class NexusClientTest {
     @Test
     fun resourcesByTagAsksForLoopkyResourcesSortedByTaggerCount() = runTest {
         val url = "$BASE/v0/stream/resources" +
-            "?app=loopky&tags=loopky-deck&sorting=taggers_count&limit=30&skip=0"
+            "?tags=loopky-deck&sorting=taggers_count&limit=30&skip=0"
         // Shape copied from a live staging response.
         http.respond(
             url,
@@ -93,7 +93,7 @@ class NexusClientTest {
 
         assertEquals(
             "$BASE/v0/stream/resources" +
-                "?app=loopky&tags=%E2%AD%90%E2%AD%90&sorting=taggers_count&limit=100&skip=0",
+                "?tags=%E2%AD%90%E2%AD%90&sorting=taggers_count&limit=100&skip=0",
             http.requestedUrls.single(),
         )
     }

@@ -11,7 +11,7 @@ class RequestRefusedTest {
         // The message #532 reported, verbatim.
         val error = HttpError(
             400,
-            "GET https://nexus.staging.pubky.app/v0/stream/resources?app=loopky&tags=loopky-deck" +
+            "GET https://nexus.staging.pubky.app/v0/stream/resources?tags=loopky-deck" +
                 "&sorting=taggers_count&limit=50&skip=0 failed with HTTP 400",
         )
         assertEquals(ExitCode.RequestRefused, ExitCode.of(error))

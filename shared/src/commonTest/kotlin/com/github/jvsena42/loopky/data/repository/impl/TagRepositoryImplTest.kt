@@ -310,6 +310,28 @@ class TagRepositoryImplTest {
     }
 
     @Test
+    fun trendingDeckTagsIgnoresSubjectsThatAreNotDeckManifests() = runTest {
+        http.respond(
+            deckStreamUrl(sampleSize = 50),
+            """
+            [
+              {"details":{"uri":"https://example.com/article"},
+               "tags":[{"label":"spam","taggers_count":9}]},
+              {"details":{"uri":"pubky://$TEST_PUBKY/pub/mapky.app/places/p1.json"},
+               "tags":[{"label":"spam","taggers_count":9}]},
+              {"details":{"uri":"pubky://$TEST_PUBKY/pub/loopky/decks/d1/cards/0.json"},
+               "tags":[{"label":"spam","taggers_count":9}]},
+              {"details":{"uri":"pubky://$TEST_PUBKY/pub/loopky/decks/d1/manifest.json"},
+               "tags":[{"label":"spanish","taggers_count":1}]}
+            ]
+            """.trimIndent(),
+        )
+
+        // The stream is no longer scoped to Loopky (pubky/pubky-nexus#1129), so only manifests count.
+        assertEquals(listOf(Tag("spanish")), repo.trendingDeckTags().getOrThrow())
+    }
+
+    @Test
     fun trendingDeckTagsFailsWhenTheIndexerFails() = runTest {
         http.fail(deckStreamUrl(sampleSize = 50), HttpError(statusCode = 500, message = "boom"))
 
@@ -317,7 +339,7 @@ class TagRepositoryImplTest {
     }
 
     private fun deckStreamUrl(sampleSize: Int) =
-        "$NEXUS_BASE/v0/stream/resources?app=loopky&tags=loopky-deck" +
+        "$NEXUS_BASE/v0/stream/resources?tags=loopky-deck" +
             "&sorting=taggers_count&limit=$sampleSize&skip=0"
 
     private companion object {
