@@ -43,8 +43,10 @@ import uniffi.pubkycore.resolveHttps as ffiResolveHttps
 import uniffi.pubkycore.revalidateSession as ffiRevalidateSession
 import uniffi.pubkycore.revokeGrant as ffiRevokeGrant
 import uniffi.pubkycore.revokeOwnGrant as ffiRevokeOwnGrant
+import uniffi.pubkycore.sessionDelete as ffiSessionDelete
 import uniffi.pubkycore.sessionGetBytes as ffiSessionGetBytes
 import uniffi.pubkycore.sessionList as ffiSessionList
+import uniffi.pubkycore.sessionPutBytes as ffiSessionPutBytes
 import uniffi.pubkycore.signIn as ffiSignIn
 import uniffi.pubkycore.signOut as ffiSignOut
 import uniffi.pubkycore.signUpCookie as ffiSignUpCookie
@@ -186,8 +188,18 @@ class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : Pubky
         runFfiSuspend { ffiRepublishHomeserver(secretKey, homeserver) }
 
     // --- Records (session auth) -----------------------------------------------
+    // `put_with_session` and `delete_with_session` refuse any URL without `/pub/`, so a `/priv/`
+    // record (a v1 mute, #616) goes through the typed storage calls, which take any path the
+    // session can write.
     override suspend fun putWithSession(url: String, content: String, sessionSecret: String) =
-        runFfiSuspend { ffiPutWithSession(url, content, sessionSecret) }
+        if (isPrivate(url)) {
+            runTypedFfi {
+                ffiSessionPutBytes(url, content.encodeToByteArray(), sessionSecret)
+                ""
+            }
+        } else {
+            runFfiSuspend { ffiPutWithSession(url, content, sessionSecret) }
+        }
 
     override suspend fun putBytesWithSession(
         url: String,
@@ -196,7 +208,16 @@ class UniffiPubkyClient(private val clientId: String = LOOPKY_CLIENT_ID) : Pubky
     ) = runFfiSuspend { ffiPutBytesWithSession(url, content, sessionSecret) }
 
     override suspend fun deleteWithSession(url: String, sessionSecret: String) =
-        runFfiSuspend { ffiDeleteWithSession(url, sessionSecret) }
+        if (isPrivate(url)) {
+            runTypedFfi {
+                ffiSessionDelete(url, sessionSecret)
+                ""
+            }
+        } else {
+            runFfiSuspend { ffiDeleteWithSession(url, sessionSecret) }
+        }
+
+    private fun isPrivate(url: String) = "/priv/" in url
 
     // --- pubky-app-specs helpers ------------------------------------------------
     override fun createTagId(uri: String, label: String) =

@@ -140,8 +140,16 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
 
     // MARK: - Records (session auth)
 
+    /// `putWithSession` and `deleteWithSession` refuse any URL without `/pub/`, so a `/priv/` record
+    /// (a v1 mute, #616) goes through the typed storage calls, which take any path the session can write.
     func putWithSession(url: String, content: String, sessionSecret: String) -> [String] {
-        Loopky.putWithSession(url: url, content: content, sessionSecret: sessionSecret)
+        guard url.contains("/priv/") else {
+            return Loopky.putWithSession(url: url, content: content, sessionSecret: sessionSecret)
+        }
+        return typed {
+            try Loopky.sessionPutBytes(pathOrAddress: url, content: Data(content.utf8), sessionSecret: sessionSecret)
+            return ""
+        }
     }
 
     func putBytesBase64WithSession(
@@ -156,7 +164,13 @@ final class IosPubkyClient: NSObject, RawPubkyClient {
     }
 
     func deleteWithSession(url: String, sessionSecret: String) -> [String] {
-        Loopky.deleteWithSession(url: url, sessionSecret: sessionSecret)
+        guard url.contains("/priv/") else {
+            return Loopky.deleteWithSession(url: url, sessionSecret: sessionSecret)
+        }
+        return typed {
+            try Loopky.sessionDelete(pathOrAddress: url, sessionSecret: sessionSecret)
+            return ""
+        }
     }
 
     func getWithSession(url: String, sessionSecret: String) -> [String] {
