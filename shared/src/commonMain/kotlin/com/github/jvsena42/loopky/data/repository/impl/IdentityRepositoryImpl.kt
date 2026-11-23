@@ -4,7 +4,8 @@ import com.github.jvsena42.loopky.data.pubky.MintedKeypair
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.pubky.ProfileDto
 import com.github.jvsena42.loopky.data.pubky.PubkyClient
-import com.github.jvsena42.loopky.data.pubky.PubkyPaths
+import com.github.jvsena42.loopky.data.pubky.SocialEpochs
+import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.pubky.asSignupUrl
 import com.github.jvsena42.loopky.data.pubky.isNoHomeserverRecord
 import com.github.jvsena42.loopky.data.pubky.isNotFound
@@ -74,6 +75,7 @@ internal class IdentityRepositoryImpl(
      * cannot tell "did not delete" from "has not deleted yet".
      */
     private val scope: CoroutineScope,
+    private val epochs: SocialEpochs = SocialEpochs(pubky),
 ) : IdentityRepository {
 
     override val keyCustody: Flow<KeyCustody> = localKeyStore.custody
@@ -551,8 +553,11 @@ internal class IdentityRepositoryImpl(
             return
         }
         selfTaggedThisProcess = true
-        val profileUri = PubkyUri(PubkyPaths.profile(session.identity.pubky))
         scope.launch {
+            val owner = session.identity.pubky
+            val profileUri = PubkyUri(
+                runSuspendCatching { epochs.layoutOf(owner) }.getOrDefault(SocialLayout.Legacy).profile(owner),
+            )
             // Re-checked here, not only at the call site: nothing cancels this, and
             // `AccountEraser` removes exactly this record and treats failing to as fatal, because
             // it is the only thing that takes an account out of Discover and search. A write that
@@ -587,7 +592,7 @@ internal class IdentityRepositoryImpl(
         }
         return runSuspendCatching {
             Log.d(TAG, "fetchProfile: pubky=${pubky.take(PUBKY_LOG_PREFIX_LEN)}…")
-            val json = this.pubky.get(PubkyPaths.profile(pubky)).getOrThrow()
+            val json = readProfile(pubky)
             val dto = loopkyJson.decodeFromString<ProfileDto>(json)
             dto.toDomain(pubky).also { cacheProfile(it) }
         }.onFailure {
@@ -601,6 +606,19 @@ internal class IdentityRepositoryImpl(
             }
         }
     }
+
+    /**
+     * The profile in whichever layout holds it: `social/v1` first, because once it exists the
+     * pubky.app copy is frozen at the moment the user was migrated (#616). Both fields read the same.
+     */
+    private suspend fun readProfile(pubky: String): String =
+        this.pubky.get(SocialLayout.SocialV1.profile(pubky)).fold(
+            onSuccess = { json -> json.also { epochs.markV1(pubky) } },
+            onFailure = { err ->
+                if (!err.isNotFound()) throw err
+                this.pubky.get(SocialLayout.Legacy.profile(pubky)).getOrThrow()
+            },
+        )
 
     private suspend fun cacheProfile(identity: PubkyIdentity) {
         profileCacheLock.withLock { profileCache[identity.pubky] = identity }
@@ -622,7 +640,8 @@ internal class IdentityRepositoryImpl(
             image = publishedAvatar ?: session.identity.avatarUrl,
         )
         val json = loopkyJson.encodeToString(ProfileDto.serializer(), dto)
-        val putResult = pubky.putWithSession(PubkyPaths.profile(currentPubky), json, session.sessionSecret)
+        val profilePath = epochs.layoutOf(currentPubky).profile(currentPubky)
+        val putResult = pubky.putWithSession(profilePath, json, session.sessionSecret)
 
         if (putResult.isFailure) {
             val err = putResult.exceptionOrNull()

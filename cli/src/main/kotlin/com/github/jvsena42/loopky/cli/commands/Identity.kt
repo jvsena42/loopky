@@ -45,7 +45,7 @@ import kotlin.time.Duration.Companion.seconds
  * The two tag folders are there because Nexus reads tags nowhere else since pubky/pubky-nexus#1129:
  * without them `deck create --tag …` would publish decks nobody can find (#616). That couples the
  * headless client to pubky.app's namespace, and it lets an agent tag any post or profile, though
- * still not write one. Nexus was asked to index tags in an app's own folder again, which would let
+ * still not write one. Nexus was asked (pubky/pubky-nexus#1247) for a tag folder no app owns, which would let
  * this shrink back to `/pub/loopky/:rw`.
  *
  * One visible consequence, and it is why `whoami` reports no display name: that lives in

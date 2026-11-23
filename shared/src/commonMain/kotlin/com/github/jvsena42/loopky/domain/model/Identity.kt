@@ -87,6 +87,15 @@ data class Session(
      */
     val canWriteDeckTags: Boolean
         get() = capabilities.any { it.grantsWriteTo(PUBKY_APP_TAGS) }
+
+    /**
+     * Whether this session was granted writes at [url], a `pubky://{owner}/…` address. A hint for
+     * skipping a write the scope rules out, like [canWritePubkyApp]; the homeserver enforces it.
+     */
+    fun canWriteTo(url: String): Boolean {
+        val path = "/" + url.removePrefix("pubky://").substringAfter('/', missingDelimiterValue = "")
+        return capabilities.any { it.grantsWriteTo(path) }
+    }
 }
 
 /**

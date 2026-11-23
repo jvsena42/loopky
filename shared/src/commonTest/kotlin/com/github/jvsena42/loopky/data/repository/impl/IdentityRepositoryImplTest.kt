@@ -2,6 +2,7 @@ package com.github.jvsena42.loopky.data.repository.impl
 
 import com.github.jvsena42.loopky.data.pubky.PubkyError
 import com.github.jvsena42.loopky.data.pubky.PubkyPaths
+import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.pubky.toErrorReason
 import com.github.jvsena42.loopky.data.storage.SecureSessionStore
 import com.github.jvsena42.loopky.domain.model.Capability
@@ -50,6 +51,21 @@ class IdentityRepositoryImplTest {
 
     private fun publishProfile(name: String, target: String = TEST_PUBKY) {
         pubky.store[PubkyPaths.profile(target)] = """{"name":"$name","bio":null,"image":null}"""
+    }
+
+    @Test
+    fun aMigratedProfileIsReadFromSocialV1AndEditedThere() = runTest {
+        // pubky.app's copy is frozen at the moment of migration; the social/v1 one is current (#616).
+        publishProfile("Old name")
+        val v1 = SocialLayout.SocialV1.profile(TEST_PUBKY)
+        pubky.store[v1] = """{"name":"New name","bio":null,"image":null}"""
+
+        assertEquals("New name", repo.fetchProfile(TEST_PUBKY).getOrThrow().displayName)
+
+        repo.updateProfile(name = "Renamed", bio = null).getOrThrow()
+
+        assertTrue("Renamed" in pubky.store.getValue(v1))
+        assertTrue("Old name" in pubky.store.getValue(PubkyPaths.profile(TEST_PUBKY)))
     }
 
     @Test

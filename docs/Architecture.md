@@ -531,7 +531,7 @@ production has deployed.
 This couples Loopky's deck discovery to pubky.app: tags on Loopky's own decks live in another
 app's namespace, and the CLI and MCP scopes reach into it (§13.2). Nexus was asked to accept
 `social/v1/tags/` from every user or to index app folders again
-(https://github.com/pubky/pubky-nexus/pull/1129#issuecomment-7102343880).
+(pubky/pubky-nexus#1247).
 
 Points 1 and 2 below describe the Nexus before #1129, which production still runs.
 
@@ -1757,7 +1757,7 @@ Until #616 the scope was `/pub/loopky/:rw` alone, because deck tags lived in `/p
 pubky/pubky-nexus#1129 stopped indexing that folder (§7.7 point 0), so without the tag folders
 `deck create --tag …` would publish decks nobody can find. The cost: an agent session can now tag
 any post or profile, though it still cannot write one, and the headless client depends on
-pubky.app's namespace. Nexus was asked to index an app's own folder again, which would let the
+pubky.app's namespace. Nexus was asked (pubky/pubky-nexus#1247) for a tag folder no app owns, which would let the
 scope shrink back.
 
 A login or connection from before the change still holds `/pub/loopky/:rw` only. It keeps working

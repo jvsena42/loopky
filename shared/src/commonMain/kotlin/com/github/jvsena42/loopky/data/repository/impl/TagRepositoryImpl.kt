@@ -7,6 +7,8 @@ import com.github.jvsena42.loopky.data.pubky.PubkyPaths
 import com.github.jvsena42.loopky.data.pubky.PubkyUris
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.pubky.SocialEpochs
+import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.pubky.TagDto
 import com.github.jvsena42.loopky.data.pubky.deleteWithSessionRetry
 import com.github.jvsena42.loopky.data.pubky.isNotFound
@@ -44,9 +46,11 @@ import kotlinx.serialization.encodeToString
  * This couples Loopky's deck discovery to pubky.app: tags on Loopky's own decks have to live in
  * another app's namespace, and the CLI and MCP scopes reach into it (`/pub/pubky.app/tags/:rw`).
  * Nexus was asked to accept `social/v1/tags/` from every user or to index app folders again
- * (https://github.com/pubky/pubky-nexus/pull/1129#issuecomment-7102343880); either would let this
- * move out of pubky.app's folder. A user pubky.app has migrated to `social/v1` needs their tags in
- * `/pub/social/v1/tags/` instead, which is #616 section 2.
+ * (pubky/pubky-nexus#1247); either would let this move out of pubky.app's folder.
+ *
+ * **A user in `social/v1` ([SocialEpochs]) gets `/pub/social/v1/tags/{id}.json` instead**, since Nexus
+ * ignores their pubky.app writes. Removing a tag they wrote before the flip goes through the same
+ * write-then-delete as an old Loopky-folder tag: Nexus moved the edge to the social/v1 address.
  *
  * Labels are folded by [TagLabels] and checked against the spec (1–20 chars, no whitespace) before
  * hashing so the derived id always matches what the indexer validates. The resource path does no
@@ -58,6 +62,7 @@ class TagRepositoryImpl(
     private val session: SessionProvider,
     private val revalidator: SessionRevalidator,
     private val nexus: NexusClient,
+    private val epochs: SocialEpochs = SocialEpochs(pubky),
 ) : TagRepository {
 
     override suspend fun putTag(subjectUri: PubkyUri, tag: Tag): Result<Unit> = runSuspendCatching {
@@ -83,14 +88,16 @@ class TagRepositoryImpl(
 
     private suspend fun write(subjectUri: PubkyUri, tag: Tag): Result<Unit> = runSuspendCatching {
         val label = sanitizeLabel(TagLabels.fold(tag.value)).getOrThrow()
-        val owner = session.requireSession().identity.pubky
+        val current = session.requireSession()
+        val owner = current.identity.pubky
         val tagId = pubky.createTagId(subjectUri.value, label).getOrThrow()
         val body = tagBody(subjectUri, label)
+        val indexed = epochs.layoutOf(owner).tag(owner, tagId)
         if (!isSocialSubject(subjectUri)) {
             pubky.putWithSessionRetry(PubkyPaths.loopkyTag(owner, tagId), body, session, revalidator).getOrThrow()
-            if (!session.requireSession().canWriteDeckTags) return@runSuspendCatching
+            if (!current.canWriteTo(indexed)) return@runSuspendCatching
         }
-        pubky.putWithSessionRetry(PubkyPaths.tag(owner, tagId), body, session, revalidator).getOrThrow()
+        pubky.putWithSessionRetry(indexed, body, session, revalidator).getOrThrow()
         Unit
     }
 
@@ -98,24 +105,27 @@ class TagRepositoryImpl(
         // Not folded: a record written before #479 is keyed by the label as it was typed, and
         // folding here would derive the id of a record that was never there.
         val label = sanitizeLabel(tag.verbatim()).getOrThrow()
-        val owner = session.requireSession().identity.pubky
+        val current = session.requireSession()
+        val owner = current.identity.pubky
         val tagId = pubky.createTagId(subjectUri.value, label).getOrThrow()
-        val path = PubkyPaths.tag(owner, tagId)
-        if (isSocialSubject(subjectUri)) {
-            deleteIfPresent(path)
-            return@runSuspendCatching
-        }
-        // A session older than #616 can't touch pubky.app's folder: it clears the Loopky copy only.
-        val canWriteIndexed = session.requireSession().canWriteDeckTags
-        val removed = canWriteIndexed && deleteIfPresent(path)
+        val layout = epochs.layoutOf(owner)
+        val indexed = layout.tag(owner, tagId)
+        // A session older than #616 can't touch the indexed folder: it clears the older copies only.
+        val canWriteIndexed = isSocialSubject(subjectUri) || current.canWriteTo(indexed)
+        val removed = canWriteIndexed && deleteIfPresent(indexed)
 
-        // A deck tag written before #616 lives only under `/pub/loopky/tags/`, where Nexus after #1129
-        // skips the DEL and keeps the edge. Writing the record again where it reads tags and deleting
-        // it there gives it a DEL it handles; the tag id is the same in every folder.
-        val legacyPath = PubkyPaths.loopkyTag(owner, tagId)
-        if (deleteIfPresent(legacyPath) && canWriteIndexed && !removed) {
-            pubky.putWithSessionRetry(path, tagBody(subjectUri, label), session, revalidator).getOrThrow()
-            pubky.deleteWithSessionRetry(path, session, revalidator).getOrThrow()
+        // Copies in a folder Nexus no longer reads for this user: `/pub/loopky/tags/` for a deck tag
+        // (#616), and pubky.app's for a user migrated to social/v1. Nexus keeps their edges and
+        // skips the DEL there, so a tag found only there is written again where it reads tags and
+        // deleted there; the tag id is the same in every folder.
+        val olderCopies = buildList {
+            if (layout != SocialLayout.Legacy) add(SocialLayout.Legacy.tag(owner, tagId))
+            if (!isSocialSubject(subjectUri)) add(PubkyPaths.loopkyTag(owner, tagId))
+        }
+        val hadOlderCopy = olderCopies.map { deleteIfPresent(it) }.any { it }
+        if (hadOlderCopy && canWriteIndexed && !removed) {
+            pubky.putWithSessionRetry(indexed, tagBody(subjectUri, label), session, revalidator).getOrThrow()
+            pubky.deleteWithSessionRetry(indexed, session, revalidator).getOrThrow()
         }
     }
 

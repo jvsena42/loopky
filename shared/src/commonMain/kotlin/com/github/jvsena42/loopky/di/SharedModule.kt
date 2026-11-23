@@ -6,6 +6,7 @@ import com.github.jvsena42.loopky.data.price.PriceSource
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionProvider
 import com.github.jvsena42.loopky.data.pubky.SessionRevalidator
+import com.github.jvsena42.loopky.data.pubky.SocialEpochs
 import com.github.jvsena42.loopky.data.report.ReportClient
 import com.github.jvsena42.loopky.data.repository.CardRepository
 import com.github.jvsena42.loopky.data.repository.DeckRepository
@@ -144,6 +145,7 @@ fun sharedModule(): Module = module {
             localKeyStore = get(),
             decks = get(),
             scope = get(REPOSITORY_SCOPE),
+            epochs = get(),
         )
     }
     single<KeyBackupRepository> { KeyBackupRepositoryImpl(pubky = get(), keyStore = get()) }
@@ -158,6 +160,8 @@ fun sharedModule(): Module = module {
     single<CardRepository> { CardRepositoryImpl(get(), get(), get()) }
     // One instance for both repositories, or a block made in one is invisible to the other.
     single { BlockedAccounts(pubky = get(), session = get()) }
+    // One per process, so a user's epoch is read once for every repository that routes by it (#616).
+    single { SocialEpochs(pubky = get()) }
     single<DeckRepository> {
         DeckRepositoryImpl(
             get(), get(), get(), get(), get(), get(), get(), get(), get(),
@@ -202,11 +206,12 @@ fun sharedModule(): Module = module {
             reportClient = ReportClient(http = get(), baseUrl = get<PubkyEnvironment>().webBaseUrl),
             environment = get(),
             blockedAccounts = get(),
+            epochs = get(),
         )
     }
 
     single<TagRepository> {
-        TagRepositoryImpl(pubky = get(), session = get(), revalidator = get(), nexus = get())
+        TagRepositoryImpl(pubky = get(), session = get(), revalidator = get(), nexus = get(), epochs = get())
     }
 
     viewModel { OnboardingViewModel(identityRepository = get(), ringPresence = get()) }

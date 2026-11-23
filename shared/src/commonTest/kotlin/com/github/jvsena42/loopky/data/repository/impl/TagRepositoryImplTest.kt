@@ -3,6 +3,7 @@ package com.github.jvsena42.loopky.data.repository.impl
 import com.github.jvsena42.loopky.data.nexus.HttpError
 import com.github.jvsena42.loopky.data.nexus.NexusClient
 import com.github.jvsena42.loopky.data.pubky.MutableSessionProvider
+import com.github.jvsena42.loopky.data.pubky.SocialLayout
 import com.github.jvsena42.loopky.data.pubky.TagDto
 import com.github.jvsena42.loopky.domain.model.Capability
 import com.github.jvsena42.loopky.domain.model.PubkyUri
@@ -222,6 +223,38 @@ class TagRepositoryImplTest {
     fun removeTagRejectsInvalidLabel() = runTest {
         assertTrue(repo.removeTag(deckUri, Tag("")).isFailure)
         assertTrue(pubky.deletes.isEmpty())
+    }
+
+    // ── a user migrated to social/v1 (#616) ──────────────────────────────
+
+    private fun v1TagUrlFor(label: String, subject: PubkyUri = deckUri): String {
+        val tagId = pubky.createTagId(subject.value, label).getOrThrow()
+        return "pubky://$TEST_PUBKY/pub/social/v1/tags/$tagId.json"
+    }
+
+    @Test
+    fun aMigratedUsersDeckTagGoesToSocialV1() = runTest {
+        pubky.store[SocialLayout.SocialV1.profile(TEST_PUBKY)] = "{}"
+
+        repo.putTag(deckUri, Tag("spanish")).getOrThrow()
+
+        assertEquals(listOf(loopkyTagUrlFor("spanish"), v1TagUrlFor("spanish")), pubky.puts.map { it.first })
+    }
+
+    @Test
+    fun removingATagAMigratedUserWroteBeforeTheFlipDeletesItUnderSocialV1() = runTest {
+        // Nexus repointed the edge to the social/v1 address at the flip and ignores this user's
+        // pubky.app DELs, so the record is written under social/v1 and deleted there.
+        pubky.store[SocialLayout.SocialV1.profile(TEST_PUBKY)] = "{}"
+        pubky.store[tagUrlFor("teacher", profileUri)] = "{}"
+
+        repo.removeTag(profileUri, Tag("teacher")).getOrThrow()
+
+        assertEquals(listOf(v1TagUrlFor("teacher", profileUri)), pubky.puts.map { it.first })
+        assertEquals(
+            listOf(v1TagUrlFor("teacher", profileUri), tagUrlFor("teacher", profileUri), v1TagUrlFor("teacher", profileUri)),
+            pubky.deletes,
+        )
     }
 
     // ── the reserved namespace ───────────────────────────────────────────
