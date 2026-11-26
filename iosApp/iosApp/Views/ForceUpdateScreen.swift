@@ -41,12 +41,10 @@ struct ForceUpdateScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
             Button("force_update_action") {
                 Task { @MainActor in
-                    // The listing's own page when the App Store knows Loopky, else the website,
-                    // which links to it.
+                    // The storefront's own page when the lookup answers, else the listing by its
+                    // Apple ID, which needs no lookup at all.
                     let listing = await AppStoreListing.fetch()
-                    if let url = listing?.trackViewUrl ?? URL(string: "https://loopky.app") {
-                        openURL(url)
-                    }
+                    openURL(listing?.trackViewUrl ?? AppStoreListing.pageURL)
                 }
             }
             .buttonStyle(LoopkyFilledButtonStyle(fill: LoopkyColor.accentPrimary, fontSize: 16))

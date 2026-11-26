@@ -130,7 +130,8 @@ a line when you close it.
 - **Backup and restore by file, and Ring export** — the confirmed-write halves end in system UI the
   automation cannot reach.
 - **In-app update prompt:** Play's consent screen, the download and the installing restart need a
-  build from a Play track; the iOS path needs a real App Store listing.
+  build from a Play track. The iOS path now has a listing to answer it (`id6818114611`), but needs
+  a build whose `MARKETING_VERSION` is below the live one, and has not been driven.
 - **iOS, written on Linux and not driven:** Discover paging and its error state (04, 13), the
   several-topic filter, the deck-detail feature badges, preview → sign in auto-follow, and the
   de/es/fr/it/vi/ja/ko/zh catalogs — the ja pass should include the study grade row, which clipped

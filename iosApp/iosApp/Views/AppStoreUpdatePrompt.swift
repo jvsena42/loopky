@@ -5,7 +5,9 @@ import SwiftUI
 /// live, and offer its page when that is newer than the one running. At most once a day — see
 /// `UpdatePromptGate`.
 ///
-/// Says nothing while the app has no App Store listing: the lookup answers with zero results.
+/// Says nothing where the lookup finds no listing (a storefront Loopky is not offered in answers
+/// with zero results), and nothing when the live version needs a newer iOS than this device runs —
+/// the App Store would only show it as incompatible.
 struct AppStoreUpdateModifier: ViewModifier {
     @Environment(\.openURL) private var openURL
     @State private var storeURL: URL?
@@ -32,6 +34,7 @@ struct AppStoreUpdateModifier: ViewModifier {
         guard let installed = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
               let listing = await AppStoreListing.fetch(),
               listing.version.compare(installed, options: .numeric) == .orderedDescending,
+              listing.runsOnThisDevice,
               let acquired = try? await IosDependencies.shared.updatePromptGate().tryAcquire(),
               acquired.boolValue
         else { return }
@@ -96,8 +99,21 @@ struct AppStoreLookup: Decodable {
 }
 
 struct AppStoreListing: Decodable {
+    /// Loopky's App Store Connect Apple ID — permanent once the record exists.
+    static let appId = "6818114611"
+    /// The listing's page without a storefront, so the App Store opens it in the reader's own.
+    /// Needs no network, which is why the force-update screen falls back to it.
+    static let pageURL = URL(string: "https://apps.apple.com/app/id\(appId)")!
+
     let version: String
     let trackViewUrl: URL
+    let minimumOsVersion: String?
+
+    /// False when the live build needs a newer iOS than this device runs.
+    @MainActor var runsOnThisDevice: Bool {
+        guard let minimumOsVersion else { return true }
+        return UIDevice.current.systemVersion.compare(minimumOsVersion, options: .numeric) != .orderedAscending
+    }
 
     /// `nil` on any failure — offline, unlisted, a response that does not parse. None of them is
     /// worth telling the reader about.
