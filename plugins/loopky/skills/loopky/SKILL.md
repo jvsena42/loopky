@@ -55,7 +55,8 @@ just for this. Tell them, in one line:
   phone, they tap the link instead (Android opens Loopky), or on an iPhone copy it and tap
   **Paste** there, or paste it into Loopky's search and tap **Approve in Loopky**. The same screen lists what they approved and revokes it.
 - **Key in Pubky Ring:** scan it in Ring, or tap the link on the phone that runs Ring.
-- **Neither** (no account yet): install Loopky and create the account there, then scan from
+- **Neither** (no account yet): install Loopky (Google Play or the App Store, both linked from
+  https://loopky.app) and create the account there, then scan from
   Settings → Sessions. Pubky Ring works too (`loopky ring` shows where to get it).
 
 If they do not know which they have, give both lines.

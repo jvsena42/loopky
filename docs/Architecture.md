@@ -9,7 +9,7 @@
 
 Loopky is a **Kotlin Multiplatform** flashcards app targeting iOS and Android. Business logic — domain models, repositories, and ViewModels — lives in a single `shared` module (`commonMain`). Repositories own the business logic; there is no separate use-case layer. Each platform renders its own native UI: **Jetpack Compose** on Android (`androidApp/src/main`) and **SwiftUI** on iOS (`iosApp/`). Identity, social graph, tags, and published decks are backed by **Pubky**, accessed through the UniFFI bindings that `pubky-core-ffi-fork` generates (§7).
 
-**Both apps are feature-built end to end.** Every surface described here runs on Android and on iOS. iOS runs against a real homeserver and is in public beta on TestFlight. `journeys/README.md` lists what has not been driven on a device.
+**Both apps are feature-built end to end.** Every surface described here runs on Android and on iOS. iOS runs against a real homeserver and is on the App Store (`id6818114611`); TestFlight is still where release candidates go first. `journeys/README.md` lists what has not been driven on a device.
 
 Deck import — the flow the rest of the product hangs off — is specified in [`docs/specs.md`](./specs.md).
 
